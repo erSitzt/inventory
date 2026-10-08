@@ -27,7 +27,7 @@
         <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="Datenverzeichnis" Variant="Variant.Outlined" ReadOnly="true"
                       HelperText="Datenbank, Schlüssel, Paketdateien und tägliche Sicherungen (Unterordner backups, 14 Stück). Änderbar über Inventory:DataDirectory." />
         <MudText Typo="Typo.body2">
-            Anmeldung: @(Options.Value.ResolveWindowsAuthentication() ? $"Windows-Anmeldung, erlaubt für {string.Join(", ", Options.Value.AllowedGroups)}" : "abgeschaltet")
+            Anmeldung: @(Options.Value.ResolveWindowsAuthentication() ? $"Windows-Anmeldung, erlaubt für {string.Join(", ", Options.Value.DescribeAllowedGroups())}" : "abgeschaltet")
         </MudText>
         @if (!Options.Value.ResolveWindowsAuthentication() && !Options.Value.ResolveSimulate())
         {

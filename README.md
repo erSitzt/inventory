@@ -76,7 +76,7 @@ registriert den Dienst. Ein erneuter Aufruf aktualisiert die Programmdateien; Ko
 | `Urls` | Adressen der Weboberfläche, z. B. `http://*:5100` |
 | `Inventory:DataDirectory` | Datenbank, Schlüssel, Paketdateien (`repository`), Sicherungen (`backups`) |
 | `Inventory:Authentication` | `Windows` (Standard auf Windows) oder `None` |
-| `Inventory:AllowedGroups` | Gruppen mit Zugriff auf Oberfläche und API |
+| `Inventory:AllowedGroups` | Gruppen mit Zugriff auf Oberfläche und API, als Name (`FIRMA\IT-Admins`) oder SID. Standard: lokale Administratoren (`S-1-5-32-544`) |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 
 Für eine vollständige Sicherung gehören neben `backups` auch die Ordner `keys` (ohne sie sind die gespeicherten

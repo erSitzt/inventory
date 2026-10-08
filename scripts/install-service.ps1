@@ -14,8 +14,8 @@ param(
     [string]$DataDir = "$env:ProgramData\Inventory",
     # Adresse(n), auf denen die Weboberfläche lauscht. Für HTTPS ein Zertifikat in appsettings.Production.json hinterlegen.
     [string]$Urls = 'http://*:5100',
-    # Gruppen, deren Mitglieder Inventory bedienen dürfen.
-    [string[]]$AllowedGroups = @('BUILTIN\Administrators'),
+    # Gruppen (Name oder SID), deren Mitglieder Inventory bedienen dürfen. Standard: lokale Administratoren des Servers.
+    [string[]]$AllowedGroups = @('S-1-5-32-544'),
     # Leer = LocalSystem. Ein Domänenkonto ist nötig, wenn Zielrechner ohne hinterlegte Zugangsdaten erreicht
     # oder das Active Directory mit dem Dienstkonto abgefragt werden soll.
     [string]$ServiceAccount

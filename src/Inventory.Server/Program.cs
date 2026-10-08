@@ -76,7 +76,7 @@ if (windowsAuthentication)
     // Ohne passende Gruppe gibt es weder Oberfläche noch API: der Server verwaltet Administrator-Zugangsdaten.
     builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .RequireAssertion(context => options.AllowedGroups.Any(context.User.IsInRole))
+        .RequireAssertion(context => options.IsAllowed(context.User))
         .Build());
 }
 else
@@ -102,7 +102,7 @@ await using (var db = await app.Services.GetRequiredService<IDbContextFactory<In
 await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();
 
 app.Logger.LogInformation("Datenverzeichnis: {DataDirectory}, Simulation: {Simulate}, Anmeldung: {Authentication}",
-    dataDirectory, options.ResolveSimulate(), windowsAuthentication ? $"Windows ({string.Join(", ", options.AllowedGroups)})" : "keine");
+    dataDirectory, options.ResolveSimulate(), windowsAuthentication ? $"Windows ({string.Join(", ", options.DescribeAllowedGroups())})" : "keine");
 if (!windowsAuthentication && !options.ResolveSimulate())
     app.Logger.LogWarning("Die Anmeldung ist abgeschaltet: Jeder, der diese Adresse erreicht, kann mit den hinterlegten Zugangsdaten Befehle auf den Zielrechnern ausführen.");
 
@@ -110,11 +110,12 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-
+// Vor den Statusseiten: deren erneute Ausführung der Anfrage würde den mehrstufigen Negotiate-Handshake zerstören.
 if (windowsAuthentication)
     app.UseAuthentication();
 app.UseAuthorization();
+app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();

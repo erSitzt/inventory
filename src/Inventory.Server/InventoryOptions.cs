@@ -13,8 +13,32 @@ public sealed class InventoryOptions
     /// <summary>"Windows" (Negotiate/Kerberos) oder "None". Leer = Windows, außer im Simulationsmodus.</summary>
     public string? Authentication { get; set; }
 
-    /// <summary>Gruppen, deren Mitglieder die Oberfläche und die API nutzen dürfen, z. B. "FIRMA\IT-Admins".</summary>
-    public string[] AllowedGroups { get; set; } = [@"BUILTIN\Administrators"];
+    /// <summary>SID der lokalen Administratoren; der Name wäre je nach Windows-Sprache verschieden (Administrators/Administratoren).</summary>
+    public const string LocalAdministratorsSid = "S-1-5-32-544";
+
+    /// <summary>Gruppen, deren Mitglieder die Oberfläche und die API nutzen dürfen: Name ("FIRMA\IT-Admins") oder SID.</summary>
+    public string[] AllowedGroups { get; set; } = [LocalAdministratorsSid];
+
+    public bool IsAllowed(System.Security.Claims.ClaimsPrincipal user) => AllowedGroups.Any(group =>
+        group.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase)
+            ? user.HasClaim(c => c.Type is System.Security.Claims.ClaimTypes.GroupSid or System.Security.Claims.ClaimTypes.PrimaryGroupSid
+                                 && c.Value.Equals(group, StringComparison.OrdinalIgnoreCase))
+            : user.IsInRole(group));
+
+    /// <summary>Gruppen für die Anzeige; SIDs werden unter Windows in Namen übersetzt.</summary>
+    public IEnumerable<string> DescribeAllowedGroups() => AllowedGroups.Select(group =>
+    {
+        if (!OperatingSystem.IsWindows() || !group.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
+            return group;
+        try
+        {
+            return new System.Security.Principal.SecurityIdentifier(group).Translate(typeof(System.Security.Principal.NTAccount)).Value;
+        }
+        catch (Exception ex) when (ex is System.Security.Principal.IdentityNotMappedException or ArgumentException)
+        {
+            return group;
+        }
+    });
 
     public bool ResolveWindowsAuthentication() =>
         Authentication is null ? OperatingSystem.IsWindows() && !ResolveSimulate() : Authentication.Equals("Windows", StringComparison.OrdinalIgnoreCase);
