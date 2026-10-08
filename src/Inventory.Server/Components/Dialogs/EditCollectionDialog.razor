@@ -1,0 +1,119 @@
+@inject CollectionService CollectionService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
+            <MudTextField @bind-Value="_description" Label="Beschreibung" Variant="Variant.Outlined" />
+
+            @if (IsDynamic)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText>Ein Rechner gehört dazu, wenn</MudText>
+                    <MudSelect T="bool" @bind-Value="_matchAll" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 200px" aria-label="Verknüpfung">
+                        <MudSelectItem T="bool" Value="true">alle Regeln</MudSelectItem>
+                        <MudSelectItem T="bool" Value="false">mindestens eine Regel</MudSelectItem>
+                    </MudSelect>
+                    <MudText>@(_matchAll ? "zutreffen." : "zutrifft.")</MudText>
+                </MudStack>
+
+                @foreach (var rule in _rules)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudSelect T="RuleField" Value="rule.Field" ValueChanged="@(f => SetField(rule, f))" Label="Feld" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            @foreach (var field in Enum.GetValues<RuleField>())
+                            {
+                                <MudSelectItem T="RuleField" Value="field">@Display.Field(field)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="RuleOperator" @bind-Value="rule.Operator" Label="Bedingung" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            @foreach (var op in Display.OperatorsFor(rule.Field))
+                            {
+                                <MudSelectItem T="RuleOperator" Value="op">@Display.Operator(op)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        @if (rule.Field is RuleField.Online or RuleField.Scanned)
+                        {
+                            <MudSelect T="string" @bind-Value="rule.Value" Label="Wert" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                <MudSelectItem T="string" Value="@("true")">ja</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("false")">nein</MudSelectItem>
+                            </MudSelect>
+                        }
+                        else
+                        {
+                            <MudTextField @bind-Value="rule.Value" Label="@(rule.Field == RuleField.Software ? "Programmname" : "Wert")" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+                        }
+                        @if (rule.Field == RuleField.Software && rule.Operator is not (RuleOperator.NotContains or RuleOperator.NotEquals))
+                        {
+                            <MudTextField @bind-Value="rule.Value2" Label="Version kleiner als (optional)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        }
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="Regel entfernen" OnClick="@(() => _rules.Remove(rule))" />
+                    </MudStack>
+                }
+                <div>
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _rules.Add(new CollectionRule()))">Regel hinzufügen</MudButton>
+                </div>
+            }
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)" OnClick="SaveAsync">Speichern</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neue Sammlung anlegen.</summary>
+    [Parameter] public Collection? Collection { get; set; }
+    [Parameter] public bool IsDynamic { get; set; }
+
+    private string _name = "";
+    private string? _description;
+    private bool _matchAll = true;
+    private List<CollectionRule> _rules = [];
+    private string? _error;
+
+    private bool CanSave => !string.IsNullOrWhiteSpace(_name) && (!IsDynamic || _rules.Any(r => !string.IsNullOrWhiteSpace(r.Value)));
+
+    protected override void OnInitialized()
+    {
+        if (Collection is not null)
+        {
+            _name = Collection.Name;
+            _description = Collection.Description;
+            _matchAll = Collection.MatchAll;
+            // Kopien bearbeiten, damit "Abbrechen" nichts an der angezeigten Liste verändert.
+            _rules = Collection.Rules.Select(r => new CollectionRule { Field = r.Field, Operator = r.Operator, Value = r.Value, Value2 = r.Value2 }).ToList();
+        }
+        if (IsDynamic && _rules.Count == 0)
+            _rules.Add(new CollectionRule { Field = RuleField.Software });
+    }
+
+    private static void SetField(CollectionRule rule, RuleField field)
+    {
+        rule.Field = field;
+        var allowed = Display.OperatorsFor(field);
+        if (!allowed.Contains(rule.Operator))
+            rule.Operator = allowed[0];
+        rule.Value = field is RuleField.Online or RuleField.Scanned ? "true" : "";
+        rule.Value2 = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            await CollectionService.SaveAsync(Collection?.Id, _name, _description, IsDynamic, _matchAll, _rules);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            _error = $"Es gibt bereits eine Sammlung mit dem Namen „{_name.Trim()}“.";
+        }
+    }
+}

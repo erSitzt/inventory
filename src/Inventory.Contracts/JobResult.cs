@@ -37,6 +37,8 @@ namespace Inventory.Contracts
         public DateTime StartedUtc { get; set; }
         public DateTime FinishedUtc { get; set; }
         public List<StepResult> Steps { get; set; } = new List<StepResult>();
+        /// <summary>Gefüllt, wenn der Job einen Inventar-Scan enthielt.</summary>
+        public InventoryData? Inventory { get; set; }
 
         public static JobResult Failed(string jobId, string error) =>
             new JobResult { JobId = jobId, Success = false, Error = error, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow };

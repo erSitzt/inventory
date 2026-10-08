@@ -1,0 +1,185 @@
+@page "/computers/{Id:int}"
+@inject ComputerService ComputerService
+@inject ScanService ScanService
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_computer?.Name ?? "Rechner") – Inventory</PageTitle>
+
+@if (_computer is null)
+{
+    @if (_loaded)
+    {
+        <MudAlert Severity="Severity.Warning">Dieser Rechner existiert nicht (mehr). <MudLink Href="computers">Zur Übersicht</MudLink></MudAlert>
+    }
+    return;
+}
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="computers" aria-label="Zurück zur Übersicht" />
+    <MudText Typo="Typo.h5">@_computer.Name</MudText>
+    <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : Color.Default)">@(_computer.IsOnline ? "online" : "offline")</MudChip>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">Befehl ausführen</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_scanning" OnClick="ScanAsync">
+        @(_scanning ? "Scan läuft …" : "Jetzt scannen")
+    </MudButton>
+</MudStack>
+
+@if (_computer.LastScanError is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">Letzter Scan fehlgeschlagen: @_computer.LastScanError</MudAlert>
+}
+@if (_computer.LastScanUtc is null)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">Dieser Rechner wurde noch nicht gescannt.</MudAlert>
+}
+
+<MudTabs Outlined="true" Border="true" TabPanelsClass="pt-4" ApplyEffectsToContainer="true">
+    <MudTabPanel Text="Übersicht">
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                    <tbody>
+                        @Row("Betriebssystem", Display.Os(_computer))
+                        @Row("Version", $"{_computer.OsVersion} {_computer.OsArchitecture}".Trim())
+                        @Row("Installiert am", Display.LocalTime(_computer.OsInstalledUtc))
+                        @Row("Letzter Start", Display.LocalTime(_computer.LastBootUtc))
+                        @Row("Angemeldeter Benutzer", _computer.LoggedOnUser)
+                        @Row("Domäne", _computer.Domain)
+                        @Row("IP-Adresse", _computer.IpAddress)
+                        @Row("Letzter Scan", Display.LocalTime(_computer.LastScanUtc))
+                        @Row("Zuletzt gesehen", Display.LocalTime(_computer.LastSeenUtc))
+                    </tbody>
+                </MudSimpleTable>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                    <tbody>
+                        @Row("Hersteller", _computer.Manufacturer)
+                        @Row("Modell", _computer.Model)
+                        @Row("Seriennummer", _computer.SerialNumber)
+                        @Row("BIOS", _computer.BiosVersion)
+                        @Row("Prozessor", _computer.CpuName)
+                        @Row("Kerne / Threads", _computer.CpuCores is null ? null : $"{_computer.CpuCores} / {_computer.CpuLogicalProcessors}")
+                        @Row("Arbeitsspeicher", Display.Bytes(_computer.MemoryBytes))
+                        @Row("Sammlungen", string.Join(", ", _computer.Collections.Select(c => c.Name)))
+                        @Row("Beschreibung", _computer.Description)
+                    </tbody>
+                </MudSimpleTable>
+            </MudItem>
+        </MudGrid>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@($"Software ({_computer.Software.Count})")">
+        <MudTextField @bind-Value="_softwareSearch" Placeholder="Software suchen" Adornment="Adornment.Start" Immediate="true" Class="mb-2"
+                      AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />
+        <MudDataGrid T="ComputerSoftware" Items="_computer.Software" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50"
+                     QuickFilter="@(s => string.IsNullOrWhiteSpace(_softwareSearch) || s.Name.Contains(_softwareSearch, StringComparison.OrdinalIgnoreCase) || (s.Publisher?.Contains(_softwareSearch, StringComparison.OrdinalIgnoreCase) ?? false))">
+            <Columns>
+                <PropertyColumn Property="s => s.Name" Title="Name" />
+                <PropertyColumn Property="s => s.Version" Title="Version" />
+                <PropertyColumn Property="s => s.Publisher" Title="Hersteller" />
+                <PropertyColumn Property="s => s.InstallDate" Title="Installiert" />
+                <TemplateColumn Title="Art" Sortable="false">
+                    <CellTemplate>@(context.Item.Is64Bit ? "64 Bit" : "32 Bit")@(context.Item.PerUser ? ", pro Benutzer" : "")</CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="ComputerSoftware" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@($"Hotfixes ({_computer.Hotfixes.Count})")">
+        <MudDataGrid T="ComputerHotfix" Items="_computer.Hotfixes" Dense="true" Hover="true" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="h => h.HotfixId" Title="KB" />
+                <PropertyColumn Property="h => h.Description" Title="Beschreibung" />
+                <PropertyColumn Property="h => h.InstalledOn" Title="Installiert am" />
+            </Columns>
+        </MudDataGrid>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Datenträger">
+        <MudDataGrid T="ComputerDisk" Items="_computer.Disks" Dense="true" Hover="true" SortMode="SortMode.None">
+            <Columns>
+                <PropertyColumn Property="d => d.Drive" Title="Laufwerk" />
+                <PropertyColumn Property="d => d.Label" Title="Bezeichnung" />
+                <PropertyColumn Property="d => d.FileSystem" Title="Dateisystem" />
+                <TemplateColumn Title="Größe"><CellTemplate>@Display.Bytes(context.Item.SizeBytes)</CellTemplate></TemplateColumn>
+                <TemplateColumn Title="Frei">
+                    <CellTemplate>
+                        @Display.Bytes(context.Item.FreeBytes)
+                        @if (context.Item.SizeBytes > 0)
+                        {
+                            <span> (@((100d * context.Item.FreeBytes / context.Item.SizeBytes).ToString("N0")) %)</span>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Netzwerk">
+        <MudDataGrid T="ComputerNetworkAdapter" Items="_computer.NetworkAdapters" Dense="true" Hover="true" SortMode="SortMode.None">
+            <Columns>
+                <PropertyColumn Property="n => n.Name" Title="Adapter" />
+                <PropertyColumn Property="n => n.MacAddress" Title="MAC-Adresse" />
+                <PropertyColumn Property="n => n.IpAddresses" Title="IP-Adressen" />
+                <PropertyColumn Property="n => n.Gateways" Title="Gateway" />
+                <PropertyColumn Property="n => n.DnsServers" Title="DNS-Server" />
+                <TemplateColumn Title="DHCP"><CellTemplate>@(context.Item.DhcpEnabled ? "ja" : "nein")</CellTemplate></TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@($"Dienste ({_computer.Services.Count})")">
+        <MudDataGrid T="ComputerWindowsService" Items="_computer.Services" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
+            <Columns>
+                <PropertyColumn Property="s => s.Name" Title="Name" />
+                <PropertyColumn Property="s => s.DisplayName" Title="Anzeigename" />
+                <PropertyColumn Property="s => s.State" Title="Status" />
+                <PropertyColumn Property="s => s.StartMode" Title="Starttyp" />
+                <PropertyColumn Property="s => s.Account" Title="Konto" />
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="ComputerWindowsService" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Computer? _computer;
+    private bool _loaded;
+    private bool _scanning;
+    private string _softwareSearch = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _computer = await ComputerService.GetDetailAsync(Id);
+        _loaded = true;
+    }
+
+    private async Task ScanAsync()
+    {
+        _scanning = true;
+        try
+        {
+            var outcome = await ScanService.ScanAsync(Id);
+            Snackbar.Add(outcome.Success ? "Scan abgeschlossen." : $"Scan fehlgeschlagen: {outcome.Error}", outcome.Success ? Severity.Success : Severity.Error);
+            _computer = await ComputerService.GetDetailAsync(Id);
+        }
+        finally
+        {
+            _scanning = false;
+        }
+    }
+
+    private static RenderFragment Row(string label, string? value) => @<tr>
+        <td style="width: 40%; color: var(--mud-palette-text-secondary)">@label</td>
+        <td>@(string.IsNullOrWhiteSpace(value) ? "–" : value)</td>
+    </tr>;
+}

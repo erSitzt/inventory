@@ -1,34 +1,69 @@
 @page "/computers"
 @inject ComputerService ComputerService
 @inject CredentialService CredentialService
+@inject CollectionService CollectionService
+@inject ScanService ScanService
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 
 <PageTitle>Rechner – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
     <MudText Typo="Typo.h5">Rechner</MudText>
     <MudSpacer />
+    <MudSelect T="int?" Value="CollectionId" ValueChanged="SetCollection" Placeholder="Alle Rechner" Clearable="true" Variant="Variant.Outlined"
+               Margin="Margin.Dense" Style="max-width: 240px" aria-label="Sammlung">
+        @foreach (var summary in _collections)
+        {
+            <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
+        }
+    </MudSelect>
     <MudTextField @bind-Value="_search" Placeholder="Suchen" Adornment="Adornment.Start" Immediate="true"
-                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 280px" />
+                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 240px" />
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">Hinzufügen</MudButton>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.NetworkCheck" Disabled="_busy" OnClick="ProbeAsync">
-        @(_selected.Count > 0 ? $"Erreichbarkeit prüfen ({_selected.Count})" : "Alle prüfen")
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_busy" OnClick="ScanAsync">
+        @(_selected.Count > 0 ? $"Scannen ({_selected.Count})" : "Alle scannen")
     </MudButton>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)"
-               Href="@($"run?ids={string.Join(',', _selected.Select(c => c.Id))}")">Befehl ausführen</MudButton>
-    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
-               Disabled="@(_selected.Count == 0 || _busy)" OnClick="DeleteAsync">Löschen</MudButton>
+    <MudMenu Label="Aktionen" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Disabled="_busy">
+        <MudMenuItem Icon="@Icons.Material.Filled.NetworkCheck" OnClick="ProbeAsync">
+            @(_selected.Count > 0 ? "Erreichbarkeit der Auswahl prüfen" : "Erreichbarkeit aller prüfen")
+        </MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">Befehl ausführen</MudMenuItem>
+        <MudDivider />
+        @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
+        {
+            var target = summary.Collection;
+            <MudMenuItem Icon="@Icons.Material.Filled.CreateNewFolder" Disabled="@(_selected.Count == 0)" OnClick="@(() => AddToCollectionAsync(target))">
+                Zu „@target.Name“ hinzufügen
+            </MudMenuItem>
+        }
+        @if (_activeCollection is { IsDynamic: false })
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.FolderOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveFromCollectionAsync">
+                Aus „@_activeCollection.Name“ entfernen
+            </MudMenuItem>
+        }
+        <MudDivider />
+        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(_selected.Count == 0)" OnClick="DeleteAsync">Löschen</MudMenuItem>
+    </MudMenu>
 </MudStack>
+
+@if (_busy && _progressText is not null)
+{
+    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">@_progressText</MudAlert>
+}
 
 <MudDataGrid T="Computer" Items="_computers" MultiSelection="true" @bind-SelectedItems="_selected" QuickFilter="Matches"
              Dense="true" Hover="true" Loading="_busy" SortMode="SortMode.Single" RowsPerPage="50">
     <Columns>
         <SelectColumn T="Computer" />
-        <PropertyColumn Property="c => c.Name" Title="Name" />
+        <TemplateColumn Title="Name" SortBy="c => c.Name">
+            <CellTemplate><MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink></CellTemplate>
+        </TemplateColumn>
         <TemplateColumn Title="Status" SortBy="c => c.IsOnline">
             <CellTemplate>
-                @if (context.Item.LastProbeUtc is null)
+                @if (context.Item.LastProbeUtc is null && context.Item.LastScanUtc is null)
                 {
                     <MudChip T="string" Size="Size.Small">ungeprüft</MudChip>
                 }
@@ -42,17 +77,29 @@
                 }
             </CellTemplate>
         </TemplateColumn>
+        <TemplateColumn Title="Betriebssystem" SortBy="c => Display.Os(c)">
+            <CellTemplate>@Display.Os(context.Item)</CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="c => c.Model" Title="Modell" />
+        <PropertyColumn Property="c => c.LoggedOnUser" Title="Benutzer" />
         <PropertyColumn Property="c => c.IpAddress" Title="IP-Adresse" />
-        <TemplateColumn Title="Zuletzt gesehen" SortBy="c => c.LastSeenUtc">
-            <CellTemplate>@Display.LocalTime(context.Item.LastSeenUtc)</CellTemplate>
+        <TemplateColumn Title="Letzter Scan" SortBy="c => c.LastScanUtc">
+            <CellTemplate>
+                @if (context.Item.LastScanError is not null)
+                {
+                    <MudTooltip Text="@context.Item.LastScanError">
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Small" />
+                            <span>fehlgeschlagen</span>
+                        </MudStack>
+                    </MudTooltip>
+                }
+                else
+                {
+                    @Display.LocalTime(context.Item.LastScanUtc)
+                }
+            </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Transport" Sortable="false">
-            <CellTemplate>@(context.Item.Transport is { } t ? Display.Transport(t) : "Standard")</CellTemplate>
-        </TemplateColumn>
-        <TemplateColumn Title="Zugangsdaten" Sortable="false">
-            <CellTemplate>@(context.Item.Credential?.Name ?? "Standard")</CellTemplate>
-        </TemplateColumn>
-        <PropertyColumn Property="c => c.Description" Title="Beschreibung" />
         <TemplateColumn Sortable="false" CellStyle="width: 1%">
             <CellTemplate>
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Bearbeiten" OnClick="@(() => EditAsync(context.Item))" />
@@ -60,7 +107,11 @@
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
-        <MudText Class="pa-4">Noch keine Rechner vorhanden. Über „Hinzufügen“ lassen sich Namen einzeln oder als Liste anlegen.</MudText>
+        <MudText Class="pa-4">
+            @(_activeCollection is null
+                ? "Noch keine Rechner vorhanden. Über „Hinzufügen“ lassen sich Namen einzeln oder als Liste anlegen."
+                : "Diese Sammlung enthält keine Rechner.")
+        </MudText>
     </NoRecordsContent>
     <PagerContent>
         <MudDataGridPager T="Computer" PageSizeOptions="@(new[] { 25, 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
@@ -68,24 +119,42 @@
 </MudDataGrid>
 
 @code {
+    [SupplyParameterFromQuery(Name = "collection")] public int? CollectionId { get; set; }
+
     private List<Computer> _computers = [];
+    private List<CollectionSummary> _collections = [];
+    private Collection? _activeCollection;
     private HashSet<Computer> _selected = [];
     private string _search = "";
     private bool _busy;
+    private string? _progressText;
 
-    protected override Task OnInitializedAsync() => ReloadAsync();
+    protected override Task OnParametersSetAsync() => ReloadAsync();
 
     private async Task ReloadAsync()
     {
-        _computers = await ComputerService.ListAsync();
+        _collections = await CollectionService.ListAsync();
+        _activeCollection = _collections.FirstOrDefault(c => c.Collection.Id == CollectionId)?.Collection;
+        var all = await ComputerService.ListAsync();
+        if (_activeCollection is not null)
+        {
+            var members = await CollectionService.GetMemberIdsAsync(_activeCollection.Id);
+            all = all.Where(c => members.Contains(c.Id)).ToList();
+        }
+        _computers = all;
         _selected = [];
     }
 
+    private void SetCollection(int? id) =>
+        Navigation.NavigateTo(id is null ? "computers" : $"computers?collection={id}");
+
     private bool Matches(Computer c) =>
         string.IsNullOrWhiteSpace(_search)
-        || c.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
-        || (c.IpAddress?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
-        || (c.Description?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+        || new[] { c.Name, c.IpAddress, c.Description, c.OsName, c.Model, c.LoggedOnUser, c.SerialNumber }
+            .Any(v => v?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+
+    /// <summary>Die Auswahl, sonst alle gerade angezeigten Rechner.</summary>
+    private List<int> TargetIds() => (_selected.Count > 0 ? _selected : _computers.Where(Matches)).Select(c => c.Id).ToList();
 
     private async Task AddAsync()
     {
@@ -93,6 +162,8 @@
         if (await dialog.Result is { Canceled: false, Data: string text })
         {
             var added = await ComputerService.ImportAsync(text);
+            if (_activeCollection is { IsDynamic: false } && added.Count > 0)
+                await CollectionService.AddMembersAsync(_activeCollection.Id, added.Select(c => c.Id));
             Snackbar.Add(added.Count == 0 ? "Keine neuen Rechner – alle Namen waren bereits vorhanden oder ungültig." : $"{added.Count} Rechner hinzugefügt.",
                 added.Count == 0 ? Severity.Warning : Severity.Success);
             await ReloadAsync();
@@ -111,14 +182,42 @@
             await ReloadAsync();
     }
 
+    private async Task ScanAsync()
+    {
+        var ids = TargetIds();
+        if (ids.Count == 0)
+            return;
+        _busy = true;
+        var done = 0;
+        _progressText = $"Scanne {ids.Count} Rechner …";
+        try
+        {
+            var outcomes = await ScanService.ScanAsync(ids, _ =>
+            {
+                var current = Interlocked.Increment(ref done);
+                _progressText = $"Scanne … {current} von {ids.Count} fertig";
+                InvokeAsync(StateHasChanged);
+            });
+            var failed = outcomes.Count(o => !o.Success);
+            Snackbar.Add(failed == 0 ? $"{outcomes.Count} Rechner gescannt." : $"{outcomes.Count - failed} gescannt, {failed} fehlgeschlagen.",
+                failed == 0 ? Severity.Success : Severity.Warning);
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _progressText = null;
+        }
+    }
+
     private async Task ProbeAsync()
     {
+        var ids = TargetIds();
         _busy = true;
         try
         {
-            var ids = _selected.Count > 0 ? _selected.Select(c => c.Id).ToList() : null;
             var online = await ComputerService.ProbeAsync(ids);
-            Snackbar.Add($"{online} von {ids?.Count ?? _computers.Count} Rechnern erreichbar.", Severity.Info);
+            Snackbar.Add($"{online} von {ids.Count} Rechnern erreichbar.", Severity.Info);
             await ReloadAsync();
         }
         finally
@@ -127,11 +226,27 @@
         }
     }
 
+    private void RunCommand() => Navigation.NavigateTo($"run?ids={string.Join(',', _selected.Select(c => c.Id))}");
+
+    private async Task AddToCollectionAsync(Collection collection)
+    {
+        var added = await CollectionService.AddMembersAsync(collection.Id, _selected.Select(c => c.Id));
+        Snackbar.Add($"{added} Rechner zu „{collection.Name}“ hinzugefügt.", Severity.Success);
+        await ReloadAsync();
+    }
+
+    private async Task RemoveFromCollectionAsync()
+    {
+        var removed = await CollectionService.RemoveMembersAsync(_activeCollection!.Id, _selected.Select(c => c.Id));
+        Snackbar.Add($"{removed} Rechner aus „{_activeCollection.Name}“ entfernt.", Severity.Success);
+        await ReloadAsync();
+    }
+
     private async Task DeleteAsync()
     {
         var count = _selected.Count;
         var confirmed = await Dialogs.ShowMessageBoxAsync("Rechner löschen",
-            $"{count} Rechner wirklich löschen? Das lässt sich nicht rückgängig machen.", yesText: "Löschen", cancelText: "Abbrechen");
+            $"{count} Rechner samt Inventardaten wirklich löschen? Das lässt sich nicht rückgängig machen.", yesText: "Löschen", cancelText: "Abbrechen");
         if (confirmed != true)
             return;
         await ComputerService.DeleteAsync(_selected.Select(c => c.Id));

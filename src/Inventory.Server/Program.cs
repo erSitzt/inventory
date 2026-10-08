@@ -48,6 +48,9 @@ else
     }
 }
 builder.Services.AddSingleton<RemoteJobService>();
+builder.Services.AddSingleton<InventoryStore>();
+builder.Services.AddSingleton<ScanService>();
+builder.Services.AddSingleton<CollectionService>();
 builder.Services.AddSingleton<ComputerService>();
 builder.Services.AddSingleton<CredentialService>();
 builder.Services.AddSingleton<SettingsService>();

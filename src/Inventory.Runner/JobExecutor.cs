@@ -44,7 +44,7 @@ namespace Inventory.Runner
                         else
                         {
                             Write(progress, new ProgressEvent { Kind = ProgressKind.StepStarted, Step = i, Text = step.Name });
-                            stepResult = RunStep(i, step, progress);
+                            stepResult = step.Type == StepType.InventoryScan ? RunScan(i, step, result) : RunStep(i, step, progress);
                         }
                         Write(progress, new ProgressEvent { Kind = ProgressKind.StepFinished, Step = i, Status = stepResult.Status, ExitCode = stepResult.ExitCode, Text = stepResult.Error });
                         result.Steps.Add(stepResult);
@@ -82,6 +82,25 @@ namespace Inventory.Runner
                 process = _current;
             if (process != null)
                 KillTree(process);
+        }
+
+        private static StepResult RunScan(int index, JobStep step, JobResult job)
+        {
+            var result = new StepResult { Index = index, Name = step.Name };
+            var watch = Stopwatch.StartNew();
+            try
+            {
+                job.Inventory = InventoryCollector.Collect();
+                result.Status = StepStatus.Succeeded;
+                result.Output = string.Join(Environment.NewLine, job.Inventory.Warnings);
+            }
+            catch (Exception ex)
+            {
+                result.Status = StepStatus.Failed;
+                result.Error = ex.Message;
+            }
+            result.DurationSeconds = Math.Round(watch.Elapsed.TotalSeconds, 2);
+            return result;
         }
 
         private StepResult RunStep(int index, JobStep step, StreamWriter progress)

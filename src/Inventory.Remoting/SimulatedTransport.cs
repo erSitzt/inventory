@@ -33,6 +33,8 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
                 Output = string.Join(Environment.NewLine, lines) + Environment.NewLine, DurationSeconds = 0.6,
             });
         }
+        if (job.Steps.Any(s => s.Type == StepType.InventoryScan))
+            result.Inventory = SimulatedInventory.Create(target.Host);
         result.FinishedUtc = DateTime.UtcNow;
         return result;
     }

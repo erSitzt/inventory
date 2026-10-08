@@ -1,0 +1,50 @@
+namespace Inventory.Core.Model;
+
+/// <summary>Gruppe von Rechnern: statisch (feste Mitglieder) oder dynamisch (Regeln über Inventardaten).</summary>
+public class Collection
+{
+    public int Id { get; set; }
+    public required string Name { get; set; }
+    public string? Description { get; set; }
+    public bool IsDynamic { get; set; }
+    /// <summary>true = alle Regeln müssen zutreffen, false = eine genügt.</summary>
+    public bool MatchAll { get; set; } = true;
+    public List<CollectionRule> Rules { get; set; } = [];
+    /// <summary>Nur für statische Sammlungen.</summary>
+    public List<Computer> Members { get; set; } = [];
+}
+
+public enum RuleField
+{
+    ComputerName,
+    Online,
+    Scanned,
+    OsName,
+    OsVersion,
+    OsRelease,
+    Manufacturer,
+    Model,
+    LoggedOnUser,
+    MemoryGb,
+    /// <summary>Installierte Software; <see cref="CollectionRule.Value2"/> grenzt optional auf Versionen unterhalb dieses Werts ein.</summary>
+    Software,
+}
+
+public enum RuleOperator
+{
+    Contains,
+    NotContains,
+    Equals,
+    NotEquals,
+    StartsWith,
+    LessThan,
+    GreaterOrEqual,
+}
+
+public class CollectionRule
+{
+    public RuleField Field { get; set; }
+    public RuleOperator Operator { get; set; }
+    public string Value { get; set; } = "";
+    public string? Value2 { get; set; }
+}

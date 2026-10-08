@@ -21,6 +21,16 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         return await db.Computers.AsNoTracking().Include(c => c.Credential).FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
+    /// <summary>Rechner mit allen Inventardaten des letzten Scans.</summary>
+    public async Task<Computer?> GetDetailAsync(int id, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Computers.AsNoTracking().AsSplitQuery()
+            .Include(c => c.Credential).Include(c => c.Software).Include(c => c.Hotfixes).Include(c => c.Disks)
+            .Include(c => c.NetworkAdapters).Include(c => c.Services).Include(c => c.Collections)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+    }
+
     /// <summary>Legt alle noch unbekannten Rechner aus dem Text an und liefert die neu angelegten.</summary>
     public async Task<List<Computer>> ImportAsync(string? text, CancellationToken ct = default)
     {

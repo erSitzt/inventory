@@ -7,6 +7,8 @@ namespace Inventory.Contracts
     {
         Command,
         PowerShell,
+        /// <summary>Hard- und Software des Zielrechners erfassen; das Ergebnis steht in <see cref="JobResult.Inventory"/>.</summary>
+        InventoryScan,
     }
 
     /// <summary>Auftrag an den Runner: liegt als <see cref="JobFiles.Manifest"/> im Job-Verzeichnis auf dem Zielrechner.</summary>
