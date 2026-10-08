@@ -1,4 +1,5 @@
 using System.Globalization;
+using Inventory.Contracts;
 using Inventory.Core.Model;
 
 namespace Inventory.Core;
@@ -76,24 +77,5 @@ public static class CollectionEvaluator
         };
     }
 
-    /// <summary>Vergleicht Versionen abschnittsweise numerisch (1.10 &gt; 1.9); fehlende Abschnitte zählen als 0, Nicht-Ziffern werden ignoriert.</summary>
-    public static int CompareVersions(string? left, string? right)
-    {
-        var a = Parts(left);
-        var b = Parts(right);
-        for (var i = 0; i < Math.Max(a.Length, b.Length); i++)
-        {
-            var x = i < a.Length ? a[i] : 0;
-            var y = i < b.Length ? b[i] : 0;
-            if (x != y)
-                return x < y ? -1 : 1;
-        }
-        return 0;
-    }
-
-    private static long[] Parts(string? version) =>
-        (version ?? "").Split(['.', '-', '_', ' ', ','], StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => new string(p.Where(char.IsAsciiDigit).ToArray()))
-            .Select(digits => long.TryParse(digits, out var n) ? n : 0)
-            .ToArray();
+    public static int CompareVersions(string? left, string? right) => VersionComparer.Compare(left, right);
 }

@@ -29,6 +29,7 @@
         <MudMenuItem Icon="@Icons.Material.Filled.NetworkCheck" OnClick="ProbeAsync">
             @(_selected.Count > 0 ? "Erreichbarkeit der Auswahl prüfen" : "Erreichbarkeit aller prüfen")
         </MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">Paket bereitstellen</MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">Befehl ausführen</MudMenuItem>
         <MudDivider />
         @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
@@ -224,6 +225,12 @@
         {
             _busy = false;
         }
+    }
+
+    private Task DeployAsync()
+    {
+        var parameters = new DialogParameters<DeployDialog> { { d => d.ComputerIds, _selected.Select(c => c.Id).ToList() } };
+        return Dialogs.ShowAsync<DeployDialog>("Paket bereitstellen", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
     }
 
     private void RunCommand() => Navigation.NavigateTo($"run?ids={string.Join(',', _selected.Select(c => c.Id))}");

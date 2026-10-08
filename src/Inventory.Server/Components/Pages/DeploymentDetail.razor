@@ -1,0 +1,159 @@
+@page "/deployments/{Id:int}"
+@implements IDisposable
+@inject DeploymentService DeploymentService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Deployment – Inventory</PageTitle>
+
+@if (_deployment is null)
+{
+    @if (_loaded)
+    {
+        <MudAlert Severity="Severity.Warning">Dieses Deployment existiert nicht. <MudLink Href="deployments">Zur Übersicht</MudLink></MudAlert>
+    }
+    return;
+}
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="deployments" aria-label="Zurück zur Übersicht" />
+    <MudText Typo="Typo.h5">@_deployment.PackageName @_deployment.PackageVersion</MudText>
+    <MudSpacer />
+    @if (Running)
+    {
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="@(() => DeploymentService.Cancel(Id))">Abbrechen</MudButton>
+    }
+    else if (FailedTargets.Count > 0 && _deployment.PackageId is not null)
+    {
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Replay" OnClick="RetryAsync">@FailedTargets.Count fehlgeschlagene wiederholen</MudButton>
+    }
+</MudStack>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Gestartet @Display.LocalTime(_deployment.CreatedUtc)
+    @if (_deployment.FinishedUtc is not null)
+    {
+        <span> · beendet @Display.LocalTime(_deployment.FinishedUtc)</span>
+    }
+    · @_deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded) von @_deployment.Targets.Count erfolgreich
+</MudText>
+
+@if (Running)
+{
+    <MudProgressLinear Color="Color.Info" Value="@(100d * _deployment.Targets.Count(t => t.FinishedUtc is not null) / _deployment.Targets.Count)" Class="mb-4" />
+}
+
+<MudExpansionPanels MultiExpansion="true" Outlined="true" Elevation="0">
+    @foreach (var target in _deployment.Targets)
+    {
+        var live = DeploymentService.GetLive(target.Id);
+        <MudExpansionPanel @key="target.Id" Expanded="@(_deployment.Targets.Count == 1)">
+            <TitleContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText Style="min-width: 12rem">@target.ComputerName</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="@Display.StatusColor(target.Status)">@Display.Status(target.Status)</MudChip>
+                    @if (live?.CurrentStep is not null)
+                    {
+                        <MudText Typo="Typo.caption">@live.CurrentStep</MudText>
+                    }
+                    else if (target.Error is not null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">@target.Error</MudText>
+                    }
+                </MudStack>
+            </TitleContent>
+            <ChildContent>
+                @if (live is not null)
+                {
+                    <pre class="run-output">@live.Output</pre>
+                }
+                else if (target.Steps.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(target.Status == TargetStatus.Queued ? "Wartet auf einen freien Platz." : "Es wurde kein Schritt ausgeführt.")</MudText>
+                }
+                else
+                {
+                    @foreach (var step in target.Steps)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-2">
+                            <MudText Typo="Typo.body2">@(step.Index + 1). @step.Name</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@Display.StatusColor(step.Status)">@Display.Status(step.Status)</MudChip>
+                            @if (step.ExitCode is { } exitCode)
+                            {
+                                <MudText Typo="Typo.caption">Exitcode @exitCode</MudText>
+                            }
+                            @if (step.Status != StepStatus.Skipped)
+                            {
+                                <MudText Typo="Typo.caption">@step.DurationSeconds.ToString("N1") s</MudText>
+                            }
+                            @if (step.Error is not null)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Error">@step.Error</MudText>
+                            }
+                        </MudStack>
+                        @if (!string.IsNullOrWhiteSpace(step.Output))
+                        {
+                            <pre class="run-output">@step.Output</pre>
+                        }
+                    }
+                }
+            </ChildContent>
+        </MudExpansionPanel>
+    }
+</MudExpansionPanels>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Deployment? _deployment;
+    private bool _loaded;
+    private Timer? _liveRefresh;
+
+    private bool Running => DeploymentService.IsRunning(Id);
+    private List<DeploymentTarget> FailedTargets =>
+        _deployment!.Targets.Where(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled && t.ComputerId is not null).ToList();
+
+    protected override void OnInitialized() => DeploymentService.Changed += OnChanged;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _deployment = await DeploymentService.GetAsync(Id);
+        _loaded = true;
+        // Die Live-Ausgabe ändert sich zeilenweise ohne eigenes Ereignis; solange etwas läuft, regelmäßig neu zeichnen.
+        _liveRefresh ??= new Timer(_ =>
+        {
+            if (Running)
+                InvokeAsync(StateHasChanged);
+        }, null, 500, 500);
+    }
+
+    private void OnChanged(int deploymentId)
+    {
+        if (deploymentId != Id)
+            return;
+        InvokeAsync(async () =>
+        {
+            _deployment = await DeploymentService.GetAsync(Id);
+            StateHasChanged();
+        });
+    }
+
+    private async Task RetryAsync()
+    {
+        try
+        {
+            var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), _deployment.ScanAfter);
+            Navigation.NavigateTo($"deployments/{retry.Id}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        DeploymentService.Changed -= OnChanged;
+        _liveRefresh?.Dispose();
+    }
+}

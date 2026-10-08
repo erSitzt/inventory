@@ -49,3 +49,11 @@ h1:focus {
     color: #e6e6e6;
     border-radius: 4px;
 }
+
+.step-summary {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--mud-palette-text-secondary);
+}

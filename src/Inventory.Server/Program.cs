@@ -51,6 +51,9 @@ builder.Services.AddSingleton<RemoteJobService>();
 builder.Services.AddSingleton<InventoryStore>();
 builder.Services.AddSingleton<ScanService>();
 builder.Services.AddSingleton<CollectionService>();
+builder.Services.AddSingleton(new PackageRepository(Path.Combine(dataDirectory, "repository")));
+builder.Services.AddSingleton<PackageService>();
+builder.Services.AddSingleton<DeploymentService>();
 builder.Services.AddSingleton<ComputerService>();
 builder.Services.AddSingleton<CredentialService>();
 builder.Services.AddSingleton<SettingsService>();
@@ -66,6 +69,7 @@ var app = builder.Build();
 
 await using (var db = await app.Services.GetRequiredService<IDbContextFactory<InventoryDbContext>>().CreateDbContextAsync())
     await db.Database.MigrateAsync();
+await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();
 
 app.Logger.LogInformation("Datenverzeichnis: {DataDirectory}, Simulation: {Simulate}", dataDirectory, options.ResolveSimulate());
 
@@ -79,6 +83,7 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapComputerEndpoints();
+app.MapPackageEndpoints();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

@@ -1,6 +1,72 @@
 @page "/deployments"
+@implements IDisposable
+@inject DeploymentService DeploymentService
+@inject IDialogService Dialogs
 
 <PageTitle>Deployments – Inventory</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-4">Deployments</MudText>
-<MudAlert Severity="Severity.Info">Folgt in Phase 5.</MudAlert>
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">Deployments</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick="DeployAsync">Paket bereitstellen</MudButton>
+</MudStack>
+
+<MudDataGrid T="Deployment" Items="_deployments" Dense="true" Hover="true" SortMode="SortMode.None">
+    <Columns>
+        <TemplateColumn Title="Paket">
+            <CellTemplate><MudLink Href="@($"deployments/{context.Item.Id}")">@context.Item.PackageName @context.Item.PackageVersion</MudLink></CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Gestartet">
+            <CellTemplate>@Display.LocalTime(context.Item.CreatedUtc)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Status">
+            <CellTemplate>
+                @if (context.Item.FinishedUtc is null)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">läuft</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small">beendet</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Ergebnis">
+            <CellTemplate>
+                @{
+                    var targets = context.Item.Targets;
+                    var failed = targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled);
+                }
+                <span>@targets.Count(t => t.Status == TargetStatus.Succeeded) von @targets.Count erfolgreich</span>
+                @if (failed > 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Error" Inline="true"> · @failed fehlgeschlagen</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">Noch keine Deployments. Ein Paket lässt sich hier oder direkt aus der Paket- bzw. Rechnerliste bereitstellen.</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<Deployment> _deployments = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _deployments = await DeploymentService.ListAsync();
+        DeploymentService.Changed += OnChanged;
+    }
+
+    private void OnChanged(int _) => InvokeAsync(async () =>
+    {
+        _deployments = await DeploymentService.ListAsync();
+        StateHasChanged();
+    });
+
+    private Task DeployAsync() =>
+        Dialogs.ShowAsync<DeployDialog>("Paket bereitstellen", new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+
+    public void Dispose() => DeploymentService.Changed -= OnChanged;
+}

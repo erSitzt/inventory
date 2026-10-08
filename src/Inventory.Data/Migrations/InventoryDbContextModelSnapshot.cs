@@ -368,6 +368,139 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Credentials");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.Deployment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("FinishedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PackageName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PackageVersion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("ScanAfter")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PackageId");
+
+                    b.ToTable("Deployments");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.DeploymentTarget", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ComputerName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DeploymentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("FinishedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("StartedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Steps")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.HasIndex("DeploymentId");
+
+                    b.ToTable("DeploymentTargets");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.Package", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Packages");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.PackageStep", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("NestedPackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NestedPackageId");
+
+                    b.HasIndex("PackageId");
+
+                    b.ToTable("PackageSteps");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.Setting", b =>
                 {
                     b.Property<string>("Key")
@@ -451,6 +584,44 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.Deployment", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Package", null)
+                        .WithMany()
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.DeploymentTarget", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany()
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Inventory.Core.Model.Deployment", null)
+                        .WithMany("Targets")
+                        .HasForeignKey("DeploymentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.PackageStep", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Package", "NestedPackage")
+                        .WithMany()
+                        .HasForeignKey("NestedPackageId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Inventory.Core.Model.Package", null)
+                        .WithMany("Steps")
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NestedPackage");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.Computer", b =>
                 {
                     b.Navigation("Disks");
@@ -462,6 +633,16 @@ namespace Inventory.Data.Migrations
                     b.Navigation("Services");
 
                     b.Navigation("Software");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.Deployment", b =>
+                {
+                    b.Navigation("Targets");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.Package", b =>
+                {
+                    b.Navigation("Steps");
                 });
 #pragma warning restore 612, 618
         }

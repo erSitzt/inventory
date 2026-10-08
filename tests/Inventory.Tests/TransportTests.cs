@@ -86,7 +86,7 @@ public class TransportTests
         public RemoteTarget? Last { get; private set; }
         public string? Fail { get; set; }
 
-        public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct)
+        public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<Inventory.Core.Abstractions.JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
         {
             Last = target;
             if (Fail is not null)

@@ -26,9 +26,9 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
 
     public TransportKind Kind => TransportKind.SmbService;
 
-    public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct) =>
+    public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct) =>
         // Eigener Thread: die Impersonation hängt am Thread, und alle Aufrufe darunter sind blockierend.
-        Task.Factory.StartNew(() => RunImpersonated(target, () => RunCore(target.Host, job, progress, ct)),
+        Task.Factory.StartNew(() => RunImpersonated(target, () => RunCore(target.Host, job, files, progress, ct)),
             ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
     private static JobResult RunImpersonated(RemoteTarget target, Func<JobResult> action)
@@ -58,7 +58,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
         return name.Contains('@') ? (name, null) : (name, string.IsNullOrEmpty(credential.Domain) ? host : credential.Domain);
     }
 
-    private JobResult RunCore(string host, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct)
+    private JobResult RunCore(string host, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
     {
         var root = $@"\\{host}\ADMIN$\{JobFiles.RemoteRoot}";
         var jobDir = Path.Combine(root, JobFiles.JobsFolder, job.JobId);
@@ -69,7 +69,19 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
             EnsureRoot(root);
             EnsureRunner(Path.Combine(root, JobFiles.RunnerFolder, runner.Hash));
             Directory.CreateDirectory(jobDir);
+            foreach (var file in files)
+            {
+                ct.ThrowIfCancellationRequested();
+                var destination = Path.Combine(jobDir, JobFiles.FilesFolder, file.RelativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                File.Copy(file.LocalPath, destination, overwrite: true);
+            }
             File.WriteAllText(Path.Combine(jobDir, JobFiles.Manifest), JobJson.Serialize(job, indented: true), new UTF8Encoding(false));
+        }
+        catch (OperationCanceledException)
+        {
+            TryDeleteDirectory(jobDir);
+            throw;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

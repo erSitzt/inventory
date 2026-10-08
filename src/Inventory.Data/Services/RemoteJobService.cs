@@ -7,7 +7,7 @@ namespace Inventory.Data.Services;
 public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, ComputerService computers, CredentialService credentials, SettingsService settings)
 {
     /// <summary>Liefert immer ein Ergebnis; Zustellfehler stehen in <see cref="JobResult.Error"/>.</summary>
-    public async Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default)
+    public async Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default, IReadOnlyList<JobFile>? files = null)
     {
         try
         {
@@ -21,7 +21,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
                 return JobResult.Failed(job.JobId, $"Der Transport {kind} steht auf diesem Server nicht zur Verfügung");
 
             var credential = await credentials.ResolveAsync(computerId, ct);
-            return await transport.RunAsync(new RemoteTarget(computer.Name, credential), job, progress, ct);
+            return await transport.RunAsync(new RemoteTarget(computer.Name, credential), job, files ?? [], progress, ct);
         }
         catch (RemoteException ex)
         {

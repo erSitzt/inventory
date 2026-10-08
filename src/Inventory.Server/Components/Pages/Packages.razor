@@ -1,6 +1,79 @@
 @page "/packages"
+@inject PackageService PackageService
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 
 <PageTitle>Pakete – Inventory</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-4">Pakete</MudText>
-<MudAlert Severity="Severity.Info">Folgt in Phase 5.</MudAlert>
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">Pakete</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">Neues Paket</MudButton>
+</MudStack>
+
+<MudDataGrid T="Package" Items="_packages" Dense="true" Hover="true" SortMode="SortMode.Single">
+    <Columns>
+        <TemplateColumn Title="Name" SortBy="p => p.Name">
+            <CellTemplate><MudLink Href="@($"packages/{context.Item.Id}")">@context.Item.Name</MudLink></CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="p => p.Version" Title="Version" />
+        <TemplateColumn Title="Schritte" SortBy="p => p.Steps.Count">
+            <CellTemplate>@context.Item.Steps.Count</CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="p => p.Description" Title="Beschreibung" />
+        <TemplateColumn Title="Geändert" SortBy="p => p.ModifiedUtc">
+            <CellTemplate>@Display.LocalTime(context.Item.ModifiedUtc)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
+            <CellTemplate>
+                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(context.Item.Steps.Count == 0)"
+                           OnClick="@(() => DeployAsync(context.Item))">Bereitstellen</MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Löschen" OnClick="@(() => DeleteAsync(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">Noch keine Pakete vorhanden. Ein Paket besteht aus einem oder mehreren Schritten, z. B. Installation, Befehl und Neustart.</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<Package> _packages = [];
+
+    protected override async Task OnInitializedAsync() => _packages = await PackageService.ListAsync();
+
+    private async Task CreateAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<NameDialog>("Neues Paket", new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
+        if (await dialog.Result is not { Canceled: false, Data: string name })
+            return;
+        try
+        {
+            var package = await PackageService.SaveAsync(null, name, null, null);
+            Navigation.NavigateTo($"packages/{package.Id}");
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            Snackbar.Add($"Es gibt bereits ein Paket mit dem Namen „{name.Trim()}“.", Severity.Error);
+        }
+    }
+
+    private async Task DeployAsync(Package package)
+    {
+        var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id } };
+        await Dialogs.ShowAsync<DeployDialog>($"„{package.Name}“ bereitstellen", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+    }
+
+    private async Task DeleteAsync(Package package)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync("Paket löschen",
+            $"„{package.Name}“ samt Dateien wirklich löschen? Pakete, die es einbetten, verlieren den entsprechenden Schritt. Bisherige Deployments bleiben in der Historie.",
+            yesText: "Löschen", cancelText: "Abbrechen");
+        if (confirmed != true)
+            return;
+        await PackageService.DeleteAsync(package.Id);
+        Snackbar.Add("Paket gelöscht.", Severity.Success);
+        _packages = await PackageService.ListAsync();
+    }
+}

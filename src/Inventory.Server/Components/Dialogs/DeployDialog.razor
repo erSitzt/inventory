@@ -1,0 +1,101 @@
+@inject PackageService PackageService
+@inject ComputerService ComputerService
+@inject CollectionService CollectionService
+@inject DeploymentService DeploymentService
+@inject NavigationManager Navigation
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (PackageId is null)
+            {
+                <MudSelect T="int?" @bind-Value="_packageId" Label="Paket" Variant="Variant.Outlined">
+                    @foreach (var package in _packages)
+                    {
+                        <MudSelectItem T="int?" Value="@package.Id">@package.Name @package.Version</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            <MudSelect T="int?" Value="_collectionId" ValueChanged="SelectCollectionAsync" Label="Sammlung übernehmen" Variant="Variant.Outlined" Clearable="true"
+                       Placeholder="keine" HelperText="Wählt alle Rechner der Sammlung aus (Stand jetzt).">
+                @foreach (var summary in _collections)
+                {
+                    <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="Computer" MultiSelection="true" @bind-SelectedValues="_targets" Label="Zielrechner" Variant="Variant.Outlined"
+                       ToStringFunc="@(c => c?.Name ?? "")" MultiSelectionTextFunc="@(names => $"{names.Count} Rechner ausgewählt")"
+                       SelectAll="true" SelectAllText="Alle auswählen">
+                @foreach (var computer in _computers)
+                {
+                    <MudSelectItem T="Computer" Value="computer">@computer.Name@(computer.IsOnline ? "" : " (offline)")</MudSelectItem>
+                }
+            </MudSelect>
+            <MudCheckBox T="bool" @bind-Value="_scanAfter" Label="Danach Inventar neu scannen" Dense="true" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.RocketLaunch"
+                   Disabled="@(_packageId is null || _targets.Count == 0 || _starting)" OnClick="StartAsync">
+            Auf @_targets.Count Rechner bereitstellen
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = Paket im Dialog wählen.</summary>
+    [Parameter] public int? PackageId { get; set; }
+    /// <summary>Vorausgewählte Rechner.</summary>
+    [Parameter] public List<int> ComputerIds { get; set; } = [];
+
+    private List<Package> _packages = [];
+    private List<Computer> _computers = [];
+    private List<CollectionSummary> _collections = [];
+    private IReadOnlyCollection<Computer> _targets = [];
+    private int? _packageId;
+    private int? _collectionId;
+    private bool _scanAfter = true;
+    private bool _starting;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _packageId = PackageId;
+        if (PackageId is null)
+            _packages = (await PackageService.ListAsync()).Where(p => p.Steps.Count > 0).ToList();
+        _computers = await ComputerService.ListAsync();
+        _collections = await CollectionService.ListAsync();
+        _targets = _computers.Where(c => ComputerIds.Contains(c.Id)).ToList();
+    }
+
+    private async Task SelectCollectionAsync(int? id)
+    {
+        _collectionId = id;
+        if (id is null)
+            return;
+        var members = await CollectionService.GetMemberIdsAsync(id.Value);
+        _targets = _computers.Where(c => members.Contains(c.Id)).ToList();
+    }
+
+    private async Task StartAsync()
+    {
+        _starting = true;
+        try
+        {
+            var deployment = await DeploymentService.StartAsync(_packageId!.Value, _targets.Select(c => c.Id), _scanAfter);
+            MudDialog.Close(DialogResult.Ok(deployment.Id));
+            Navigation.NavigateTo($"deployments/{deployment.Id}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+        {
+            _error = ex.Message;
+            _starting = false;
+        }
+    }
+}

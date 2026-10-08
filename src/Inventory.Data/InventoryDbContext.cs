@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Inventory.Contracts;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -16,6 +17,10 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ComputerDisk> Disks => Set<ComputerDisk>();
     public DbSet<ComputerNetworkAdapter> NetworkAdapters => Set<ComputerNetworkAdapter>();
     public DbSet<ComputerWindowsService> Services => Set<ComputerWindowsService>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
+    public DbSet<Deployment> Deployments => Set<Deployment>();
+    public DbSet<DeploymentTarget> DeploymentTargets => Set<DeploymentTarget>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +61,41 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
                     (a, b) => JsonSerializer.Serialize(a, JsonSerializerOptions.Default) == JsonSerializer.Serialize(b, JsonSerializerOptions.Default),
                     rules => JsonSerializer.Serialize(rules, JsonSerializerOptions.Default).GetHashCode(),
                     rules => JsonSerializer.Deserialize<List<CollectionRule>>(JsonSerializer.Serialize(rules, JsonSerializerOptions.Default), JsonSerializerOptions.Default)!));
+        });
+
+        modelBuilder.Entity<Package>(e =>
+        {
+            e.Property(p => p.Name).UseCollation("NOCASE").HasMaxLength(200);
+            e.HasIndex(p => p.Name).IsUnique();
+            e.HasMany(p => p.Steps).WithOne().HasForeignKey(s => s.PackageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PackageStep>(e =>
+        {
+            // Wird ein eingebettetes Paket gelöscht, verschwindet auch der Schritt, der es aufruft.
+            e.HasOne(s => s.NestedPackage).WithMany().HasForeignKey(s => s.NestedPackageId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(s => s.Definition).HasConversion(
+                step => JobJson.Serialize(step, false),
+                json => JobJson.Deserialize<JobStep>(json) ?? new JobStep());
+        });
+
+        modelBuilder.Entity<Deployment>(e =>
+        {
+            e.HasMany(d => d.Targets).WithOne().HasForeignKey(t => t.DeploymentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Package>().WithMany().HasForeignKey(d => d.PackageId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<DeploymentTarget>(e =>
+        {
+            e.HasOne<Computer>().WithMany().HasForeignKey(t => t.ComputerId).OnDelete(DeleteBehavior.SetNull);
+            e.Property(t => t.Steps)
+                .HasConversion(
+                    steps => JobJson.Serialize(steps, false),
+                    json => JobJson.Deserialize<List<StepResult>>(json) ?? new List<StepResult>())
+                .Metadata.SetValueComparer(new ValueComparer<List<StepResult>>(
+                    (a, b) => ReferenceEquals(a, b),
+                    steps => steps.Count,
+                    steps => steps.ToList()));
         });
 
         modelBuilder.Entity<Setting>().HasKey(s => s.Key);

@@ -122,7 +122,7 @@ public class InventoryTests
         public string ChromeVersion { get; set; } = "140.0";
         public string? Fail { get; set; }
 
-        public Task<JobResult> RunAsync(Core.Abstractions.RemoteTarget target, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct)
+        public Task<JobResult> RunAsync(Core.Abstractions.RemoteTarget target, JobManifest job, IReadOnlyList<Inventory.Core.Abstractions.JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
         {
             if (Fail is not null)
                 throw new Core.Abstractions.RemoteException(Fail);
