@@ -32,6 +32,31 @@ namespace Inventory.Data.Migrations
                     b.ToTable("CollectionMembers");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.AuditEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("TimeUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("User")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuditEntries");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.Collection", b =>
                 {
                     b.Property<int>("Id")

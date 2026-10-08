@@ -10,6 +10,15 @@ public sealed class InventoryOptions
     /// <summary>Keine echten Zugriffe auf Zielrechner. Leer = unter Windows aus, sonst an.</summary>
     public bool? Simulate { get; set; }
 
+    /// <summary>"Windows" (Negotiate/Kerberos) oder "None". Leer = Windows, außer im Simulationsmodus.</summary>
+    public string? Authentication { get; set; }
+
+    /// <summary>Gruppen, deren Mitglieder die Oberfläche und die API nutzen dürfen, z. B. "FIRMA\IT-Admins".</summary>
+    public string[] AllowedGroups { get; set; } = [@"BUILTIN\Administrators"];
+
+    public bool ResolveWindowsAuthentication() =>
+        Authentication is null ? OperatingSystem.IsWindows() && !ResolveSimulate() : Authentication.Equals("Windows", StringComparison.OrdinalIgnoreCase);
+
     public string ResolveDataDirectory()
     {
         if (!string.IsNullOrWhiteSpace(DataDirectory))

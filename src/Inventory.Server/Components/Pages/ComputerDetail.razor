@@ -2,6 +2,7 @@
 @inject ComputerService ComputerService
 @inject ScanService ScanService
 @inject ISnackbar Snackbar
+@inject Auditor Audit
 
 <PageTitle>@(_computer?.Name ?? "Rechner") – Inventory</PageTitle>
 
@@ -176,6 +177,7 @@
         _scanning = true;
         try
         {
+            await Audit.LogAsync("Inventar-Scan gestartet", _computer!.Name);
             var outcome = await ScanService.ScanAsync(Id);
             Snackbar.Add(outcome.Success ? "Scan abgeschlossen." : $"Scan fehlgeschlagen: {outcome.Error}", outcome.Success ? Severity.Success : Severity.Error);
             _computer = await ComputerService.GetDetailAsync(Id);

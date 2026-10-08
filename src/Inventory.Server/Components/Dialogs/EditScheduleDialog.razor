@@ -1,6 +1,7 @@
 @inject ScheduleService ScheduleService
 @inject PackageService PackageService
 @inject CollectionService CollectionService
+@inject Auditor Audit
 
 <MudDialog>
     <DialogContent>
@@ -118,6 +119,7 @@
             _s.StartLocal = null;
         }
         await ScheduleService.SaveAsync(_s);
+        await Audit.LogAsync(Schedule is null ? "Zeitplan angelegt" : "Zeitplan geändert", $"{_s.Name}: {Display.Trigger(_s)}{(_s.Enabled ? "" : ", deaktiviert")}");
         MudDialog.Close(DialogResult.Ok(true));
     }
 }

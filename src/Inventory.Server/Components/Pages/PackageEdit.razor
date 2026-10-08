@@ -2,6 +2,7 @@
 @inject PackageService PackageService
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject Auditor Audit
 
 <PageTitle>@(_package?.Name ?? "Paket") – Inventory</PageTitle>
 
@@ -203,6 +204,7 @@
     private async Task DeleteStepAsync(PackageStep step)
     {
         await PackageService.DeleteStepAsync(Id, step.Id);
+        await Audit.LogAsync("Paketschritt gelöscht", $"{_package!.Name}: {step.Definition.Name}");
         await ReloadAsync();
     }
 
@@ -223,6 +225,7 @@
                 }
                 await using var stream = file.OpenReadStream(MaxUploadBytes);
                 await PackageService.Repository.SaveAsync(Id, Path.GetFileName(file.Name), stream);
+                await Audit.LogAsync("Paketdatei hochgeladen", $"{_package!.Name}: {file.Name} ({Display.FileSize(file.Size)})");
             }
         }
         catch (Exception ex) when (ex is IOException or ArgumentException)
@@ -239,6 +242,7 @@
     private void DeleteFile(Inventory.Data.RepositoryFile file)
     {
         PackageService.Repository.Delete(Id, file.RelativePath);
+        _ = Audit.LogAsync("Paketdatei gelöscht", $"{_package!.Name}: {file.RelativePath}");
         _files = PackageService.Repository.List(Id);
     }
 

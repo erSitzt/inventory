@@ -3,6 +3,7 @@
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject Auditor Audit
 
 <PageTitle>Pakete – Inventory</PageTitle>
 
@@ -73,6 +74,7 @@
         if (confirmed != true)
             return;
         await PackageService.DeleteAsync(package.Id);
+        await Audit.LogAsync("Paket gelöscht", package.Name);
         Snackbar.Add("Paket gelöscht.", Severity.Success);
         _packages = await PackageService.ListAsync();
     }

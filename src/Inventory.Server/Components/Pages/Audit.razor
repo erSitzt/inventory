@@ -1,0 +1,36 @@
+@page "/audit"
+@inject AuditService AuditService
+
+<PageTitle>Protokoll – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">Protokoll</MudText>
+    <MudSpacer />
+    <MudTextField @bind-Value="_search" Placeholder="Suchen" Adornment="Adornment.Start" Immediate="true"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 280px" />
+</MudStack>
+
+<MudDataGrid T="AuditEntry" Items="_entries" Dense="true" Hover="true" SortMode="SortMode.None" RowsPerPage="50"
+             QuickFilter="@(e => string.IsNullOrWhiteSpace(_search) || $"{e.User} {e.Action} {e.Details}".Contains(_search, StringComparison.OrdinalIgnoreCase))">
+    <Columns>
+        <TemplateColumn Title="Zeit" CellStyle="white-space: nowrap">
+            <CellTemplate>@Display.LocalTime(context.Item.TimeUtc)</CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="e => e.User" Title="Benutzer" />
+        <PropertyColumn Property="e => e.Action" Title="Aktion" />
+        <PropertyColumn Property="e => e.Details" Title="Details" CellStyle="word-break: break-word" />
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">Noch keine Einträge. Protokolliert werden Befehle, Deployments, Scans sowie Änderungen an Zugangsdaten, Paketen, Zeitplänen und Einstellungen.</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudDataGridPager T="AuditEntry" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    private List<AuditEntry> _entries = [];
+    private string _search = "";
+
+    protected override async Task OnInitializedAsync() => _entries = await AuditService.ListAsync();
+}

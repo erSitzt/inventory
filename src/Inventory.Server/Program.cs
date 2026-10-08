@@ -9,6 +9,8 @@ using Inventory.Server;
 using Inventory.Server.Api;
 using Inventory.Server.Components;
 using Inventory.Server.Services;
+using Microsoft.AspNetCore.Authentication.Negotiate;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
@@ -62,7 +64,26 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddSingleton<AdSyncService>();
 builder.Services.AddSingleton<ReportService>();
+builder.Services.AddSingleton<AuditService>();
+builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System));
+builder.Services.AddScoped<Auditor>();
 builder.Services.AddHostedService<SchedulerWorker>();
+
+var windowsAuthentication = options.ResolveWindowsAuthentication();
+if (windowsAuthentication)
+{
+    builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme).AddNegotiate();
+    // Ohne passende Gruppe gibt es weder Oberfläche noch API: der Server verwaltet Administrator-Zugangsdaten.
+    builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .RequireAssertion(context => options.AllowedGroups.Any(context.User.IsInRole))
+        .Build());
+}
+else
+{
+    builder.Services.AddAuthorization();
+}
+builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddSingleton<ComputerService>();
 builder.Services.AddSingleton<CredentialService>();
 builder.Services.AddSingleton<SettingsService>();
@@ -80,7 +101,10 @@ await using (var db = await app.Services.GetRequiredService<IDbContextFactory<In
     await db.Database.MigrateAsync();
 await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();
 
-app.Logger.LogInformation("Datenverzeichnis: {DataDirectory}, Simulation: {Simulate}", dataDirectory, options.ResolveSimulate());
+app.Logger.LogInformation("Datenverzeichnis: {DataDirectory}, Simulation: {Simulate}, Anmeldung: {Authentication}",
+    dataDirectory, options.ResolveSimulate(), windowsAuthentication ? $"Windows ({string.Join(", ", options.AllowedGroups)})" : "keine");
+if (!windowsAuthentication && !options.ResolveSimulate())
+    app.Logger.LogWarning("Die Anmeldung ist abgeschaltet: Jeder, der diese Adresse erreicht, kann mit den hinterlegten Zugangsdaten Befehle auf den Zielrechnern ausführen.");
 
 if (!app.Environment.IsDevelopment())
 {
@@ -88,6 +112,9 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 
+if (windowsAuthentication)
+    app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();

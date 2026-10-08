@@ -22,6 +22,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<Deployment> Deployments => Set<Deployment>();
     public DbSet<DeploymentTarget> DeploymentTargets => Set<DeploymentTarget>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -3,6 +3,7 @@
 @inject CollectionService CollectionService
 @inject DeploymentService DeploymentService
 @inject NavigationManager Navigation
+@inject Auditor Audit
 
 <MudDialog>
     <DialogContent>
@@ -91,6 +92,7 @@
         try
         {
             var deployment = await DeploymentService.StartAsync(_packageId!.Value, _targets.Select(c => c.Id), _scanAfter, _retryOffline);
+            await Audit.LogAsync("Deployment gestartet", $"#{deployment.Id} {deployment.PackageName} {deployment.PackageVersion} auf {string.Join(", ", deployment.Targets.Select(t => t.ComputerName))}");
             MudDialog.Close(DialogResult.Ok(deployment.Id));
             Navigation.NavigateTo($"deployments/{deployment.Id}");
         }

@@ -17,5 +17,7 @@ cd "$OUT/app"
 export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}"
 export ASPNETCORE_URLS="${ASPNETCORE_URLS:-http://localhost:5101}"
 export Inventory__DataDirectory="$(wslpath -w "$OUT/data")"
-export WSLENV="ASPNETCORE_ENVIRONMENT:ASPNETCORE_URLS:Inventory__DataDirectory${WSLENV:+:$WSLENV}"
+# Entwicklungsinstanz auf localhost: ohne Anmeldung, da der Entwickler-Account meist kein Administrator des PCs ist.
+export Inventory__Authentication="${Inventory__Authentication:-None}"
+export WSLENV="ASPNETCORE_ENVIRONMENT:ASPNETCORE_URLS:Inventory__DataDirectory:Inventory__Authentication${WSLENV:+:$WSLENV}"
 exec ./Inventory.Server.exe "$@"

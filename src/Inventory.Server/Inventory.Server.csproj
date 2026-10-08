@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
     <PackageReference Include="MudBlazor" Version="9.11.0" />
   </ItemGroup>
@@ -16,9 +17,7 @@
     <ProjectReference Include="..\Inventory.Data\Inventory.Data.csproj" />
     <ProjectReference Include="..\Inventory.Remoting\Inventory.Remoting.csproj" />
     <!-- Nur Build-Reihenfolge: der net48-Runner wird nicht referenziert, sondern als Dateien mitgeliefert (siehe IncludeRunner). -->
-    <ProjectReference Include="..\Inventory.Runner\Inventory.Runner.csproj" ReferenceOutputAssembly="false"
-                      SetTargetFramework="TargetFramework=net48" SkipGetTargetFrameworkProperties="true"
-                      UndefineProperties="RuntimeIdentifier;SelfContained" />
+    <ProjectReference Include="..\Inventory.Runner\Inventory.Runner.csproj" ReferenceOutputAssembly="false" SetTargetFramework="TargetFramework=net48" SkipGetTargetFrameworkProperties="true" UndefineProperties="RuntimeIdentifier;SelfContained" />
   </ItemGroup>
 
   <!-- Legt den Runner als Unterordner "runner" in Ausgabe und Publish; von dort verteilt ihn der Server auf die Zielrechner. -->

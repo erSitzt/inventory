@@ -6,6 +6,7 @@
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject Auditor Audit
 
 <PageTitle>Rechner – Inventory</PageTitle>
 
@@ -171,6 +172,8 @@
         if (await dialog.Result is { Canceled: false, Data: string text })
         {
             var added = await ComputerService.ImportAsync(text);
+            if (added.Count > 0)
+                await Audit.LogAsync("Rechner hinzugefügt", string.Join(", ", added.Select(c => c.Name)));
             if (_activeCollection is { IsDynamic: false } && added.Count > 0)
                 await CollectionService.AddMembersAsync(_activeCollection.Id, added.Select(c => c.Id));
             Snackbar.Add(added.Count == 0 ? "Keine neuen Rechner – alle Namen waren bereits vorhanden oder ungültig." : $"{added.Count} Rechner hinzugefügt.",
@@ -199,6 +202,7 @@
         _busy = true;
         var done = 0;
         _progressText = $"Scanne {ids.Count} Rechner …";
+        await Audit.LogAsync("Inventar-Scan gestartet", $"{ids.Count} Rechner"); 
         try
         {
             var outcomes = await ScanService.ScanAsync(ids, _ =>
@@ -268,6 +272,7 @@
         if (confirmed != true)
             return;
         await ComputerService.DeleteAsync(_selected.Select(c => c.Id));
+        await Audit.LogAsync("Rechner gelöscht", string.Join(", ", _selected.Select(c => c.Name)));
         Snackbar.Add($"{count} Rechner gelöscht.", Severity.Success);
         await ReloadAsync();
     }

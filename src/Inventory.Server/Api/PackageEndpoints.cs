@@ -30,11 +30,13 @@ public static class PackageEndpoints
             return Results.NoContent();
         });
 
-        app.MapPost("/api/deployments", async (DeployRequest request, DeploymentService deployments, CancellationToken ct) =>
+        app.MapPost("/api/deployments", async (DeployRequest request, DeploymentService deployments, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             try
             {
                 var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, request.ScanAfter, request.RetryOffline, ct);
+                await audit.LogAsync(http.User.Identity?.Name ?? "(API ohne Anmeldung)", "Deployment über API gestartet",
+                    $"#{deployment.Id} {deployment.PackageName} auf {string.Join(", ", deployment.Targets.Select(t => t.ComputerName))}", ct);
                 return Results.Created($"/api/deployments/{deployment.Id}", ToDto(deployment));
             }
             catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)

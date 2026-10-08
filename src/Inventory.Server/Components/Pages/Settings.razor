@@ -5,6 +5,7 @@
 @inject CredentialService CredentialService
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
+@inject Auditor Audit
 
 <PageTitle>Einstellungen – Inventory</PageTitle>
 
@@ -24,7 +25,14 @@
             WinRM braucht aktiviertes PowerShell-Remoting (Port 5985), der Job läuft mit dem hinterlegten Konto.
         </MudText>
         <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="Datenverzeichnis" Variant="Variant.Outlined" ReadOnly="true"
-                      HelperText="Datenbank und Schlüssel. Änderbar über Inventory:DataDirectory in der Konfiguration." />
+                      HelperText="Datenbank, Schlüssel, Paketdateien und tägliche Sicherungen (Unterordner backups, 14 Stück). Änderbar über Inventory:DataDirectory." />
+        <MudText Typo="Typo.body2">
+            Anmeldung: @(Options.Value.ResolveWindowsAuthentication() ? $"Windows-Anmeldung, erlaubt für {string.Join(", ", Options.Value.AllowedGroups)}" : "abgeschaltet")
+        </MudText>
+        @if (!Options.Value.ResolveWindowsAuthentication() && !Options.Value.ResolveSimulate())
+        {
+            <MudAlert Severity="Severity.Error">Die Anmeldung ist abgeschaltet: Jeder, der diese Adresse erreicht, kann mit den hinterlegten Zugangsdaten Befehle auf den Zielrechnern ausführen.</MudAlert>
+        }
         @if (Options.Value.ResolveSimulate())
         {
             <MudAlert Severity="Severity.Warning">Simulationsmodus: Es finden keine echten Zugriffe auf Zielrechner statt.</MudAlert>
@@ -91,6 +99,7 @@
     private async Task SaveAdAsync()
     {
         await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours);
+        await Audit.LogAsync("Einstellung geändert", $"AD-Synchronisation: {(_adEnabled ? "an" : "aus")}, Server {_adServer ?? "(Domäne)"}, alle {_adIntervalHours} h");
         Snackbar.Add("Gespeichert.", Severity.Success);
     }
 
@@ -145,6 +154,7 @@
     {
         _fallback = enabled;
         await SettingsService.SetTransportFallbackAsync(enabled);
+        await Audit.LogAsync("Einstellung geändert", $"Ausweich-Transport: {(enabled ? "an" : "aus")}");
         Snackbar.Add("Gespeichert.", Severity.Success);
     }
 
@@ -152,6 +162,7 @@
     {
         _transport = kind;
         await SettingsService.SetDefaultTransportAsync(kind);
+        await Audit.LogAsync("Einstellung geändert", $"Standard-Transport: {Display.Transport(kind)}");
         Snackbar.Add("Gespeichert.", Severity.Success);
     }
 }

@@ -40,8 +40,9 @@ public static class ComputerEndpoints
                 ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new { s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser }))
                 : Results.NotFound());
 
-        group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, CancellationToken ct) =>
+        group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
+            await audit.LogAsync(http.User.Identity?.Name ?? "(API ohne Anmeldung)", $"Remote-Befehl über API ({request.Type})", $"Rechner {id}: {request.Script}", ct);
             var job = new JobManifest
             {
                 Steps = [new JobStep { Name = "Befehl", Type = request.Type, Script = request.Script, TimeoutSeconds = request.TimeoutSeconds ?? 600 }],

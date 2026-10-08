@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject ComputerService ComputerService
 @inject RemoteJobService Jobs
+@inject Auditor Audit
 
 <PageTitle>Remote-Befehl – Inventory</PageTitle>
 
@@ -127,6 +128,7 @@
     private async Task RunAsync()
     {
         _runs = _targets.OrderBy(c => c.Name).Select(c => new TargetRun(c)).ToList();
+        await Audit.LogAsync($"Remote-Befehl ({_type})", $"{string.Join(", ", _runs.Select(r => r.Computer.Name))}: {_script}");
         _running = true;
         _cts = new CancellationTokenSource();
         // Ausgabe trifft aus Hintergrund-Threads ein; gebündelt neu zeichnen statt je Zeile.

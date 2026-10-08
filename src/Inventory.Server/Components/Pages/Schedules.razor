@@ -2,6 +2,7 @@
 @inject ScheduleService ScheduleService
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject Auditor Audit
 
 <PageTitle>Zeitpläne – Inventory</PageTitle>
 
@@ -79,6 +80,7 @@
         _busy = true;
         try
         {
+            await Audit.LogAsync("Zeitplan manuell gestartet", schedule.Name);
             var result = await ScheduleService.RunNowAsync(schedule.Id);
             Snackbar.Add($"{schedule.Name}: {result}", result.StartsWith("Fehler") ? Severity.Error : Severity.Success);
             _schedules = await ScheduleService.ListAsync();
@@ -95,6 +97,7 @@
         if (confirmed != true)
             return;
         await ScheduleService.DeleteAsync(schedule.Id);
+        await Audit.LogAsync("Zeitplan gelöscht", schedule.Name);
         _schedules = await ScheduleService.ListAsync();
     }
 }

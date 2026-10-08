@@ -3,6 +3,7 @@
 @inject DeploymentService DeploymentService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject Auditor Audit
 
 <PageTitle>Deployment – Inventory</PageTitle>
 
@@ -21,7 +22,7 @@
     <MudSpacer />
     @if (Running || Waiting)
     {
-        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="@(() => DeploymentService.CancelAsync(Id))">Abbrechen</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="CancelAsync">Abbrechen</MudButton>
     }
     else if (FailedTargets.Count > 0 && _deployment.PackageId is not null)
     {
@@ -143,11 +144,18 @@
         });
     }
 
+    private async Task CancelAsync()
+    {
+        await Audit.LogAsync("Deployment abgebrochen", $"#{Id} {_deployment!.PackageName}");
+        await DeploymentService.CancelAsync(Id);
+    }
+
     private async Task RetryAsync()
     {
         try
         {
             var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), _deployment.ScanAfter, _deployment.RetryUntilUtc is not null);
+            await Audit.LogAsync("Deployment wiederholt", $"#{retry.Id} {retry.PackageName} auf {string.Join(", ", retry.Targets.Select(t => t.ComputerName))}");
             Navigation.NavigateTo($"deployments/{retry.Id}");
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)

@@ -1,4 +1,5 @@
 @inject PackageService PackageService
+@inject Auditor Audit
 
 <MudDialog>
     <DialogContent>
@@ -271,6 +272,7 @@
         try
         {
             await PackageService.SaveStepAsync(PackageId, Step?.Id, _step, Nested ? _nestedPackageId : null);
+            await Audit.LogAsync(Step is null ? "Paketschritt angelegt" : "Paketschritt geändert", $"Paket {PackageId}: {_step.Name} – {Display.StepSummary(_step)}");
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (InvalidOperationException ex)
