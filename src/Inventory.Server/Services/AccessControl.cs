@@ -1,0 +1,199 @@
+using System.Security.Claims;
+using Inventory.Data.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Negotiate;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+
+namespace Inventory.Server.Services;
+
+/// <summary>
+/// Anmeldung und Zugriffsregel. Windows-Anmeldung und OIDC lassen sich einzeln oder gemeinsam aktivieren;
+/// API-Tokens funktionieren in jedem Fall. Die Agenten-Schnittstelle prüft ihre Schlüssel selbst.
+/// </summary>
+public static class AccessControl
+{
+    /// <summary>Kennzeichnet eine Anmeldung, deren Berechtigung bereits beim Anmelden geprüft wurde (OIDC, Windows per Cookie, API-Token).</summary>
+    public const string AccessClaim = "inventory_access";
+    private const string SelectorScheme = "Inventory";
+    private const string PromptItem = "prompt";
+
+    public static void AddInventoryAccess(this IServiceCollection services, InventoryOptions options)
+    {
+        var windows = options.ResolveWindowsAuthentication();
+        var oidc = options.OidcEnabled;
+        if (!windows && !oidc)
+        {
+            services.AddAuthorization();
+            return;
+        }
+        if (oidc)
+            options.Oidc.Validate();
+
+        var authentication = services.AddAuthentication(SelectorScheme)
+            .AddScheme<AuthenticationSchemeOptions, ApiTokenHandler>(ApiTokenHandler.SchemeName, null)
+            // Wählt je Anfrage den passenden Weg: Token, Windows-Handshake oder Sitzungs-Cookie.
+            .AddPolicyScheme(SelectorScheme, null, selector => selector.ForwardDefaultSelector = context =>
+            {
+                if (ApiTokenHandler.HasBearer(context.Request))
+                    return ApiTokenHandler.SchemeName;
+                if (!oidc)
+                    return NegotiateDefaults.AuthenticationScheme;
+                var header = context.Request.Headers.Authorization.ToString();
+                return windows && (header.StartsWith("Negotiate ", StringComparison.OrdinalIgnoreCase) || header.StartsWith("NTLM ", StringComparison.OrdinalIgnoreCase))
+                    ? NegotiateDefaults.AuthenticationScheme
+                    : CookieAuthenticationDefaults.AuthenticationScheme;
+            });
+
+        if (windows)
+            authentication.AddNegotiate();
+
+        if (oidc)
+        {
+            authentication.AddCookie(cookie =>
+            {
+                cookie.Cookie.Name = "Inventory.Session";
+                cookie.ExpireTimeSpan = TimeSpan.FromHours(10);
+                cookie.SlidingExpiration = true;
+                // Mit beiden Wegen entscheidet der Benutzer auf der Anmeldeseite, sonst geht es direkt zum Anbieter.
+                cookie.LoginPath = windows ? "/login" : "/login/oidc";
+                cookie.AccessDeniedPath = "/denied";
+                cookie.Events.OnRedirectToLogin = context =>
+                {
+                    if (!context.Request.Path.StartsWithSegments("/api"))
+                    {
+                        context.Response.Redirect(context.RedirectUri);
+                        return Task.CompletedTask;
+                    }
+                    // Skripte bekommen keinen Redirect auf eine Anmeldeseite, sondern einen klaren Statuscode.
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    if (windows)
+                        context.Response.Headers.WWWAuthenticate = "Negotiate";
+                    return Task.CompletedTask;
+                };
+                cookie.Events.OnRedirectToAccessDenied = context =>
+                {
+                    if (context.Request.Path.StartsWithSegments("/api"))
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    else
+                        context.Response.Redirect(context.RedirectUri);
+                    return Task.CompletedTask;
+                };
+            });
+
+            authentication.AddOpenIdConnect(o =>
+            {
+                o.Authority = options.Oidc.ResolveAuthority();
+                o.ClientId = options.Oidc.ClientId;
+                o.ClientSecret = options.Oidc.ClientSecret;
+                o.ResponseType = OpenIdConnectResponseType.Code;
+                o.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                o.MapInboundClaims = false;
+                o.SaveTokens = false;
+                o.RequireHttpsMetadata = !o.Authority.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
+                o.Scope.Clear();
+                o.Scope.Add("openid");
+                o.Scope.Add("profile");
+                o.Events.OnRedirectToIdentityProvider = context =>
+                {
+                    // "Mit anderem Konto anmelden": ohne das würde eine bestehende Sitzung beim Anbieter sofort wieder dasselbe Konto liefern.
+                    if (context.Properties.Items.TryGetValue(PromptItem, out var prompt))
+                        context.ProtocolMessage.Prompt = prompt;
+                    return Task.CompletedTask;
+                };
+                o.Events.OnTokenValidated = context =>
+                {
+                    var user = context.Principal!;
+                    var name = user.FindFirst("preferred_username")?.Value ?? user.FindFirst("email")?.Value
+                               ?? user.FindFirst("name")?.Value ?? user.FindFirst("sub")?.Value ?? "unbekannt";
+                    if (!options.Oidc.IsAllowed(user))
+                    {
+                        context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(AccessControl))
+                            .LogWarning("OIDC-Anmeldung abgelehnt: {User} gehört zu keiner erlaubten Gruppe oder Rolle", name);
+                        context.HandleResponse();
+                        context.Response.Redirect("/denied");
+                        return Task.CompletedTask;
+                    }
+                    // Nur das Nötige ins Sitzungs-Cookie: bei vielen Gruppen würde es sonst zu groß.
+                    context.Principal = SessionPrincipal(name, "oidc");
+                    return Task.CompletedTask;
+                };
+            });
+        }
+
+        services.AddAuthorizationBuilder().SetFallbackPolicy(new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            // Ohne Berechtigung gibt es weder Oberfläche noch API: der Server verwaltet Administrator-Zugangsdaten.
+            .RequireAssertion(context => context.User.HasClaim(c => c.Type == AccessClaim) || (windows && options.IsAllowed(context.User)))
+            .Build());
+    }
+
+    public static void MapInventoryLogin(this IEndpointRouteBuilder app, InventoryOptions options)
+    {
+        if (!options.OidcEnabled)
+            return;
+        var windows = options.ResolveWindowsAuthentication();
+
+        app.MapGet("/login/oidc", (string? returnUrl, bool? switchAccount) =>
+        {
+            var properties = new AuthenticationProperties { RedirectUri = LocalUrl(returnUrl) };
+            if (switchAccount == true)
+                properties.Items[PromptItem] = "login";
+            return Results.Challenge(properties, [OpenIdConnectDefaults.AuthenticationScheme]);
+        }).AllowAnonymous();
+
+        if (windows)
+        {
+            app.MapGet("/login", (string? returnUrl) => Results.Content(Page("Anmelden", $"""
+                <p>Bitte einen Anmeldeweg wählen.</p>
+                <a class="button" href="/login/windows?returnUrl={Uri.EscapeDataString(LocalUrl(returnUrl))}">Windows-Anmeldung</a>
+                <a class="button" href="/login/oidc?returnUrl={Uri.EscapeDataString(LocalUrl(returnUrl))}">{System.Net.WebUtility.HtmlEncode(options.Oidc.DisplayName)}</a>
+                """), "text/html; charset=utf-8")).AllowAnonymous();
+
+            // Führt den Windows-Handshake einmal durch und stellt danach dasselbe Sitzungs-Cookie aus wie die OIDC-Anmeldung.
+            app.MapGet("/login/windows", async (HttpContext http, string? returnUrl) =>
+            {
+                var result = await http.AuthenticateAsync(NegotiateDefaults.AuthenticationScheme);
+                if (!result.Succeeded)
+                    return Results.Challenge(null, [NegotiateDefaults.AuthenticationScheme]);
+                if (!options.IsAllowed(result.Principal))
+                    return Results.Redirect("/denied");
+                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(result.Principal.Identity?.Name ?? "unbekannt", "windows"));
+                return Results.Redirect(LocalUrl(returnUrl));
+            }).AllowAnonymous();
+        }
+
+        app.MapGet("/logout", async (HttpContext http) =>
+        {
+            await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Results.Content(Page("Abgemeldet", """<p>Du bist abgemeldet.</p><a class="button" href="/">Erneut anmelden</a><a class="button secondary" href="/login/oidc?switchAccount=true">Mit anderem Konto anmelden</a>"""), "text/html; charset=utf-8");
+        }).AllowAnonymous();
+
+        app.MapGet("/denied", () => Results.Content(Page("Kein Zugriff",
+            """<p>Dein Konto gehört zu keiner Gruppe, die Inventory nutzen darf.</p><a class="button" href="/login/oidc?switchAccount=true">Mit anderem Konto anmelden</a>"""),
+            "text/html; charset=utf-8", statusCode: StatusCodes.Status403Forbidden)).AllowAnonymous();
+    }
+
+    private static ClaimsPrincipal SessionPrincipal(string name, string method) => new(new ClaimsIdentity(
+        [new Claim(ClaimTypes.Name, name), new Claim(AccessClaim, method)], CookieAuthenticationDefaults.AuthenticationScheme));
+
+    /// <summary>Nur Ziele innerhalb der Anwendung; verhindert, dass ein präparierter Link nach der Anmeldung woandershin führt.</summary>
+    private static string LocalUrl(string? url) =>
+        url is { Length: > 0 } && url[0] == '/' && (url.Length == 1 || (url[1] != '/' && url[1] != '\\')) ? url : "/";
+
+    private static string Page(string title, string body) => $$"""
+        <!DOCTYPE html>
+        <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{title}} – Inventory</title>
+        <style>
+          body { font-family: Roboto, Segoe UI, sans-serif; background: #f5f5f5; margin: 0; display: grid; place-items: center; min-height: 100vh; color: #212121; }
+          main { background: #fff; padding: 32px 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.15); max-width: 360px; }
+          h1 { font-size: 1.4rem; margin: 0 0 12px; }
+          .button.secondary { background: #fff; color: #594ae2; border: 1px solid #594ae2; }
+          .button { display: block; margin-top: 12px; padding: 10px 16px; border-radius: 4px; background: #594ae2; color: #fff; text-decoration: none; text-align: center; }
+        </style></head>
+        <body><main><h1>{{title}}</h1>{{body}}</main></body></html>
+        """;
+}

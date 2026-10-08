@@ -26,6 +26,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<DeploymentTarget> DeploymentTargets => Set<DeploymentTarget>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -113,6 +114,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasOne(s => s.Package).WithMany().HasForeignKey(s => s.PackageId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(s => s.Collection).WithMany().HasForeignKey(s => s.CollectionId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<ApiToken>().HasIndex(t => t.TokenHash).IsUnique();
 
         modelBuilder.Entity<Setting>().HasKey(s => s.Key);
     }

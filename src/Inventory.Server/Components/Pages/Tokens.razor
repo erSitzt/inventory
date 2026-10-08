@@ -1,0 +1,92 @@
+@page "/tokens"
+@inject ApiTokenService TokenService
+@inject Auditor Audit
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>API-Tokens – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">API-Tokens</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">Neues Token</MudButton>
+</MudStack>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Für Skripte und andere Programme, die die REST-API ohne Browser-Anmeldung nutzen. Ein Token hat vollen Zugriff auf die API –
+    wie ein angemeldeter Benutzer. Aufruf z. B.:
+    <code>curl -H "Authorization: Bearer inv_…" @(Navigation.BaseUri)api/computers</code>
+</MudText>
+
+@if (_created is not null)
+{
+    <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _created = null)">
+        <b>Token angelegt – jetzt kopieren.</b> Es wird nur dieses eine Mal angezeigt und lässt sich später nicht mehr abrufen.
+        <pre class="run-output mt-2" style="user-select: all">@_created</pre>
+    </MudAlert>
+}
+
+<MudDataGrid T="ApiToken" Items="_tokens" Dense="true" Hover="true" SortMode="SortMode.None">
+    <Columns>
+        <PropertyColumn Property="t => t.Name" Title="Name" />
+        <TemplateColumn Title="Token"><CellTemplate><code>@(context.Item.Prefix)…</code></CellTemplate></TemplateColumn>
+        <PropertyColumn Property="t => t.CreatedBy" Title="Angelegt von" />
+        <TemplateColumn Title="Angelegt"><CellTemplate>@Display.LocalTime(context.Item.CreatedUtc)</CellTemplate></TemplateColumn>
+        <TemplateColumn Title="Gültig bis">
+            <CellTemplate>
+                @if (context.Item.ExpiresUtc is null)
+                {
+                    <span>unbegrenzt</span>
+                }
+                else if (context.Item.ExpiresUtc < DateTime.UtcNow)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error">abgelaufen</MudChip>
+                }
+                else
+                {
+                    @Display.LocalTime(context.Item.ExpiresUtc)
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Zuletzt verwendet"><CellTemplate>@Display.LocalTime(context.Item.LastUsedUtc)</CellTemplate></TemplateColumn>
+        <TemplateColumn CellStyle="width: 1%">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Token widerrufen" OnClick="@(() => DeleteAsync(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">Noch keine Tokens vorhanden.</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<ApiToken> _tokens = [];
+    private string? _created;
+
+    protected override async Task OnInitializedAsync() => _tokens = await TokenService.ListAsync();
+
+    private async Task CreateAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<CreateTokenDialog>("Neues API-Token", new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
+        if (await dialog.Result is not { Canceled: false, Data: CreateTokenDialog.Request request })
+            return;
+        var expires = request.Days is { } days ? DateTime.UtcNow.AddDays(days) : (DateTime?)null;
+        _created = await TokenService.CreateAsync(request.Name, await Audit.UserNameAsync(), expires);
+        await Audit.LogAsync("API-Token angelegt", $"{request.Name}, gültig {(request.Days is null ? "unbegrenzt" : $"{request.Days} Tage")}");
+        _tokens = await TokenService.ListAsync();
+    }
+
+    private async Task DeleteAsync(ApiToken token)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync("Token widerrufen",
+            $"„{token.Name}“ wirklich widerrufen? Skripte, die es verwenden, verlieren sofort den Zugriff.", yesText: "Widerrufen", cancelText: "Abbrechen");
+        if (confirmed != true)
+            return;
+        await TokenService.DeleteAsync(token.Id);
+        await Audit.LogAsync("API-Token widerrufen", token.Name);
+        Snackbar.Add("Token widerrufen.", Severity.Success);
+        _tokens = await TokenService.ListAsync();
+    }
+}

@@ -95,9 +95,55 @@ registriert den Dienst. Ein erneuter Aufruf aktualisiert die Programmdateien; Ko
 |---|---|
 | `Urls` | Adressen der Weboberfläche, z. B. `http://*:5100` |
 | `Inventory:DataDirectory` | Datenbank, Schlüssel, Paketdateien (`repository`), Sicherungen (`backups`) |
-| `Inventory:Authentication` | `Windows` (Standard auf Windows) oder `None` |
-| `Inventory:AllowedGroups` | Gruppen mit Zugriff auf Oberfläche und API, als Name (`FIRMA\IT-Admins`) oder SID. Standard: lokale Administratoren (`S-1-5-32-544`) |
+| `Inventory:Authentication` | `Windows` (Standard auf Windows), `Oidc`, beides (`Windows,Oidc`) oder `None` |
+| `Inventory:AllowedGroups` | Windows-Gruppen mit Zugriff, als Name (`FIRMA\IT-Admins`) oder SID. Standard: lokale Administratoren (`S-1-5-32-544`) |
+| `Inventory:Oidc:TenantId` | Entra-Mandant (GUID oder Domäne); für andere Anbieter stattdessen `Inventory:Oidc:Authority` |
+| `Inventory:Oidc:ClientId`, `ClientSecret` | Aus der App-Registrierung |
+| `Inventory:Oidc:AllowedGroups` | Objekt-IDs der erlaubten Gruppen oder Namen von App-Rollen; ohne Eintrag startet der Server nicht |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
+
+### Anmeldung
+
+Windows-Anmeldung und OIDC lassen sich einzeln oder gemeinsam aktivieren. Sind beide aktiv, erscheint eine Auswahlseite;
+beide Wege führen zur selben Sitzung. Die Agenten-Schnittstelle ist davon unabhängig (eigene Schlüssel).
+
+**Microsoft Entra ID einrichten**
+
+1. Im Entra Admin Center unter *App-Registrierungen* eine neue Registrierung anlegen, Plattform **Web**, Umleitungs-URI
+   `https://<server>:<port>/signin-oidc`. Entra akzeptiert nur HTTPS (Ausnahme: `http://localhost`).
+2. Unter *Zertifikate & Geheimnisse* einen geheimen Clientschlüssel erzeugen.
+3. Berechtigung in das Token bringen – eine der beiden Varianten:
+   - *Tokenkonfiguration → Gruppenanspruch hinzufügen → Sicherheitsgruppen* (ID-Token, Gruppen-ID). In
+     `Inventory:Oidc:AllowedGroups` kommen dann die **Objekt-IDs** der Gruppen. Bei Benutzern mit mehr als 200 Gruppen
+     lässt Entra den Anspruch weg; dann die zweite Variante nehmen.
+   - *App-Rollen* anlegen und Benutzern oder Gruppen zuweisen (Unternehmensanwendung → Benutzer und Gruppen). In
+     `AllowedGroups` kommt der **Wert** der Rolle.
+4. Konfiguration ergänzen (das Geheimnis gehört nicht ins Repository, sondern in `appsettings.Production.json` auf dem
+   Server bzw. für die Entwicklung in `scripts/local.env`):
+
+```json
+{
+  "Inventory": {
+    "Authentication": "Windows,Oidc",
+    "Oidc": {
+      "TenantId": "<Mandanten-ID>",
+      "ClientId": "<Anwendungs-ID>",
+      "ClientSecret": "<Geheimnis>",
+      "AllowedGroups": [ "<Objekt-ID der Gruppe oder Name der App-Rolle>" ]
+    }
+  }
+}
+```
+
+HTTPS für Kestrel: `"Kestrel": { "Endpoints": { "Https": { "Url": "https://*:5100", "Certificate": { "Subject": "<server>", "Store": "My", "Location": "LocalMachine" } } } }`.
+
+**API-Tokens** für Skripte werden in der Oberfläche unter *API-Tokens* angelegt und funktionieren in jedem Anmeldemodus:
+
+```bash
+curl -H "Authorization: Bearer inv_…" https://<server>:<port>/api/computers
+```
+
+Mit aktiver Windows-Anmeldung geht weiterhin auch `curl --negotiate -u : …`.
 
 Für eine vollständige Sicherung gehören neben `backups` auch die Ordner `keys` (ohne sie sind die gespeicherten
 Passwörter nicht mehr lesbar) und `repository` dazu.

@@ -32,6 +32,45 @@ namespace Inventory.Data.Migrations
                     b.ToTable("CollectionMembers");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ApiToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExpiresUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastUsedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("ApiTokens");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.AuditEntry", b =>
                 {
                     b.Property<long>("Id")

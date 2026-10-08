@@ -14,6 +14,11 @@
         <AuthorizeView>
             <Authorized>
                 <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
+                @if (context.User.HasClaim(c => c.Type == AccessControl.AccessClaim))
+                {
+                    @* Nur bei Sitzungs-Anmeldung; die reine Windows-Anmeldung kennt kein Abmelden. *@
+                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Href="logout" aria-label="Abmelden" />
+                }
             </Authorized>
         </AuthorizeView>
     </MudAppBar>

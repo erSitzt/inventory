@@ -34,9 +34,21 @@
         <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="Datenverzeichnis" Variant="Variant.Outlined" ReadOnly="true"
                       HelperText="Datenbank, Schlüssel, Paketdateien und tägliche Sicherungen (Unterordner backups, 14 Stück). Änderbar über Inventory:DataDirectory." />
         <MudText Typo="Typo.body2">
-            Anmeldung: @(Options.Value.ResolveWindowsAuthentication() ? $"Windows-Anmeldung, erlaubt für {string.Join(", ", Options.Value.DescribeAllowedGroups())}" : "abgeschaltet")
+            Anmeldung:
+            @if (!Options.Value.AuthenticationEnabled)
+            {
+                <span>abgeschaltet</span>
+            }
+            @if (Options.Value.ResolveWindowsAuthentication())
+            {
+                <span>Windows-Anmeldung, erlaubt für @string.Join(", ", Options.Value.DescribeAllowedGroups()). </span>
+            }
+            @if (Options.Value.OidcEnabled)
+            {
+                <span>@Options.Value.Oidc.DisplayName (@Options.Value.Oidc.ResolveAuthority()), erlaubt für @string.Join(", ", Options.Value.Oidc.AllowedGroups).</span>
+            }
         </MudText>
-        @if (!Options.Value.ResolveWindowsAuthentication() && !Options.Value.ResolveSimulate())
+        @if (!Options.Value.AuthenticationEnabled && !Options.Value.ResolveSimulate())
         {
             <MudAlert Severity="Severity.Error">Die Anmeldung ist abgeschaltet: Jeder, der diese Adresse erreicht, kann mit den hinterlegten Zugangsdaten Befehle auf den Zielrechnern ausführen.</MudAlert>
         }

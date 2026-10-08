@@ -54,3 +54,42 @@ public class OperationsTests
         }
     }
 }
+
+public class ApiTokenTests
+{
+    private sealed class Clock(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    [Fact]
+    public async Task Token_is_only_stored_hashed_validates_until_expiry_and_can_be_revoked()
+    {
+        using var db = new TestDb();
+        var clock = new Clock(new DateTimeOffset(2026, 10, 8, 12, 0, 0, TimeSpan.Zero));
+        var tokens = new ApiTokenService(db, clock);
+
+        var plain = await tokens.CreateAsync(" Monitoring ", @"CORP\anna", clock.Now.UtcDateTime.AddDays(30));
+        var forever = await tokens.CreateAsync("Upload", @"CORP\anna", null);
+
+        var stored = (await tokens.ListAsync()).Single(t => t.Name == "Monitoring");
+        Assert.StartsWith("inv_", plain);
+        Assert.DoesNotContain(plain, stored.TokenHash);
+        Assert.Equal(plain[..10], stored.Prefix);
+        Assert.Null(stored.LastUsedUtc);
+
+        Assert.Equal("Monitoring", (await tokens.ValidateAsync(plain))!.Name);
+        Assert.NotNull((await tokens.ListAsync()).Single(t => t.Name == "Monitoring").LastUsedUtc);
+        Assert.Null(await tokens.ValidateAsync(plain + "x"));
+        Assert.Null(await tokens.ValidateAsync("inv_"));
+        Assert.Null(await tokens.ValidateAsync(null));
+
+        clock.Now = clock.Now.AddDays(31);
+        Assert.Null(await tokens.ValidateAsync(plain));
+        Assert.NotNull(await tokens.ValidateAsync(forever));
+
+        await tokens.DeleteAsync((await tokens.ListAsync()).Single(t => t.Name == "Upload").Id);
+        Assert.Null(await tokens.ValidateAsync(forever));
+    }
+}

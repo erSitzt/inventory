@@ -10,8 +10,6 @@ using Inventory.Server;
 using Inventory.Server.Api;
 using Inventory.Server.Components;
 using Inventory.Server.Services;
-using Microsoft.AspNetCore.Authentication.Negotiate;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
@@ -75,19 +73,8 @@ builder.Services.AddScoped<Auditor>();
 builder.Services.AddHostedService<SchedulerWorker>();
 
 var windowsAuthentication = options.ResolveWindowsAuthentication();
-if (windowsAuthentication)
-{
-    builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme).AddNegotiate();
-    // Ohne passende Gruppe gibt es weder Oberfläche noch API: der Server verwaltet Administrator-Zugangsdaten.
-    builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .RequireAssertion(context => options.IsAllowed(context.User))
-        .Build());
-}
-else
-{
-    builder.Services.AddAuthorization();
-}
+builder.Services.AddSingleton<ApiTokenService>();
+builder.Services.AddInventoryAccess(options);
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddSingleton<ComputerService>();
 builder.Services.AddSingleton<CredentialService>();
@@ -107,8 +94,12 @@ await using (var db = await app.Services.GetRequiredService<IDbContextFactory<In
 await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();
 
 app.Logger.LogInformation("Datenverzeichnis: {DataDirectory}, Simulation: {Simulate}, Anmeldung: {Authentication}",
-    dataDirectory, options.ResolveSimulate(), windowsAuthentication ? $"Windows ({string.Join(", ", options.DescribeAllowedGroups())})" : "keine");
-if (!windowsAuthentication && !options.ResolveSimulate())
+    dataDirectory, options.ResolveSimulate(), string.Join(" + ", new[]
+    {
+        windowsAuthentication ? $"Windows ({string.Join(", ", options.DescribeAllowedGroups())})" : null,
+        options.OidcEnabled ? $"OIDC ({options.Oidc.ResolveAuthority()})" : null,
+    }.Where(m => m is not null).DefaultIfEmpty("keine")));
+if (!options.AuthenticationEnabled && !options.ResolveSimulate())
     app.Logger.LogWarning("Die Anmeldung ist abgeschaltet: Jeder, der diese Adresse erreicht, kann mit den hinterlegten Zugangsdaten Befehle auf den Zielrechnern ausführen.");
 
 if (!app.Environment.IsDevelopment())
@@ -116,7 +107,7 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 // Vor den Statusseiten: deren erneute Ausführung der Anfrage würde den mehrstufigen Negotiate-Handshake zerstören.
-if (windowsAuthentication)
+if (options.AuthenticationEnabled)
     app.UseAuthentication();
 app.UseAuthorization();
 // Nur für die Oberfläche: API-Aufrufer (Skripte, Agenten) brauchen den echten Statuscode. Der Agent meldet sich
@@ -131,6 +122,7 @@ app.MapComputerEndpoints();
 app.MapPackageEndpoints();
 app.MapReportEndpoints();
 app.MapAgentEndpoints();
+app.MapInventoryLogin(options);
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

@@ -10,8 +10,19 @@ public sealed class InventoryOptions
     /// <summary>Keine echten Zugriffe auf Zielrechner. Leer = unter Windows aus, sonst an.</summary>
     public bool? Simulate { get; set; }
 
-    /// <summary>"Windows" (Negotiate/Kerberos) oder "None". Leer = Windows, außer im Simulationsmodus.</summary>
+    /// <summary>
+    /// "Windows" (Kerberos/NTLM), "Oidc" (z. B. Entra ID), beides mit Komma getrennt ("Windows,Oidc") oder "None".
+    /// Leer = Windows, außer im Simulationsmodus.
+    /// </summary>
     public string? Authentication { get; set; }
+
+    public OidcOptions Oidc { get; set; } = new();
+
+    private string[] Modes => (Authentication ?? "").Split([',', ';', ' ', '+'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    public bool OidcEnabled => Modes.Contains("Oidc", StringComparer.OrdinalIgnoreCase);
+
+    public bool AuthenticationEnabled => ResolveWindowsAuthentication() || OidcEnabled;
 
     /// <summary>SID der lokalen Administratoren; der Name wäre je nach Windows-Sprache verschieden (Administrators/Administratoren).</summary>
     public const string LocalAdministratorsSid = "S-1-5-32-544";
@@ -81,7 +92,7 @@ public sealed class InventoryOptions
     });
 
     public bool ResolveWindowsAuthentication() =>
-        Authentication is null ? OperatingSystem.IsWindows() && !ResolveSimulate() : Authentication.Equals("Windows", StringComparison.OrdinalIgnoreCase);
+        Authentication is null ? OperatingSystem.IsWindows() && !ResolveSimulate() : Modes.Contains("Windows", StringComparer.OrdinalIgnoreCase);
 
     public string ResolveDataDirectory()
     {
@@ -92,4 +103,48 @@ public sealed class InventoryOptions
     }
 
     public bool ResolveSimulate() => Simulate ?? !OperatingSystem.IsWindows();
+}
+
+/// <summary>Anmeldung über OpenID Connect, z. B. Microsoft Entra ID.</summary>
+public sealed class OidcOptions
+{
+    /// <summary>Entra-Mandant (GUID oder Domäne). Daraus ergibt sich die Authority, sofern sie nicht ausdrücklich gesetzt ist.</summary>
+    public string? TenantId { get; set; }
+
+    /// <summary>Aussteller-Adresse für andere Anbieter, z. B. https://idp.firma.de/realms/intern.</summary>
+    public string? Authority { get; set; }
+
+    public string? ClientId { get; set; }
+    public string? ClientSecret { get; set; }
+
+    /// <summary>
+    /// Wer hinein darf: Werte aus dem Gruppen-Claim (bei Entra ID die Objekt-IDs der Gruppen) oder App-Rollen.
+    /// Ohne Eintrag wird niemand zugelassen.
+    /// </summary>
+    public string[] AllowedGroups { get; set; } = [];
+
+    /// <summary>Claim mit den Gruppen; App-Rollen ("roles") werden zusätzlich immer geprüft.</summary>
+    public string GroupClaim { get; set; } = "groups";
+
+    /// <summary>Beschriftung der Schaltfläche auf der Anmeldeseite.</summary>
+    public string DisplayName { get; set; } = "Microsoft Entra ID";
+
+    public string ResolveAuthority() =>
+        !string.IsNullOrWhiteSpace(Authority) ? Authority.TrimEnd('/')
+        : !string.IsNullOrWhiteSpace(TenantId) ? $"https://login.microsoftonline.com/{TenantId}/v2.0"
+        : throw new InvalidOperationException("Für die OIDC-Anmeldung muss Inventory:Oidc:TenantId oder Inventory:Oidc:Authority gesetzt sein.");
+
+    public bool IsAllowed(System.Security.Claims.ClaimsPrincipal user) => user.Claims.Any(c =>
+        (c.Type.Equals(GroupClaim, StringComparison.OrdinalIgnoreCase) || c.Type == "roles")
+        && AllowedGroups.Contains(c.Value, StringComparer.OrdinalIgnoreCase));
+
+    /// <exception cref="InvalidOperationException">Die Konfiguration ist unvollständig.</exception>
+    public void Validate()
+    {
+        _ = ResolveAuthority();
+        if (string.IsNullOrWhiteSpace(ClientId))
+            throw new InvalidOperationException("Für die OIDC-Anmeldung muss Inventory:Oidc:ClientId gesetzt sein.");
+        if (AllowedGroups.Length == 0)
+            throw new InvalidOperationException("Für die OIDC-Anmeldung muss Inventory:Oidc:AllowedGroups mindestens eine Gruppe oder App-Rolle enthalten; sonst dürfte sich niemand anmelden.");
+    }
 }
