@@ -24,9 +24,15 @@
                     <MudRadio T="StepType" Value="StepType.Command">Eingabeaufforderung (cmd)</MudRadio>
                     <MudRadio T="StepType" Value="StepType.PowerShell">PowerShell</MudRadio>
                 </MudRadioGroup>
+                <MudSelect T="StepRunAs" @bind-Value="_runAs" Label="Ausführen als" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="_running">
+                    <MudSelectItem T="StepRunAs" Value="StepRunAs.System">@Display.RunAs(StepRunAs.System)</MudSelectItem>
+                    <MudSelectItem T="StepRunAs" Value="StepRunAs.LoggedOnUser">@Display.RunAs(StepRunAs.LoggedOnUser)</MudSelectItem>
+                </MudSelect>
                 <MudTextField @bind-Value="_script" Label="@(_type == StepType.Command ? "Befehl" : "Skript")" Variant="Variant.Outlined" Immediate="true"
                               Lines="@(_type == StepType.Command ? 2 : 8)" Disabled="_running" Style="font-family: monospace"
-                              HelperText="Läuft auf dem Zielrechner als Lokales System." />
+                              HelperText="@(_runAs == StepRunAs.LoggedOnUser
+                                  ? "Läuft in der Sitzung des angemeldeten Benutzers; ohne Anmeldung wird nichts ausgeführt."
+                                  : "Läuft auf dem Zielrechner als Lokales System.")" />
                 <MudNumericField T="int" @bind-Value="_timeoutSeconds" Label="Zeitlimit (Sekunden)" Variant="Variant.Outlined" Min="1" Max="86400" Disabled="_running" />
                 <MudStack Row="true">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
@@ -111,6 +117,7 @@
     private IEnumerable<Computer> _targetsValue = [];
     private IReadOnlyCollection<Computer> _targets = [];
     private StepType _type = StepType.Command;
+    private StepRunAs _runAs = StepRunAs.System;
     private string _script = "";
     private int _timeoutSeconds = 600;
     private bool _running;
@@ -128,7 +135,7 @@
     private async Task RunAsync()
     {
         _runs = _targets.OrderBy(c => c.Name).Select(c => new TargetRun(c)).ToList();
-        await Audit.LogAsync($"Remote-Befehl ({_type})", $"{string.Join(", ", _runs.Select(r => r.Computer.Name))}: {_script}");
+        await Audit.LogAsync($"Remote-Befehl ({_type}, {Display.RunAs(_runAs)})", $"{string.Join(", ", _runs.Select(r => r.Computer.Name))}: {_script}");
         _running = true;
         _cts = new CancellationTokenSource();
         // Ausgabe trifft aus Hintergrund-Threads ein; gebündelt neu zeichnen statt je Zeile.
@@ -151,7 +158,7 @@
         run.State = RunState.Running;
         var job = new JobManifest
         {
-            Steps = [new JobStep { Name = "Befehl", Type = _type, Script = _script, TimeoutSeconds = _timeoutSeconds }],
+            Steps = [new JobStep { Name = "Befehl", Type = _type, Script = _script, TimeoutSeconds = _timeoutSeconds, RunAs = _runAs }],
         };
         var progress = new SyncProgress(e =>
         {
@@ -165,6 +172,11 @@
         var result = await Jobs.RunAsync(run.Computer.Id, job, progress, ct);
         var step = result.Steps.FirstOrDefault();
         run.ExitCode = step?.ExitCode;
+        if (step is { Status: StepStatus.Skipped, Output.Length: > 0 })
+        {
+            lock (run.Output)
+                run.Output.AppendLine(step.Output);
+        }
         run.Error = result.Error ?? (result.Success ? null : step?.Error);
         run.State = result.Success ? RunState.Succeeded : RunState.Failed;
     }

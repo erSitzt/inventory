@@ -60,6 +60,10 @@
                                     {
                                         <span>@Display.Step(step.Definition.Type): @Display.StepSummary(step.Definition)</span>
                                     }
+                                    @if (step.NestedPackageId is null && step.Definition.RunAs == StepRunAs.LoggedOnUser)
+                                    {
+                                        <span> · als angemeldeter Benutzer</span>
+                                    }
                                     @if (step.Definition.Conditions is { IsEmpty: false })
                                     {
                                         <span> · mit Bedingung</span>

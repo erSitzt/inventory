@@ -117,6 +117,16 @@ public static class Display
         _ => step.Script.Split('\n')[0].Trim(),
     };
 
+    public static string RunAs(StepRunAs runAs) => runAs switch
+    {
+        StepRunAs.System => "Lokales System",
+        StepRunAs.LoggedOnUser => "Angemeldeter Benutzer",
+        _ => runAs.ToString(),
+    };
+
+    /// <summary>Schritt-Typen, bei denen sich der Ausführungskontext wählen lässt.</summary>
+    public static bool SupportsRunAs(StepType type) => type is StepType.Command or StepType.PowerShell or StepType.Install;
+
     public static string ServiceActionName(ServiceAction action) => action switch
     {
         ServiceAction.Start => "Starten",

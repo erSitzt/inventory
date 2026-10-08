@@ -26,7 +26,7 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
             var lines = new[]
             {
                 $"[Simulation] {target.Host} über {kind} als {target.Credential?.UserName ?? "Dienstkonto"}",
-                $"[Simulation] {step.Type}: {Describe(step)}",
+                $"[Simulation] {step.Type}{(step.RunAs == StepRunAs.LoggedOnUser ? " als angemeldeter Benutzer" : "")}: {Describe(step)}",
             };
             foreach (var line in lines)
             {

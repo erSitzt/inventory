@@ -92,6 +92,16 @@
                         break;
                 }
 
+                @if (Display.SupportsRunAs(Type))
+                {
+                    <MudSelect T="StepRunAs" @bind-Value="_step.RunAs" Label="Ausführen als" Variant="Variant.Outlined" Margin="Margin.Dense"
+                               HelperText="@(_step.RunAs == StepRunAs.LoggedOnUser
+                                   ? "Läuft in der Sitzung des angemeldeten Benutzers mit dessen Rechten (HKCU, Profil, Netzlaufwerke). Ist niemand angemeldet, wird der Schritt übersprungen. Nur über SMB + Dienst oder Agent."
+                                   : "Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.")">
+                        <MudSelectItem T="StepRunAs" Value="StepRunAs.System">@Display.RunAs(StepRunAs.System)</MudSelectItem>
+                        <MudSelectItem T="StepRunAs" Value="StepRunAs.LoggedOnUser">@Display.RunAs(StepRunAs.LoggedOnUser)</MudSelectItem>
+                    </MudSelect>
+                }
                 @if (Type is StepType.Command or StepType.PowerShell or StepType.Install)
                 {
                     <MudStack Row="true" Spacing="3">

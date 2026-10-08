@@ -12,7 +12,7 @@ public static class ComputerEndpoints
 
     public sealed record ImportRequest(string Names);
 
-    public sealed record RunRequest(StepType Type, string Script, int? TimeoutSeconds);
+    public sealed record RunRequest(StepType Type, string Script, int? TimeoutSeconds, StepRunAs RunAs = StepRunAs.System);
 
     public static IEndpointRouteBuilder MapComputerEndpoints(this IEndpointRouteBuilder app)
     {
@@ -45,7 +45,7 @@ public static class ComputerEndpoints
             await audit.LogAsync(http.User.Identity?.Name ?? "(API ohne Anmeldung)", $"Remote-Befehl über API ({request.Type})", $"Rechner {id}: {request.Script}", ct);
             var job = new JobManifest
             {
-                Steps = [new JobStep { Name = "Befehl", Type = request.Type, Script = request.Script, TimeoutSeconds = request.TimeoutSeconds ?? 600 }],
+                Steps = [new JobStep { Name = "Befehl", Type = request.Type, Script = request.Script, TimeoutSeconds = request.TimeoutSeconds ?? 600, RunAs = request.RunAs }],
             };
             return await jobs.RunAsync(id, job, null, ct);
         });

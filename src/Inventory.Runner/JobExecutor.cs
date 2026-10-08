@@ -85,6 +85,10 @@ namespace Inventory.Runner
                 result.Error = ex.Message;
             }
 
+            if (_userDir != null)
+            {
+                try { Directory.Delete(_userDir, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            }
             result.FinishedUtc = DateTime.UtcNow;
             WriteResult(result);
             return result;
@@ -99,6 +103,8 @@ namespace Inventory.Runner
                 process = _current;
             if (process != null)
                 KillTree(process);
+            if (_currentPid != 0)
+                KillTree(_currentPid);
         }
 
         private string FilesDir => Path.Combine(_jobDir, JobFiles.FilesFolder);
@@ -210,11 +216,14 @@ namespace Inventory.Runner
 
         private StepResult RunStep(int index, JobStep step, StreamWriter progress)
         {
+            if (step.RunAs == StepRunAs.LoggedOnUser && step.Type != StepType.Reboot)
+                return RunStepAsUser(index, step, progress);
+
             var result = new StepResult { Index = index, Name = step.Name };
             var watch = Stopwatch.StartNew();
             try
             {
-                var startInfo = CreateStartInfo(index, step);
+                var startInfo = CreateStartInfo(index, step, userContext: false);
                 var output = new StringBuilder();
                 using (var process = new Process { StartInfo = startInfo })
                 {
@@ -273,8 +282,108 @@ namespace Inventory.Runner
             return result;
         }
 
-        private ProcessStartInfo CreateStartInfo(int index, JobStep step)
+        /// <summary>Führt den Schritt in der Sitzung des angemeldeten Benutzers aus; ohne Anmeldung wird er übersprungen.</summary>
+        private StepResult RunStepAsUser(int index, JobStep step, StreamWriter progress)
         {
+            var result = new StepResult { Index = index, Name = step.Name };
+            var watch = Stopwatch.StartNew();
+            try
+            {
+                using (var session = UserSession.Open())
+                {
+                    if (session == null)
+                    {
+                        result.Status = StepStatus.Skipped;
+                        result.Output = "Kein Benutzer angemeldet; der Schritt läuft nur im Kontext eines angemeldeten Benutzers.";
+                        return result;
+                    }
+
+                    var startInfo = CreateStartInfo(index, step, userContext: true);
+                    var output = new StringBuilder();
+                    Action<string> onLine = line =>
+                    {
+                        lock (_sync)
+                        {
+                            if (output.Length < MaxOutputChars)
+                                output.AppendLine(line);
+                            Write(progress, new ProgressEvent { Kind = ProgressKind.Output, Step = index, Text = line });
+                        }
+                    };
+                    onLine($"[Läuft als {session.UserName}]");
+
+                    var timeout = step.TimeoutSeconds > 0 ? step.TimeoutSeconds * 1000 : -1;
+                    var exitCode = session.Run(startInfo.FileName, startInfo.Arguments, startInfo.WorkingDirectory, startInfo.StandardOutputEncoding,
+                        onLine, timeout, pid => _currentPid = pid);
+                    if (exitCode == null)
+                    {
+                        KillTree(_currentPid);
+                        result.Status = StepStatus.Failed;
+                        result.Error = $"Zeitüberschreitung nach {step.TimeoutSeconds} s";
+                    }
+                    else
+                    {
+                        result.ExitCode = exitCode;
+                        var ok = SuccessCodes(step).Contains(exitCode.Value);
+                        result.Status = ok ? StepStatus.Succeeded : StepStatus.Failed;
+                        if (!ok)
+                            result.Error = _cancelled ? "Abgebrochen" : $"Exitcode {exitCode}";
+                    }
+                    lock (_sync)
+                        result.Output = output.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Status = StepStatus.Failed;
+                result.Error = ex.Message;
+            }
+            finally
+            {
+                _currentPid = 0;
+                result.DurationSeconds = Math.Round(watch.Elapsed.TotalSeconds, 2);
+            }
+            return result;
+        }
+
+        private volatile int _currentPid;
+        private string? _userDir;
+
+        /// <summary>
+        /// Arbeitsordner für Schritte im Benutzerkontext. Das Job-Verzeichnis selbst ist nur für SYSTEM und Administratoren
+        /// lesbar; ein normaler Benutzer käme weder an sein Skript noch an die Paketdateien. Unter ProgramData dürfen Benutzer lesen.
+        /// </summary>
+        private string UserDir()
+        {
+            if (_userDir != null)
+                return _userDir;
+            // Eigener Ordner neben (nicht unter) dem Datenverzeichnis des Servers: dessen Rechte sind bewusst auf SYSTEM und Administratoren beschränkt.
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "InventoryRunner", "UserJobs", Path.GetFileName(_jobDir));
+            try
+            {
+                Directory.CreateDirectory(dir);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Läuft der Runner selbst nur mit Benutzerrechten, genügt dessen Temp-Ordner.
+                dir = Path.Combine(Path.GetTempPath(), "InventoryRunner", Path.GetFileName(_jobDir));
+                Directory.CreateDirectory(dir);
+            }
+            if (Directory.Exists(FilesDir))
+            {
+                foreach (var file in Directory.GetFiles(FilesDir, "*", SearchOption.AllDirectories))
+                {
+                    var target = Path.Combine(dir, JobFiles.FilesFolder, file.Substring(FilesDir.Length).TrimStart('\\'));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target, overwrite: true);
+                }
+            }
+            return _userDir = dir;
+        }
+
+        private ProcessStartInfo CreateStartInfo(int index, JobStep step, bool userContext)
+        {
+            var baseDir = userContext ? UserDir() : _jobDir;
+            var filesDir = Path.Combine(baseDir, JobFiles.FilesFolder);
             var system = Environment.SystemDirectory;
             string fileName, arguments;
             switch (step.Type)
@@ -284,14 +393,14 @@ namespace Inventory.Runner
                     arguments = "/d /s /c \"" + step.Script + "\"";
                     break;
                 case StepType.PowerShell:
-                    var scriptPath = Path.Combine(_jobDir, $"step-{index}.ps1");
+                    var scriptPath = Path.Combine(baseDir, $"step-{index}.ps1");
                     // BOM, damit Windows PowerShell 5.1 Umlaute im Skript korrekt liest.
                     File.WriteAllText(scriptPath, step.Script, new UTF8Encoding(true));
                     fileName = Path.Combine(system, @"WindowsPowerShell\v1.0\powershell.exe");
                     arguments = "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" + scriptPath + "\"";
                     break;
                 case StepType.Install:
-                    CreateInstallCommand(step, out fileName, out arguments);
+                    CreateInstallCommand(step, filesDir, out fileName, out arguments);
                     break;
                 case StepType.Reboot:
                     fileName = Path.Combine(system, "shutdown.exe");
@@ -306,7 +415,7 @@ namespace Inventory.Runner
             var oem = Encoding.GetEncoding((int)GetOEMCP());
             return new ProcessStartInfo(fileName, arguments)
             {
-                WorkingDirectory = Directory.Exists(FilesDir) ? FilesDir : _jobDir,
+                WorkingDirectory = Directory.Exists(filesDir) ? filesDir : baseDir,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardInput = true,
@@ -317,11 +426,11 @@ namespace Inventory.Runner
             };
         }
 
-        private void CreateInstallCommand(JobStep step, out string fileName, out string arguments)
+        private static void CreateInstallCommand(JobStep step, string filesDir, out string fileName, out string arguments)
         {
             if (string.IsNullOrWhiteSpace(step.File))
                 throw new InvalidDataException("Keine Installationsdatei angegeben");
-            var file = Path.Combine(FilesDir, step.File!);
+            var file = Path.Combine(filesDir, step.File!);
             if (!File.Exists(file))
                 throw new FileNotFoundException($"Paketdatei {step.File} nicht gefunden");
 
@@ -389,19 +498,26 @@ namespace Inventory.Runner
         {
             try
             {
-                // .NET Framework kennt kein Kill(entireProcessTree).
-                using (var kill = Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "taskkill.exe"), $"/T /F /PID {process.Id}")
-                       {
-                           UseShellExecute = false,
-                           CreateNoWindow = true,
-                       }))
-                {
-                    kill?.WaitForExit(10_000);
-                }
+                KillTree(process.Id);
             }
             catch (Exception)
             {
                 try { process.Kill(); } catch (Exception) { /* Prozess ist bereits beendet */ }
+            }
+        }
+
+        private static void KillTree(int processId)
+        {
+            if (processId == 0)
+                return;
+            // .NET Framework kennt kein Kill(entireProcessTree).
+            using (var kill = Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "taskkill.exe"), $"/T /F /PID {processId}")
+                   {
+                       UseShellExecute = false,
+                       CreateNoWindow = true,
+                   }))
+            {
+                kill?.WaitForExit(10_000);
             }
         }
 

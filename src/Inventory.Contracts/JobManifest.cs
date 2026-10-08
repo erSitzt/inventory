@@ -20,6 +20,15 @@ namespace Inventory.Contracts
         Reboot,
     }
 
+    /// <summary>Unter welchem Konto ein Schritt auf dem Zielrechner läuft.</summary>
+    public enum StepRunAs
+    {
+        /// <summary>Wie der Runner selbst: Lokales System (SMB, Agent) bzw. das hinterlegte Konto (WinRM).</summary>
+        System,
+        /// <summary>In der Sitzung des gerade angemeldeten Benutzers, mit dessen Rechten. Ist niemand angemeldet, wird der Schritt übersprungen.</summary>
+        LoggedOnUser,
+    }
+
     public enum ServiceAction
     {
         Start,
@@ -45,6 +54,8 @@ namespace Inventory.Contracts
         public StepType Type { get; set; }
         /// <summary>Befehlszeile (Command), Skripttext (PowerShell) bzw. Hinweistext beim Neustart.</summary>
         public string Script { get; set; } = "";
+        /// <summary>Gilt für Command, PowerShell und Install.</summary>
+        public StepRunAs RunAs { get; set; }
         /// <summary>Install/FileCopy: Pfad relativ zum Ordner <see cref="JobFiles.FilesFolder"/> des Jobs.</summary>
         public string? File { get; set; }
         /// <summary>Install: zusätzliche Parameter für den Installer.</summary>
