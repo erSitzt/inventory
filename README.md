@@ -184,3 +184,8 @@ Mit aktiver Windows-Anmeldung geht weiterhin auch `curl --negotiate -u : …`.
 
 Für eine vollständige Sicherung gehören neben `backups` auch die Ordner `keys` (ohne sie sind die gespeicherten
 Passwörter nicht mehr lesbar) und `repository` dazu.
+
+## Lizenz
+
+[MIT](LICENSE). Inventory verwendet unter anderem MudBlazor (MIT), Entity Framework Core und ASP.NET Core (MIT) sowie
+SQLite (Public Domain).

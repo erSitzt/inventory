@@ -36,6 +36,7 @@ UninstallDisplayName=Inventory
 ; Der Dienst wird im Code gestoppt; der Neustart-Manager würde ihn sonst selbst beenden wollen.
 CloseApplications=no
 SetupLogging=yes
+LicenseFile=..\LICENSE
 
 [Languages]
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
