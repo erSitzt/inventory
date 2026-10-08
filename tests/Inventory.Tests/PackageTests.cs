@@ -13,6 +13,7 @@ public sealed class PackageTests : IDisposable
     private readonly string _repoDir = Directory.CreateTempSubdirectory("inventory-repo-").FullName;
     private readonly PackageService _packages;
     private readonly ComputerService _computers;
+    private readonly SwitchableProbe _probe = new();
 
     public PackageTests()
     {
@@ -27,7 +28,7 @@ public sealed class PackageTests : IDisposable
     }
 
     private DeploymentService CreateDeployments(IRemoteTransport transport) =>
-        new(_db, _packages, new RemoteJobService([transport], _computers, new CredentialService(_db, new ReversingProtector()), new SettingsService(_db)), new InventoryStore(_db));
+        new(_db, _packages, new RemoteJobService([transport], _computers, new CredentialService(_db, new ReversingProtector()), new SettingsService(_db)), new InventoryStore(_db), _probe);
 
     private static JobStep Command(string name, string script = "echo ok") => new() { Name = name, Type = StepType.Command, Script = script };
 
@@ -150,7 +151,7 @@ public sealed class PackageTests : IDisposable
         var started = await deployments.StartAsync(package.Id, [computer.Id], false);
         await transport.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal("zeile", deployments.GetLive(started.Targets[0].Id)!.Output.Trim().Split('\n').Last().Trim());
-        deployments.Cancel(started.Id);
+        await deployments.CancelAsync(started.Id);
         var finished = await WaitAsync(deployments, started.Id);
 
         Assert.Equal(TargetStatus.Cancelled, Assert.Single(finished.Targets).Status);
@@ -175,6 +176,61 @@ public sealed class PackageTests : IDisposable
         var deployment = Assert.Single(await deployments.ListAsync());
         Assert.NotNull(deployment.FinishedUtc);
         Assert.Equal([TargetStatus.Failed, TargetStatus.Succeeded], deployment.Targets.OrderBy(t => t.ComputerName).Select(t => t.Status));
+    }
+
+    [Fact]
+    public async Task Offline_targets_wait_and_are_run_once_the_computer_is_reachable()
+    {
+        var package = await _packages.SaveAsync(null, "Demo", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Schritt"), null);
+        var computers = await _computers.ImportAsync("pc-an pc-aus");
+        _probe.Offline.Add("pc-aus");
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        var first = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), scanAfter: false, retryOffline: true)).Id);
+        Assert.Equal([TargetStatus.Succeeded, TargetStatus.WaitingOffline], first.Targets.Select(t => t.Status));
+        Assert.NotNull(first.RetryUntilUtc);
+
+        // Solange der Rechner offline ist, passiert nichts.
+        Assert.Equal(0, await deployments.RetryWaitingAsync());
+        _probe.Offline.Clear();
+        Assert.Equal(1, await deployments.RetryWaitingAsync());
+
+        var second = await WaitAsync(deployments, first.Id);
+        Assert.All(second.Targets, t => Assert.Equal(TargetStatus.Succeeded, t.Status));
+        Assert.Equal(0, await deployments.RetryWaitingAsync());
+    }
+
+    [Fact]
+    public async Task Waiting_targets_fail_after_the_retry_window_and_without_retry_offline_targets_fail_directly()
+    {
+        var package = await _packages.SaveAsync(null, "Demo", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Schritt"), null);
+        var computer = (await _computers.ImportAsync("pc-aus"))[0];
+        _probe.Offline.Add("pc-aus");
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        var waiting = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], false, retryOffline: true)).Id);
+        Assert.Equal(TargetStatus.WaitingOffline, waiting.Targets[0].Status);
+        await using (var db = _db.CreateDbContext())
+        {
+            db.Deployments.Single(d => d.Id == waiting.Id).RetryUntilUtc = DateTime.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+        await deployments.RetryWaitingAsync();
+        Assert.Equal(TargetStatus.Failed, (await deployments.GetAsync(waiting.Id))!.Targets[0].Status);
+
+        // Ohne Nachholen wird nicht vorab geprüft: das Ziel läuft sofort (hier: Simulation erfolgreich).
+        var direct = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], false)).Id);
+        Assert.Equal(TargetStatus.Succeeded, direct.Targets[0].Status);
+    }
+
+    private sealed class SwitchableProbe : IHostProbe
+    {
+        public HashSet<string> Offline { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public Task<ProbeResult> ProbeAsync(string host, CancellationToken ct = default) =>
+            Task.FromResult(new ProbeResult(!Offline.Contains(host), "10.0.0.1"));
     }
 
     private sealed class BlockingTransport : IRemoteTransport

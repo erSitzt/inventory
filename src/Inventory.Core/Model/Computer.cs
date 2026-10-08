@@ -23,6 +23,14 @@ public class Computer
     public Credential? Credential { get; set; }
 
     // Aus dem letzten Inventar-Scan
+    /// <summary>Name, den der Rechner selbst meldet; kann vom Eintrag abweichen (veralteter DNS-Eintrag, CNAME, IP-Adresse).</summary>
+    public string? ReportedName { get; set; }
+
+    /// <summary>true, wenn unter dem eingetragenen Namen ein Rechner mit anderem Namen geantwortet hat.</summary>
+    public bool NameMismatch =>
+        ReportedName is not null
+        && !System.Net.IPAddress.TryParse(Name, out _)
+        && !string.Equals(Name.Split('.')[0], ReportedName, StringComparison.OrdinalIgnoreCase);
     public string? Domain { get; set; }
     public string? Manufacturer { get; set; }
     public string? Model { get; set; }

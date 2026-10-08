@@ -32,6 +32,7 @@ public static class Display
     public static string Field(RuleField field) => field switch
     {
         RuleField.ComputerName => "Rechnername",
+        RuleField.NameMismatch => "Gemeldeter Name weicht ab",
         RuleField.Online => "Online",
         RuleField.Scanned => "Gescannt",
         RuleField.OsName => "Betriebssystem",
@@ -60,7 +61,7 @@ public static class Display
     /// <summary>Operatoren, die für ein Feld sinnvoll sind.</summary>
     public static IReadOnlyList<RuleOperator> OperatorsFor(RuleField field) => field switch
     {
-        RuleField.Online or RuleField.Scanned => [RuleOperator.Equals],
+        RuleField.Online or RuleField.Scanned or RuleField.NameMismatch => [RuleOperator.Equals],
         RuleField.MemoryGb => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals],
         RuleField.OsVersion => [RuleOperator.StartsWith, RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals, RuleOperator.Contains],
         RuleField.Software => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
@@ -120,6 +121,7 @@ public static class Display
         TargetStatus.Succeeded => "erfolgreich",
         TargetStatus.Failed => "fehlgeschlagen",
         TargetStatus.Cancelled => "abgebrochen",
+        TargetStatus.WaitingOffline => "wartet auf Rechner",
         _ => status.ToString(),
     };
 
@@ -129,6 +131,7 @@ public static class Display
         TargetStatus.Succeeded => Color.Success,
         TargetStatus.Failed => Color.Error,
         TargetStatus.Cancelled => Color.Warning,
+        TargetStatus.WaitingOffline => Color.Warning,
         _ => Color.Default,
     };
 
@@ -153,5 +156,22 @@ public static class Display
         >= 1L << 20 => $"{bytes / (double)(1L << 20):N1} MB",
         >= 1L << 10 => $"{bytes / (double)(1L << 10):N0} KB",
         _ => $"{bytes} Bytes",
+    };
+
+    private static readonly string[] DayNames = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+    /// <summary>Wochentage in deutscher Reihenfolge (Montag zuerst).</summary>
+    public static readonly DayOfWeek[] WeekDays =
+        [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday];
+
+    public static string Day(DayOfWeek day) => DayNames[(int)day];
+
+    public static string Trigger(Schedule s) => s.Trigger switch
+    {
+        ScheduleTrigger.Once => $"einmalig am {s.StartLocal:dd.MM.yyyy HH:mm}",
+        ScheduleTrigger.Interval => s.IntervalMinutes % 60 == 0 ? $"alle {s.IntervalMinutes / 60} Stunden" : $"alle {s.IntervalMinutes} Minuten",
+        ScheduleTrigger.Daily => $"täglich um {s.TimeOfDay:hh\\:mm}",
+        ScheduleTrigger.Weekly => $"{string.Join(", ", WeekDays.Where(d => (s.DaysOfWeek & (1 << (int)d)) != 0).Select(Day))} um {s.TimeOfDay:hh\\:mm}",
+        _ => s.Trigger.ToString(),
     };
 }

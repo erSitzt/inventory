@@ -1,0 +1,68 @@
+@page "/software"
+@inject ReportService Reports
+
+<PageTitle>Software – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">Software</MudText>
+    <MudSpacer />
+    <MudTextField @bind-Value="_search" Placeholder="Programm oder Hersteller suchen" Adornment="Adornment.Start" Immediate="true"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="api/reports/software.csv" Target="_blank">Alle Installationen (CSV)</MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="api/reports/computers.csv" Target="_blank">Rechner (CSV)</MudButton>
+</MudStack>
+
+<MudGrid>
+    <MudItem xs="12" lg="@(_selected is null ? 12 : 8)">
+        <MudDataGrid T="SoftwareSummary" Items="_software" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50" RowClick="SelectAsync"
+                     QuickFilter="@(s => string.IsNullOrWhiteSpace(_search) || s.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (s.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))">
+            <Columns>
+                <PropertyColumn Property="s => s.Name" Title="Programm" />
+                <PropertyColumn Property="s => s.Version" Title="Version" />
+                <PropertyColumn Property="s => s.Publisher" Title="Hersteller" />
+                <PropertyColumn Property="s => s.Computers" Title="Rechner" />
+            </Columns>
+            <NoRecordsContent>
+                <MudText Class="pa-4">Noch keine Software erfasst. Die Übersicht füllt sich mit dem ersten Inventar-Scan.</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudDataGridPager T="SoftwareSummary" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudItem>
+    @if (_selected is not null)
+    {
+        <MudItem xs="12" lg="4">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudStack Row="true" AlignItems="AlignItems.Start">
+                    <div style="flex: 1">
+                        <MudText Typo="Typo.h6">@_selected.Name</MudText>
+                        <MudText Typo="Typo.body2">Version @(_selected.Version ?? "unbekannt") · @_computers.Count Rechner</MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="Schließen" OnClick="@(() => _selected = null)" />
+                </MudStack>
+                <MudList T="string" Dense="true">
+                    @foreach (var computer in _computers)
+                    {
+                        <MudListItem T="string" Href="@($"computers/{computer.Id}")">@computer.Name</MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private List<SoftwareSummary> _software = [];
+    private SoftwareSummary? _selected;
+    private List<Computer> _computers = [];
+    private string _search = "";
+
+    protected override async Task OnInitializedAsync() => _software = await Reports.SoftwareAsync();
+
+    private async Task SelectAsync(DataGridRowClickEventArgs<SoftwareSummary> args)
+    {
+        _selected = args.Item;
+        _computers = await Reports.ComputersWithSoftwareAsync(args.Item.Name, args.Item.Version);
+    }
+}

@@ -33,6 +33,8 @@ public enum TargetStatus
     Succeeded,
     Failed,
     Cancelled,
+    /// <summary>Rechner war nicht erreichbar; wird nachgeholt, sobald er online ist.</summary>
+    WaitingOffline,
 }
 
 /// <summary>Ausführung eines Pakets auf einer Menge von Rechnern.</summary>
@@ -44,6 +46,8 @@ public class Deployment
     public required string PackageName { get; set; }
     public string? PackageVersion { get; set; }
     public bool ScanAfter { get; set; }
+    /// <summary>Gesetzt = Offline-Rechner werden bis zu diesem Zeitpunkt nachgeholt.</summary>
+    public DateTime? RetryUntilUtc { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? FinishedUtc { get; set; }
     public List<DeploymentTarget> Targets { get; set; } = [];

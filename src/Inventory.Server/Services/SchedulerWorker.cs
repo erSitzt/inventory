@@ -1,0 +1,38 @@
+using Inventory.Data.Services;
+
+namespace Inventory.Server.Services;
+
+/// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, AD-Synchronisation.</summary>
+public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, ILogger<SchedulerWorker> logger) : BackgroundService
+{
+    private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(5);
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var lastRetry = DateTime.MinValue;
+        using var timer = new PeriodicTimer(Tick);
+        do
+        {
+            try
+            {
+                await schedules.RunDueAsync(stoppingToken);
+                if (DateTime.UtcNow - lastRetry >= RetryInterval)
+                {
+                    lastRetry = DateTime.UtcNow;
+                    await deployments.RetryWaitingAsync(stoppingToken);
+                }
+                await adSync.SyncIfDueAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                // Ein Fehler in einem Durchlauf darf den Takt nicht beenden.
+                logger.LogError(ex, "Fehler im Zeitplaner");
+            }
+        } while (await timer.WaitForNextTickAsync(stoppingToken).AsTask().ContinueWith(t => t.IsCompletedSuccessfully && t.Result, TaskScheduler.Default));
+    }
+}

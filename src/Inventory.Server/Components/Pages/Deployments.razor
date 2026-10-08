@@ -25,6 +25,10 @@
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Info">läuft</MudChip>
                 }
+                else if (context.Item.Targets.Any(t => t.Status == TargetStatus.WaitingOffline))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">wartet auf Offline-Rechner</MudChip>
+                }
                 else
                 {
                     <MudChip T="string" Size="Size.Small">beendet</MudChip>

@@ -17,7 +17,9 @@ public class Collection
 public enum RuleField
 {
     ComputerName,
-    Online,
+    /// <summary>Der Rechner meldet einen anderen Namen als eingetragen.</summary>
+    NameMismatch = 100,
+    Online = 1,
     Scanned,
     OsName,
     OsVersion,

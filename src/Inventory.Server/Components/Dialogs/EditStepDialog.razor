@@ -28,7 +28,7 @@
                                       HelperText="Windows PowerShell 5.1, 64 Bit. Der Exitcode des Skripts (exit N) entscheidet über Erfolg." />
                         break;
                     case StepType.Install:
-                        <MudSelect T="string" @bind-Value="_step.File" Label="Installationsdatei" HelperText="msi, msp, msu, exe, cmd/bat oder ps1 aus den Dateien des Pakets" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelect T="string" Value="_step.File" ValueChanged="SelectInstallerAsync" Label="Installationsdatei" HelperText="msi, msp, msu, exe, cmd/bat oder ps1 aus den Dateien des Pakets" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var option in FileOptions)
                             {
                                 <MudSelectItem T="string" Value="option">@option@(Files.Contains(option) || Folders.Contains(option) ? "" : " (nicht mehr vorhanden)")</MudSelectItem>
@@ -38,8 +38,22 @@
                         {
                             <MudAlert Severity="Severity.Warning" Dense="true">Das Paket enthält noch keine Dateien. Bitte zuerst unter „Dateien“ hochladen.</MudAlert>
                         }
-                        <MudTextField @bind-Value="_step.Arguments" Label="Parameter" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      HelperText="MSI/MSP laufen automatisch mit /qn /norestart, MSU mit /quiet /norestart. Bei EXE die Silent-Parameter des Herstellers angeben, z. B. /S." />
+                        @if (_suggestion is not null)
+                        {
+                            <MudAlert Severity="@(_suggestion.Installer.StartsWith("Unbekannt") ? Severity.Warning : Severity.Info)" Dense="true">
+                                <b>@_suggestion.Installer.</b> @_suggestion.Note
+                                @if (_suggestion.Arguments.Length > 0)
+                                {
+                                    <span> Empfohlene Silent-Parameter: <code>@_suggestion.Arguments</code></span>
+                                    @if (_step.Arguments != _suggestion.Arguments)
+                                    {
+                                        <MudButton Size="Size.Small" Class="ml-2" OnClick="@(() => _step.Arguments = _suggestion.Arguments)">Übernehmen</MudButton>
+                                    }
+                                }
+                            </MudAlert>
+                        }
+                        <MudTextField @bind-Value="_step.Arguments" Label="Parameter" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                      HelperText="Werden an den Installer übergeben. Bei erkannten Installern sind die Silent-Parameter bereits eingetragen." />
                         break;
                     case StepType.FileCopy:
                         <MudSelect T="string" @bind-Value="_step.File" Label="Quelle" HelperText="Datei oder Ordner aus den Dateien des Pakets" Variant="Variant.Outlined" Margin="Margin.Dense">
@@ -189,6 +203,36 @@
         _successCodes = string.Join(", ", _step.SuccessCodes);
         if (Nested)
             _packages = (await PackageService.ListAsync()).Where(p => p.Id != PackageId).ToList();
+        await DetectAsync();
+    }
+
+    private Inventory.Core.SilentSuggestion? _suggestion;
+
+    /// <summary>Erkennt den Installer-Typ der gewählten Datei und trägt die Silent-Parameter ein, solange dort nichts Eigenes steht.</summary>
+    private async Task SelectInstallerAsync(string? file)
+    {
+        var previous = _suggestion?.Arguments;
+        _step.File = file;
+        await DetectAsync();
+        if (_suggestion is not null && (string.IsNullOrWhiteSpace(_step.Arguments) || _step.Arguments == previous))
+            _step.Arguments = _suggestion.Arguments;
+    }
+
+    private async Task DetectAsync()
+    {
+        _suggestion = null;
+        if (Type != StepType.Install || string.IsNullOrWhiteSpace(_step.File))
+            return;
+        try
+        {
+            var path = PackageService.Repository.Resolve(PackageId, _step.File);
+            if (File.Exists(path))
+                _suggestion = await Task.Run(() => Inventory.Core.SilentOptions.Detect(path));
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            // Ohne lesbare Datei gibt es keinen Vorschlag; der Schritt lässt sich trotzdem speichern.
+        }
     }
 
     /// <summary>Ordner, die sich aus den Dateipfaden ergeben; nur beim Kopieren wählbar.</summary>

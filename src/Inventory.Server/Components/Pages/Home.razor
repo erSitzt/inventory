@@ -1,6 +1,71 @@
 @page "/"
+@inject ReportService Reports
 
 <PageTitle>Übersicht – Inventory</PageTitle>
 
 <MudText Typo="Typo.h5" Class="mb-4">Übersicht</MudText>
-<MudAlert Severity="Severity.Info">Noch keine Daten vorhanden.</MudAlert>
+
+@if (_stats is not null)
+{
+    <MudGrid>
+        @Tile("Rechner", _stats.Computers.ToString(), "computers")
+        @Tile("Online", _stats.Online.ToString(), "computers")
+        @Tile("Gescannt", $"{_stats.Scanned} von {_stats.Computers}", "computers")
+        @Tile("Scan-Fehler", _stats.ScanErrors.ToString(), "computers")
+        @Tile("Pakete", _stats.Packages.ToString(), "packages")
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudText Typo="Typo.h6" Class="mb-2">Betriebssysteme</MudText>
+                @if (_stats.OperatingSystems.Count == 0)
+                {
+                    <MudText Color="Color.Secondary">Noch keine Inventardaten. Unter „Rechner“ lässt sich ein Scan starten.</MudText>
+                }
+                @foreach (var (os, count) in _stats.OperatingSystems)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                        <MudText Typo="Typo.body2" Style="width: 45%">@os</MudText>
+                        <MudProgressLinear Value="@(100d * count / Math.Max(_stats.Scanned, 1))" Color="Color.Primary" Rounded="true" Size="Size.Medium" Style="flex: 1" />
+                        <MudText Typo="Typo.body2" Style="width: 2.5rem; text-align: right">@count</MudText>
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudText Typo="Typo.h6" Class="mb-2">Letzte Deployments</MudText>
+                @if (_stats.RecentDeployments.Count == 0)
+                {
+                    <MudText Color="Color.Secondary">Noch keine Deployments.</MudText>
+                }
+                @foreach (var deployment in _stats.RecentDeployments)
+                {
+                    var failed = deployment.Targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled);
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                        <MudLink Href="@($"deployments/{deployment.Id}")" Style="flex: 1">@deployment.PackageName @deployment.PackageVersion</MudLink>
+                        <MudText Typo="Typo.caption">@Display.LocalTime(deployment.CreatedUtc)</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="@(failed > 0 ? Color.Error : Color.Success)">
+                            @deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded)/@deployment.Targets.Count
+                        </MudChip>
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private DashboardStats? _stats;
+
+    protected override async Task OnInitializedAsync() => _stats = await Reports.DashboardAsync();
+
+    private static RenderFragment Tile(string label, string value, string href) => @<MudItem xs="6" sm="4" md="2">
+        <MudLink Href="@href" Underline="Underline.None">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@label</MudText>
+                <MudText Typo="Typo.h5">@value</MudText>
+            </MudPaper>
+        </MudLink>
+    </MudItem>;
+}

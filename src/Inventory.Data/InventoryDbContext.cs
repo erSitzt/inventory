@@ -21,6 +21,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
     public DbSet<Deployment> Deployments => Set<Deployment>();
     public DbSet<DeploymentTarget> DeploymentTargets => Set<DeploymentTarget>();
+    public DbSet<Schedule> Schedules => Set<Schedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,6 +97,12 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
                     (a, b) => ReferenceEquals(a, b),
                     steps => steps.Count,
                     steps => steps.ToList()));
+        });
+
+        modelBuilder.Entity<Schedule>(e =>
+        {
+            e.HasOne(s => s.Package).WithMany().HasForeignKey(s => s.PackageId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(s => s.Collection).WithMany().HasForeignKey(s => s.CollectionId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Setting>().HasKey(s => s.Key);

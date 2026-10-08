@@ -19,9 +19,9 @@
     <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="deployments" aria-label="Zurück zur Übersicht" />
     <MudText Typo="Typo.h5">@_deployment.PackageName @_deployment.PackageVersion</MudText>
     <MudSpacer />
-    @if (Running)
+    @if (Running || Waiting)
     {
-        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="@(() => DeploymentService.Cancel(Id))">Abbrechen</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="@(() => DeploymentService.CancelAsync(Id))">Abbrechen</MudButton>
     }
     else if (FailedTargets.Count > 0 && _deployment.PackageId is not null)
     {
@@ -36,6 +36,10 @@
         <span> · beendet @Display.LocalTime(_deployment.FinishedUtc)</span>
     }
     · @_deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded) von @_deployment.Targets.Count erfolgreich
+    @if (Waiting)
+    {
+        <span> · Offline-Rechner werden bis @Display.LocalTime(_deployment.RetryUntilUtc) nachgeholt</span>
+    }
 </MudText>
 
 @if (Running)
@@ -69,7 +73,7 @@
                 }
                 else if (target.Steps.Count == 0)
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(target.Status == TargetStatus.Queued ? "Wartet auf einen freien Platz." : "Es wurde kein Schritt ausgeführt.")</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(target.Status == TargetStatus.Queued ? "Wartet auf einen freien Platz." : target.Error ?? "Es wurde kein Schritt ausgeführt.")</MudText>
                 }
                 else
                 {
@@ -110,6 +114,7 @@
     private Timer? _liveRefresh;
 
     private bool Running => DeploymentService.IsRunning(Id);
+    private bool Waiting => _deployment!.Targets.Any(t => t.Status == TargetStatus.WaitingOffline);
     private List<DeploymentTarget> FailedTargets =>
         _deployment!.Targets.Where(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled && t.ComputerId is not null).ToList();
 
@@ -142,7 +147,7 @@
     {
         try
         {
-            var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), _deployment.ScanAfter);
+            var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), _deployment.ScanAfter, _deployment.RetryUntilUtc is not null);
             Navigation.NavigateTo($"deployments/{retry.Id}");
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)

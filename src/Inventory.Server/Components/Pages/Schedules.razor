@@ -1,0 +1,100 @@
+@page "/schedules"
+@inject ScheduleService ScheduleService
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Zeitpläne – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">Zeitpläne</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditAsync(null))">Neuer Zeitplan</MudButton>
+</MudStack>
+
+<MudDataGrid T="Schedule" Items="_schedules" Dense="true" Hover="true" SortMode="SortMode.None">
+    <Columns>
+        <PropertyColumn Property="s => s.Name" Title="Name" />
+        <TemplateColumn Title="Aktion">
+            <CellTemplate>@(context.Item.Action == ScheduleAction.Scan ? "Inventar-Scan" : $"Paket „{context.Item.Package?.Name}“")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Ziel">
+            <CellTemplate>@(context.Item.Collection?.Name ?? "Alle Rechner")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Rhythmus">
+            <CellTemplate>@Display.Trigger(context.Item)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Nächster Lauf">
+            <CellTemplate>
+                @if (!context.Item.Enabled)
+                {
+                    <MudChip T="string" Size="Size.Small">deaktiviert</MudChip>
+                }
+                else
+                {
+                    @Display.LocalTime(context.Item.NextRunUtc)
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Letzter Lauf">
+            <CellTemplate>
+                @if (context.Item.LastRunUtc is not null)
+                {
+                    <span>@Display.LocalTime(context.Item.LastRunUtc): @context.Item.LastResult</span>
+                }
+                else
+                {
+                    <span>–</span>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" aria-label="Jetzt ausführen" Disabled="_busy" OnClick="@(() => RunNowAsync(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Bearbeiten" OnClick="@(() => EditAsync(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Löschen" OnClick="@(() => DeleteAsync(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">Noch keine Zeitpläne. Ein Zeitplan scannt regelmäßig oder stellt ein Paket auf einer Sammlung bereit – z. B. auf der dynamischen Sammlung „Chrome veraltet“.</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<Schedule> _schedules = [];
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync() => _schedules = await ScheduleService.ListAsync();
+
+    private async Task EditAsync(Schedule? schedule)
+    {
+        var parameters = new DialogParameters<EditScheduleDialog> { { d => d.Schedule, schedule } };
+        var dialog = await Dialogs.ShowAsync<EditScheduleDialog>(schedule?.Name ?? "Neuer Zeitplan", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            _schedules = await ScheduleService.ListAsync();
+    }
+
+    private async Task RunNowAsync(Schedule schedule)
+    {
+        _busy = true;
+        try
+        {
+            var result = await ScheduleService.RunNowAsync(schedule.Id);
+            Snackbar.Add($"{schedule.Name}: {result}", result.StartsWith("Fehler") ? Severity.Error : Severity.Success);
+            _schedules = await ScheduleService.ListAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(Schedule schedule)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync("Zeitplan löschen", $"„{schedule.Name}“ wirklich löschen?", yesText: "Löschen", cancelText: "Abbrechen");
+        if (confirmed != true)
+            return;
+        await ScheduleService.DeleteAsync(schedule.Id);
+        _schedules = await ScheduleService.ListAsync();
+    }
+}

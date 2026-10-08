@@ -75,6 +75,35 @@ public class InventoryTests
         Assert.Equal(1, (await collections.ListAsync()).Single().Count);
     }
 
+    [Theory]
+    [InlineData("pc-01", "PC-01", false)]
+    [InlineData("pc-01.corp.local", "PC-01", false)]
+    [InlineData("alias-kasse", "PC-07", true)]
+    [InlineData("10.0.0.5", "PC-07", false)]
+    [InlineData("pc-01", null, false)]
+    public void Name_mismatch_compares_host_label_with_reported_name(string entered, string? reported, bool expected)
+    {
+        Assert.Equal(expected, new Computer { Name = entered, ReportedName = reported }.NameMismatch);
+    }
+
+    [Fact]
+    public async Task Scan_reports_when_a_different_computer_answers_under_the_entered_name()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var transport = new InventoryTransport { ReportedName = "PC-07" };
+        var jobs = new RemoteJobService([transport], computers, new CredentialService(db, new ReversingProtector()), new SettingsService(db));
+        var scans = new ScanService(jobs, new InventoryStore(db));
+        var added = await computers.ImportAsync("alias-kasse pc-07");
+
+        var outcomes = (await scans.ScanAsync(added.Select(c => c.Id))).OrderBy(o => o.ComputerId).ToList();
+
+        Assert.Equal(["PC-07", null], outcomes.Select(o => o.MismatchedName));
+        var stored = await computers.ListAsync();
+        Assert.Equal([true, false], stored.Select(c => c.NameMismatch));
+        Assert.True(CollectionEvaluator.Matches(new CollectionRule { Field = RuleField.NameMismatch, Operator = RuleOperator.Equals, Value = "true" }, stored[0]));
+    }
+
     [Fact]
     public async Task Failed_scan_records_error_and_keeps_old_inventory()
     {
@@ -121,6 +150,7 @@ public class InventoryTests
         public TransportKind Kind => TransportKind.SmbService;
         public string ChromeVersion { get; set; } = "140.0";
         public string? Fail { get; set; }
+        public string? ReportedName { get; set; }
 
         public Task<JobResult> RunAsync(Core.Abstractions.RemoteTarget target, JobManifest job, IReadOnlyList<Inventory.Core.Abstractions.JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
         {
@@ -129,7 +159,7 @@ public class InventoryTests
             return Task.FromResult(new JobResult
             {
                 JobId = job.JobId, Success = true,
-                Inventory = new InventoryData { Model = "Testmodell", Software = [new SoftwareItem { Name = "Google Chrome", Version = ChromeVersion }] },
+                Inventory = new InventoryData { ComputerName = ReportedName, Model = "Testmodell", Software = [new SoftwareItem { Name = "Google Chrome", Version = ChromeVersion }] },
             });
         }
     }

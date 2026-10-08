@@ -25,6 +25,13 @@
     </MudButton>
 </MudStack>
 
+@if (_computer.NameMismatch)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        Unter dem Namen <b>@_computer.Name</b> hat sich beim letzten Scan der Rechner <b>@_computer.ReportedName</b> gemeldet.
+        Die Inventardaten unten gehören zu @_computer.ReportedName. Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias (CNAME) auf diesen Rechner.
+    </MudAlert>
+}
 @if (_computer.LastScanError is not null)
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">Letzter Scan fehlgeschlagen: @_computer.LastScanError</MudAlert>
@@ -40,6 +47,7 @@
             <MudItem xs="12" md="6">
                 <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
                     <tbody>
+                        @Row("Gemeldeter Name", _computer.ReportedName)
                         @Row("Betriebssystem", Display.Os(_computer))
                         @Row("Version", $"{_computer.OsVersion} {_computer.OsArchitecture}".Trim())
                         @Row("Installiert am", Display.LocalTime(_computer.OsInstalledUtc))

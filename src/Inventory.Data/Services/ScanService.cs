@@ -2,7 +2,8 @@ using Inventory.Contracts;
 
 namespace Inventory.Data.Services;
 
-public sealed record ScanOutcome(int ComputerId, bool Success, string? Error);
+/// <param name="ReportedName">Gesetzt, wenn der Rechner sich mit einem anderen Namen gemeldet hat als eingetragen.</param>
+public sealed record ScanOutcome(int ComputerId, bool Success, string? Error, string? MismatchedName = null);
 
 /// <summary>Führt Inventar-Scans aus und speichert die Ergebnisse.</summary>
 public sealed class ScanService(RemoteJobService jobs, InventoryStore store)
@@ -16,8 +17,8 @@ public sealed class ScanService(RemoteJobService jobs, InventoryStore store)
 
         if (result is { Success: true, Inventory: not null })
         {
-            await store.SaveAsync(computerId, result.Inventory, ct);
-            return new ScanOutcome(computerId, true, null);
+            var mismatch = await store.SaveAsync(computerId, result.Inventory, ct);
+            return new ScanOutcome(computerId, true, null, mismatch ? result.Inventory.ComputerName : null);
         }
 
         var error = result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error ?? "Der Scan lieferte keine Daten";

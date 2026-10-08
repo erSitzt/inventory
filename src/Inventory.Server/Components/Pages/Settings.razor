@@ -1,6 +1,8 @@
 @page "/settings"
 @using Microsoft.Extensions.Options
 @inject SettingsService SettingsService
+@inject AdSyncService AdSync
+@inject CredentialService CredentialService
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
 
@@ -30,7 +32,104 @@
     </MudStack>
 </MudPaper>
 
+<MudPaper Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">Active Directory</MudText>
+        <MudText Typo="Typo.body2">
+            Legt aktivierte Computerkonten aus dem Verzeichnis als Rechner an. Bereits vorhandene bleiben unverändert, gelöscht wird nie automatisch.
+        </MudText>
+        <MudSwitch T="bool" @bind-Value="_adEnabled" Color="Color.Primary" Label="Regelmäßig synchronisieren" />
+        <MudTextField @bind-Value="_adServer" Label="Domänencontroller oder Domäne" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      HelperText="Leer = Domäne, der dieser Server angehört" />
+        <MudTextField @bind-Value="_adBaseDns" Label="Suchwurzeln (OUs)" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3"
+                      Placeholder="OU=Clients,DC=firma,DC=local" HelperText="Eine je Zeile; leer = gesamte Domäne" />
+        <MudSelect T="int?" @bind-Value="_adCredentialId" Label="Zugangsdaten" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                   Placeholder="Konto des Server-Dienstes">
+            @foreach (var credential in _credentials)
+            {
+                <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudNumericField T="int" @bind-Value="_adIntervalHours" Label="Intervall (Stunden)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="720" />
+        <MudStack Row="true" Wrap="Wrap.Wrap">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAdAsync">Speichern</MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_adBusy" OnClick="PreviewAdAsync">Vorschau</MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_adBusy" OnClick="SyncAdAsync">Jetzt synchronisieren</MudButton>
+        </MudStack>
+        @if (_adMessage is not null)
+        {
+            <MudAlert Severity="@_adSeverity" Dense="true">@_adMessage</MudAlert>
+        }
+        @if (_adLastResult is not null)
+        {
+            <MudText Typo="Typo.caption">Letzter Lauf @Display.LocalTime(_adLastRunUtc): @_adLastResult</MudText>
+        }
+    </MudStack>
+</MudPaper>
+
 @code {
+    private bool _adEnabled;
+    private string? _adServer;
+    private string? _adBaseDns;
+    private int? _adCredentialId;
+    private int _adIntervalHours = 24;
+    private DateTime? _adLastRunUtc;
+    private string? _adLastResult;
+    private string? _adMessage;
+    private Severity _adSeverity;
+    private bool _adBusy;
+    private List<Credential> _credentials = [];
+
+    private async Task LoadAdAsync()
+    {
+        _credentials = await CredentialService.ListAsync();
+        var ad = await AdSync.GetSettingsAsync();
+        (_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adLastRunUtc, _adLastResult) =
+            (ad.Enabled, ad.Server, ad.BaseDns?.Replace(";", "\n"), ad.CredentialId, ad.IntervalHours, ad.LastRunUtc, ad.LastResult);
+    }
+
+    private async Task SaveAdAsync()
+    {
+        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours);
+        Snackbar.Add("Gespeichert.", Severity.Success);
+    }
+
+    private async Task PreviewAdAsync()
+    {
+        await RunAdAsync(async () =>
+        {
+            var preview = await AdSync.PreviewAsync();
+            var names = string.Join(", ", preview.NewNames.Take(15)) + (preview.NewNames.Count > 15 ? " …" : "");
+            return $"{preview.Total} Computerkonten gefunden, davon {preview.NewNames.Count} neu" + (preview.NewNames.Count > 0 ? $": {names}" : ".");
+        });
+    }
+
+    private Task SyncAdAsync() => RunAdAsync(() => AdSync.SyncAsync());
+
+    /// <summary>Speichert zuerst, damit Vorschau und Sync mit den gerade angezeigten Werten laufen.</summary>
+    private async Task RunAdAsync(Func<Task<string>> action)
+    {
+        _adBusy = true;
+        _adMessage = null;
+        try
+        {
+            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours);
+            _adMessage = await action();
+            _adSeverity = _adMessage.StartsWith("Fehler") ? Severity.Error : Severity.Success;
+        }
+        catch (Inventory.Core.Abstractions.RemoteException ex)
+        {
+            _adMessage = ex.Message;
+            _adSeverity = Severity.Error;
+        }
+        finally
+        {
+            _adBusy = false;
+            var ad = await AdSync.GetSettingsAsync();
+            (_adLastRunUtc, _adLastResult) = (ad.LastRunUtc, ad.LastResult);
+        }
+    }
+
     private TransportKind _transport;
 
     private bool _fallback;
@@ -39,6 +138,7 @@
     {
         _transport = await SettingsService.GetDefaultTransportAsync();
         _fallback = await SettingsService.GetTransportFallbackAsync();
+        await LoadAdAsync();
     }
 
     private async Task SetFallbackAsync(bool enabled)

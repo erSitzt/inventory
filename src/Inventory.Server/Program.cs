@@ -38,10 +38,12 @@ if (options.ResolveSimulate())
     builder.Services.AddSingleton<IHostProbe, SimulatedHostProbe>();
     builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.SmbService));
     builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.WinRm));
+    builder.Services.AddSingleton<IDirectorySource, SimulatedDirectorySource>();
 }
 else
 {
     builder.Services.AddSingleton<IHostProbe, TcpHostProbe>();
+    builder.Services.AddSingleton<IDirectorySource, LdapDirectorySource>();
     if (OperatingSystem.IsWindows())
     {
         builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner")));
@@ -56,6 +58,11 @@ builder.Services.AddSingleton<CollectionService>();
 builder.Services.AddSingleton(new PackageRepository(Path.Combine(dataDirectory, "repository")));
 builder.Services.AddSingleton<PackageService>();
 builder.Services.AddSingleton<DeploymentService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<ScheduleService>();
+builder.Services.AddSingleton<AdSyncService>();
+builder.Services.AddSingleton<ReportService>();
+builder.Services.AddHostedService<SchedulerWorker>();
 builder.Services.AddSingleton<ComputerService>();
 builder.Services.AddSingleton<CredentialService>();
 builder.Services.AddSingleton<SettingsService>();
@@ -86,6 +93,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapComputerEndpoints();
 app.MapPackageEndpoints();
+app.MapReportEndpoints();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

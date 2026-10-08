@@ -32,7 +32,7 @@
                                 <MudSelectItem T="RuleOperator" Value="op">@Display.Operator(op)</MudSelectItem>
                             }
                         </MudSelect>
-                        @if (rule.Field is RuleField.Online or RuleField.Scanned)
+                        @if (rule.Field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch)
                         {
                             <MudSelect T="string" @bind-Value="rule.Value" Label="Wert" Variant="Variant.Outlined" Margin="Margin.Dense">
                                 <MudSelectItem T="string" Value="@("true")">ja</MudSelectItem>
@@ -100,7 +100,7 @@
         var allowed = Display.OperatorsFor(field);
         if (!allowed.Contains(rule.Operator))
             rule.Operator = allowed[0];
-        rule.Value = field is RuleField.Online or RuleField.Scanned ? "true" : "";
+        rule.Value = field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch ? "true" : "";
         rule.Value2 = null;
     }
 

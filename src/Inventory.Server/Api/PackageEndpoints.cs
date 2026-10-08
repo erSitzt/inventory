@@ -6,7 +6,7 @@ namespace Inventory.Server.Api;
 
 public static class PackageEndpoints
 {
-    public sealed record DeployRequest(int PackageId, int[] ComputerIds, bool ScanAfter);
+    public sealed record DeployRequest(int PackageId, int[] ComputerIds, bool ScanAfter, bool RetryOffline = false);
 
     public static IEndpointRouteBuilder MapPackageEndpoints(this IEndpointRouteBuilder app)
     {
@@ -34,7 +34,7 @@ public static class PackageEndpoints
         {
             try
             {
-                var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, request.ScanAfter, ct);
+                var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, request.ScanAfter, request.RetryOffline, ct);
                 return Results.Created($"/api/deployments/{deployment.Id}", ToDto(deployment));
             }
             catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)

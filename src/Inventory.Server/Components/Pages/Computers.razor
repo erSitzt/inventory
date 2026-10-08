@@ -60,7 +60,15 @@
     <Columns>
         <SelectColumn T="Computer" />
         <TemplateColumn Title="Name" SortBy="c => c.Name">
-            <CellTemplate><MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink></CellTemplate>
+            <CellTemplate>
+                <MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink>
+                @if (context.Item.NameMismatch)
+                {
+                    <MudTooltip Text="@($"Unter diesem Namen hat sich der Rechner {context.Item.ReportedName} gemeldet (veralteter DNS-Eintrag oder Alias?)")">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">ist @context.Item.ReportedName</MudChip>
+                    </MudTooltip>
+                }
+            </CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="Status" SortBy="c => c.IsOnline">
             <CellTemplate>
@@ -151,7 +159,7 @@
 
     private bool Matches(Computer c) =>
         string.IsNullOrWhiteSpace(_search)
-        || new[] { c.Name, c.IpAddress, c.Description, c.OsName, c.Model, c.LoggedOnUser, c.SerialNumber }
+        || new[] { c.Name, c.ReportedName, c.IpAddress, c.Description, c.OsName, c.Model, c.LoggedOnUser, c.SerialNumber }
             .Any(v => v?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
 
     /// <summary>Die Auswahl, sonst alle gerade angezeigten Rechner.</summary>
@@ -202,6 +210,9 @@
             var failed = outcomes.Count(o => !o.Success);
             Snackbar.Add(failed == 0 ? $"{outcomes.Count} Rechner gescannt." : $"{outcomes.Count - failed} gescannt, {failed} fehlgeschlagen.",
                 failed == 0 ? Severity.Success : Severity.Warning);
+            var mismatched = outcomes.Count(o => o.MismatchedName is not null);
+            if (mismatched > 0)
+                Snackbar.Add($"{mismatched} Rechner haben sich mit einem anderen Namen gemeldet als eingetragen – siehe Markierung in der Liste.", Severity.Warning);
             await ReloadAsync();
         }
         finally

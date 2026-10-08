@@ -10,12 +10,13 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
     // Scans laufen parallel, SQLite erlaubt aber nur einen Schreiber: nacheinander speichern statt auf Sperrkonflikte zu laufen.
     private readonly SemaphoreSlim _writeLock = new(1, 1);
 
-    public async Task SaveAsync(int computerId, InventoryData data, CancellationToken ct = default)
+    /// <returns>true, wenn sich der Rechner mit einem anderen Namen gemeldet hat als eingetragen.</returns>
+    public async Task<bool> SaveAsync(int computerId, InventoryData data, CancellationToken ct = default)
     {
         await _writeLock.WaitAsync(ct);
         try
         {
-            await SaveCoreAsync(computerId, data, ct);
+            return await SaveCoreAsync(computerId, data, ct);
         }
         finally
         {
@@ -23,7 +24,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         }
     }
 
-    private async Task SaveCoreAsync(int computerId, InventoryData data, CancellationToken ct)
+    private async Task<bool> SaveCoreAsync(int computerId, InventoryData data, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -34,6 +35,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         computer.LastScanError = null;
         computer.LastSeenUtc = now;
         computer.IsOnline = true;
+        computer.ReportedName = data.ComputerName;
         computer.Domain = data.Domain;
         computer.Manufacturer = data.Manufacturer;
         computer.Model = data.Model;
@@ -82,6 +84,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
 
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
+        return computer.NameMismatch;
     }
 
     public async Task SaveErrorAsync(int computerId, string error, CancellationToken ct = default)

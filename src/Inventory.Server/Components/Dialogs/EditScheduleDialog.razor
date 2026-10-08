@@ -1,0 +1,123 @@
+@inject ScheduleService ScheduleService
+@inject PackageService PackageService
+@inject CollectionService CollectionService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_s.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" AutoFocus="true" />
+            <MudSelect T="ScheduleAction" @bind-Value="_s.Action" Label="Aktion" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem T="ScheduleAction" Value="ScheduleAction.Scan">Inventar-Scan</MudSelectItem>
+                <MudSelectItem T="ScheduleAction" Value="ScheduleAction.Deploy">Paket bereitstellen</MudSelectItem>
+            </MudSelect>
+            @if (_s.Action == ScheduleAction.Deploy)
+            {
+                <MudSelect T="int?" @bind-Value="_s.PackageId" Label="Paket" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    @foreach (var package in _packages)
+                    {
+                        <MudSelectItem T="int?" Value="@package.Id">@package.Name @package.Version</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudCheckBox T="bool" @bind-Value="_s.ScanAfter" Label="Danach Inventar neu scannen" Dense="true" />
+                <MudCheckBox T="bool" @bind-Value="_s.RetryOffline" Label="Offline-Rechner nachholen (bis zu 3 Tage)" Dense="true" />
+            }
+            <MudSelect T="int?" @bind-Value="_s.CollectionId" Label="Ziel" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="Alle Rechner"
+                       HelperText="Dynamische Sammlungen werden bei jedem Lauf neu ausgewertet.">
+                @foreach (var summary in _collections)
+                {
+                    <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="ScheduleTrigger" @bind-Value="_s.Trigger" Label="Rhythmus" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Daily">Täglich</MudSelectItem>
+                <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Weekly">Wöchentlich</MudSelectItem>
+                <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Interval">In festen Abständen</MudSelectItem>
+                <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Once">Einmalig</MudSelectItem>
+            </MudSelect>
+            @switch (_s.Trigger)
+            {
+                case ScheduleTrigger.Daily:
+                    <MudTimePicker @bind-Time="_time" Label="Uhrzeit" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" />
+                    break;
+                case ScheduleTrigger.Weekly:
+                    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+                        @foreach (var day in Display.WeekDays)
+                        {
+                            var bit = 1 << (int)day;
+                            <MudChip T="string" Color="@((_s.DaysOfWeek & bit) != 0 ? Color.Primary : Color.Default)" OnClick="@(() => _s.DaysOfWeek ^= bit)">@Display.Day(day)</MudChip>
+                        }
+                    </MudStack>
+                    <MudTimePicker @bind-Time="_time" Label="Uhrzeit" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" />
+                    break;
+                case ScheduleTrigger.Interval:
+                    <MudNumericField T="int" @bind-Value="_s.IntervalMinutes" Label="Abstand (Minuten)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="5" Max="43200" />
+                    break;
+                case ScheduleTrigger.Once:
+                    <MudStack Row="true">
+                        <MudDatePicker @bind-Date="_date" Label="Datum" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" DateFormat="dd.MM.yyyy" />
+                        <MudTimePicker @bind-Time="_time" Label="Uhrzeit" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" />
+                    </MudStack>
+                    break;
+            }
+            <MudSwitch T="bool" @bind-Value="_s.Enabled" Color="Color.Primary" Label="Aktiv" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)" OnClick="SaveAsync">Speichern</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neuer Zeitplan.</summary>
+    [Parameter] public Schedule? Schedule { get; set; }
+
+    private Schedule _s = new() { Name = "", Trigger = ScheduleTrigger.Daily };
+    private TimeSpan? _time = new TimeSpan(12, 0, 0);
+    private DateTime? _date = DateTime.Today;
+    private List<Package> _packages = [];
+    private List<CollectionSummary> _collections = [];
+
+    private bool CanSave => !string.IsNullOrWhiteSpace(_s.Name)
+        && (_s.Action == ScheduleAction.Scan || _s.PackageId is not null)
+        && (_s.Trigger != ScheduleTrigger.Weekly || _s.DaysOfWeek != 0)
+        && (_s.Trigger == ScheduleTrigger.Interval || _time is not null)
+        && (_s.Trigger != ScheduleTrigger.Once || _date is not null);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _packages = (await PackageService.ListAsync()).Where(p => p.Steps.Count > 0).ToList();
+        _collections = await CollectionService.ListAsync();
+        if (Schedule is null)
+            return;
+        // Kopie bearbeiten, damit "Abbrechen" nichts an der angezeigten Liste verändert.
+        _s = new Schedule
+        {
+            Id = Schedule.Id, Name = Schedule.Name, Enabled = Schedule.Enabled, Action = Schedule.Action, PackageId = Schedule.PackageId,
+            ScanAfter = Schedule.ScanAfter, RetryOffline = Schedule.RetryOffline, CollectionId = Schedule.CollectionId, Trigger = Schedule.Trigger,
+            StartLocal = Schedule.StartLocal, IntervalMinutes = Schedule.IntervalMinutes, TimeOfDay = Schedule.TimeOfDay, DaysOfWeek = Schedule.DaysOfWeek,
+            LastRunUtc = Schedule.LastRunUtc, LastResult = Schedule.LastResult,
+        };
+        _time = Schedule.Trigger == ScheduleTrigger.Once ? Schedule.StartLocal?.TimeOfDay : Schedule.TimeOfDay;
+        _date = Schedule.StartLocal?.Date ?? DateTime.Today;
+    }
+
+    private async Task SaveAsync()
+    {
+        _s.TimeOfDay = _time ?? _s.TimeOfDay;
+        if (_s.Trigger == ScheduleTrigger.Once)
+        {
+            _s.StartLocal = _date!.Value.Date + _time!.Value;
+            // Ein geänderter Einmal-Termin soll wieder laufen.
+            _s.LastRunUtc = null;
+        }
+        else if (_s.Trigger != ScheduleTrigger.Interval)
+        {
+            _s.StartLocal = null;
+        }
+        await ScheduleService.SaveAsync(_s);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -1,15 +1,19 @@
 using System.Collections.Concurrent;
 using System.Text;
 using Inventory.Contracts;
+using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventory.Data.Services;
 
 /// <summary>Legt Deployments an, führt sie im Hintergrund aus und hält den Live-Stand laufender Ziele bereit.</summary>
-public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory)
+public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe)
 {
     private const int MaxParallelTargets = 16;
+    /// <summary>So lange werden Offline-Rechner nachgeholt, bevor das Ziel als fehlgeschlagen gilt.</summary>
+    public static readonly TimeSpan RetryWindow = TimeSpan.FromDays(3);
+    private const string WaitingText = "Rechner nicht erreichbar – wird nachgeholt, sobald er online ist";
 
     // Über alle Deployments hinweg begrenzt, damit mehrere gleichzeitige Deployments Server und Netz nicht überlasten.
     private readonly SemaphoreSlim _slots = new(MaxParallelTargets, MaxParallelTargets);
@@ -55,11 +59,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
     /// <summary>Legt das Deployment an und startet es im Hintergrund.</summary>
     /// <exception cref="InvalidOperationException">Das Paket lässt sich nicht ausführen (z. B. keine Schritte).</exception>
-    public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, bool scanAfter, CancellationToken ct = default)
+    public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, bool scanAfter, bool retryOffline = false, CancellationToken ct = default)
     {
-        var built = await packages.BuildJobAsync(packageId, ct);
-        if (scanAfter)
-            built.Manifest.Steps.Add(new JobStep { Name = "Inventar-Scan", Type = StepType.InventoryScan, TimeoutSeconds = 300 });
+        var built = await BuildAsync(packageId, scanAfter, ct);
 
         var ids = computerIds.Distinct().ToList();
         Deployment deployment;
@@ -72,23 +74,102 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             deployment = new Deployment
             {
                 PackageId = packageId, PackageName = package.Name, PackageVersion = package.Version, ScanAfter = scanAfter,
+                RetryUntilUtc = retryOffline ? DateTime.UtcNow + RetryWindow : null,
                 Targets = computers.Select(c => new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.Queued }).ToList(),
             };
             db.Deployments.Add(deployment);
             await db.SaveChangesAsync(ct);
         }
 
-        var cts = new CancellationTokenSource();
-        _running[deployment.Id] = cts;
-        _ = Task.Run(() => RunAsync(deployment, built, cts));
+        Launch(deployment, deployment.Targets, built, checkOnline: retryOffline);
         return deployment;
     }
 
-    /// <summary>Bricht laufende Ziele ab; noch wartende werden nicht mehr gestartet.</summary>
-    public void Cancel(int deploymentId)
+    private async Task<BuiltJob> BuildAsync(int packageId, bool scanAfter, CancellationToken ct)
+    {
+        var built = await packages.BuildJobAsync(packageId, ct);
+        if (scanAfter)
+            built.Manifest.Steps.Add(new JobStep { Name = "Inventar-Scan", Type = StepType.InventoryScan, TimeoutSeconds = 300 });
+        return built;
+    }
+
+    private void Launch(Deployment deployment, IReadOnlyList<DeploymentTarget> targets, BuiltJob built, bool checkOnline)
+    {
+        var cts = new CancellationTokenSource();
+        _running[deployment.Id] = cts;
+        _ = Task.Run(() => RunAsync(deployment, targets, built, checkOnline, cts));
+    }
+
+    /// <summary>Bricht laufende Ziele ab; wartende (auch auf Offline-Rechner) werden nicht mehr gestartet.</summary>
+    public async Task CancelAsync(int deploymentId)
     {
         if (_running.TryGetValue(deploymentId, out var cts))
             cts.Cancel();
+        await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId && t.Status == TargetStatus.WaitingOffline)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, "Abgebrochen")
+                .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+        Changed?.Invoke(deploymentId);
+    }
+
+    /// <summary>
+    /// Holt Ziele nach, die auf einen Offline-Rechner warten: wer jetzt erreichbar ist, wird ausgeführt;
+    /// ist die Frist abgelaufen, gilt das Ziel als fehlgeschlagen. Wird regelmäßig vom Zeitplaner aufgerufen.
+    /// </summary>
+    public async Task<int> RetryWaitingAsync(CancellationToken ct = default)
+    {
+        List<Deployment> waiting;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            waiting = await db.Deployments.AsNoTracking()
+                .Include(d => d.Targets.Where(t => t.Status == TargetStatus.WaitingOffline))
+                .Where(d => d.Targets.Any(t => t.Status == TargetStatus.WaitingOffline))
+                .ToListAsync(ct);
+        }
+
+        var started = 0;
+        foreach (var deployment in waiting.Where(d => !_running.ContainsKey(d.Id)))
+        {
+            var expired = deployment.RetryUntilUtc is null || deployment.RetryUntilUtc < DateTime.UtcNow;
+            var ready = new List<DeploymentTarget>();
+            if (!expired)
+            {
+                foreach (var target in deployment.Targets)
+                {
+                    if ((await probe.ProbeAsync(target.ComputerName, ct)).Online)
+                        ready.Add(target);
+                }
+            }
+
+            BuiltJob? built = null;
+            string? failure = expired ? "Rechner war bis zum Ablauf der Frist nicht erreichbar" : null;
+            if (ready.Count > 0)
+            {
+                try
+                {
+                    built = deployment.PackageId is { } packageId
+                        ? await BuildAsync(packageId, deployment.ScanAfter, ct)
+                        : throw new InvalidOperationException("Das Paket wurde gelöscht");
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+                {
+                    failure = ex.Message;
+                }
+            }
+
+            if (failure is not null)
+            {
+                await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.WaitingOffline)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, failure)
+                        .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+                Changed?.Invoke(deployment.Id);
+            }
+            else if (built is not null)
+            {
+                Launch(deployment, ready, built, checkOnline: false);
+                started += ready.Count;
+            }
+        }
+        return started;
     }
 
     /// <summary>Nach einem Neustart des Servers: Ziele, die noch als wartend oder laufend gespeichert sind, wurden nie beendet.</summary>
@@ -103,11 +184,11 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         await db.Deployments.Where(d => d.FinishedUtc == null).ExecuteUpdateAsync(s => s.SetProperty(d => d.FinishedUtc, now), ct);
     }
 
-    private async Task RunAsync(Deployment deployment, BuiltJob built, CancellationTokenSource cts)
+    private async Task RunAsync(Deployment deployment, IReadOnlyList<DeploymentTarget> targets, BuiltJob built, bool checkOnline, CancellationTokenSource cts)
     {
         try
         {
-            await Task.WhenAll(deployment.Targets.Select(target => RunTargetAsync(deployment, target, built, cts.Token)));
+            await Task.WhenAll(targets.Select(target => RunTargetAsync(deployment, target, built, checkOnline, cts.Token)));
         }
         finally
         {
@@ -119,7 +200,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         }
     }
 
-    private async Task RunTargetAsync(Deployment deployment, DeploymentTarget target, BuiltJob built, CancellationToken ct)
+    private async Task RunTargetAsync(Deployment deployment, DeploymentTarget target, BuiltJob built, bool checkOnline, CancellationToken ct)
     {
         var status = TargetStatus.Failed;
         string? error = null;
@@ -129,6 +210,12 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         {
             await _slots.WaitAsync(ct);
             started = true;
+            if (checkOnline && !(await probe.ProbeAsync(target.ComputerName, ct)).Online)
+            {
+                status = TargetStatus.WaitingOffline;
+                error = WaitingText;
+                return;
+            }
             var live = _live[target.Id] = new LiveTarget();
             await UpdateAsync(db => db.DeploymentTargets.Where(t => t.Id == target.Id)
                 .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Running).SetProperty(t => t.StartedUtc, DateTime.UtcNow)));
@@ -180,7 +267,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 stored.Status = status;
                 stored.Error = error;
                 stored.Steps = steps;
-                stored.FinishedUtc = DateTime.UtcNow;
+                stored.FinishedUtc = status == TargetStatus.WaitingOffline ? null : DateTime.UtcNow;
                 await db.SaveChangesAsync();
             });
             Changed?.Invoke(deployment.Id);

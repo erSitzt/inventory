@@ -67,4 +67,14 @@ public sealed class CredentialService(IDbContextFactory<InventoryDbContext> dbFa
                          ?? await db.Credentials.FirstOrDefaultAsync(c => c.IsDefault, ct);
         return credential is null ? null : new NetworkCredential(credential.Username, protector.Unprotect(credential.ProtectedPassword));
     }
+
+    /// <summary>Bestimmte Zugangsdaten im Klartext, sonst der Standard; null, wenn nichts hinterlegt ist.</summary>
+    public async Task<NetworkCredential?> GetAsync(int? credentialId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var credential = credentialId is null
+            ? await db.Credentials.FirstOrDefaultAsync(c => c.IsDefault, ct)
+            : await db.Credentials.FirstOrDefaultAsync(c => c.Id == credentialId, ct);
+        return credential is null ? null : new NetworkCredential(credential.Username, protector.Unprotect(credential.ProtectedPassword));
+    }
 }

@@ -19,6 +19,7 @@ public static class CollectionEvaluator
     public static bool Matches(CollectionRule rule, Computer computer) => rule.Field switch
     {
         RuleField.ComputerName => Text(rule, computer.Name),
+        RuleField.NameMismatch => Flag(rule, computer.NameMismatch),
         RuleField.Online => Flag(rule, computer.IsOnline),
         RuleField.Scanned => Flag(rule, computer.LastScanUtc is not null),
         RuleField.OsName => Text(rule, computer.OsName),

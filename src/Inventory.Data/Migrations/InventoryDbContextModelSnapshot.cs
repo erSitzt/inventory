@@ -149,6 +149,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("OsVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ReportedName")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("SerialNumber")
                         .HasColumnType("TEXT");
 
@@ -390,6 +393,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("PackageVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("RetryUntilUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("ScanAfter")
                         .HasColumnType("INTEGER");
 
@@ -499,6 +505,67 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("PackageId");
 
                     b.ToTable("PackageSteps");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.Schedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CollectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DaysOfWeek")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("IntervalMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastResult")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastRunUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("NextRunUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("RetryOffline")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("ScanAfter")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("StartLocal")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeSpan>("TimeOfDay")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Trigger")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollectionId");
+
+                    b.HasIndex("PackageId");
+
+                    b.ToTable("Schedules");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Setting", b =>
@@ -620,6 +687,23 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("NestedPackage");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.Schedule", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Collection", "Collection")
+                        .WithMany()
+                        .HasForeignKey("CollectionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Inventory.Core.Model.Package", "Package")
+                        .WithMany()
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Collection");
+
+                    b.Navigation("Package");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Computer", b =>
