@@ -158,6 +158,7 @@ def main():
         "source": WINGET_REPO,
         "packages": packages,
     }
+    os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
     with open(output, "w", encoding="utf-8") as handle:
         json.dump(catalog, handle, ensure_ascii=False, indent=1)
     print(f"{len(packages)} Pakete geschrieben, {len(skipped)} übersprungen.")
