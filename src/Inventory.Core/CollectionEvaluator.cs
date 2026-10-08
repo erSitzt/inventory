@@ -31,6 +31,12 @@ public static class CollectionEvaluator
         RuleField.MemoryGb => Text(rule, computer.MemoryBytes is { } bytes
             ? Math.Round(bytes / 1024d / 1024 / 1024).ToString(CultureInfo.InvariantCulture) : null),
         RuleField.Software => Software(rule, computer),
+        RuleField.FirewallOff => Flag(rule, computer.FirewallOff),
+        RuleField.AntivirusProblem => Flag(rule, computer.AntivirusProblem),
+        RuleField.RebootRequired => Flag(rule, computer.UpdateRebootRequired == true),
+        RuleField.PendingUpdates => Text(rule, computer.UpdatePendingCount?.ToString(CultureInfo.InvariantCulture)),
+        RuleField.DaysSinceUpdate => Text(rule, computer.UpdateLastInstallUtc is { } installed
+            ? ((int)(DateTime.UtcNow - installed).TotalDays).ToString(CultureInfo.InvariantCulture) : null),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         _ => false,
     };

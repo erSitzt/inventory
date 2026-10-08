@@ -13,6 +13,10 @@
         @Tile("Gescannt", $"{_stats.Scanned} von {_stats.Computers}", "computers")
         @Tile("Scan-Fehler", _stats.ScanErrors.ToString(), "computers")
         @Tile("Pakete", _stats.Packages.ToString(), "packages")
+        @Tile("Firewall aus", _stats.FirewallOff.ToString(), "computers?filter=firewall")
+        @Tile("Ohne Echtzeitschutz", _stats.AntivirusProblems.ToString(), "computers?filter=antivirus")
+        @Tile("Updates ausstehend", _stats.WithPendingUpdates.ToString(), "computers?filter=updates")
+        @Tile("Neustart ausstehend", _stats.RebootRequired.ToString(), "computers?filter=reboot")
 
         <MudItem xs="12" md="6">
             <MudPaper Class="pa-4" Outlined="true">

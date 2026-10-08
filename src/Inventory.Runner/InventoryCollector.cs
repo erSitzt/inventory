@@ -27,6 +27,11 @@ namespace Inventory.Runner
             Section(data, "Dienste", () => ReadServices(data));
             Section(data, "Lokale Benutzer", () => ReadLocalUsers(data));
             Section(data, "Lokale Administratoren", () => ReadLocalAdmins(data));
+            data.Security = new SecurityStatus();
+            Section(data, "Firewall", () => ReadFirewall(data.Security));
+            Section(data, "Defender", () => ReadDefender(data.Security));
+            Section(data, "Virenschutz", () => ReadAntivirusProducts(data.Security));
+            Section(data, "Windows Update", () => ReadWindowsUpdate(data.Security));
             return data;
         }
 
@@ -257,6 +262,138 @@ namespace Inventory.Runner
             data.LocalAdmins = data.LocalAdmins.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
+        private static void ReadFirewall(SecurityStatus status)
+        {
+            status.FirewallDomain = FirewallEnabled("DomainProfile");
+            status.FirewallPrivate = FirewallEnabled("StandardProfile");
+            status.FirewallPublic = FirewallEnabled("PublicProfile");
+        }
+
+        private static bool? FirewallEnabled(string profile)
+        {
+            using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+            {
+                // Eine Gruppenrichtlinie hat Vorrang vor der lokalen Einstellung.
+                foreach (var path in new[]
+                         {
+                             @"SOFTWARE\Policies\Microsoft\WindowsFirewall\" + profile,
+                             @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\" + profile,
+                         })
+                {
+                    using (var key = hklm.OpenSubKey(path))
+                    {
+                        if (key?.GetValue("EnableFirewall") is int enabled)
+                            return enabled != 0;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static void ReadDefender(SecurityStatus status)
+        {
+            List<ManagementBaseObject> rows;
+            try
+            {
+                rows = Query(@"root\Microsoft\Windows\Defender", "SELECT * FROM MSFT_MpComputerStatus");
+            }
+            catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace || ex.ErrorCode == ManagementStatus.InvalidClass)
+            {
+                // Defender ist nicht installiert (z. B. durch anderen Virenschutz ersetzt oder Server ohne das Feature).
+                status.DefenderEnabled = false;
+                return;
+            }
+            foreach (var o in rows)
+            {
+                status.DefenderEnabled = Flag(o, "AntivirusEnabled");
+                status.DefenderRealTime = Flag(o, "RealTimeProtectionEnabled");
+                status.DefenderTamperProtected = Flag(o, "IsTamperProtected");
+                status.DefenderSignatureVersion = Text(o, "AntivirusSignatureVersion");
+                status.DefenderSignatureUpdatedUtc = Date(o, "AntivirusSignatureLastUpdated");
+            }
+        }
+
+        private static void ReadAntivirusProducts(SecurityStatus status)
+        {
+            try
+            {
+                foreach (var o in Query(@"root\SecurityCenter2", "SELECT displayName FROM AntiVirusProduct"))
+                {
+                    var name = Text(o, "displayName");
+                    if (name != null && !status.AntivirusProducts.Contains(name))
+                        status.AntivirusProducts.Add(name);
+                }
+            }
+            catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace)
+            {
+                // Das Sicherheitscenter gibt es auf Server-Betriebssystemen nicht.
+            }
+        }
+
+        private static void ReadWindowsUpdate(SecurityStatus status)
+        {
+            using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+            {
+                using (var policy = hklm.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"))
+                    status.UpdateServer = policy?.GetValue("WUServer") as string;
+
+                var reboot = false;
+                foreach (var path in new[]
+                         {
+                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired",
+                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending",
+                         })
+                {
+                    using (var key = hklm.OpenSubKey(path))
+                        reboot |= key != null;
+                }
+                status.UpdateRebootRequired = reboot;
+            }
+
+            // Der Windows-Update-Agent wird über COM angesprochen; ein hängender Dienst darf den Scan nicht aufhalten.
+            var worker = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    dynamic auto = Activator.CreateInstance(Type.GetTypeFromProgID("Microsoft.Update.AutoUpdate", true));
+                    status.UpdateLastSearchUtc = ComDate(auto.Results.LastSearchSuccessDate);
+                    status.UpdateLastInstallUtc = ComDate(auto.Results.LastInstallationSuccessDate);
+
+                    dynamic session = Activator.CreateInstance(Type.GetTypeFromProgID("Microsoft.Update.Session", true));
+                    dynamic searcher = session.CreateUpdateSearcher();
+                    // Offline: nur auswerten, was der Rechner bei seiner letzten eigenen Suche gefunden hat. Das dauert Sekunden
+                    // statt Minuten und erzeugt keine Last auf WSUS oder Microsoft Update.
+                    searcher.Online = false;
+                    dynamic found = searcher.Search("IsInstalled=0 and IsHidden=0 and Type='Software'");
+                    var pending = new List<string>();
+                    foreach (dynamic update in found.Updates)
+                        pending.Add((string)update.Title);
+                    pending.Sort(StringComparer.CurrentCultureIgnoreCase);
+                    status.UpdatePending = pending;
+                }
+                catch (Exception ex)
+                {
+                    UpdateError = ex.Message;
+                }
+            })
+            { IsBackground = true };
+            UpdateError = null;
+            worker.SetApartmentState(System.Threading.ApartmentState.STA);
+            worker.Start();
+            if (!worker.Join(TimeSpan.FromSeconds(90)))
+                throw new TimeoutException("Der Windows-Update-Agent hat nicht rechtzeitig geantwortet");
+            if (UpdateError != null)
+                throw new InvalidOperationException(UpdateError);
+        }
+
+        private static volatile string? UpdateError;
+
+        private static DateTime? ComDate(object value) =>
+            // Der Agent liefert 1899-12-30 (OLE-Nullwert), wenn es noch nie eine Suche bzw. Installation gab. Die Zeiten sind UTC.
+            value is DateTime date && date.Year > 1990 ? DateTime.SpecifyKind(date, DateTimeKind.Utc) : (DateTime?)null;
+
+        private static bool? Flag(ManagementBaseObject o, string property) => o[property] as bool?;
+
         private const int SidTypeGroup = 2;
         private const int SidTypeAlias = 4;
         private const int SidTypeWellKnownGroup = 5;
@@ -276,9 +413,11 @@ namespace Inventory.Runner
         [DllImport("netapi32.dll")]
         private static extern int NetApiBufferFree(IntPtr buffer);
 
-        private static List<ManagementBaseObject> Query(string wql)
+        private static List<ManagementBaseObject> Query(string wql) => Query(@"root\cimv2", wql);
+
+        private static List<ManagementBaseObject> Query(string scope, string wql)
         {
-            using (var searcher = new ManagementObjectSearcher(@"root\cimv2", wql))
+            using (var searcher = new ManagementObjectSearcher(scope, wql))
             using (var results = searcher.Get())
                 return results.Cast<ManagementBaseObject>().ToList();
         }

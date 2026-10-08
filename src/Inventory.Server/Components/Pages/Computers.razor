@@ -117,6 +117,30 @@
         <TemplateColumn Title="Betriebssystem" SortBy="c => Display.Os(c)">
             <CellTemplate>@Display.Os(context.Item)</CellTemplate>
         </TemplateColumn>
+        <TemplateColumn Title="Sicherheit" Sortable="false">
+            <CellTemplate>
+                @if (context.Item.FirewallOff)
+                {
+                    <MudTooltip Text="Mindestens ein Firewall-Profil ist abgeschaltet"><MudIcon Icon="@Icons.Material.Filled.GppBad" Color="Color.Error" Size="Size.Small" /></MudTooltip>
+                }
+                @if (context.Item.AntivirusProblem)
+                {
+                    <MudTooltip Text="Kein Echtzeit-Virenschutz aktiv"><MudIcon Icon="@Icons.Material.Filled.BugReport" Color="Color.Error" Size="Size.Small" /></MudTooltip>
+                }
+                @if (context.Item.UpdatePendingCount > 0)
+                {
+                    <MudTooltip Text="@($"{context.Item.UpdatePendingCount} Updates ausstehend")"><MudIcon Icon="@Icons.Material.Filled.SystemUpdateAlt" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
+                }
+                @if (context.Item.UpdateRebootRequired == true)
+                {
+                    <MudTooltip Text="Neustart ausstehend"><MudIcon Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
+                }
+                @if (context.Item.FirewallDomain is not null && !context.Item.FirewallOff && !context.Item.AntivirusProblem && !(context.Item.UpdatePendingCount > 0) && context.Item.UpdateRebootRequired != true)
+                {
+                    <MudTooltip Text="Firewall an, Virenschutz aktiv, keine Updates ausstehend"><MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Color="Color.Success" Size="Size.Small" /></MudTooltip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="c => c.Model" Title="Modell" />
         <PropertyColumn Property="c => c.LoggedOnUser" Title="Benutzer" />
         <PropertyColumn Property="c => c.IpAddress" Title="IP-Adresse" />
@@ -163,6 +187,7 @@
     [
         ("all", "Alle Rechner"), ("online", "Online"), ("offline", "Offline"), ("mismatch", "Falscher Rechner antwortet"),
         ("unscanned", "Noch nicht gescannt"), ("scanerror", "Scan fehlgeschlagen"), ("agent", "Mit Agent"),
+        ("firewall", "Firewall aus"), ("antivirus", "Kein Echtzeit-Virenschutz"), ("updates", "Updates ausstehend"), ("reboot", "Neustart ausstehend"),
     ];
 
     private List<Computer> _all = [];
@@ -176,6 +201,10 @@
         "unscanned" => c.LastScanUtc is null,
         "scanerror" => c.LastScanError is not null,
         "agent" => c.AgentKeyHash is not null,
+        "firewall" => c.FirewallOff,
+        "antivirus" => c.AntivirusProblem,
+        "updates" => c.UpdatePendingCount > 0,
+        "reboot" => c.UpdateRebootRequired == true,
         _ => true,
     };
 

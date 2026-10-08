@@ -62,6 +62,36 @@ public class Computer
     public long? MemoryBytes { get; set; }
     public string? LoggedOnUser { get; set; }
 
+    // Sicherheitsstatus aus dem letzten Scan; null = nicht ermittelt
+    public bool? FirewallDomain { get; set; }
+    public bool? FirewallPrivate { get; set; }
+    public bool? FirewallPublic { get; set; }
+    public bool? DefenderEnabled { get; set; }
+    public bool? DefenderRealTime { get; set; }
+    public bool? DefenderTamperProtected { get; set; }
+    public string? DefenderSignatureVersion { get; set; }
+    public DateTime? DefenderSignatureUpdatedUtc { get; set; }
+    /// <summary>Beim Sicherheitscenter registrierte Virenschutzprogramme, durch Komma getrennt.</summary>
+    public string? AntivirusProducts { get; set; }
+    public DateTime? UpdateLastSearchUtc { get; set; }
+    public DateTime? UpdateLastInstallUtc { get; set; }
+    public bool? UpdateRebootRequired { get; set; }
+    public int? UpdatePendingCount { get; set; }
+    /// <summary>Titel der ausstehenden Updates, einer je Zeile.</summary>
+    public string? UpdatePending { get; set; }
+    public string? UpdateServer { get; set; }
+
+    /// <summary>true, wenn mindestens ein Firewall-Profil abgeschaltet ist.</summary>
+    public bool FirewallOff => FirewallDomain == false || FirewallPrivate == false || FirewallPublic == false;
+
+    /// <summary>true, wenn kein Echtzeitschutz läuft: weder Defender noch ein anderes registriertes Virenschutzprogramm.</summary>
+    public bool AntivirusProblem =>
+        LastScanUtc is not null && DefenderEnabled is not null && DefenderRealTime != true && !HasThirdPartyAntivirus;
+
+    public bool HasThirdPartyAntivirus =>
+        (AntivirusProducts ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Any(p => !p.Contains("Defender", StringComparison.OrdinalIgnoreCase));
+
     public List<ComputerSoftware> Software { get; set; } = [];
     public List<ComputerHotfix> Hotfixes { get; set; } = [];
     public List<ComputerDisk> Disks { get; set; } = [];

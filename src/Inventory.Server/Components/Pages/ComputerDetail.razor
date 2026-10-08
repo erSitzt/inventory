@@ -171,6 +171,65 @@ else if (_computer.ReverseDnsMismatch)
         </MudDataGrid>
     </MudTabPanel>
 
+    <MudTabPanel Text="Sicherheit">
+        @if (_computer.FirewallDomain is null && _computer.DefenderEnabled is null && _computer.UpdateRebootRequired is null)
+        {
+            <MudText Color="Color.Secondary">Noch nicht erfasst. Firewall, Virenschutz und Windows Update werden beim nächsten Scan gelesen.</MudText>
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="pa-4" Outlined="true">
+                        <MudText Typo="Typo.h6" Class="mb-2">Windows-Firewall</MudText>
+                        @StatusRow("Domänennetz", _computer.FirewallDomain)
+                        @StatusRow("Privates Netz", _computer.FirewallPrivate)
+                        @StatusRow("Öffentliches Netz", _computer.FirewallPublic)
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="pa-4" Outlined="true">
+                        <MudText Typo="Typo.h6" Class="mb-2">Virenschutz</MudText>
+                        @StatusRow("Microsoft Defender", _computer.DefenderEnabled)
+                        @StatusRow("Echtzeitschutz", _computer.DefenderRealTime)
+                        @StatusRow("Manipulationsschutz", _computer.DefenderTamperProtected)
+                        <MudText Typo="Typo.body2" Class="mt-2">Signatur: @(_computer.DefenderSignatureVersion ?? "–") vom @Display.LocalTime(_computer.DefenderSignatureUpdatedUtc)</MudText>
+                        <MudText Typo="Typo.body2">Registriert: @(string.IsNullOrEmpty(_computer.AntivirusProducts) ? "–" : _computer.AntivirusProducts)</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="pa-4" Outlined="true">
+                        <MudText Typo="Typo.h6" Class="mb-2">Windows Update</MudText>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                            <MudText Typo="Typo.body2" Style="flex: 1">Neustart ausstehend</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_computer.UpdateRebootRequired == true ? Color.Warning : Color.Success)">@(_computer.UpdateRebootRequired switch { true => "ja", false => "nein", null => "unbekannt" })</MudChip>
+                        </MudStack>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                            <MudText Typo="Typo.body2" Style="flex: 1">Ausstehende Updates</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_computer.UpdatePendingCount > 0 ? Color.Warning : _computer.UpdatePendingCount == 0 ? Color.Success : Color.Default)">@(_computer.UpdatePendingCount?.ToString() ?? "unbekannt")</MudChip>
+                        </MudStack>
+                        <MudText Typo="Typo.body2" Class="mt-2">Letzte Installation: @Display.LocalTime(_computer.UpdateLastInstallUtc)</MudText>
+                        <MudText Typo="Typo.body2">Letzte Suche: @Display.LocalTime(_computer.UpdateLastSearchUtc)</MudText>
+                        <MudText Typo="Typo.body2">Quelle: @(string.IsNullOrEmpty(_computer.UpdateServer) ? "Microsoft Update" : _computer.UpdateServer)</MudText>
+                    </MudPaper>
+                </MudItem>
+                @if (_computer.UpdatePendingCount > 0)
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Class="mb-1">Ausstehende Updates</MudText>
+                        <MudText Typo="Typo.caption">Stand der letzten Suche des Rechners (@Display.LocalTime(_computer.UpdateLastSearchUtc)); der Scan löst keine neue Suche aus.</MudText>
+                        <MudList T="string" Dense="true">
+                            @foreach (var title in (_computer.UpdatePending ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <MudListItem T="string" Icon="@Icons.Material.Filled.SystemUpdateAlt">@title</MudListItem>
+                            }
+                        </MudList>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudTabPanel>
+
     <MudTabPanel Text="@($"Benutzer ({_computer.LocalUsers.Count})")">
         <MudGrid>
             <MudItem xs="12" md="6">
@@ -259,6 +318,11 @@ else if (_computer.ReverseDnsMismatch)
             Snackbar.Add(ex.Message, Severity.Error);
         }
     }
+
+    private static RenderFragment StatusRow(string label, bool? value) => @<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+        <MudText Typo="Typo.body2" Style="flex: 1">@label</MudText>
+        <MudChip T="string" Size="Size.Small" Color="@Display.OnOffColor(value)">@Display.OnOff(value)</MudChip>
+    </MudStack>;
 
     private static RenderFragment Row(string label, string? value) => @<tr>
         <td style="width: 40%; color: var(--mud-palette-text-secondary)">@label</td>

@@ -76,6 +76,18 @@ internal static class SimulatedInventory
         data.Services.Add(new ServiceItem { Name = "Spooler", DisplayName = "Druckwarteschlange", State = "Running", StartMode = "Auto", Account = "LocalSystem" });
         data.Services.Add(new ServiceItem { Name = "wuauserv", DisplayName = "Windows Update", State = "Stopped", StartMode = "Manual", Account = "LocalSystem" });
         data.Services.Add(new ServiceItem { Name = "WinRM", DisplayName = "Windows-Remoteverwaltung", State = random.Next(2) == 0 ? "Running" : "Stopped", StartMode = "Manual", Account = "NT AUTHORITY\\NetworkService" });
+        var pending = random.Next(4) == 0
+            ? new List<string> { "2026-10 Kumulatives Update für Windows 11 (KB5066835)", "Update für Microsoft Defender Antivirus-Antischadsoftwareplattform" }
+            : new List<string>();
+        data.Security = new SecurityStatus
+        {
+            FirewallDomain = random.Next(6) != 0, FirewallPrivate = true, FirewallPublic = true,
+            DefenderEnabled = true, DefenderRealTime = random.Next(8) != 0, DefenderTamperProtected = true,
+            DefenderSignatureVersion = $"1.459.{random.Next(100, 900)}.0", DefenderSignatureUpdatedUtc = DateTime.UtcNow.AddHours(-random.Next(2, 90)),
+            AntivirusProducts = ["Windows Defender"],
+            UpdateLastSearchUtc = DateTime.UtcNow.AddHours(-random.Next(1, 30)), UpdateLastInstallUtc = DateTime.UtcNow.AddDays(-random.Next(1, 60)),
+            UpdateRebootRequired = pending.Count > 0 && random.Next(2) == 0, UpdatePending = pending, UpdateServer = "http://wsus.corp.example:8530",
+        };
         data.LocalUsers.Add(new LocalUserItem { Name = "Administrator", Disabled = true, Description = "Vordefiniertes Konto" });
         data.LocalUsers.Add(new LocalUserItem { Name = "Gast", Disabled = true });
         data.LocalAdmins.Add(new LocalAdminItem { Name = $"{data.ComputerName}\\Administrator" });

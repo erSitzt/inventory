@@ -75,3 +75,62 @@ public class HistoryTests
         Assert.True(CollectionEvaluator.Matches(Rule(RuleOperator.NotContains, "erika"), computer));
     }
 }
+
+public class SecurityStatusTests
+{
+    private static InventoryData Scan(bool firewallDomain, bool realTime, params string[] pending) => new()
+    {
+        ComputerName = "PC-01",
+        Security = new SecurityStatus
+        {
+            FirewallDomain = firewallDomain, FirewallPrivate = true, FirewallPublic = true,
+            DefenderEnabled = true, DefenderRealTime = realTime, AntivirusProducts = ["Windows Defender"],
+            UpdateLastInstallUtc = DateTime.UtcNow.AddDays(-40), UpdateRebootRequired = pending.Length > 0, UpdatePending = [.. pending],
+        },
+    };
+
+    [Fact]
+    public async Task Security_status_is_stored_feeds_rules_and_changes_show_up_in_the_history()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var id = (await computers.ImportAsync("pc-01"))[0].Id;
+        static bool Matches(Computer c, RuleField field, RuleOperator op, string value) =>
+            CollectionEvaluator.Matches(new CollectionRule { Field = field, Operator = op, Value = value }, c);
+
+        await store.SaveAsync(id, Scan(firewallDomain: true, realTime: true));
+        var healthy = (await computers.GetAsync(id))!;
+        Assert.False(healthy.FirewallOff);
+        Assert.False(healthy.AntivirusProblem);
+        Assert.Equal(0, healthy.UpdatePendingCount);
+        Assert.True(Matches(healthy, RuleField.DaysSinceUpdate, RuleOperator.GreaterOrEqual, "30"));
+        Assert.False(Matches(healthy, RuleField.PendingUpdates, RuleOperator.GreaterOrEqual, "1"));
+
+        await store.SaveAsync(id, Scan(firewallDomain: false, realTime: false, "KB1", "KB2"));
+        var broken = (await computers.GetAsync(id))!;
+        Assert.True(broken.FirewallOff);
+        Assert.True(broken.AntivirusProblem);
+        Assert.Equal("KB1\nKB2", broken.UpdatePending);
+        Assert.True(Matches(broken, RuleField.FirewallOff, RuleOperator.Equals, "true"));
+        Assert.True(Matches(broken, RuleField.AntivirusProblem, RuleOperator.Equals, "true"));
+        Assert.True(Matches(broken, RuleField.RebootRequired, RuleOperator.Equals, "true"));
+        Assert.True(Matches(broken, RuleField.PendingUpdates, RuleOperator.GreaterOrEqual, "2"));
+
+        var changes = (await store.ChangesAsync(id)).Select(c => $"{c.Change.Item}: {c.Change.OldValue} → {c.Change.NewValue}").Order().ToList();
+        Assert.Equal(["Defender-Echtzeitschutz: an → aus", "Firewall (Domäne): an → aus"], changes);
+    }
+
+    [Fact]
+    public void Another_registered_antivirus_counts_as_protection_and_unscanned_computers_are_not_flagged()
+    {
+        var withOther = new Computer { Name = "a", LastScanUtc = DateTime.UtcNow, DefenderEnabled = false, DefenderRealTime = false, AntivirusProducts = "Windows Defender, Sophos Endpoint" };
+        var unprotected = new Computer { Name = "b", LastScanUtc = DateTime.UtcNow, DefenderEnabled = false, DefenderRealTime = false, AntivirusProducts = "Windows Defender" };
+        var unscanned = new Computer { Name = "c" };
+
+        Assert.False(withOther.AntivirusProblem);
+        Assert.True(unprotected.AntivirusProblem);
+        Assert.False(unscanned.AntivirusProblem);
+        Assert.False(unscanned.FirewallOff);
+    }
+}

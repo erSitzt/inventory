@@ -21,6 +21,14 @@ public enum RuleField
     NameMismatch = 100,
     /// <summary>Mitglied der lokalen Administratorengruppe (Name enthält …).</summary>
     LocalAdmin = 101,
+    /// <summary>Mindestens ein Firewall-Profil ist abgeschaltet.</summary>
+    FirewallOff = 102,
+    /// <summary>Kein Echtzeit-Virenschutz aktiv.</summary>
+    AntivirusProblem = 103,
+    RebootRequired = 104,
+    PendingUpdates = 105,
+    /// <summary>Tage seit der letzten erfolgreichen Update-Installation.</summary>
+    DaysSinceUpdate = 106,
     Online = 1,
     Scanned,
     OsName,

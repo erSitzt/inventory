@@ -59,6 +59,24 @@ public static partial class InventoryDiff
         Value("Prozessor", previous.CpuName, current.CpuName);
         Value("Arbeitsspeicher", Gigabytes(previous.MemoryBytes), Gigabytes(current.MemoryBytes));
 
+        if (current.Security is { } security)
+        {
+            void Security(string item, bool? oldValue, bool? newValue, string on, string off)
+            {
+                // Erst vergleichen, wenn beide Seiten bekannt sind: der erste Scan mit Sicherheitsstatus ist die Ausgangslage.
+                if (oldValue is not null && newValue is not null && oldValue != newValue)
+                    Add("Sicherheit", ChangeKind.Changed, item, oldValue.Value ? on : off, newValue.Value ? on : off);
+            }
+            Security("Firewall (Domäne)", previous.FirewallDomain, security.FirewallDomain, "an", "aus");
+            Security("Firewall (Privat)", previous.FirewallPrivate, security.FirewallPrivate, "an", "aus");
+            Security("Firewall (Öffentlich)", previous.FirewallPublic, security.FirewallPublic, "an", "aus");
+            Security("Defender", previous.DefenderEnabled, security.DefenderEnabled, "aktiv", "inaktiv");
+            Security("Defender-Echtzeitschutz", previous.DefenderRealTime, security.DefenderRealTime, "an", "aus");
+            Security("Defender-Manipulationsschutz", previous.DefenderTamperProtected, security.DefenderTamperProtected, "an", "aus");
+            if (previous.AntivirusProducts is not null)
+                Set("Virenschutz", Split(previous.AntivirusProducts).Select(p => (p, (string?)null)), security.AntivirusProducts.Select(p => (p, (string?)null)));
+        }
+
         Set("Software", previous.Software.Select(s => (s.Name, s.Version)), current.Software.Select(s => (s.Name, s.Version)));
         Set("Hotfix", previous.Hotfixes.Select(h => (h.HotfixId, h.Description)), current.Hotfixes.Select(h => (h.Id, h.Description)));
         Set("Datenträger", previous.Disks.Select(d => (d.Drive, Gigabytes(d.SizeBytes))), current.Disks.Select(d => (d.Drive, Gigabytes(d.SizeBytes))));
@@ -81,6 +99,9 @@ public static partial class InventoryDiff
             g => g.Key,
             g => g.Select(i => i.Value).Where(v => !string.IsNullOrEmpty(v)).Distinct().Order().ToList() is { Count: > 0 } values ? string.Join(", ", values) : null,
             StringComparer.OrdinalIgnoreCase);
+
+    private static IEnumerable<string> Split(string products) =>
+        products.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static string? Gigabytes(long? bytes) => bytes is null or 0 ? null : $"{Math.Round(bytes.Value / 1024d / 1024 / 1024)} GB";
 }

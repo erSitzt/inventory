@@ -35,6 +35,9 @@ namespace Inventory.Contracts
         /// <summary>Mitglieder der lokalen Gruppe "Administratoren" (lokale Konten, Domänenkonten und -gruppen).</summary>
         public List<LocalAdminItem> LocalAdmins { get; set; } = new List<LocalAdminItem>();
 
+        /// <summary>Firewall, Virenschutz und Windows Update; null bei Runnern, die das noch nicht erfassen.</summary>
+        public SecurityStatus? Security { get; set; }
+
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
     }
@@ -103,5 +106,32 @@ namespace Inventory.Contracts
         /// <summary>true = Gruppe, false = Benutzer.</summary>
         public bool IsGroup { get; set; }
         public string? Sid { get; set; }
+    }
+
+    /// <summary>Werte sind null, wenn sie sich auf dem Rechner nicht ermitteln ließen.</summary>
+    public sealed class SecurityStatus
+    {
+        // Windows-Firewall je Netzwerkprofil (Gruppenrichtlinie berücksichtigt)
+        public bool? FirewallDomain { get; set; }
+        public bool? FirewallPrivate { get; set; }
+        public bool? FirewallPublic { get; set; }
+
+        // Microsoft Defender
+        public bool? DefenderEnabled { get; set; }
+        public bool? DefenderRealTime { get; set; }
+        public bool? DefenderTamperProtected { get; set; }
+        public string? DefenderSignatureVersion { get; set; }
+        public DateTime? DefenderSignatureUpdatedUtc { get; set; }
+        /// <summary>Beim Windows-Sicherheitscenter registrierte Virenschutzprogramme (nur Client-Betriebssysteme).</summary>
+        public List<string> AntivirusProducts { get; set; } = new List<string>();
+
+        // Windows Update
+        public DateTime? UpdateLastSearchUtc { get; set; }
+        public DateTime? UpdateLastInstallUtc { get; set; }
+        public bool? UpdateRebootRequired { get; set; }
+        /// <summary>Ausstehende Updates laut letzter Suche des Rechners (es wird keine neue Online-Suche ausgelöst).</summary>
+        public List<string>? UpdatePending { get; set; }
+        /// <summary>WSUS-Server aus der Richtlinie; leer = Microsoft Update.</summary>
+        public string? UpdateServer { get; set; }
     }
 }

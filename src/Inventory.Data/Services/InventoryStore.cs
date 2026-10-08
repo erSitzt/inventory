@@ -68,6 +68,24 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         computer.CpuLogicalProcessors = data.CpuLogicalProcessors;
         computer.MemoryBytes = data.MemoryBytes;
         computer.LoggedOnUser = data.LoggedOnUser;
+        if (data.Security is { } security)
+        {
+            computer.FirewallDomain = security.FirewallDomain;
+            computer.FirewallPrivate = security.FirewallPrivate;
+            computer.FirewallPublic = security.FirewallPublic;
+            computer.DefenderEnabled = security.DefenderEnabled;
+            computer.DefenderRealTime = security.DefenderRealTime;
+            computer.DefenderTamperProtected = security.DefenderTamperProtected;
+            computer.DefenderSignatureVersion = security.DefenderSignatureVersion;
+            computer.DefenderSignatureUpdatedUtc = security.DefenderSignatureUpdatedUtc;
+            computer.AntivirusProducts = string.Join(", ", security.AntivirusProducts);
+            computer.UpdateLastSearchUtc = security.UpdateLastSearchUtc;
+            computer.UpdateLastInstallUtc = security.UpdateLastInstallUtc;
+            computer.UpdateRebootRequired = security.UpdateRebootRequired;
+            computer.UpdatePendingCount = security.UpdatePending?.Count;
+            computer.UpdatePending = security.UpdatePending is null ? null : string.Join('\n', security.UpdatePending);
+            computer.UpdateServer = security.UpdateServer;
+        }
 
         await db.Software.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
         await db.Hotfixes.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);

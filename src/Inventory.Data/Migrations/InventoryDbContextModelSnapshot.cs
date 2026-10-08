@@ -105,6 +105,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("AgentVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AntivirusProducts")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("BiosVersion")
                         .HasColumnType("TEXT");
 
@@ -123,11 +126,35 @@ namespace Inventory.Data.Migrations
                     b.Property<int?>("CredentialId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("DefenderEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("DefenderRealTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("DefenderSignatureUpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefenderSignatureVersion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("DefenderTamperProtected")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Domain")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("FirewallDomain")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("FirewallPrivate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("FirewallPublic")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("IpAddress")
                         .HasColumnType("TEXT");
@@ -194,6 +221,24 @@ namespace Inventory.Data.Migrations
 
                     b.Property<int?>("Transport")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdateLastInstallUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdateLastSearchUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatePending")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdatePendingCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("UpdateRebootRequired")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UpdateServer")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
