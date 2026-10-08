@@ -14,6 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="WinRm\RemoteJob.ps1" LogicalName="Inventory.Remoting.WinRm.RemoteJob.ps1" />
     <InternalsVisibleTo Include="Inventory.Tests" />
   </ItemGroup>
 

@@ -9,4 +9,5 @@ public class Setting
 public static class SettingKeys
 {
     public const string DefaultTransport = "DefaultTransport";
+    public const string TransportFallback = "TransportFallback";
 }

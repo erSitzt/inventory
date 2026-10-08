@@ -1,11 +1,19 @@
 using Inventory.Contracts;
 using Inventory.Core.Abstractions;
+using Inventory.Core.Model;
 
 namespace Inventory.Data.Services;
 
 /// <summary>Führt einen Job auf einem Rechner aus und wählt dafür Transport und Zugangsdaten (Rechner-Einstellung vor Standard).</summary>
 public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, ComputerService computers, CredentialService credentials, SettingsService settings)
 {
+    private IRemoteTransport? Fallback(TransportKind primary) => primary switch
+    {
+        TransportKind.SmbService => transports.FirstOrDefault(t => t.Kind == TransportKind.WinRm),
+        TransportKind.WinRm => transports.FirstOrDefault(t => t.Kind == TransportKind.SmbService),
+        _ => null,
+    };
+
     /// <summary>Liefert immer ein Ergebnis; Zustellfehler stehen in <see cref="JobResult.Error"/>.</summary>
     public async Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default, IReadOnlyList<JobFile>? files = null)
     {
@@ -20,12 +28,26 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             if (transport is null)
                 return JobResult.Failed(job.JobId, $"Der Transport {kind} steht auf diesem Server nicht zur Verfügung");
 
-            var credential = await credentials.ResolveAsync(computerId, ct);
-            return await transport.RunAsync(new RemoteTarget(computer.Name, credential), job, files ?? [], progress, ct);
-        }
-        catch (RemoteException ex)
-        {
-            return JobResult.Failed(job.JobId, ex.Message);
+            var target = new RemoteTarget(computer.Name, await credentials.ResolveAsync(computerId, ct));
+            try
+            {
+                return await transport.RunAsync(target, job, files ?? [], progress, ct);
+            }
+            catch (RemoteException ex)
+            {
+                // Zustellfehler heißt: auf dem Ziel ist noch nichts gelaufen, ein zweiter Versuch auf anderem Weg ist gefahrlos.
+                var fallback = Fallback(kind);
+                if (fallback is null || !await settings.GetTransportFallbackAsync(ct))
+                    return JobResult.Failed(job.JobId, ex.Message);
+                try
+                {
+                    return await fallback.RunAsync(target, job, files ?? [], progress, ct);
+                }
+                catch (RemoteException second)
+                {
+                    return JobResult.Failed(job.JobId, $"{ex.Message} – Ausweichversuch über {fallback.Kind}: {second.Message}");
+                }
+            }
         }
         catch (OperationCanceledException)
         {

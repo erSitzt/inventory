@@ -15,6 +15,12 @@
             <MudSelectItem T="TransportKind" Value="TransportKind.SmbService">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
             <MudSelectItem T="TransportKind" Value="TransportKind.WinRm">@Display.Transport(TransportKind.WinRm)</MudSelectItem>
         </MudSelect>
+        <MudSwitch T="bool" Value="_fallback" ValueChanged="SetFallbackAsync" Color="Color.Primary"
+                   Label="Bei Zustellfehlern den anderen Transport versuchen" />
+        <MudText Typo="Typo.body2">
+            SMB + Dienst braucht die Freigabe ADMIN$ und den Dienststeuerungs-Manager (Port 445), der Job läuft als Lokales System.
+            WinRM braucht aktiviertes PowerShell-Remoting (Port 5985), der Job läuft mit dem hinterlegten Konto.
+        </MudText>
         <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="Datenverzeichnis" Variant="Variant.Outlined" ReadOnly="true"
                       HelperText="Datenbank und Schlüssel. Änderbar über Inventory:DataDirectory in der Konfiguration." />
         @if (Options.Value.ResolveSimulate())
@@ -27,7 +33,20 @@
 @code {
     private TransportKind _transport;
 
-    protected override async Task OnInitializedAsync() => _transport = await SettingsService.GetDefaultTransportAsync();
+    private bool _fallback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _transport = await SettingsService.GetDefaultTransportAsync();
+        _fallback = await SettingsService.GetTransportFallbackAsync();
+    }
+
+    private async Task SetFallbackAsync(bool enabled)
+    {
+        _fallback = enabled;
+        await SettingsService.SetTransportFallbackAsync(enabled);
+        Snackbar.Add("Gespeichert.", Severity.Success);
+    }
 
     private async Task SetTransportAsync(TransportKind kind)
     {

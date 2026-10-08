@@ -4,6 +4,7 @@ using Inventory.Data;
 using Inventory.Data.Services;
 using Inventory.Remoting;
 using Inventory.Remoting.Smb;
+using Inventory.Remoting.WinRm;
 using Inventory.Server;
 using Inventory.Server.Api;
 using Inventory.Server.Components;
@@ -45,6 +46,7 @@ else
     {
         builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner")));
         builder.Services.AddSingleton<IRemoteTransport, SmbServiceTransport>();
+        builder.Services.AddSingleton<IRemoteTransport, WinRmTransport>();
     }
 }
 builder.Services.AddSingleton<RemoteJobService>();
