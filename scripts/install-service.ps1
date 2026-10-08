@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Installiert oder aktualisiert Inventory als Windows-Dienst.
 .DESCRIPTION
@@ -15,7 +15,7 @@ param(
     # Adresse(n), auf denen die Weboberfläche lauscht. Für HTTPS ein Zertifikat in appsettings.Production.json hinterlegen.
     [string]$Urls = 'http://*:5100',
     # Gruppen (Name oder SID), deren Mitglieder Inventory bedienen dürfen.
-    [string[]]$AllowedGroups = @('FIRMA\IT-Admins'),
+    [string[]]$AllowedGroups = @('FIRMA\Domänen-Admins'),
     # Leer = LocalSystem. Ein Domänenkonto ist nötig, wenn Zielrechner ohne hinterlegte Zugangsdaten erreicht
     # oder das Active Directory mit dem Dienstkonto abgefragt werden soll.
     [string]$ServiceAccount

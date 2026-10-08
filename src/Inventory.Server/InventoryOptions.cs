@@ -19,11 +19,44 @@ public sealed class InventoryOptions
     /// <summary>Gruppen, deren Mitglieder die Oberfläche und die API nutzen dürfen: Name ("FIRMA\IT-Admins") oder SID.</summary>
     public string[] AllowedGroups { get; set; } = [LocalAdministratorsSid];
 
+    private static readonly string[] GroupClaimTypes =
+    [
+        System.Security.Claims.ClaimTypes.GroupSid, System.Security.Claims.ClaimTypes.PrimaryGroupSid,
+        // Greift jemand vom Server selbst aus ohne erhöhte Rechte zu, markiert die Benutzerkontensteuerung seine
+        // Administratorgruppen als "nur zum Ablehnen". Mitglied ist er trotzdem, und nur darum geht es hier.
+        System.Security.Claims.ClaimTypes.DenyOnlySid, System.Security.Claims.ClaimTypes.DenyOnlyPrimaryGroupSid,
+    ];
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string?> _groupSids = new(StringComparer.OrdinalIgnoreCase);
+
     public bool IsAllowed(System.Security.Claims.ClaimsPrincipal user) => AllowedGroups.Any(group =>
-        group.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase)
-            ? user.HasClaim(c => c.Type is System.Security.Claims.ClaimTypes.GroupSid or System.Security.Claims.ClaimTypes.PrimaryGroupSid
-                                 && c.Value.Equals(group, StringComparison.OrdinalIgnoreCase))
+        ResolveSid(group) is { } sid
+            ? user.HasClaim(c => GroupClaimTypes.Contains(c.Type) && c.Value.Equals(sid, StringComparison.OrdinalIgnoreCase))
             : user.IsInRole(group));
+
+    /// <summary>SID einer Gruppe; null, wenn sich der Name (noch) nicht auflösen lässt, etwa weil kein Domänencontroller erreichbar ist.</summary>
+    private string? ResolveSid(string group)
+    {
+        if (group.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
+            return group;
+        if (_groupSids.TryGetValue(group, out var known) && known is not null)
+            return known;
+        string? sid = null;
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                sid = new System.Security.Principal.NTAccount(group).Translate(typeof(System.Security.Principal.SecurityIdentifier)).Value;
+            }
+            catch (Exception ex) when (ex is System.Security.Principal.IdentityNotMappedException or SystemException)
+            {
+                // Nicht merken: beim nächsten Zugriff erneut versuchen.
+                return null;
+            }
+        }
+        _groupSids[group] = sid;
+        return sid;
+    }
 
     /// <summary>Gruppen für die Anzeige; SIDs werden unter Windows in Namen übersetzt.</summary>
     public IEnumerable<string> DescribeAllowedGroups() => AllowedGroups.Select(group =>
