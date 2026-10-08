@@ -10,9 +10,8 @@ WIN_LOCALAPPDATA="$(cd /mnt/c && cmd.exe /c 'echo %LOCALAPPDATA%' 2>/dev/null | 
 OUT="${INVENTORY_WIN_DIR:-$(wslpath -u "$WIN_LOCALAPPDATA")/InventoryDev}"
 export PATH="$HOME/.dotnet:$PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 
-mkdir -p "$OUT/app" "$OUT/app/runner" "$OUT/data"
+mkdir -p "$OUT/app" "$OUT/data"
 dotnet publish "$ROOT/src/Inventory.Server" -c Release -r win-x64 --self-contained false -o "$OUT/app"
-dotnet build "$ROOT/src/Inventory.Runner" -c Release -o "$OUT/app/runner"
 
 cd "$OUT/app"
 export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}"

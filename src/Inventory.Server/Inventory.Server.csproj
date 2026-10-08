@@ -15,6 +15,18 @@
     <ProjectReference Include="..\Inventory.Core\Inventory.Core.csproj" />
     <ProjectReference Include="..\Inventory.Data\Inventory.Data.csproj" />
     <ProjectReference Include="..\Inventory.Remoting\Inventory.Remoting.csproj" />
+    <!-- Nur Build-Reihenfolge: der net48-Runner wird nicht referenziert, sondern als Dateien mitgeliefert (siehe IncludeRunner). -->
+    <ProjectReference Include="..\Inventory.Runner\Inventory.Runner.csproj" ReferenceOutputAssembly="false"
+                      SetTargetFramework="TargetFramework=net48" SkipGetTargetFrameworkProperties="true"
+                      UndefineProperties="RuntimeIdentifier;SelfContained" />
   </ItemGroup>
+
+  <!-- Legt den Runner als Unterordner "runner" in Ausgabe und Publish; von dort verteilt ihn der Server auf die Zielrechner. -->
+  <Target Name="IncludeRunner" AfterTargets="ResolveProjectReferences" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <RunnerFile Include="..\Inventory.Runner\bin\$(Configuration)\net48\*.exe;..\Inventory.Runner\bin\$(Configuration)\net48\*.dll;..\Inventory.Runner\bin\$(Configuration)\net48\*.config" />
+      <Content Include="@(RunnerFile)" Link="runner\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 
 </Project>

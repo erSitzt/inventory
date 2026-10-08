@@ -15,6 +15,8 @@
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.NetworkCheck" Disabled="_busy" OnClick="ProbeAsync">
         @(_selected.Count > 0 ? $"Erreichbarkeit prüfen ({_selected.Count})" : "Alle prüfen")
     </MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)"
+               Href="@($"run?ids={string.Join(',', _selected.Select(c => c.Id))}")">Befehl ausführen</MudButton>
     <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
                Disabled="@(_selected.Count == 0 || _busy)" OnClick="DeleteAsync">Löschen</MudButton>
 </MudStack>

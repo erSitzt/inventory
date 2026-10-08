@@ -36,3 +36,16 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+.run-output {
+    margin: 0;
+    padding: 12px;
+    max-height: 420px;
+    overflow: auto;
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #1e1e1e;
+    color: #e6e6e6;
+    border-radius: 4px;
+}

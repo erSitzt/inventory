@@ -1,0 +1,181 @@
+@page "/run"
+@implements IDisposable
+@inject ComputerService ComputerService
+@inject RemoteJobService Jobs
+
+<PageTitle>Remote-Befehl – Inventory</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Remote-Befehl</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudStack Spacing="3">
+                <MudSelect T="Computer" MultiSelection="true" @bind-SelectedValues="_targets" Label="Zielrechner" Variant="Variant.Outlined"
+                           ToStringFunc="@(c => c?.Name ?? "")" MultiSelectionTextFunc="@(names => $"{names.Count} Rechner ausgewählt")" SelectAll="true"
+                           SelectAllText="Alle auswählen" Disabled="_running">
+                    @foreach (var computer in _computers)
+                    {
+                        <MudSelectItem T="Computer" Value="computer">@computer.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudRadioGroup T="StepType" @bind-Value="_type" Disabled="_running">
+                    <MudRadio T="StepType" Value="StepType.Command">Eingabeaufforderung (cmd)</MudRadio>
+                    <MudRadio T="StepType" Value="StepType.PowerShell">PowerShell</MudRadio>
+                </MudRadioGroup>
+                <MudTextField @bind-Value="_script" Label="@(_type == StepType.Command ? "Befehl" : "Skript")" Variant="Variant.Outlined" Immediate="true"
+                              Lines="@(_type == StepType.Command ? 2 : 8)" Disabled="_running" Style="font-family: monospace"
+                              HelperText="Läuft auf dem Zielrechner als Lokales System." />
+                <MudNumericField T="int" @bind-Value="_timeoutSeconds" Label="Zeitlimit (Sekunden)" Variant="Variant.Outlined" Min="1" Max="86400" Disabled="_running" />
+                <MudStack Row="true">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
+                               Disabled="@(_running || _targets.Count == 0 || string.IsNullOrWhiteSpace(_script))" OnClick="RunAsync">
+                        Ausführen
+                    </MudButton>
+                    @if (_running)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="@(() => _cts?.Cancel())">Abbrechen</MudButton>
+                    }
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="7">
+        @if (_runs.Count == 0)
+        {
+            <MudText Color="Color.Secondary">Die Ausgabe erscheint hier, sobald ein Befehl läuft.</MudText>
+        }
+        else
+        {
+            <MudExpansionPanels MultiExpansion="true" Outlined="true" Elevation="0">
+                @foreach (var run in _runs)
+                {
+                    <MudExpansionPanel Expanded="@(_runs.Count <= 3)">
+                        <TitleContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center">
+                                <MudText>@run.Computer.Name</MudText>
+                                @switch (run.State)
+                                {
+                                    case RunState.Waiting:
+                                        <MudChip T="string" Size="Size.Small">wartet</MudChip>
+                                        break;
+                                    case RunState.Running:
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">läuft</MudChip>
+                                        break;
+                                    case RunState.Succeeded:
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">erfolgreich</MudChip>
+                                        break;
+                                    default:
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">fehlgeschlagen</MudChip>
+                                        break;
+                                }
+                                @if (run.ExitCode is { } exitCode)
+                                {
+                                    <MudText Typo="Typo.caption">Exitcode @exitCode</MudText>
+                                }
+                            </MudStack>
+                        </TitleContent>
+                        <ChildContent>
+                            @if (run.Error is not null)
+                            {
+                                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">@run.Error</MudAlert>
+                            }
+                            <pre class="run-output">@run.Output</pre>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private const int MaxParallel = 16;
+
+    private enum RunState { Waiting, Running, Succeeded, Failed }
+
+    private sealed class TargetRun(Computer computer)
+    {
+        public Computer Computer { get; } = computer;
+        public RunState State { get; set; }
+        public System.Text.StringBuilder Output { get; } = new();
+        public int? ExitCode { get; set; }
+        public string? Error { get; set; }
+    }
+
+    [SupplyParameterFromQuery(Name = "ids")] public string? Ids { get; set; }
+
+    private List<Computer> _computers = [];
+    private IEnumerable<Computer> _targetsValue = [];
+    private IReadOnlyCollection<Computer> _targets = [];
+    private StepType _type = StepType.Command;
+    private string _script = "";
+    private int _timeoutSeconds = 600;
+    private bool _running;
+    private List<TargetRun> _runs = [];
+    private CancellationTokenSource? _cts;
+    private Timer? _refresh;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _computers = await ComputerService.ListAsync();
+        var ids = (Ids ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => int.TryParse(s, out var id) ? id : 0).ToHashSet();
+        _targets = _computers.Where(c => ids.Contains(c.Id)).ToList();
+    }
+
+    private async Task RunAsync()
+    {
+        _runs = _targets.OrderBy(c => c.Name).Select(c => new TargetRun(c)).ToList();
+        _running = true;
+        _cts = new CancellationTokenSource();
+        // Ausgabe trifft aus Hintergrund-Threads ein; gebündelt neu zeichnen statt je Zeile.
+        _refresh = new Timer(_ => InvokeAsync(StateHasChanged), null, 250, 250);
+        try
+        {
+            var token = _cts.Token;
+            await Parallel.ForEachAsync(_runs, new ParallelOptions { MaxDegreeOfParallelism = MaxParallel }, async (run, _) => await RunOneAsync(run, token));
+        }
+        finally
+        {
+            _refresh?.Dispose();
+            _refresh = null;
+            _running = false;
+        }
+    }
+
+    private async Task RunOneAsync(TargetRun run, CancellationToken ct)
+    {
+        run.State = RunState.Running;
+        var job = new JobManifest
+        {
+            Steps = [new JobStep { Name = "Befehl", Type = _type, Script = _script, TimeoutSeconds = _timeoutSeconds }],
+        };
+        var progress = new SyncProgress(e =>
+        {
+            if (e.Kind == ProgressKind.Output)
+            {
+                lock (run.Output)
+                    run.Output.AppendLine(e.Text);
+            }
+        });
+
+        var result = await Jobs.RunAsync(run.Computer.Id, job, progress, ct);
+        var step = result.Steps.FirstOrDefault();
+        run.ExitCode = step?.ExitCode;
+        run.Error = result.Error ?? (result.Success ? null : step?.Error);
+        run.State = result.Success ? RunState.Succeeded : RunState.Failed;
+    }
+
+    /// <summary>Ruft den Handler direkt auf; <see cref="Progress{T}"/> würde die Reihenfolge der Zeilen nicht garantieren.</summary>
+    private sealed class SyncProgress(Action<ProgressEvent> handler) : IProgress<ProgressEvent>
+    {
+        public void Report(ProgressEvent value) => handler(value);
+    }
+
+    public void Dispose()
+    {
+        _refresh?.Dispose();
+        _cts?.Cancel();
+    }
+}

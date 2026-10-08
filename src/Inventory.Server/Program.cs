@@ -1,7 +1,9 @@
 using Inventory.Core.Abstractions;
+using Inventory.Core.Model;
 using Inventory.Data;
 using Inventory.Data.Services;
 using Inventory.Remoting;
+using Inventory.Remoting.Smb;
 using Inventory.Server;
 using Inventory.Server.Api;
 using Inventory.Server.Components;
@@ -31,16 +33,31 @@ if (OperatingSystem.IsWindows())
 
 builder.Services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
 if (options.ResolveSimulate())
+{
     builder.Services.AddSingleton<IHostProbe, SimulatedHostProbe>();
+    builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.SmbService));
+    builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.WinRm));
+}
 else
+{
     builder.Services.AddSingleton<IHostProbe, TcpHostProbe>();
+    if (OperatingSystem.IsWindows())
+    {
+        builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner")));
+        builder.Services.AddSingleton<IRemoteTransport, SmbServiceTransport>();
+    }
+}
+builder.Services.AddSingleton<RemoteJobService>();
 builder.Services.AddSingleton<ComputerService>();
 builder.Services.AddSingleton<CredentialService>();
 builder.Services.AddSingleton<SettingsService>();
 
+// Enums in der REST-API als Namen statt Zahlen.
+builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config => config.SnackbarConfiguration.PositionClass = MudBlazor.Defaults.Classes.Position.BottomRight);
 
 var app = builder.Build();
 

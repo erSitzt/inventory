@@ -1,3 +1,4 @@
+using Inventory.Contracts;
 using Inventory.Core.Model;
 using Inventory.Data.Services;
 
@@ -9,6 +10,8 @@ public static class ComputerEndpoints
         DateTime? LastSeenUtc, DateTime? LastScanUtc, TransportKind? Transport, int? CredentialId);
 
     public sealed record ImportRequest(string Names);
+
+    public sealed record RunRequest(StepType Type, string Script, int? TimeoutSeconds);
 
     public static IEndpointRouteBuilder MapComputerEndpoints(this IEndpointRouteBuilder app)
     {
@@ -28,6 +31,15 @@ public static class ComputerEndpoints
 
         group.MapPost("probe", async (int[]? ids, ComputerService computers, CancellationToken ct) =>
             new { online = await computers.ProbeAsync(ids is { Length: > 0 } ? ids : null, ct) });
+
+        group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, CancellationToken ct) =>
+        {
+            var job = new JobManifest
+            {
+                Steps = [new JobStep { Name = "Befehl", Type = request.Type, Script = request.Script, TimeoutSeconds = request.TimeoutSeconds ?? 600 }],
+            };
+            return await jobs.RunAsync(id, job, null, ct);
+        });
 
         return app;
     }
