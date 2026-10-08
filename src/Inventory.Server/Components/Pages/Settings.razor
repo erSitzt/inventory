@@ -1,6 +1,38 @@
 @page "/settings"
+@using Microsoft.Extensions.Options
+@inject SettingsService SettingsService
+@inject IOptions<InventoryOptions> Options
+@inject ISnackbar Snackbar
 
 <PageTitle>Einstellungen – Inventory</PageTitle>
 
 <MudText Typo="Typo.h5" Class="mb-4">Einstellungen</MudText>
-<MudAlert Severity="Severity.Info">Folgt in Phase 2.</MudAlert>
+
+<MudPaper Class="pa-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="4">
+        <MudSelect T="TransportKind" Value="_transport" ValueChanged="SetTransportAsync" Label="Standard-Transport" Variant="Variant.Outlined"
+                   HelperText="Gilt für alle Rechner, bei denen kein eigener Transport eingestellt ist.">
+            <MudSelectItem T="TransportKind" Value="TransportKind.SmbService">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
+            <MudSelectItem T="TransportKind" Value="TransportKind.WinRm">@Display.Transport(TransportKind.WinRm)</MudSelectItem>
+        </MudSelect>
+        <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="Datenverzeichnis" Variant="Variant.Outlined" ReadOnly="true"
+                      HelperText="Datenbank und Schlüssel. Änderbar über Inventory:DataDirectory in der Konfiguration." />
+        @if (Options.Value.ResolveSimulate())
+        {
+            <MudAlert Severity="Severity.Warning">Simulationsmodus: Es finden keine echten Zugriffe auf Zielrechner statt.</MudAlert>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    private TransportKind _transport;
+
+    protected override async Task OnInitializedAsync() => _transport = await SettingsService.GetDefaultTransportAsync();
+
+    private async Task SetTransportAsync(TransportKind kind)
+    {
+        _transport = kind;
+        await SettingsService.SetDefaultTransportAsync(kind);
+        Snackbar.Add("Gespeichert.", Severity.Success);
+    }
+}

@@ -1,0 +1,46 @@
+@inject ComputerService ComputerService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_description" Label="Beschreibung" Variant="Variant.Outlined" />
+            <MudSelect T="TransportKind?" @bind-Value="_transport" Label="Transport" Variant="Variant.Outlined" Clearable="true" Placeholder="Standard">
+                <MudSelectItem T="TransportKind?" Value="@(TransportKind.SmbService)">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
+                <MudSelectItem T="TransportKind?" Value="@(TransportKind.WinRm)">@Display.Transport(TransportKind.WinRm)</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="int?" @bind-Value="_credentialId" Label="Zugangsdaten" Variant="Variant.Outlined" Clearable="true" Placeholder="Standard">
+                @foreach (var credential in Credentials)
+                {
+                    <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync">Speichern</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public Computer Computer { get; set; } = default!;
+    [Parameter, EditorRequired] public List<Credential> Credentials { get; set; } = [];
+
+    private string? _description;
+    private TransportKind? _transport;
+    private int? _credentialId;
+
+    protected override void OnInitialized()
+    {
+        _description = Computer.Description;
+        _transport = Computer.Transport;
+        _credentialId = Computer.CredentialId;
+    }
+
+    private async Task SaveAsync()
+    {
+        await ComputerService.UpdateAsync(Computer.Id, _description, _transport, _credentialId);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

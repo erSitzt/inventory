@@ -1,6 +1,139 @@
 @page "/computers"
+@inject ComputerService ComputerService
+@inject CredentialService CredentialService
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
 
 <PageTitle>Rechner – Inventory</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-4">Rechner</MudText>
-<MudAlert Severity="Severity.Info">Folgt in Phase 2.</MudAlert>
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">Rechner</MudText>
+    <MudSpacer />
+    <MudTextField @bind-Value="_search" Placeholder="Suchen" Adornment="Adornment.Start" Immediate="true"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 280px" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">Hinzufügen</MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.NetworkCheck" Disabled="_busy" OnClick="ProbeAsync">
+        @(_selected.Count > 0 ? $"Erreichbarkeit prüfen ({_selected.Count})" : "Alle prüfen")
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
+               Disabled="@(_selected.Count == 0 || _busy)" OnClick="DeleteAsync">Löschen</MudButton>
+</MudStack>
+
+<MudDataGrid T="Computer" Items="_computers" MultiSelection="true" @bind-SelectedItems="_selected" QuickFilter="Matches"
+             Dense="true" Hover="true" Loading="_busy" SortMode="SortMode.Single" RowsPerPage="50">
+    <Columns>
+        <SelectColumn T="Computer" />
+        <PropertyColumn Property="c => c.Name" Title="Name" />
+        <TemplateColumn Title="Status" SortBy="c => c.IsOnline">
+            <CellTemplate>
+                @if (context.Item.LastProbeUtc is null)
+                {
+                    <MudChip T="string" Size="Size.Small">ungeprüft</MudChip>
+                }
+                else if (context.Item.IsOnline)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">online</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">offline</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="c => c.IpAddress" Title="IP-Adresse" />
+        <TemplateColumn Title="Zuletzt gesehen" SortBy="c => c.LastSeenUtc">
+            <CellTemplate>@Display.LocalTime(context.Item.LastSeenUtc)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Transport" Sortable="false">
+            <CellTemplate>@(context.Item.Transport is { } t ? Display.Transport(t) : "Standard")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Zugangsdaten" Sortable="false">
+            <CellTemplate>@(context.Item.Credential?.Name ?? "Standard")</CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="c => c.Description" Title="Beschreibung" />
+        <TemplateColumn Sortable="false" CellStyle="width: 1%">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Bearbeiten" OnClick="@(() => EditAsync(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">Noch keine Rechner vorhanden. Über „Hinzufügen“ lassen sich Namen einzeln oder als Liste anlegen.</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudDataGridPager T="Computer" PageSizeOptions="@(new[] { 25, 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    private List<Computer> _computers = [];
+    private HashSet<Computer> _selected = [];
+    private string _search = "";
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _computers = await ComputerService.ListAsync();
+        _selected = [];
+    }
+
+    private bool Matches(Computer c) =>
+        string.IsNullOrWhiteSpace(_search)
+        || c.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+        || (c.IpAddress?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+        || (c.Description?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+
+    private async Task AddAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<AddComputersDialog>("Rechner hinzufügen", new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false, Data: string text })
+        {
+            var added = await ComputerService.ImportAsync(text);
+            Snackbar.Add(added.Count == 0 ? "Keine neuen Rechner – alle Namen waren bereits vorhanden oder ungültig." : $"{added.Count} Rechner hinzugefügt.",
+                added.Count == 0 ? Severity.Warning : Severity.Success);
+            await ReloadAsync();
+        }
+    }
+
+    private async Task EditAsync(Computer computer)
+    {
+        var parameters = new DialogParameters<EditComputerDialog>
+        {
+            { d => d.Computer, computer },
+            { d => d.Credentials, await CredentialService.ListAsync() },
+        };
+        var dialog = await Dialogs.ShowAsync<EditComputerDialog>(computer.Name, parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            await ReloadAsync();
+    }
+
+    private async Task ProbeAsync()
+    {
+        _busy = true;
+        try
+        {
+            var ids = _selected.Count > 0 ? _selected.Select(c => c.Id).ToList() : null;
+            var online = await ComputerService.ProbeAsync(ids);
+            Snackbar.Add($"{online} von {ids?.Count ?? _computers.Count} Rechnern erreichbar.", Severity.Info);
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        var count = _selected.Count;
+        var confirmed = await Dialogs.ShowMessageBoxAsync("Rechner löschen",
+            $"{count} Rechner wirklich löschen? Das lässt sich nicht rückgängig machen.", yesText: "Löschen", cancelText: "Abbrechen");
+        if (confirmed != true)
+            return;
+        await ComputerService.DeleteAsync(_selected.Select(c => c.Id));
+        Snackbar.Add($"{count} Rechner gelöscht.", Severity.Success);
+        await ReloadAsync();
+    }
+}
