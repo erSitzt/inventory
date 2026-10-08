@@ -20,5 +20,11 @@ export Inventory__DataDirectory="$(wslpath -w "$OUT/data")"
 # Mit Windows-Anmeldung wie im Betrieb (erlaubte Gruppen aus appsettings.json).
 # Zum Entwickeln ohne Anmeldung: Inventory__Authentication=None ./scripts/run-win.sh
 export Inventory__Authentication="${Inventory__Authentication:-Windows}"
-export WSLENV="ASPNETCORE_ENVIRONMENT:ASPNETCORE_URLS:Inventory__DataDirectory:Inventory__Authentication${WSLENV:+:$WSLENV}"
+# Umgebungsspezifische Einstellungen (z. B. Inventory__AllowedGroups__0) stehen in der nicht eingecheckten Datei local.env.
+if [ -f "$ROOT/scripts/local.env" ]; then
+    set -a; . "$ROOT/scripts/local.env"; set +a
+fi
+# Alle Inventory__-Variablen an den Windows-Prozess durchreichen.
+PASS="$(compgen -v | grep '^Inventory__' | paste -sd: -)"
+export WSLENV="ASPNETCORE_ENVIRONMENT:ASPNETCORE_URLS:$PASS${WSLENV:+:$WSLENV}"
 exec ./Inventory.Server.exe "$@"

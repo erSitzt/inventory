@@ -6,7 +6,7 @@
     registriert den Dienst "Inventory". Daten (Datenbank, Schlüssel, Paketdateien, Sicherungen) liegen getrennt
     unter -DataDir und bleiben bei Updates erhalten.
 .EXAMPLE
-    .\install-service.ps1 -ServiceAccount 'FIRMA\svc-inventory'
+    .\install-service.ps1 -AllowedGroups 'FIRMA\Domänen-Admins' -ServiceAccount 'FIRMA\svc-inventory'
 #>
 #Requires -RunAsAdministrator
 param(
@@ -14,8 +14,9 @@ param(
     [string]$DataDir = "$env:ProgramData\Inventory",
     # Adresse(n), auf denen die Weboberfläche lauscht. Für HTTPS ein Zertifikat in appsettings.Production.json hinterlegen.
     [string]$Urls = 'http://*:5100',
-    # Gruppen (Name oder SID), deren Mitglieder Inventory bedienen dürfen.
-    [string[]]$AllowedGroups = @('FIRMA\Domänen-Admins'),
+    # Gruppen (Name oder SID), deren Mitglieder Inventory bedienen dürfen, z. B. 'FIRMA\Domänen-Admins'.
+    # Standard: lokale Administratoren des Servers.
+    [string[]]$AllowedGroups = @('S-1-5-32-544'),
     # Leer = LocalSystem. Ein Domänenkonto ist nötig, wenn Zielrechner ohne hinterlegte Zugangsdaten erreicht
     # oder das Active Directory mit dem Dienstkonto abgefragt werden soll.
     [string]$ServiceAccount

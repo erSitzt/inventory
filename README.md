@@ -70,6 +70,8 @@ dotnet run --project src/Inventory.Server --launch-profile http   # Simulation, 
   Beispieldaten. Schritte, deren Name „fehler“ enthält, schlagen in der Simulation fehl.
 - Echte Zugriffe (SMB, Dienststeuerung, Kerberos) gehen nur als Windows-Prozess. `run-win.sh` veröffentlicht
   nach `%LOCALAPPDATA%\InventoryDev` und startet dort; Datenbank und Paketdateien liegen damit auf NTFS.
+- Umgebungsspezifisches (z. B. die erlaubte Gruppe) gehört in `scripts/local.env`, das nicht eingecheckt wird;
+  `run-win.sh` liest die Datei ein. Beispiel: `Inventory__AllowedGroups__0='FIRMA\Domänen-Admins'`
 - Der Server selbst taugt nicht als SMB-Testziel: lokale Zugriffe nutzen immer das Konto des Server-Prozesses.
 
 ## Installation auf dem Server
@@ -81,7 +83,7 @@ dotnet run --project src/Inventory.Server --launch-profile http   # Simulation, 
 Den Ordner auf den Windows-Server kopieren und dort als Administrator ausführen:
 
 ```powershell
-.\install-service.ps1
+.\install-service.ps1 -AllowedGroups 'FIRMA\Domänen-Admins'
 ```
 
 Das Skript installiert nach `C:\Program Files\Inventory`, legt Daten unter `C:\ProgramData\Inventory` ab und
@@ -94,7 +96,7 @@ registriert den Dienst. Ein erneuter Aufruf aktualisiert die Programmdateien; Ko
 | `Urls` | Adressen der Weboberfläche, z. B. `http://*:5100` |
 | `Inventory:DataDirectory` | Datenbank, Schlüssel, Paketdateien (`repository`), Sicherungen (`backups`) |
 | `Inventory:Authentication` | `Windows` (Standard auf Windows) oder `None` |
-| `Inventory:AllowedGroups` | Gruppen mit Zugriff auf Oberfläche und API, als Name (`FIRMA\IT-Admins`) oder SID. Voreingestellt: `FIRMA\Domänen-Admins` |
+| `Inventory:AllowedGroups` | Gruppen mit Zugriff auf Oberfläche und API, als Name (`FIRMA\IT-Admins`) oder SID. Standard: lokale Administratoren (`S-1-5-32-544`) |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 
 Für eine vollständige Sicherung gehören neben `backups` auch die Ordner `keys` (ohne sie sind die gespeicherten
