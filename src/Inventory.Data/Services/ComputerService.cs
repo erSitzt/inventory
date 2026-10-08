@@ -85,13 +85,16 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         var idList = ids?.ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var computers = await db.Computers.Where(c => idList == null || idList.Contains(c.Id)).ToListAsync(ct);
+        var verifyName = await SettingsService.VerifyTargetNameAsync(db, ct);
 
         await Parallel.ForEachAsync(computers, new ParallelOptions { MaxDegreeOfParallelism = MaxParallelProbes, CancellationToken = ct },
             async (computer, token) =>
             {
                 var result = await probe.ProbeAsync(computer.Name, token);
                 var now = DateTime.UtcNow;
-                computer.IsOnline = result.Online;
+                // Antwortet unter der Adresse ein anderer Rechner, ist der eingetragene nicht erreichbar – nur seine alte Adresse.
+                var online = result.Online && !(verifyName && MachineNames.Differs(computer.Name, result.MachineName));
+                computer.IsOnline = online;
                 computer.LastProbeUtc = now;
                 if (result.IpAddress is not null)
                     computer.IpAddress = result.IpAddress;
@@ -99,7 +102,7 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
                     computer.ReportedName = result.MachineName;
                 if (result.Online)
                     computer.ReverseDnsName = result.ReverseName;
-                if (result.Online)
+                if (online)
                     computer.LastSeenUtc = now;
             });
 

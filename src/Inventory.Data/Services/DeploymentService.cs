@@ -135,7 +135,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             {
                 foreach (var target in deployment.Targets)
                 {
-                    if ((await probe.ProbeAsync(target.ComputerName, ct)).Online)
+                    if (await IsReachableAsync(target.ComputerName, ct))
                         ready.Add(target);
                 }
             }
@@ -210,7 +210,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         {
             await _slots.WaitAsync(ct);
             started = true;
-            if (checkOnline && !(await probe.ProbeAsync(target.ComputerName, ct)).Online)
+            if (checkOnline && !await IsReachableAsync(target.ComputerName, ct))
             {
                 status = TargetStatus.WaitingOffline;
                 error = WaitingText;
@@ -272,6 +272,16 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             });
             Changed?.Invoke(deployment.Id);
         }
+    }
+
+    /// <summary>Erreichbar heißt: es antwortet der gemeinte Rechner, nicht bloß irgendeiner unter seiner alten Adresse.</summary>
+    private async Task<bool> IsReachableAsync(string computerName, CancellationToken ct)
+    {
+        var result = await probe.ProbeAsync(computerName, ct);
+        if (!result.Online || !MachineNames.Differs(computerName, result.MachineName))
+            return result.Online;
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return !await SettingsService.VerifyTargetNameAsync(db, ct);
     }
 
     private async Task UpdateAsync(Func<InventoryDbContext, Task> update)

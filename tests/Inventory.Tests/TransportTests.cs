@@ -202,6 +202,9 @@ public class NameCheckTests
         var stored = await computers.ListAsync();
         Assert.Equal([true, false], stored.Select(c => c.NameMismatch));
         Assert.All(stored, c => Assert.Equal("pc-07.corp.local", c.ReverseDnsName));
+        // Unter dem Alias antwortet ein anderer Rechner: der eingetragene gilt nicht als online.
+        Assert.Equal([false, true], stored.Select(c => c.IsOnline));
+        Assert.Equal([false, true], stored.Select(c => c.LastSeenUtc is not null));
 
         await jobs.RunAsync(added[0].Id, new JobManifest { Steps = [new JobStep { Type = StepType.Command, Script = "x" }] });
         Assert.Equal("kasse-alt", transport.Last!.ExpectedComputerName);
@@ -209,6 +212,8 @@ public class NameCheckTests
         Assert.Null(transport.Last.ExpectedComputerName);
 
         await settings.SetVerifyTargetNameAsync(false);
+        await computers.ProbeAsync();
+        Assert.All(await computers.ListAsync(), c => Assert.True(c.IsOnline));
         await jobs.RunAsync(added[0].Id, new JobManifest { Steps = [new JobStep { Type = StepType.Command, Script = "x" }] });
         Assert.Null(transport.Last.ExpectedComputerName);
 

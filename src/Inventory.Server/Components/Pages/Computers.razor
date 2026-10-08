@@ -16,11 +16,14 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
     <MudText Typo="Typo.h5">Rechner</MudText>
     <MudSpacer />
-    <MudSelect T="int?" Value="CollectionId" ValueChanged="SetCollection" Placeholder="Alle Rechner" Clearable="true" Variant="Variant.Outlined"
-               Margin="Margin.Dense" Style="max-width: 240px" aria-label="Sammlung">
+    <MudSelect T="string" Value="_view" ValueChanged="SetView" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 260px" aria-label="Ansicht">
+        @foreach (var (key, label) in BuiltInViews)
+        {
+            <MudSelectItem T="string" Value="@key">@label (@_all.Count(c => InView(key, c)))</MudSelectItem>
+        }
         @foreach (var summary in _collections)
         {
-            <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
+            <MudSelectItem T="string" Value="@($"c:{summary.Collection.Id}")">Sammlung: @summary.Collection.Name (@summary.Count)</MudSelectItem>
         }
     </MudSelect>
     <MudTextField @bind-Value="_search" Placeholder="Suchen" Adornment="Adornment.Start" Immediate="true"
@@ -99,6 +102,12 @@
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Success">online</MudChip>
                 }
+                else if (context.Item.NameMismatch)
+                {
+                    <MudTooltip Text="Unter der Adresse dieses Namens antwortet ein anderer Rechner; der eingetragene ist damit nicht erreichbar.">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">nicht erreichbar</MudChip>
+                    </MudTooltip>
+                }
                 else
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Default">offline</MudChip>
@@ -148,6 +157,27 @@
 
 @code {
     [SupplyParameterFromQuery(Name = "collection")] public int? CollectionId { get; set; }
+    [SupplyParameterFromQuery(Name = "filter")] public string? Filter { get; set; }
+
+    private static readonly (string Key, string Label)[] BuiltInViews =
+    [
+        ("all", "Alle Rechner"), ("online", "Online"), ("offline", "Offline"), ("mismatch", "Falscher Rechner antwortet"),
+        ("unscanned", "Noch nicht gescannt"), ("scanerror", "Scan fehlgeschlagen"), ("agent", "Mit Agent"),
+    ];
+
+    private List<Computer> _all = [];
+    private string _view = "all";
+
+    private static bool InView(string key, Computer c) => key switch
+    {
+        "online" => c.IsOnline,
+        "offline" => !c.IsOnline,
+        "mismatch" => c.NameMismatch,
+        "unscanned" => c.LastScanUtc is null,
+        "scanerror" => c.LastScanError is not null,
+        "agent" => c.AgentKeyHash is not null,
+        _ => true,
+    };
 
     private List<Computer> _computers = [];
     private List<CollectionSummary> _collections = [];
@@ -163,18 +193,27 @@
     {
         _collections = await CollectionService.ListAsync();
         _activeCollection = _collections.FirstOrDefault(c => c.Collection.Id == CollectionId)?.Collection;
-        var all = await ComputerService.ListAsync();
+        _all = await ComputerService.ListAsync();
         if (_activeCollection is not null)
         {
             var members = await CollectionService.GetMemberIdsAsync(_activeCollection.Id);
-            all = all.Where(c => members.Contains(c.Id)).ToList();
+            _computers = _all.Where(c => members.Contains(c.Id)).ToList();
+            _view = $"c:{_activeCollection.Id}";
         }
-        _computers = all;
+        else
+        {
+            _view = BuiltInViews.Any(v => v.Key == Filter) ? Filter! : "all";
+            _computers = _all.Where(c => InView(_view, c)).ToList();
+        }
         _selected = [];
     }
 
-    private void SetCollection(int? id) =>
-        Navigation.NavigateTo(id is null ? "computers" : $"computers?collection={id}");
+    private void SetView(string view) => Navigation.NavigateTo(view switch
+    {
+        "all" or null or "" => "computers",
+        ['c', ':', .. var id] => $"computers?collection={id}",
+        _ => $"computers?filter={view}",
+    });
 
     private bool Matches(Computer c) =>
         string.IsNullOrWhiteSpace(_search)

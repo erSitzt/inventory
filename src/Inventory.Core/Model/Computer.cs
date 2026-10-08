@@ -40,30 +40,11 @@ public class Computer
     /// <summary>true, wenn der Rechner sich noch nicht selbst gemeldet hat, Reverse-DNS aber einen anderen Namen nennt.</summary>
     public bool ReverseDnsMismatch => ReportedName is null && Differs(ReverseDnsName);
 
-    /// <summary>NetBIOS-Namen sind auf 15 Zeichen begrenzt; so meldet sich ein Rechner mit längerem DNS-Namen.</summary>
-    public const int NetbiosNameLength = 15;
-
     /// <summary>Der Name, unter dem sich der Rechner melden müsste; null, wenn eine IP-Adresse eingetragen ist.</summary>
-    public string? ExpectedMachineName
-    {
-        get
-        {
-            if (System.Net.IPAddress.TryParse(Name, out _))
-                return null;
-            var label = Name.Split('.')[0];
-            return label.Length > NetbiosNameLength ? label[..NetbiosNameLength] : label;
-        }
-    }
+    public string? ExpectedMachineName => MachineNames.Expected(Name);
 
-    private bool Differs(string? actual)
-    {
-        if (actual is null || ExpectedMachineName is not { } expected)
-            return false;
-        var label = actual.Split('.')[0];
-        if (label.Length > NetbiosNameLength)
-            label = label[..NetbiosNameLength];
-        return !string.Equals(expected, label, StringComparison.OrdinalIgnoreCase);
-    }
+    private bool Differs(string? actual) => MachineNames.Differs(Name, actual);
+
     public string? Domain { get; set; }
     public string? Manufacturer { get; set; }
     public string? Model { get; set; }

@@ -19,7 +19,7 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
     <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="computers" aria-label="Zurück zur Übersicht" />
     <MudText Typo="Typo.h5">@_computer.Name</MudText>
-    <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : Color.Default)">@(_computer.IsOnline ? "online" : "offline")</MudChip>
+    <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : _computer.NameMismatch ? Color.Warning : Color.Default)">@(_computer.IsOnline ? "online" : _computer.NameMismatch ? "nicht erreichbar" : "offline")</MudChip>
     <MudSpacer />
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">Befehl ausführen</MudButton>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_scanning" OnClick="ScanAsync">

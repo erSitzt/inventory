@@ -41,9 +41,17 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         db.ChangeTracker.Entries().Where(e => e.Entity is not Computer and not InventoryChange).ToList().ForEach(e => e.State = EntityState.Detached);
         computer.LastScanUtc = now;
         computer.LastScanError = null;
-        computer.LastSeenUtc = now;
-        computer.IsOnline = true;
         computer.ReportedName = data.ComputerName;
+        // Hat ein anderer Rechner geantwortet, ist der eingetragene damit nicht als erreichbar belegt.
+        if (!(computer.NameMismatch && await SettingsService.VerifyTargetNameAsync(db, ct)))
+        {
+            computer.LastSeenUtc = now;
+            computer.IsOnline = true;
+        }
+        else
+        {
+            computer.IsOnline = false;
+        }
         computer.Domain = data.Domain;
         computer.Manufacturer = data.Manufacturer;
         computer.Model = data.Model;
