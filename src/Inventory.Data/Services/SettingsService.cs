@@ -18,6 +18,13 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
     public Task SetTransportFallbackAsync(bool enabled, CancellationToken ct = default) =>
         SetAsync(SettingKeys.TransportFallback, enabled.ToString(), ct);
 
+    /// <summary>Der Runner bricht ab, wenn er auf einem anders heißenden Rechner landet (Schutz vor veralteten DNS-Einträgen). Standard: an.</summary>
+    public async Task<bool> GetVerifyTargetNameAsync(CancellationToken ct = default) =>
+        await GetAsync(SettingKeys.SkipTargetNameCheck, ct) != bool.TrueString;
+
+    public Task SetVerifyTargetNameAsync(bool enabled, CancellationToken ct = default) =>
+        SetAsync(SettingKeys.SkipTargetNameCheck, (!enabled).ToString(), ct);
+
     public async Task<string?> GetAsync(string key, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

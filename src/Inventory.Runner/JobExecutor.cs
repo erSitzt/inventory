@@ -30,6 +30,13 @@ namespace Inventory.Runner
                 var manifest = JobJson.Deserialize<JobManifest>(File.ReadAllText(Path.Combine(_jobDir, JobFiles.Manifest), Encoding.UTF8))
                                ?? throw new InvalidDataException("Leeres Job-Manifest");
                 result.JobId = manifest.JobId;
+                if (!string.IsNullOrEmpty(manifest.ExpectedComputerName)
+                    && !string.Equals(manifest.ExpectedComputerName, Environment.MachineName, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"Dieser Rechner heißt {Environment.MachineName}, erwartet wurde {manifest.ExpectedComputerName}. " +
+                        "Es wurde nichts ausgeführt. Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias auf diesen Rechner.");
+                }
                 result.Success = true;
 
                 using (var progress = new StreamWriter(new FileStream(Path.Combine(_jobDir, JobFiles.Progress),

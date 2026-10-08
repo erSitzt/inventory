@@ -143,3 +143,91 @@ public class TransportTests
         }
     }
 }
+
+public class NameCheckTests
+{
+    /// <summary>Baut eine NTLM-Challenge mit den angegebenen Namen, wie sie ein Windows-Rechner schickt.</summary>
+    private static byte[] Challenge(string netbios, string dns)
+    {
+        static byte[] Pair(ushort id, string value)
+        {
+            var text = System.Text.Encoding.Unicode.GetBytes(value);
+            return [(byte)id, 0, (byte)text.Length, 0, .. text];
+        }
+        byte[] info = [.. Pair(2, "CORP"), .. Pair(1, netbios), .. Pair(3, dns), 0, 0, 0, 0];
+        var ntlm = new byte[48];
+        "NTLMSSP\0"u8.CopyTo(ntlm);
+        ntlm[8] = 2;
+        ntlm[40] = (byte)info.Length;
+        ntlm[44] = 48;
+        // Davor steht in echten Antworten der SMB-Kopf samt SPNEGO-Hülle.
+        return [.. new byte[90], .. ntlm, .. info];
+    }
+
+    [Fact]
+    public void Machine_names_are_read_from_the_ntlm_challenge()
+    {
+        var identity = SmbNameQuery.ParseChallenge(Challenge("PC-07", "pc-07.corp.local"));
+
+        Assert.Equal(new MachineIdentity("PC-07", "pc-07.corp.local"), identity);
+        Assert.Null(SmbNameQuery.ParseChallenge(new byte[200]));
+        Assert.Null(SmbNameQuery.ParseChallenge("NTLMSSP\0"u8.ToArray()));
+    }
+
+    [Theory]
+    [InlineData("pc-07", "PC-07", null, false, false)]
+    [InlineData("kasse-alt", "PC-07", null, true, false)]
+    [InlineData("kasse-alt", null, "pc-07.corp.local", false, true)]
+    [InlineData("pc-07.corp.local", null, "pc-07.corp.local", false, false)]
+    [InlineData("ein-sehr-langer-rechnername", "EIN-SEHR-LANGER", null, false, false)]
+    [InlineData("10.0.0.7", "PC-07", "pc-07.corp.local", false, false)]
+    public void Mismatch_uses_the_machines_own_name_first_and_reverse_dns_only_as_a_hint(string entered, string? reported, string? reverse, bool mismatch, bool hint)
+    {
+        var computer = new Computer { Name = entered, ReportedName = reported, ReverseDnsName = reverse };
+
+        Assert.Equal((mismatch, hint), (computer.NameMismatch, computer.ReverseDnsMismatch));
+    }
+
+    [Fact]
+    public async Task Probe_stores_the_answering_machine_and_jobs_carry_the_expected_name_except_pure_scans()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new FixedProbe(_ => new ProbeResult(true, "10.0.0.7", null, "PC-07", "pc-07.corp.local")));
+        var settings = new SettingsService(db);
+        var transport = new CapturingTransport();
+        var jobs = new RemoteJobService([transport], computers, new CredentialService(db, new ReversingProtector()), settings);
+        var added = await computers.ImportAsync("kasse-alt pc-07");
+
+        await computers.ProbeAsync();
+        var stored = await computers.ListAsync();
+        Assert.Equal([true, false], stored.Select(c => c.NameMismatch));
+        Assert.All(stored, c => Assert.Equal("pc-07.corp.local", c.ReverseDnsName));
+
+        await jobs.RunAsync(added[0].Id, new JobManifest { Steps = [new JobStep { Type = StepType.Command, Script = "x" }] });
+        Assert.Equal("kasse-alt", transport.Last!.ExpectedComputerName);
+        await jobs.RunAsync(added[0].Id, new JobManifest { Steps = [new JobStep { Type = StepType.InventoryScan }] });
+        Assert.Null(transport.Last.ExpectedComputerName);
+
+        await settings.SetVerifyTargetNameAsync(false);
+        await jobs.RunAsync(added[0].Id, new JobManifest { Steps = [new JobStep { Type = StepType.Command, Script = "x" }] });
+        Assert.Null(transport.Last.ExpectedComputerName);
+
+        // Der Alias kann nicht umbenannt werden, weil der echte Rechner schon eingetragen ist.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => computers.RenameToReportedAsync(added[0].Id));
+        await computers.DeleteAsync([added[1].Id]);
+        Assert.Equal("PC-07", await computers.RenameToReportedAsync(added[0].Id));
+        Assert.False((await computers.ListAsync()).Single().NameMismatch);
+    }
+
+    private sealed class CapturingTransport : IRemoteTransport
+    {
+        public TransportKind Kind => TransportKind.SmbService;
+        public JobManifest? Last { get; private set; }
+
+        public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
+        {
+            Last = job;
+            return Task.FromResult(new JobResult { JobId = job.JobId, Success = true });
+        }
+    }
+}

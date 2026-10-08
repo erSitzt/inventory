@@ -186,6 +186,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("ReportedName")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ReverseDnsName")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("SerialNumber")
                         .HasColumnType("TEXT");
 

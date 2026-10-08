@@ -4,11 +4,15 @@ using Inventory.Core.Abstractions;
 
 namespace Inventory.Remoting;
 
-/// <summary>Löst den Namen auf und prüft die für die Transporte relevanten Ports (SMB, WinRM).</summary>
+/// <summary>
+/// Löst den Namen auf, prüft die für die Transporte relevanten Ports (SMB, WinRM) und stellt fest,
+/// welcher Rechner unter der Adresse tatsächlich antwortet.
+/// </summary>
 public sealed class TcpHostProbe : IHostProbe
 {
     private static readonly int[] Ports = [445, 5985];
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan IdentityTimeout = TimeSpan.FromSeconds(3);
 
     public async Task<ProbeResult> ProbeAsync(string host, CancellationToken ct = default)
     {
@@ -26,12 +30,30 @@ public sealed class TcpHostProbe : IHostProbe
         if (address is null)
             return new ProbeResult(false, null, "Keine Adresse gefunden");
 
+        var reverse = ReverseLookupAsync(address, ct);
         foreach (var port in Ports)
         {
-            if (await CanConnectAsync(address, port, ct))
-                return new ProbeResult(true, address.ToString());
+            if (!await CanConnectAsync(address, port, ct))
+                continue;
+            // Der Rechner selbst ist die verlässlichste Quelle für seinen Namen; Reverse-DNS kann genauso veraltet sein wie der Vorwärtseintrag.
+            var identity = await SmbNameQuery.QueryAsync(address, IdentityTimeout, ct);
+            return new ProbeResult(true, address.ToString(), null, identity?.NetbiosName ?? identity?.DnsName?.Split('.')[0], await reverse);
         }
-        return new ProbeResult(false, address.ToString(), $"Ports {string.Join("/", Ports)} nicht erreichbar");
+        return new ProbeResult(false, address.ToString(), $"Ports {string.Join("/", Ports)} nicht erreichbar", null, await reverse);
+    }
+
+    private static async Task<string?> ReverseLookupAsync(IPAddress address, CancellationToken ct)
+    {
+        try
+        {
+            var entry = await Dns.GetHostEntryAsync(address.ToString(), ct).WaitAsync(IdentityTimeout, ct);
+            // Ohne PTR-Eintrag liefern manche Resolver einfach die Adresse zurück.
+            return IPAddress.TryParse(entry.HostName, out _) ? null : entry.HostName;
+        }
+        catch (Exception ex) when (ex is SocketException or TimeoutException or ArgumentException)
+        {
+            return null;
+        }
     }
 
     private static async Task<bool> CanConnectAsync(IPAddress address, int port, CancellationToken ct)

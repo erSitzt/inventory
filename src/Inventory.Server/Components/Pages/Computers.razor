@@ -73,6 +73,12 @@
                         <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">ist @context.Item.ReportedName</MudChip>
                     </MudTooltip>
                 }
+                else if (context.Item.ReverseDnsMismatch)
+                {
+                    <MudTooltip Text="@($"Die Adresse {context.Item.IpAddress} gehört laut Reverse-DNS zu {context.Item.ReverseDnsName}. Der Rechner selbst hat seinen Namen noch nicht genannt – ein Scan schafft Klarheit.")">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Icon="@Icons.Material.Filled.HelpOutline">DNS: @context.Item.ReverseDnsName!.Split('.')[0]</MudChip>
+                    </MudTooltip>
+                }
             </CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="Status" SortBy="c => c.IsOnline">
@@ -184,12 +190,40 @@
         if (await dialog.Result is { Canceled: false, Data: string text })
         {
             var added = await ComputerService.ImportAsync(text);
-            if (added.Count > 0)
-                await Audit.LogAsync("Rechner hinzugefügt", string.Join(", ", added.Select(c => c.Name)));
-            if (_activeCollection is { IsDynamic: false } && added.Count > 0)
+            if (added.Count == 0)
+            {
+                Snackbar.Add("Keine neuen Rechner – alle Namen waren bereits vorhanden oder ungültig.", Severity.Warning);
+                return;
+            }
+            await Audit.LogAsync("Rechner hinzugefügt", string.Join(", ", added.Select(c => c.Name)));
+            if (_activeCollection is { IsDynamic: false })
                 await CollectionService.AddMembersAsync(_activeCollection.Id, added.Select(c => c.Id));
-            Snackbar.Add(added.Count == 0 ? "Keine neuen Rechner – alle Namen waren bereits vorhanden oder ungültig." : $"{added.Count} Rechner hinzugefügt.",
-                added.Count == 0 ? Severity.Warning : Severity.Success);
+
+            // Gleich prüfen, wer unter den neuen Namen wirklich antwortet: veraltete DNS-Einträge fallen so sofort auf.
+            _busy = true;
+            _progressText = $"Prüfe {added.Count} neue Rechner …";
+            StateHasChanged();
+            try
+            {
+                var ids = added.Select(c => c.Id).ToHashSet();
+                await ComputerService.ProbeAsync(ids);
+                var all = await ComputerService.ListAsync();
+                var fresh = all.Where(c => ids.Contains(c.Id)).ToList();
+                Snackbar.Add($"{added.Count} Rechner hinzugefügt, {fresh.Count(c => c.IsOnline)} davon erreichbar.", Severity.Success);
+                foreach (var computer in fresh.Where(c => c.NameMismatch))
+                {
+                    var known = all.FirstOrDefault(c => c.Id != computer.Id && string.Equals(c.ExpectedMachineName, computer.ReportedName, StringComparison.OrdinalIgnoreCase));
+                    Snackbar.Add(known is null
+                            ? $"Unter „{computer.Name}“ antwortet der Rechner {computer.ReportedName} – vermutlich ein veralteter DNS-Eintrag oder Alias."
+                            : $"Unter „{computer.Name}“ antwortet {computer.ReportedName}, der bereits als „{known.Name}“ eingetragen ist.",
+                        Severity.Warning, options => options.RequireInteraction = true);
+                }
+            }
+            finally
+            {
+                _busy = false;
+                _progressText = null;
+            }
             await ReloadAsync();
         }
     }
@@ -247,6 +281,9 @@
             var online = await ComputerService.ProbeAsync(ids);
             Snackbar.Add($"{online} von {ids.Count} Rechnern erreichbar.", Severity.Info);
             await ReloadAsync();
+            var mismatched = _computers.Count(c => ids.Contains(c.Id) && c.NameMismatch);
+            if (mismatched > 0)
+                Snackbar.Add($"Bei {mismatched} Rechnern antwortet ein anderer Rechner als eingetragen – siehe Markierung in der Liste.", Severity.Warning);
         }
         finally
         {

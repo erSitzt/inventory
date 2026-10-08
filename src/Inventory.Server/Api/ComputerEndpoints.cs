@@ -8,7 +8,7 @@ public static class ComputerEndpoints
 {
     public sealed record ComputerDto(int Id, string Name, string? Description, string? IpAddress, bool IsOnline,
         DateTime? LastSeenUtc, DateTime? LastScanUtc, string? LastScanError, TransportKind? Transport, int? CredentialId,
-        string? ReportedName, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser);
+        string? ReportedName, string? ReverseDnsName, bool NameMismatch, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser);
 
     public sealed record ImportRequest(string Names);
 
@@ -55,5 +55,5 @@ public static class ComputerEndpoints
 
     private static ComputerDto ToDto(Computer c) =>
         new(c.Id, c.Name, c.Description, c.IpAddress, c.IsOnline, c.LastSeenUtc, c.LastScanUtc, c.LastScanError, c.Transport, c.CredentialId,
-            c.ReportedName, c.OsName, c.OsVersion, c.Manufacturer, c.Model, c.SerialNumber, c.MemoryBytes, c.LoggedOnUser);
+            c.ReportedName, c.ReverseDnsName, c.NameMismatch, c.OsName, c.OsVersion, c.Manufacturer, c.Model, c.SerialNumber, c.MemoryBytes, c.LoggedOnUser);
 }

@@ -30,8 +30,19 @@
 @if (_computer.NameMismatch)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-4">
-        Unter dem Namen <b>@_computer.Name</b> hat sich beim letzten Scan der Rechner <b>@_computer.ReportedName</b> gemeldet.
-        Die Inventardaten unten gehören zu @_computer.ReportedName. Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias (CNAME) auf diesen Rechner.
+        Unter dem Namen <b>@_computer.Name</b> antwortet der Rechner <b>@_computer.ReportedName</b> (Adresse @_computer.IpAddress).
+        Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias (CNAME) auf diesen Rechner; vorhandene Inventardaten gehören zu @_computer.ReportedName.
+        Befehle und Deployments werden auf diesem Eintrag nicht ausgeführt, solange die Namen abweichen.
+        <div class="mt-2">
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="RenameAsync">Eintrag in @_computer.ReportedName umbenennen</MudButton>
+        </div>
+    </MudAlert>
+}
+else if (_computer.ReverseDnsMismatch)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        Die Adresse @_computer.IpAddress gehört laut Reverse-DNS zu <b>@_computer.ReverseDnsName</b>, eingetragen ist <b>@_computer.Name</b>.
+        Der Rechner selbst hat seinen Namen noch nicht genannt; ein Scan zeigt, wer wirklich antwortet.
     </MudAlert>
 }
 @if (_computer.LastScanError is not null)
@@ -57,6 +68,7 @@
                         @Row("Angemeldeter Benutzer", _computer.LoggedOnUser)
                         @Row("Domäne", _computer.Domain)
                         @Row("IP-Adresse", _computer.IpAddress)
+                        @Row("Reverse-DNS", _computer.ReverseDnsName)
                         @Row("Letzter Scan", Display.LocalTime(_computer.LastScanUtc))
                         @Row("Zuletzt gesehen", Display.LocalTime(_computer.LastSeenUtc))
                     </tbody>
@@ -229,6 +241,22 @@
         finally
         {
             _scanning = false;
+        }
+    }
+
+    private async Task RenameAsync()
+    {
+        try
+        {
+            var old = _computer!.Name;
+            var name = await ComputerService.RenameToReportedAsync(Id);
+            await Audit.LogAsync("Rechner umbenannt", $"{old} → {name}");
+            Snackbar.Add($"Eintrag heißt jetzt {name}.", Severity.Success);
+            _computer = await ComputerService.GetDetailAsync(Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 

@@ -10,6 +10,7 @@ public static class SettingKeys
 {
     public const string DefaultTransport = "DefaultTransport";
     public const string TransportFallback = "TransportFallback";
+    public const string SkipTargetNameCheck = "SkipTargetNameCheck";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
     public const string AdSyncEnabled = "AdSync.Enabled";

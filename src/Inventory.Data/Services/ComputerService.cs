@@ -57,6 +57,21 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Benennt den Eintrag auf den Namen um, den der Rechner selbst gemeldet hat.</summary>
+    /// <exception cref="InvalidOperationException">Kein gemeldeter Name vorhanden, oder es gibt bereits einen Eintrag mit diesem Namen.</exception>
+    public async Task<string> RenameToReportedAsync(int id, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var computer = await db.Computers.FindAsync([id], ct) ?? throw new KeyNotFoundException($"Rechner {id} nicht gefunden");
+        var name = computer.ReportedName ?? throw new InvalidOperationException("Der Rechner hat noch keinen Namen gemeldet.");
+        var names = await db.Computers.Where(c => c.Id != id).Select(c => c.Name).ToListAsync(ct);
+        if (names.Any(n => n.Split('.')[0].Equals(name, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"{name} ist bereits als eigener Rechner eingetragen. Dieser Eintrag ist ein Duplikat und kann gelöscht werden.");
+        computer.Name = name;
+        await db.SaveChangesAsync(ct);
+        return name;
+    }
+
     public async Task<int> DeleteAsync(IEnumerable<int> ids, CancellationToken ct = default)
     {
         var idList = ids.ToList();
@@ -80,6 +95,10 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
                 computer.LastProbeUtc = now;
                 if (result.IpAddress is not null)
                     computer.IpAddress = result.IpAddress;
+                if (result.MachineName is not null)
+                    computer.ReportedName = result.MachineName;
+                if (result.Online)
+                    computer.ReverseDnsName = result.ReverseName;
                 if (result.Online)
                     computer.LastSeenUtc = now;
             });

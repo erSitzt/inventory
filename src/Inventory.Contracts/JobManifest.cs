@@ -31,6 +31,11 @@ namespace Inventory.Contracts
     public sealed class JobManifest
     {
         public string JobId { get; set; } = Guid.NewGuid().ToString("N");
+        /// <summary>
+        /// Gesetzt = der Runner führt nur aus, wenn der Rechner so heißt (NetBIOS-Name). Schützt davor, dass ein
+        /// veralteter DNS-Eintrag den Job auf einen anderen Rechner lenkt.
+        /// </summary>
+        public string? ExpectedComputerName { get; set; }
         public List<JobStep> Steps { get; set; } = new List<JobStep>();
     }
 

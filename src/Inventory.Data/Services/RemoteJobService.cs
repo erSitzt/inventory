@@ -32,6 +32,10 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             if (transport is null)
                 return JobResult.Failed(job.JobId, $"Der Transport {kind} steht auf diesem Server nicht zur Verfügung");
 
+            // Reine Scans dürfen überall laufen: sie zeigen ja gerade, welcher Rechner tatsächlich antwortet.
+            if (job.Steps.Any(s => s.Type != StepType.InventoryScan) && await settings.GetVerifyTargetNameAsync(ct))
+                job.ExpectedComputerName = computer.ExpectedMachineName;
+
             var target = new RemoteTarget(computer.Name, await credentials.ResolveAsync(computerId, ct));
             try
             {

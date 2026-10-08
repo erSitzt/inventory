@@ -46,6 +46,7 @@ public static partial class InventoryDiff
                 Add(category, ChangeKind.Removed, key, value, null);
         }
 
+        // Nur wenn schon ein Scan den Namen geliefert hat: sonst stammt der bisherige Wert aus der Erreichbarkeitsprüfung.
         Value("Gemeldeter Name", previous.ReportedName, current.ComputerName);
         Value("Domäne", previous.Domain, current.Domain);
         Value("Betriebssystem", previous.OsName, current.OsName);

@@ -21,6 +21,12 @@
         </MudSelect>
         <MudSwitch T="bool" Value="_fallback" ValueChanged="SetFallbackAsync" Color="Color.Primary"
                    Label="Bei Zustellfehlern den anderen Transport versuchen" />
+        <MudSwitch T="bool" Value="_verifyName" ValueChanged="SetVerifyNameAsync" Color="Color.Primary"
+                   Label="Rechnernamen vor der Ausführung prüfen" />
+        <MudText Typo="Typo.body2">
+            Befehle und Deployments laufen nur, wenn der erreichte Rechner so heißt wie eingetragen. Das verhindert, dass ein
+            veralteter DNS-Eintrag eine Installation auf einen fremden Rechner lenkt. Scans sind davon ausgenommen.
+        </MudText>
         <MudText Typo="Typo.body2">
             SMB + Dienst braucht die Freigabe ADMIN$ und den Dienststeuerungs-Manager (Port 445), der Job läuft als Lokales System.
             WinRM braucht aktiviertes PowerShell-Remoting (Port 5985), der Job läuft mit dem hinterlegten Konto.
@@ -178,11 +184,21 @@
     private TransportKind _transport;
 
     private bool _fallback;
+    private bool _verifyName = true;
+
+    private async Task SetVerifyNameAsync(bool enabled)
+    {
+        _verifyName = enabled;
+        await SettingsService.SetVerifyTargetNameAsync(enabled);
+        await Audit.LogAsync("Einstellung geändert", $"Rechnernamen vor der Ausführung prüfen: {(enabled ? "an" : "aus")}");
+        Snackbar.Add("Gespeichert.", Severity.Success);
+    }
 
     protected override async Task OnInitializedAsync()
     {
         _transport = await SettingsService.GetDefaultTransportAsync();
         _fallback = await SettingsService.GetTransportFallbackAsync();
+        _verifyName = await SettingsService.GetVerifyTargetNameAsync();
         await LoadAdAsync();
         _agentUrl = await Agents.GetServerUrlAsync();
         _agentToken = await Agents.GetEnrollmentTokenAsync();
