@@ -3,6 +3,7 @@
 @inject SettingsService SettingsService
 @inject AdSyncService AdSync
 @inject AgentService Agents
+@inject UpdateService Updates
 @inject CredentialService CredentialService
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
@@ -113,7 +114,125 @@
     </MudStack>
 </MudPaper>
 
+<MudPaper id="updates" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">Updates</MudText>
+        <MudText Typo="Typo.body2">Installierte Version: <b>@Updates.CurrentVersion</b></MudText>
+        @if (Updates.IsDevelopmentBuild)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">Lokal gebauter Entwicklungsstand – es wird nicht nach Updates gesucht.</MudAlert>
+        }
+        else if (!Updates.Enabled)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">Die Update-Prüfung ist in der Konfiguration abgeschaltet (Inventory:Update:Enabled).</MudAlert>
+        }
+        else
+        {
+            @if (Updates.UpdateAvailable)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">
+                    <b>Version @Updates.Latest!.Version ist verfügbar</b>
+                    @if (Updates.Latest.PublishedUtc is not null)
+                    {
+                        <span> (veröffentlicht @Display.LocalTime(Updates.Latest.PublishedUtc))</span>
+                    }
+                    <span>. </span><MudLink Href="@Updates.Latest.PageUrl" Target="_blank">Änderungen und Download</MudLink>
+                </MudAlert>
+                @if (!string.IsNullOrWhiteSpace(Updates.Latest!.Notes))
+                {
+                    <pre class="release-notes">@Updates.Latest!.Notes</pre>
+                }
+                @if (Updates.CannotInstallReason is not null)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">@Updates.CannotInstallReason</MudAlert>
+                }
+            }
+            else if (Updates.LastCheckUtc is not null && Updates.LastError is null)
+            {
+                <MudText Typo="Typo.body2">Inventory ist aktuell (geprüft @Display.LocalTime(Updates.LastCheckUtc), Quelle: github.com/@Updates.Repository).</MudText>
+            }
+            @if (Updates.LastError is not null)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@Updates.LastError</MudAlert>
+            }
+            @if (_updateMessage is not null)
+            {
+                <MudAlert Severity="@_updateSeverity" Dense="true">@_updateMessage</MudAlert>
+            }
+            <MudStack Row="true" Wrap="Wrap.Wrap">
+                <MudButton Variant="Variant.Outlined" Disabled="_updateBusy" OnClick="CheckUpdateAsync">Jetzt prüfen</MudButton>
+                @if (Updates.UpdateAvailable && Updates.CannotInstallReason is null)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_updateBusy || Updates.Installing)" OnClick="ApplyUpdateAsync">
+                        @(Updates.Installing ? "Wird installiert …" : "Jetzt aktualisieren")
+                    </MudButton>
+                }
+            </MudStack>
+            @if (Updates.CannotInstallReason is null)
+            {
+                <MudSwitch T="bool" @bind-Value="_updateAuto" Color="Color.Primary" Label="Automatisch im Wartungsfenster aktualisieren" />
+                <MudTimePicker @bind-Time="_updateWindow" Label="Beginn des Wartungsfensters (2 Stunden)" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Disabled="@(!_updateAuto)" />
+                <div><MudButton Variant="Variant.Outlined" OnClick="SaveUpdateSettingsAsync">Speichern</MudButton></div>
+            }
+            <MudText Typo="Typo.caption">
+                Vor jeder Aktualisierung wird die Datenbank gesichert; laufende Deployments werden abgewartet. Die Oberfläche ist währenddessen
+                kurz nicht erreichbar, Agenten aktualisieren sich danach selbst. Hinweis: Über diesen Weg gelangt neuer Programmcode auf den
+                Server und über die Agenten auf alle Rechner. Solange Releases unsigniert sind, sichert die Prüfsumme nur die Übertragung,
+                nicht die Herkunft – die Automatik ist deshalb standardmäßig aus.
+            </MudText>
+        }
+    </MudStack>
+</MudPaper>
+
 @code {
+    private bool _updateBusy;
+    private bool _updateAuto;
+    private TimeSpan? _updateWindow = new TimeSpan(3, 0, 0);
+    private string? _updateMessage;
+    private Severity _updateSeverity;
+
+    private async Task LoadUpdateAsync()
+    {
+        var current = await Updates.GetSettingsAsync();
+        (_updateAuto, _updateWindow) = (current.Automatic, current.WindowStart);
+    }
+
+    private async Task CheckUpdateAsync()
+    {
+        _updateBusy = true;
+        _updateMessage = null;
+        try
+        {
+            await Updates.CheckAsync(force: true);
+        }
+        finally
+        {
+            _updateBusy = false;
+        }
+    }
+
+    private async Task ApplyUpdateAsync()
+    {
+        _updateBusy = true;
+        try
+        {
+            var error = await Updates.ApplyAsync(await Audit.UserNameAsync());
+            _updateMessage = error ?? $"Die Aktualisierung auf {Updates.Latest?.Version} läuft. Der Dienst startet gleich neu; diese Seite danach neu laden.";
+            _updateSeverity = error is null ? Severity.Info : Severity.Error;
+        }
+        finally
+        {
+            _updateBusy = false;
+        }
+    }
+
+    private async Task SaveUpdateSettingsAsync()
+    {
+        await Updates.SaveSettingsAsync(_updateAuto, _updateWindow ?? new TimeSpan(3, 0, 0));
+        await Audit.LogAsync("Einstellung geändert", $"Automatische Aktualisierung: {(_updateAuto ? $"an, ab {_updateWindow:hh\\:mm} Uhr" : "aus")}");
+        Snackbar.Add("Gespeichert.", Severity.Success);
+    }
+
     private string? _agentUrl;
     private string _agentToken = "";
 
@@ -212,6 +331,7 @@
         _fallback = await SettingsService.GetTransportFallbackAsync();
         _verifyName = await SettingsService.GetVerifyTargetNameAsync();
         await LoadAdAsync();
+        await LoadUpdateAsync();
         _agentUrl = await Agents.GetServerUrlAsync();
         _agentToken = await Agents.GetEnrollmentTokenAsync();
     }

@@ -1,5 +1,11 @@
 # Inventory
 
+> **English summary:** Inventory is a self-hosted inventory and software deployment tool for Windows computers – an
+> all-in-one tool that needs no agents on the clients. It works agentless (SMB + temporary service, or
+> WinRM) with stored admin credentials and optionally with a self-updating agent. Download the setup from the
+> [releases page](https://github.com/erSitzt/inventory/releases/latest) and run it on a Windows server. The user
+> interface and this documentation are in German.
+
 Inventarisierung und Softwareverteilung für Windows-Rechner in einer Anwendung – agentenlos über hinterlegte
 Zugangsdaten.
 
@@ -74,22 +80,52 @@ dotnet run --project src/Inventory.Server --launch-profile http   # Simulation, 
   `run-win.sh` liest die Datei ein. Beispiel: `Inventory__AllowedGroups__0='FIRMA\Domänen-Admins'`
 - Der Server selbst taugt nicht als SMB-Testziel: lokale Zugriffe nutzen immer das Konto des Server-Prozesses.
 
-## Installation auf dem Server
+## Installation
 
-```bash
-./scripts/publish-win.sh             # erzeugt dist/Inventory
+1. Von der [Release-Seite](https://github.com/erSitzt/inventory/releases/latest) `Inventory-Setup-x.y.z.exe` laden.
+2. Auf dem Windows-Server als Administrator ausführen. Der Assistent fragt nach Port, erlaubten Windows-Gruppen und
+   Dienstkonto, legt den Dienst „Inventory“ an und gibt auf Wunsch den Port in der Firewall frei.
+3. Die Oberfläche unter `http://<server>:5100` öffnen.
+
+Programmdateien liegen unter `C:\Program Files\Inventory`, Daten und Einstellungen unter `C:\ProgramData\Inventory`.
+Auf dem Server muss nichts weiter installiert sein (.NET ist enthalten).
+
+Unbeaufsichtigt:
+
+```
+Inventory-Setup-x.y.z.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /PORT=5100 /GROUPS="FIRMA\Domänen-Admins"
 ```
 
-Den Ordner auf den Windows-Server kopieren und dort als Administrator ausführen:
+Weitere Schalter: `/SERVICEACCOUNT="FIRMA\svc-inventory" /SERVICEPASSWORD=…`, `/NOFIREWALL`, `/LOG=setup.log`.
+Zu jeder Datei eines Releases steht die SHA-256-Prüfsumme in `SHA256SUMS.txt`.
 
-```powershell
-.\install-service.ps1 -AllowedGroups 'FIRMA\Domänen-Admins'
-```
+## Aktualisieren
 
-Das Skript installiert nach `C:\Program Files\Inventory`, legt Daten unter `C:\ProgramData\Inventory` ab und
-registriert den Dienst. Ein erneuter Aufruf aktualisiert die Programmdateien; Konfiguration und Daten bleiben.
+- **In der Oberfläche:** Der Server fragt alle paar Stunden bei GitHub nach. Gibt es eine neuere Version, erscheint oben
+  ein Hinweis; unter *Einstellungen → Updates* stehen die Änderungen und der Knopf „Jetzt aktualisieren“. Dort lässt sich
+  auch die automatische Aktualisierung in einem nächtlichen Wartungsfenster einschalten (Standard: aus).
+- **Von Hand:** das neue Setup über die vorhandene Installation ausführen. Einstellungen und Daten bleiben erhalten.
 
-### Konfiguration (`appsettings.Production.json`)
+Vor jeder Aktualisierung über die Oberfläche wird die Datenbank gesichert, laufende Deployments werden abgewartet, und
+das Ergebnis steht im Protokoll. Agenten aktualisieren sich danach selbst. Ein Zurück auf eine ältere Version geht nur
+über die Sicherung (`backups`), weil neuere Versionen das Datenbankschema erweitern.
+
+Die Selbstaktualisierung setzt voraus, dass der Dienst als Lokales System oder mit lokalen Administratorrechten läuft.
+Abschalten lässt sich die Update-Prüfung mit `Inventory:Update:Enabled = false`.
+
+> **Zur Vertrauenskette:** Über Updates gelangt neuer Programmcode auf den Server und über die Agenten auf alle
+> verwalteten Rechner. Releases sind derzeit **nicht signiert**; die Prüfsumme sichert nur die Übertragung, nicht die
+> Herkunft. Wer das absichern will, lässt die Automatik aus und prüft Releases vor dem Einspielen. Sobald Releases
+> signiert sind, erzwingt `Inventory:Update:RequiredPublisher` die Prüfung des Herausgebers.
+
+### Release erstellen (für Maintainer)
+
+Ein Tag `vX.Y.Z` startet die Pipeline (`.github/workflows/release.yml`): Tests, Veröffentlichung, Setup, ZIP,
+Prüfsummen, GitHub-Release mit automatisch erzeugten Notizen. Tags mit Zusatz (`v1.2.0-rc1`) werden als Vorabversion
+markiert und von der Update-Prüfung ignoriert. Liegen die Secrets `SIGNING_CERT_PFX` (Base64 der PFX-Datei) und
+`SIGNING_CERT_PASSWORD` vor, signiert die Pipeline Server, Runner und Setup.
+
+### Konfiguration (`C:\ProgramData\Inventory\appsettings.json`)
 
 | Schlüssel | Bedeutung |
 |---|---|
@@ -100,6 +136,7 @@ registriert den Dienst. Ein erneuter Aufruf aktualisiert die Programmdateien; Ko
 | `Inventory:Oidc:TenantId` | Entra-Mandant (GUID oder Domäne); für andere Anbieter stattdessen `Inventory:Oidc:Authority` |
 | `Inventory:Oidc:ClientId`, `ClientSecret` | Aus der App-Registrierung |
 | `Inventory:Oidc:AllowedGroups` | Objekt-IDs der erlaubten Gruppen oder Namen von App-Rollen; ohne Eintrag startet der Server nicht |
+| `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher` | Update-Prüfung, Quelle der Releases, erwarteter Herausgeber der Signatur |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 
 ### Anmeldung
@@ -118,8 +155,8 @@ beide Wege führen zur selben Sitzung. Die Agenten-Schnittstelle ist davon unabh
      lässt Entra den Anspruch weg; dann die zweite Variante nehmen.
    - *App-Rollen* anlegen und Benutzern oder Gruppen zuweisen (Unternehmensanwendung → Benutzer und Gruppen). In
      `AllowedGroups` kommt der **Wert** der Rolle.
-4. Konfiguration ergänzen (das Geheimnis gehört nicht ins Repository, sondern in `appsettings.Production.json` auf dem
-   Server bzw. für die Entwicklung in `scripts/local.env`):
+4. Konfiguration ergänzen (das Geheimnis gehört nicht ins Repository, sondern in `C:\ProgramData\Inventory\appsettings.json`
+   auf dem Server bzw. für die Entwicklung in `scripts/local.env`):
 
 ```json
 {

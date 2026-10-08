@@ -57,3 +57,15 @@ h1:focus {
     white-space: nowrap;
     color: var(--mud-palette-text-secondary);
 }
+
+.release-notes {
+    margin: 0;
+    padding: 12px;
+    max-height: 240px;
+    overflow: auto;
+    font-family: inherit;
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+}

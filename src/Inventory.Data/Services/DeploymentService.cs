@@ -45,6 +45,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
     public bool IsRunning(int deploymentId) => _running.ContainsKey(deploymentId);
 
+    /// <summary>true, solange irgendein Deployment Ziele ausführt.</summary>
+    public bool AnyRunning => !_running.IsEmpty;
+
     public async Task<List<Deployment>> ListAsync(int take = 100, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

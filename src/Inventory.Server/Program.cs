@@ -14,6 +14,14 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 
+// Diagnose: prüft die Signatur einer Datei so, wie es die Selbstaktualisierung tut.
+if (args is ["--verify-signature", var signedFile, var publisher] && OperatingSystem.IsWindows())
+{
+    var problem = SelfUpdate.VerifySignature(signedFile, publisher);
+    Console.WriteLine(problem ?? "Signatur gültig.");
+    return problem is null ? 0 : 1;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Einstellungen des Betreibers liegen außerhalb des Programmordners, damit Updates sie nie überschreiben.
@@ -80,6 +88,20 @@ builder.Services.AddSingleton<ReportService>();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System));
 builder.Services.AddScoped<Auditor>();
+builder.Services.AddSingleton<IReleaseSource>(new GitHubReleaseSource(new HttpClient { Timeout = TimeSpan.FromMinutes(15) }));
+builder.Services.AddSingleton(new UpdateOptions
+{
+    Repository = options.Update.Repository,
+    Enabled = options.Update.Enabled,
+    CurrentVersion = AppVersion.Current,
+    UpdatesDirectory = Path.Combine(dataDirectory, "updates"),
+    CannotInstallReason = SelfUpdate.CannotInstallReason(),
+    Launch = SelfUpdate.Launch,
+    VerifySignature = string.IsNullOrWhiteSpace(options.Update.RequiredPublisher)
+        ? null
+        : setup => OperatingSystem.IsWindows() ? SelfUpdate.VerifySignature(setup, options.Update.RequiredPublisher) : "Signaturprüfung gibt es nur unter Windows.",
+});
+builder.Services.AddSingleton<UpdateService>();
 builder.Services.AddHostedService<SchedulerWorker>();
 
 var windowsAuthentication = options.ResolveWindowsAuthentication();
@@ -102,9 +124,10 @@ var app = builder.Build();
 await using (var db = await app.Services.GetRequiredService<IDbContextFactory<InventoryDbContext>>().CreateDbContextAsync())
     await db.Database.MigrateAsync();
 await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();
+await app.Services.GetRequiredService<UpdateService>().ReportPreviousAsync(startup: true);
 
-app.Logger.LogInformation("Datenverzeichnis: {DataDirectory}, Simulation: {Simulate}, Anmeldung: {Authentication}",
-    dataDirectory, options.ResolveSimulate(), string.Join(" + ", new[]
+app.Logger.LogInformation("Inventory {Version}. Datenverzeichnis: {DataDirectory}, Simulation: {Simulate}, Anmeldung: {Authentication}",
+    AppVersion.Current, dataDirectory, options.ResolveSimulate(), string.Join(" + ", new[]
     {
         windowsAuthentication ? $"Windows ({string.Join(", ", options.DescribeAllowedGroups())})" : null,
         options.OidcEnabled ? $"OIDC ({options.Oidc.ResolveAuthority()})" : null,
@@ -137,3 +160,4 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+return 0;

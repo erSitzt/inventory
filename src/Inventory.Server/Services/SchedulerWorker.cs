@@ -3,7 +3,7 @@ using Inventory.Data.Services;
 namespace Inventory.Server.Services;
 
 /// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, AD-Synchronisation, Datensicherung.</summary>
-public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, BackupService backups, InventoryStore inventory, ILogger<SchedulerWorker> logger) : BackgroundService
+public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, BackupService backups, InventoryStore inventory, UpdateService updates, ILogger<SchedulerWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(5);
@@ -24,6 +24,9 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                     await deployments.RetryWaitingAsync(stoppingToken);
                 }
                 await adSync.SyncIfDueAsync(stoppingToken);
+                await updates.CheckAsync(force: false, stoppingToken);
+                await updates.ReportPreviousAsync(startup: false, stoppingToken);
+                await updates.ApplyIfDueAsync(stoppingToken);
                 // Einmal täglich, zusammen mit der Sicherung: Verlauf auf die Aufbewahrungsfrist kürzen.
                 if (await backups.BackupIfDueAsync(stoppingToken))
                     await inventory.CleanupChangesAsync(HistoryRetention, stoppingToken);

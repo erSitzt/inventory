@@ -18,6 +18,8 @@ public sealed class InventoryOptions
 
     public OidcOptions Oidc { get; set; } = new();
 
+    public UpdateSettingsOptions Update { get; set; } = new();
+
     private string[] Modes => (Authentication ?? "").Split([',', ';', ' ', '+'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     public bool OidcEnabled => Modes.Contains("Oidc", StringComparer.OrdinalIgnoreCase);
@@ -147,4 +149,20 @@ public sealed class OidcOptions
         if (AllowedGroups.Length == 0)
             throw new InvalidOperationException("Für die OIDC-Anmeldung muss Inventory:Oidc:AllowedGroups mindestens eine Gruppe oder App-Rolle enthalten; sonst dürfte sich niemand anmelden.");
     }
+}
+
+/// <summary>Suche nach neuen Versionen und Selbstaktualisierung.</summary>
+public sealed class UpdateSettingsOptions
+{
+    /// <summary>false = der Server fragt nie bei GitHub nach.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>GitHub-Repository mit den Releases, in der Form besitzer/name.</summary>
+    public string Repository { get; set; } = "erSitzt/inventory";
+
+    /// <summary>
+    /// Gesetzt = das Setup wird nur installiert, wenn es eine gültige Signatur dieses Herausgebers trägt.
+    /// Leer (solange Releases unsigniert sind) sichert nur die Prüfsumme die Übertragung.
+    /// </summary>
+    public string? RequiredPublisher { get; set; }
 }
