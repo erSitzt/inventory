@@ -17,7 +17,14 @@ public sealed class InventoryOptions
     public const string LocalAdministratorsSid = "S-1-5-32-544";
 
     /// <summary>Gruppen, deren Mitglieder die Oberfläche und die API nutzen dürfen: Name ("FIRMA\IT-Admins") oder SID.</summary>
-    public string[] AllowedGroups { get; set; } = [LocalAdministratorsSid];
+    /// <remarks>
+    /// Bewusst ohne Vorbelegung: die Konfiguration hängt ihre Einträge an vorhandene an, eine vorbelegte Gruppe
+    /// bliebe also zusätzlich zu den konfigurierten erlaubt. Der Standard greift erst in <see cref="EffectiveGroups"/>.
+    /// </remarks>
+    public string[] AllowedGroups { get; set; } = [];
+
+    /// <summary>Die konfigurierten Gruppen; ist keine konfiguriert, die lokalen Administratoren des Servers.</summary>
+    public string[] EffectiveGroups => AllowedGroups.Length > 0 ? AllowedGroups : [LocalAdministratorsSid];
 
     private static readonly string[] GroupClaimTypes =
     [
@@ -29,7 +36,7 @@ public sealed class InventoryOptions
 
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string?> _groupSids = new(StringComparer.OrdinalIgnoreCase);
 
-    public bool IsAllowed(System.Security.Claims.ClaimsPrincipal user) => AllowedGroups.Any(group =>
+    public bool IsAllowed(System.Security.Claims.ClaimsPrincipal user) => EffectiveGroups.Any(group =>
         ResolveSid(group) is { } sid
             ? user.HasClaim(c => GroupClaimTypes.Contains(c.Type) && c.Value.Equals(sid, StringComparison.OrdinalIgnoreCase))
             : user.IsInRole(group));
@@ -59,7 +66,7 @@ public sealed class InventoryOptions
     }
 
     /// <summary>Gruppen für die Anzeige; SIDs werden unter Windows in Namen übersetzt.</summary>
-    public IEnumerable<string> DescribeAllowedGroups() => AllowedGroups.Select(group =>
+    public IEnumerable<string> DescribeAllowedGroups() => EffectiveGroups.Select(group =>
     {
         if (!OperatingSystem.IsWindows() || !group.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
             return group;
