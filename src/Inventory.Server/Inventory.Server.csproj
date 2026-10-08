@@ -19,6 +19,7 @@
     <ProjectReference Include="..\Inventory.Remoting\Inventory.Remoting.csproj" />
     <!-- Nur Build-Reihenfolge: der net48-Runner wird nicht referenziert, sondern als Dateien mitgeliefert (siehe IncludeRunner). -->
     <ProjectReference Include="..\Inventory.Runner\Inventory.Runner.csproj" ReferenceOutputAssembly="false" SetTargetFramework="TargetFramework=net48" SkipGetTargetFrameworkProperties="true" UndefineProperties="RuntimeIdentifier;SelfContained" />
+    <ProjectReference Include="..\Inventory.Launcher\Inventory.Launcher.csproj" ReferenceOutputAssembly="false" SetTargetFramework="TargetFramework=net48" SkipGetTargetFrameworkProperties="true" UndefineProperties="RuntimeIdentifier;SelfContained" />
   </ItemGroup>
 
   <!-- Legt den Runner als Unterordner "runner" in Ausgabe und Publish; von dort verteilt ihn der Server auf die Zielrechner. -->
