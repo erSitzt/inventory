@@ -31,6 +31,9 @@ namespace Inventory.Contracts
         public List<DiskItem> Disks { get; set; } = new List<DiskItem>();
         public List<NetworkAdapterItem> NetworkAdapters { get; set; } = new List<NetworkAdapterItem>();
         public List<ServiceItem> Services { get; set; } = new List<ServiceItem>();
+        public List<LocalUserItem> LocalUsers { get; set; } = new List<LocalUserItem>();
+        /// <summary>Mitglieder der lokalen Gruppe "Administratoren" (lokale Konten, Domänenkonten und -gruppen).</summary>
+        public List<LocalAdminItem> LocalAdmins { get; set; } = new List<LocalAdminItem>();
 
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
@@ -82,5 +85,23 @@ namespace Inventory.Contracts
         public string? State { get; set; }
         public string? StartMode { get; set; }
         public string? Account { get; set; }
+    }
+
+    public sealed class LocalUserItem
+    {
+        public string Name { get; set; } = "";
+        public string? FullName { get; set; }
+        public string? Description { get; set; }
+        public bool Disabled { get; set; }
+        public string? Sid { get; set; }
+    }
+
+    public sealed class LocalAdminItem
+    {
+        /// <summary>DOMÄNE\name bzw. RECHNER\name; bei nicht auflösbaren Konten die SID.</summary>
+        public string Name { get; set; } = "";
+        /// <summary>true = Gruppe, false = Benutzer.</summary>
+        public bool IsGroup { get; set; }
+        public string? Sid { get; set; }
     }
 }

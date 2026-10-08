@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Management;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
 using Inventory.Contracts;
 using Microsoft.Win32;
 
@@ -23,6 +25,8 @@ namespace Inventory.Runner
             Section(data, "Datenträger", () => ReadDisks(data));
             Section(data, "Netzwerk", () => ReadNetwork(data));
             Section(data, "Dienste", () => ReadServices(data));
+            Section(data, "Lokale Benutzer", () => ReadLocalUsers(data));
+            Section(data, "Lokale Administratoren", () => ReadLocalAdmins(data));
             return data;
         }
 
@@ -202,6 +206,75 @@ namespace Inventory.Runner
             }
             data.Services = data.Services.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
+
+        private static void ReadLocalUsers(InventoryData data)
+        {
+            // LocalAccount = TRUE hält die Abfrage lokal; ohne den Filter würde WMI auf Domänenrechnern die ganze Domäne aufzählen.
+            foreach (var o in Query("SELECT Name, FullName, Description, Disabled, SID FROM Win32_UserAccount WHERE LocalAccount = TRUE"))
+            {
+                data.LocalUsers.Add(new LocalUserItem
+                {
+                    Name = Text(o, "Name") ?? "",
+                    FullName = Text(o, "FullName"),
+                    Description = Text(o, "Description"),
+                    Disabled = o["Disabled"] is bool disabled && disabled,
+                    Sid = Text(o, "SID"),
+                });
+            }
+            data.LocalUsers = data.LocalUsers.OrderBy(u => u.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private static void ReadLocalAdmins(InventoryData data)
+        {
+            // Die Gruppe heißt je nach Windows-Sprache anders (Administrators/Administratoren); die SID ist überall gleich.
+            var account = (NTAccount)new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null).Translate(typeof(NTAccount));
+            var groupName = account.Value.Substring(account.Value.IndexOf('\\') + 1);
+
+            var resume = IntPtr.Zero;
+            var status = NetLocalGroupGetMembers(null, groupName, 2, out var buffer, -1, out var read, out _, ref resume);
+            if (status != 0)
+                throw new System.ComponentModel.Win32Exception(status);
+            try
+            {
+                var size = Marshal.SizeOf(typeof(LOCALGROUP_MEMBERS_INFO_2));
+                for (var i = 0; i < read; i++)
+                {
+                    var member = (LOCALGROUP_MEMBERS_INFO_2)Marshal.PtrToStructure(buffer + i * size, typeof(LOCALGROUP_MEMBERS_INFO_2));
+                    var sid = new SecurityIdentifier(member.Sid).Value;
+                    data.LocalAdmins.Add(new LocalAdminItem
+                    {
+                        // Verwaiste Einträge (gelöschte Domänenkonten) haben keinen Namen mehr.
+                        Name = string.IsNullOrEmpty(member.DomainAndName) ? sid : member.DomainAndName,
+                        IsGroup = member.SidUsage == SidTypeGroup || member.SidUsage == SidTypeAlias || member.SidUsage == SidTypeWellKnownGroup,
+                        Sid = sid,
+                    });
+                }
+            }
+            finally
+            {
+                NetApiBufferFree(buffer);
+            }
+            data.LocalAdmins = data.LocalAdmins.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private const int SidTypeGroup = 2;
+        private const int SidTypeAlias = 4;
+        private const int SidTypeWellKnownGroup = 5;
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct LOCALGROUP_MEMBERS_INFO_2
+        {
+            public IntPtr Sid;
+            public int SidUsage;
+            public string DomainAndName;
+        }
+
+        [DllImport("netapi32.dll", CharSet = CharSet.Unicode)]
+        private static extern int NetLocalGroupGetMembers(string? serverName, string localGroupName, int level, out IntPtr buffer,
+            int preferredMaxLength, out int entriesRead, out int totalEntries, ref IntPtr resumeHandle);
+
+        [DllImport("netapi32.dll")]
+        private static extern int NetApiBufferFree(IntPtr buffer);
 
         private static List<ManagementBaseObject> Query(string wql)
         {

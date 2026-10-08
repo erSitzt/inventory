@@ -1,0 +1,34 @@
+@page "/changes"
+@inject InventoryStore Store
+
+<PageTitle>Änderungen – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">Änderungen</MudText>
+    <MudSpacer />
+    <MudTextField @bind-Value="_search" Placeholder="Rechner, Programm, Benutzer …" Adornment="Adornment.Start" Immediate="true"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />
+</MudStack>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Was sich von Scan zu Scan geändert hat: Software, Hotfixes, Hardware, Dienste, lokale Benutzer und Administratoren.
+    Angezeigt werden die letzten @MaxRows Einträge; der Verlauf wird zwei Jahre aufbewahrt.
+</MudText>
+
+@if (_changes.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">Noch keine Änderungen erfasst. Der erste Scan eines Rechners ist die Ausgangslage; ab dem zweiten entsteht der Verlauf.</MudAlert>
+}
+else
+{
+    <ChangeGrid Changes="_changes" Search="@_search" />
+}
+
+@code {
+    private const int MaxRows = 5000;
+
+    private List<(InventoryChange Change, string Computer)> _changes = [];
+    private string _search = "";
+
+    protected override async Task OnInitializedAsync() => _changes = await Store.ChangesAsync(null, MaxRows);
+}

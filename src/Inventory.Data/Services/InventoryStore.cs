@@ -1,4 +1,5 @@
 using Inventory.Contracts;
+using Inventory.Core;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,9 +29,16 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var computer = await db.Computers.FindAsync([computerId], ct) ?? throw new KeyNotFoundException($"Rechner {computerId} nicht gefunden");
+        // Mit dem bisherigen Stand laden: aus dem Vergleich entsteht der Verlauf.
+        var computer = await db.Computers.AsSplitQuery()
+                           .Include(c => c.Software).Include(c => c.Hotfixes).Include(c => c.Disks).Include(c => c.NetworkAdapters)
+                           .Include(c => c.Services).Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
+                           .FirstOrDefaultAsync(c => c.Id == computerId, ct)
+                       ?? throw new KeyNotFoundException($"Rechner {computerId} nicht gefunden");
 
         var now = DateTime.UtcNow;
+        db.InventoryChanges.AddRange(InventoryDiff.Compare(computer, data, now));
+        db.ChangeTracker.Entries().Where(e => e.Entity is not Computer and not InventoryChange).ToList().ForEach(e => e.State = EntityState.Detached);
         computer.LastScanUtc = now;
         computer.LastScanError = null;
         computer.LastSeenUtc = now;
@@ -58,6 +66,8 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         await db.Disks.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
         await db.NetworkAdapters.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
         await db.Services.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+        await db.LocalUsers.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+        await db.LocalAdmins.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
 
         db.Software.AddRange(data.Software.Select(s => new ComputerSoftware
         {
@@ -82,9 +92,38 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             ComputerId = computerId, Name = s.Name, DisplayName = s.DisplayName, State = s.State, StartMode = s.StartMode, Account = s.Account,
         }));
 
+        db.LocalUsers.AddRange(data.LocalUsers.Select(u => new ComputerLocalUser
+        {
+            ComputerId = computerId, Name = u.Name, FullName = u.FullName, Description = u.Description, Disabled = u.Disabled, Sid = u.Sid,
+        }));
+        db.LocalAdmins.AddRange(data.LocalAdmins.Select(a => new ComputerLocalAdmin
+        {
+            ComputerId = computerId, Name = a.Name, IsGroup = a.IsGroup, Sid = a.Sid,
+        }));
+
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return computer.NameMismatch;
+    }
+
+    /// <summary>Änderungen eines Rechners (computerId gesetzt) oder aller Rechner, neueste zuerst.</summary>
+    public async Task<List<(InventoryChange Change, string Computer)>> ChangesAsync(int? computerId = null, int take = 1000, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var rows = await db.InventoryChanges.AsNoTracking()
+            .Where(c => computerId == null || c.ComputerId == computerId)
+            .OrderByDescending(c => c.Id).Take(take)
+            .Join(db.Computers, c => c.ComputerId, k => k.Id, (c, k) => new { Change = c, k.Name })
+            .ToListAsync(ct);
+        return rows.Select(r => (r.Change, r.Name)).ToList();
+    }
+
+    /// <summary>Entfernt Verlaufseinträge, die älter als die Aufbewahrungsfrist sind.</summary>
+    public async Task<int> CleanupChangesAsync(TimeSpan keep, CancellationToken ct = default)
+    {
+        var limit = DateTime.UtcNow - keep;
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.InventoryChanges.Where(c => c.TimeUtc < limit).ExecuteDeleteAsync(ct);
     }
 
     public async Task SaveErrorAsync(int computerId, string error, CancellationToken ct = default)

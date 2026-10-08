@@ -260,6 +260,64 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Hotfixes");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerLocalAdmin", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsGroup")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sid")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("LocalAdmins");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerLocalUser", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Disabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FullName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sid")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("LocalUsers");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerNetworkAdapter", b =>
                 {
                     b.Property<int>("Id")
@@ -481,6 +539,44 @@ namespace Inventory.Data.Migrations
                     b.ToTable("DeploymentTargets");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Item")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NewValue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OldValue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("TimeUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.HasIndex("TimeUtc");
+
+                    b.ToTable("InventoryChanges");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.Package", b =>
                 {
                     b.Property<int>("Id")
@@ -658,6 +754,24 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerLocalAdmin", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("LocalAdmins")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerLocalUser", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("LocalUsers")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerNetworkAdapter", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -707,6 +821,15 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany()
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.PackageStep", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Package", "NestedPackage")
@@ -745,6 +868,10 @@ namespace Inventory.Data.Migrations
                     b.Navigation("Disks");
 
                     b.Navigation("Hotfixes");
+
+                    b.Navigation("LocalAdmins");
+
+                    b.Navigation("LocalUsers");
 
                     b.Navigation("NetworkAdapters");
 

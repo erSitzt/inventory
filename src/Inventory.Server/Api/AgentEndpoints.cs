@@ -1,5 +1,6 @@
 using Inventory.Contracts;
 using Inventory.Data.Services;
+using Inventory.Remoting;
 using Inventory.Remoting.Agent;
 using Microsoft.AspNetCore.Http.Features;
 
@@ -28,17 +29,26 @@ public static class AgentEndpoints
             return Json(new AgentEnrollResponse { AgentKey = key });
         });
 
-        group.MapPost("poll", async (HttpContext http, AgentService agents, AgentHub hub, CancellationToken ct) =>
+        group.MapPost("poll", async (HttpContext http, AgentService agents, AgentHub hub, RunnerPackage runner, CancellationToken ct) =>
         {
             var request = await ReadAsync<AgentPollRequest>(http, ct);
-            var computer = await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], request?.Version, ct);
+            var version = request is null ? null : AgentService.DescribeVersion(request.Version, request.RunnerHash);
+            var computer = await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], version, ct);
             if (computer is null)
                 return Results.Unauthorized();
+            // Veraltete Agenten aktualisieren sich zuerst; Jobs bleiben so lange in der Warteschlange.
+            if (request?.RunnerHash != runner.Hash)
+                return Json(new AgentJobOffer { Update = new AgentUpdateOffer { Hash = runner.Hash, Files = runner.Files.Select(f => Path.GetFileName(f)!).ToList() } });
             var job = await hub.DequeueAsync(computer.Name, PollWait, ct);
             return job is null
                 ? Results.NoContent()
                 : Json(new AgentJobOffer { Manifest = job.Manifest, Files = job.Files.Select(f => f.RelativePath).ToList() });
         });
+
+        group.MapGet("update/files/{index:int}", async (int index, HttpContext http, AgentService agents, RunnerPackage runner, CancellationToken ct) =>
+            await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], null, ct) is not null && index >= 0 && index < runner.Files.Count
+                ? Results.File(runner.Files[index], "application/octet-stream")
+                : Results.NotFound());
 
         group.MapGet("jobs/{jobId}/files/{index:int}", async (string jobId, int index, HttpContext http, AgentService agents, AgentHub hub, CancellationToken ct) =>
             await FindJobAsync(http, agents, hub, jobId, ct) is { } job && index >= 0 && index < job.Files.Count

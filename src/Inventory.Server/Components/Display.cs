@@ -36,6 +36,7 @@ public static class Display
     {
         RuleField.ComputerName => "Rechnername",
         RuleField.NameMismatch => "Gemeldeter Name weicht ab",
+        RuleField.LocalAdmin => "Lokaler Administrator",
         RuleField.Online => "Online",
         RuleField.Scanned => "Gescannt",
         RuleField.OsName => "Betriebssystem",
@@ -67,7 +68,7 @@ public static class Display
         RuleField.Online or RuleField.Scanned or RuleField.NameMismatch => [RuleOperator.Equals],
         RuleField.MemoryGb => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals],
         RuleField.OsVersion => [RuleOperator.StartsWith, RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals, RuleOperator.Contains],
-        RuleField.Software => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
+        RuleField.Software or RuleField.LocalAdmin => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
         _ => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
     };
 
@@ -151,6 +152,30 @@ public static class Display
         StepStatus.Succeeded => Color.Success,
         StepStatus.Failed => Color.Error,
         _ => Color.Default,
+    };
+
+    public static string Change(ChangeKind kind) => kind switch
+    {
+        ChangeKind.Added => "neu",
+        ChangeKind.Removed => "entfernt",
+        ChangeKind.Changed => "geändert",
+        _ => kind.ToString(),
+    };
+
+    public static Color ChangeColor(ChangeKind kind) => kind switch
+    {
+        ChangeKind.Added => Color.Success,
+        ChangeKind.Removed => Color.Error,
+        _ => Color.Info,
+    };
+
+    /// <summary>Alt → Neu, je nachdem, welche Seite vorhanden ist.</summary>
+    public static string ChangeValues(InventoryChange c) => (c.OldValue, c.NewValue) switch
+    {
+        (null, null) => "",
+        (null, var added) => added!,
+        (var removed, null) => removed!,
+        var (old, updated) => $"{old} → {updated}",
     };
 
     public static string FileSize(long bytes) => bytes switch

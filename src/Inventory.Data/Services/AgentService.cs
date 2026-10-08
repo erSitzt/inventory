@@ -56,6 +56,10 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         return key;
     }
 
+    /// <summary>Anzeigetext aus Programmversion und Stand der Dateien, z. B. "0.1.0.0 (3fa9c21b)".</summary>
+    public static string DescribeVersion(string? version, string? runnerHash) =>
+        string.IsNullOrEmpty(runnerHash) ? version ?? "unbekannt" : $"{version} ({runnerHash[..Math.Min(8, runnerHash.Length)]})";
+
     /// <summary>Erkennt den Rechner am Agentenschlüssel und vermerkt den Kontakt; null bei unbekanntem Schlüssel.</summary>
     public async Task<Computer?> AuthenticateAsync(string? key, string? version, CancellationToken ct = default)
     {
@@ -92,7 +96,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
     /// Runner-Dateien nach %ProgramFiles%\Inventory Agent, Konfiguration schreiben, Dienst anlegen und starten.
     /// </summary>
     /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
-    public async Task<BuiltJob> BuildInstallJobAsync(IReadOnlyList<string> runnerFiles, CancellationToken ct = default)
+    public async Task<BuiltJob> BuildInstallJobAsync(IReadOnlyList<string> runnerFiles, string runnerHash, CancellationToken ct = default)
     {
         var serverUrl = await GetServerUrlAsync(ct);
         if (string.IsNullOrWhiteSpace(serverUrl))
@@ -111,11 +115,14 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
                 & icacls.exe $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
             }
             Copy-Item -Path (Join-Path (Get-Location) '{{InstallFolder}}\*') -Destination $dir -Force
+            Set-Content -Path (Join-Path $dir '{{AgentProtocol.VersionFile}}') -Value '{{runnerHash}}' -Encoding ASCII
             Set-Content -Path (Join-Path $dir '{{AgentProtocol.ConfigFile}}') -Value '{{config.Replace("'", "''")}}' -Encoding UTF8
             if (-not $service) {
                 New-Service -Name $name -BinaryPathName ('"' + (Join-Path $dir '{{JobFiles.RunnerExe}}') + '" {{RunnerModes.Agent}}') -DisplayName 'Inventory Agent' -StartupType Automatic | Out-Null
-                & sc.exe failure $name reset= 86400 actions= restart/60000/restart/60000/restart/300000 | Out-Null
             }
+            # Der erste Neustart kommt schnell: so startet sich der Agent nach einer Selbstaktualisierung neu.
+            & sc.exe failure $name reset= 3600 actions= restart/5000/restart/60000/restart/300000 | Out-Null
+            & sc.exe failureflag $name 1 | Out-Null
             Start-Service -Name $name
             Write-Output "Agent installiert: $dir"
             """;

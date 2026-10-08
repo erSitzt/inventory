@@ -17,6 +17,9 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ComputerDisk> Disks => Set<ComputerDisk>();
     public DbSet<ComputerNetworkAdapter> NetworkAdapters => Set<ComputerNetworkAdapter>();
     public DbSet<ComputerWindowsService> Services => Set<ComputerWindowsService>();
+    public DbSet<ComputerLocalUser> LocalUsers => Set<ComputerLocalUser>();
+    public DbSet<ComputerLocalAdmin> LocalAdmins => Set<ComputerLocalAdmin>();
+    public DbSet<InventoryChange> InventoryChanges => Set<InventoryChange>();
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
     public DbSet<Deployment> Deployments => Set<Deployment>();
@@ -36,6 +39,9 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasMany(c => c.Disks).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.NetworkAdapters).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.Services).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.LocalUsers).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.LocalAdmins).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany<InventoryChange>().WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ComputerSoftware>(e =>
@@ -43,6 +49,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.Property(s => s.Name).UseCollation("NOCASE");
             e.HasIndex(s => s.Name);
         });
+
+        modelBuilder.Entity<InventoryChange>().HasIndex(c => c.TimeUtc);
 
         modelBuilder.Entity<Credential>(e =>
         {

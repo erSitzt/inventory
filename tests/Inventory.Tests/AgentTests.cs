@@ -82,16 +82,19 @@ public class AgentTests
         using var db = new TestDb();
         var agents = new AgentService(db, new SettingsService(db), TimeProvider.System);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildInstallJobAsync(["/srv/runner/InventoryRunner.exe"]));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildInstallJobAsync(["/srv/runner/InventoryRunner.exe"], "abc123"));
 
         await agents.SetServerUrlAsync("https://inventory.corp.local:5100/");
-        var job = await agents.BuildInstallJobAsync(["/srv/runner/InventoryRunner.exe", "/srv/runner/System.Text.Json.dll"]);
+        var job = await agents.BuildInstallJobAsync(["/srv/runner/InventoryRunner.exe", "/srv/runner/System.Text.Json.dll"], "abc123");
 
         Assert.Equal([@"agent\InventoryRunner.exe", @"agent\System.Text.Json.dll"], job.Files.Select(f => f.RelativePath));
         var script = Assert.Single(job.Manifest.Steps).Script;
         Assert.Contains("\"serverUrl\":\"https://inventory.corp.local:5100\"", script);
         Assert.Contains(await agents.GetEnrollmentTokenAsync(), script);
         Assert.Contains("--agent", script);
+        Assert.Contains("agent.version') -Value 'abc123'", script);
+        Assert.Equal("0.1.0.0 (abc123)", AgentService.DescribeVersion("0.1.0.0", "abc123"));
+        Assert.Equal("0.1.0.0", AgentService.DescribeVersion("0.1.0.0", ""));
         Assert.DoesNotContain("\n            $", script);
     }
 

@@ -82,6 +82,7 @@
         <MudText Typo="Typo.body2">
             Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server
             nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“.
+            Nach einem Update des Servers aktualisieren sich die Agenten bei ihrer nächsten Anfrage selbst.
         </MudText>
         <MudTextField @bind-Value="_agentUrl" Label="Adresse dieses Servers aus Sicht der Agenten" Variant="Variant.Outlined" Margin="Margin.Dense"
                       Placeholder="https://inventory.firma.local:5100" HelperText="HTTPS empfohlen: Über diese Verbindung erhält der Agent Befehle, die er als Lokales System ausführt." />

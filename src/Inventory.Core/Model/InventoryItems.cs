@@ -56,3 +56,45 @@ public class ComputerWindowsService
     public string? StartMode { get; set; }
     public string? Account { get; set; }
 }
+
+public class ComputerLocalUser
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public required string Name { get; set; }
+    public string? FullName { get; set; }
+    public string? Description { get; set; }
+    public bool Disabled { get; set; }
+    public string? Sid { get; set; }
+}
+
+/// <summary>Mitglied der lokalen Administratorengruppe.</summary>
+public class ComputerLocalAdmin
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public required string Name { get; set; }
+    public bool IsGroup { get; set; }
+    public string? Sid { get; set; }
+}
+
+public enum ChangeKind
+{
+    Added,
+    Removed,
+    Changed,
+}
+
+/// <summary>Unterschied zwischen zwei aufeinanderfolgenden Scans eines Rechners.</summary>
+public class InventoryChange
+{
+    public long Id { get; set; }
+    public int ComputerId { get; set; }
+    public DateTime TimeUtc { get; set; }
+    /// <summary>Bereich, z. B. "Software" oder "Lokale Administratoren".</summary>
+    public required string Category { get; set; }
+    public ChangeKind Kind { get; set; }
+    public required string Item { get; set; }
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
+}

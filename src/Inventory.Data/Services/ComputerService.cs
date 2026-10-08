@@ -28,6 +28,7 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         return await db.Computers.AsNoTracking().AsSplitQuery()
             .Include(c => c.Credential).Include(c => c.Software).Include(c => c.Hotfixes).Include(c => c.Disks)
             .Include(c => c.NetworkAdapters).Include(c => c.Services).Include(c => c.Collections)
+            .Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 

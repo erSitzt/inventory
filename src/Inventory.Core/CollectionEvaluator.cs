@@ -31,6 +31,7 @@ public static class CollectionEvaluator
         RuleField.MemoryGb => Text(rule, computer.MemoryBytes is { } bytes
             ? Math.Round(bytes / 1024d / 1024 / 1024).ToString(CultureInfo.InvariantCulture) : null),
         RuleField.Software => Software(rule, computer),
+        RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         _ => false,
     };
 
@@ -51,6 +52,19 @@ public static class CollectionEvaluator
         var found = computer.Software.Any(s =>
             Text(positive, s.Name)
             && (string.IsNullOrWhiteSpace(rule.Value2) || CompareVersions(s.Version, rule.Value2) < 0));
+        return negated ? !found : found;
+    }
+
+    /// <summary>Positive Operatoren: mindestens ein Eintrag passt. Verneinte: kein Eintrag passt.</summary>
+    private static bool AnyOrNone(CollectionRule rule, IEnumerable<string> values)
+    {
+        var negated = rule.Operator is RuleOperator.NotContains or RuleOperator.NotEquals;
+        var positive = new CollectionRule
+        {
+            Operator = rule.Operator switch { RuleOperator.NotContains => RuleOperator.Contains, RuleOperator.NotEquals => RuleOperator.Equals, var other => other },
+            Value = rule.Value,
+        };
+        var found = values.Any(v => Text(positive, v));
         return negated ? !found : found;
     }
 

@@ -35,7 +35,7 @@
         </MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">Paket bereitstellen</MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">Befehl ausführen</MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">Agent installieren/aktualisieren</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">Agent installieren</MudMenuItem>
         <MudDivider />
         @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
         {
@@ -265,7 +265,7 @@
         BuiltJob job;
         try
         {
-            job = await AgentService.BuildInstallJobAsync(Runner.Files);
+            job = await AgentService.BuildInstallJobAsync(Runner.Files, Runner.Hash);
         }
         catch (InvalidOperationException ex)
         {

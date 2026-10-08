@@ -33,6 +33,7 @@ namespace Inventory.Runner
         public void Run()
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+            RemoveReplacedFiles();
             while (!_stop.IsCancellationRequested)
             {
                 try
@@ -74,7 +75,7 @@ namespace Inventory.Runner
         {
             while (!_stop.IsCancellationRequested)
             {
-                using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version }), _stop.Token).GetAwaiter().GetResult())
+                using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash() }), _stop.Token).GetAwaiter().GetResult())
                 {
                     if (response.StatusCode == HttpStatusCode.NoContent)
                         continue;
@@ -86,8 +87,73 @@ namespace Inventory.Runner
                     }
                     response.EnsureSuccessStatusCode();
                     var offer = JobJson.Deserialize<AgentJobOffer>(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
-                    RunJob(offer);
+                    if (offer.Update != null)
+                        ApplyUpdate(offer.Update);
+                    else
+                        RunJob(offer);
                 }
+            }
+        }
+
+        private string InstalledHash()
+        {
+            var path = Path.Combine(_baseDir, AgentProtocol.VersionFile);
+            return File.Exists(path) ? File.ReadAllText(path).Trim() : "";
+        }
+
+        /// <summary>
+        /// Tauscht die eigenen Programmdateien aus. Laufende Dateien lassen sich unter Windows nicht überschreiben,
+        /// aber umbenennen: die alte wird zu *.old, die neue nimmt ihren Platz ein. Danach beendet sich der Prozess
+        /// mit Fehlercode, woraufhin die Wiederherstellung des Dienstes ihn mit den neuen Dateien neu startet.
+        /// </summary>
+        private void ApplyUpdate(AgentUpdateOffer update)
+        {
+            Log($"Aktualisiere auf {update.Hash} ...");
+            var staging = Path.Combine(_baseDir, "update");
+            if (Directory.Exists(staging))
+                Directory.Delete(staging, true);
+            Directory.CreateDirectory(staging);
+
+            // Erst alles herunterladen: bricht die Verbindung ab, bleibt die laufende Installation unberührt.
+            for (var i = 0; i < update.Files.Count; i++)
+            {
+                var name = Path.GetFileName(update.Files[i]);
+                using (var response = _http.GetAsync($"{AgentProtocol.UpdatePath}/{i}", HttpCompletionOption.ResponseHeadersRead, _stop.Token).GetAwaiter().GetResult())
+                {
+                    response.EnsureSuccessStatusCode();
+                    using (var file = File.Create(Path.Combine(staging, name)))
+                        response.Content.CopyToAsync(file).GetAwaiter().GetResult();
+                }
+            }
+
+            foreach (var source in Directory.GetFiles(staging))
+            {
+                var target = Path.Combine(_baseDir, Path.GetFileName(source));
+                if (File.Exists(target))
+                {
+                    var old = target + OldSuffix;
+                    if (File.Exists(old))
+                        File.Delete(old);
+                    File.Move(target, old);
+                }
+                File.Move(source, target);
+            }
+            Directory.Delete(staging, true);
+            File.WriteAllText(Path.Combine(_baseDir, AgentProtocol.VersionFile), update.Hash);
+            Log("Aktualisiert, starte neu.");
+            Environment.Exit(RestartExitCode);
+        }
+
+        private const string OldSuffix = ".old";
+        /// <summary>Ungleich 0, damit der Dienststeuerungs-Manager das Ende als Fehler wertet und den Dienst neu startet.</summary>
+        private const int RestartExitCode = 3;
+
+        /// <summary>Räumt die beim letzten Update umbenannten Dateien weg; jetzt hält sie kein Prozess mehr offen.</summary>
+        private void RemoveReplacedFiles()
+        {
+            foreach (var old in Directory.GetFiles(_baseDir, "*" + OldSuffix))
+            {
+                try { File.Delete(old); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             }
         }
 

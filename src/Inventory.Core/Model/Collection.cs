@@ -19,6 +19,8 @@ public enum RuleField
     ComputerName,
     /// <summary>Der Rechner meldet einen anderen Namen als eingetragen.</summary>
     NameMismatch = 100,
+    /// <summary>Mitglied der lokalen Administratorengruppe (Name enthält …).</summary>
+    LocalAdmin = 101,
     Online = 1,
     Scanned,
     OsName,

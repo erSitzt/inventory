@@ -58,6 +58,8 @@ public class Computer
     public List<ComputerDisk> Disks { get; set; } = [];
     public List<ComputerNetworkAdapter> NetworkAdapters { get; set; } = [];
     public List<ComputerWindowsService> Services { get; set; } = [];
+    public List<ComputerLocalUser> LocalUsers { get; set; } = [];
+    public List<ComputerLocalAdmin> LocalAdmins { get; set; } = [];
 
     /// <summary>Statische Sammlungen, denen der Rechner fest zugeordnet ist.</summary>
     public List<Collection> Collections { get; set; } = [];

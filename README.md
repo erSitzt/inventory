@@ -36,9 +36,12 @@ dauerhaften Dienst. Er meldet sich einmalig mit dem Anmeldegeheimnis an, erhält
 danach fortlaufend über HTTP(S) nach Jobs. Einrichtung:
 
 1. Unter *Einstellungen → Agenten* die Adresse eintragen, unter der die Rechner den Server erreichen (HTTPS empfohlen).
-2. Unter *Rechner* die Ziele auswählen und *Aktionen → Agent installieren/aktualisieren* wählen. Die Installation
+2. Unter *Rechner* die Ziele auswählen und *Aktionen → Agent installieren* wählen. Die Installation
    selbst läuft agentenlos (SMB oder WinRM) nach `%ProgramFiles%\Inventory Agent`.
 3. Sobald sich der Dienst meldet, steht der Rechner auf Transport „Agent“; je Rechner lässt sich das wieder umstellen.
+
+Agenten aktualisieren sich selbst: Liefert der Server nach einem Update neuere Runner-Dateien aus, lädt der Agent sie
+bei seiner nächsten Anfrage, tauscht sie aus und startet sich über die Wiederherstellung des Dienstes neu.
 
 Zur Fehlersuche: `InventoryRunner.exe --agent-console` im Agentenordner, Protokoll in `agent.log`.
 
@@ -78,7 +81,7 @@ dotnet run --project src/Inventory.Server --launch-profile http   # Simulation, 
 Den Ordner auf den Windows-Server kopieren und dort als Administrator ausführen:
 
 ```powershell
-.\install-service.ps1 -AllowedGroups 'FIRMA\IT-Admins'
+.\install-service.ps1
 ```
 
 Das Skript installiert nach `C:\Program Files\Inventory`, legt Daten unter `C:\ProgramData\Inventory` ab und
@@ -91,7 +94,7 @@ registriert den Dienst. Ein erneuter Aufruf aktualisiert die Programmdateien; Ko
 | `Urls` | Adressen der Weboberfläche, z. B. `http://*:5100` |
 | `Inventory:DataDirectory` | Datenbank, Schlüssel, Paketdateien (`repository`), Sicherungen (`backups`) |
 | `Inventory:Authentication` | `Windows` (Standard auf Windows) oder `None` |
-| `Inventory:AllowedGroups` | Gruppen mit Zugriff auf Oberfläche und API, als Name (`FIRMA\IT-Admins`) oder SID. Standard: lokale Administratoren (`S-1-5-32-544`) |
+| `Inventory:AllowedGroups` | Gruppen mit Zugriff auf Oberfläche und API, als Name (`FIRMA\IT-Admins`) oder SID. Voreingestellt: `FIRMA\IT-Admins` |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 
 Für eine vollständige Sicherung gehören neben `backups` auch die Ordner `keys` (ohne sie sind die gespeicherten

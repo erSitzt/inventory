@@ -76,6 +76,15 @@ internal static class SimulatedInventory
         data.Services.Add(new ServiceItem { Name = "Spooler", DisplayName = "Druckwarteschlange", State = "Running", StartMode = "Auto", Account = "LocalSystem" });
         data.Services.Add(new ServiceItem { Name = "wuauserv", DisplayName = "Windows Update", State = "Stopped", StartMode = "Manual", Account = "LocalSystem" });
         data.Services.Add(new ServiceItem { Name = "WinRM", DisplayName = "Windows-Remoteverwaltung", State = random.Next(2) == 0 ? "Running" : "Stopped", StartMode = "Manual", Account = "NT AUTHORITY\\NetworkService" });
+        data.LocalUsers.Add(new LocalUserItem { Name = "Administrator", Disabled = true, Description = "Vordefiniertes Konto" });
+        data.LocalUsers.Add(new LocalUserItem { Name = "Gast", Disabled = true });
+        data.LocalAdmins.Add(new LocalAdminItem { Name = $"{data.ComputerName}\\Administrator" });
+        data.LocalAdmins.Add(new LocalAdminItem { Name = "CORP\\Domänen-Admins", IsGroup = true });
+        if (random.Next(3) == 0)
+        {
+            data.LocalUsers.Add(new LocalUserItem { Name = "support", Description = "Lokales Supportkonto" });
+            data.LocalAdmins.Add(new LocalAdminItem { Name = $"{data.ComputerName}\\support" });
+        }
         return data;
     }
 
