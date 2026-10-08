@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <!-- Erlaubt das Bauen Windows-spezifischer Ziele (net48, win-x64) unter Linux/WSL -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+</Project>
