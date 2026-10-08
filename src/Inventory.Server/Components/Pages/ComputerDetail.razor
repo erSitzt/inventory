@@ -72,6 +72,7 @@
                         @Row("Kerne / Threads", _computer.CpuCores is null ? null : $"{_computer.CpuCores} / {_computer.CpuLogicalProcessors}")
                         @Row("Arbeitsspeicher", Display.Bytes(_computer.MemoryBytes))
                         @Row("Sammlungen", string.Join(", ", _computer.Collections.Select(c => c.Name)))
+                        @Row("Agent", _computer.AgentKeyHash is null ? "nicht installiert" : $"Version {_computer.AgentVersion}, letzter Kontakt {Display.LocalTime(_computer.AgentLastSeenUtc)}")
                         @Row("Beschreibung", _computer.Description)
                     </tbody>
                 </MudSimpleTable>

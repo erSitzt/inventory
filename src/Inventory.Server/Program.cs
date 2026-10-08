@@ -3,6 +3,7 @@ using Inventory.Core.Model;
 using Inventory.Data;
 using Inventory.Data.Services;
 using Inventory.Remoting;
+using Inventory.Remoting.Agent;
 using Inventory.Remoting.Smb;
 using Inventory.Remoting.WinRm;
 using Inventory.Server;
@@ -35,6 +36,7 @@ if (OperatingSystem.IsWindows())
     dataProtection.ProtectKeysWithDpapi(protectToLocalMachine: true);
 
 builder.Services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
+builder.Services.AddSingleton(TimeProvider.System);
 if (options.ResolveSimulate())
 {
     builder.Services.AddSingleton<IHostProbe, SimulatedHostProbe>();
@@ -48,11 +50,15 @@ else
     builder.Services.AddSingleton<IDirectorySource, LdapDirectorySource>();
     if (OperatingSystem.IsWindows())
     {
-        builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner")));
         builder.Services.AddSingleton<IRemoteTransport, SmbServiceTransport>();
         builder.Services.AddSingleton<IRemoteTransport, WinRmTransport>();
     }
 }
+// Der Agent verbindet sich von sich aus; das funktioniert unabhängig vom Betriebssystem des Servers und auch in der Simulation.
+builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner")));
+builder.Services.AddSingleton<AgentHub>();
+builder.Services.AddSingleton<IRemoteTransport, AgentTransport>();
+builder.Services.AddSingleton<AgentService>();
 builder.Services.AddSingleton<RemoteJobService>();
 builder.Services.AddSingleton<InventoryStore>();
 builder.Services.AddSingleton<ScanService>();
@@ -60,7 +66,6 @@ builder.Services.AddSingleton<CollectionService>();
 builder.Services.AddSingleton(new PackageRepository(Path.Combine(dataDirectory, "repository")));
 builder.Services.AddSingleton<PackageService>();
 builder.Services.AddSingleton<DeploymentService>();
-builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddSingleton<AdSyncService>();
 builder.Services.AddSingleton<ReportService>();
@@ -122,6 +127,7 @@ app.MapStaticAssets();
 app.MapComputerEndpoints();
 app.MapPackageEndpoints();
 app.MapReportEndpoints();
+app.MapAgentEndpoints();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

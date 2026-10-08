@@ -1,0 +1,49 @@
+using Inventory.Contracts;
+using Inventory.Core.Abstractions;
+using Inventory.Core.Model;
+
+namespace Inventory.Remoting.Agent;
+
+/// <summary>
+/// Zustellung über den fest installierten Agenten: der Job wird bereitgelegt, der Agent holt ihn über seine
+/// ausgehende Verbindung ab. Funktioniert damit auch für Rechner, die der Server nicht direkt erreicht.
+/// </summary>
+public sealed class AgentTransport(AgentHub hub) : IRemoteTransport
+{
+    /// <summary>Der Agent fragt im Normalfall ununterbrochen nach; meldet er sich so lange nicht, ist er offline.</summary>
+    public TimeSpan PickupTimeout { get; init; } = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan Slack = TimeSpan.FromMinutes(10);
+
+    public TransportKind Kind => TransportKind.Agent;
+
+    public async Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
+    {
+        var pending = hub.Enqueue(target.Host, job, files, progress);
+        try
+        {
+            try
+            {
+                await pending.PickedUp.Task.WaitAsync(PickupTimeout, ct);
+            }
+            catch (TimeoutException)
+            {
+                throw new RemoteException($"Der Agent auf {target.Host} hat den Job nicht abgeholt – der Rechner ist aus oder der Agent läuft nicht.");
+            }
+
+            // Die Schritte haben eigene Zeitlimits; die Obergrenze fängt nur einen mitten im Job verschwundenen Agenten ab.
+            var limit = TimeSpan.FromSeconds(job.Steps.Sum(s => (long)Math.Max(s.TimeoutSeconds, 60))) + Slack;
+            try
+            {
+                return await pending.Completion.Task.WaitAsync(limit, ct);
+            }
+            catch (TimeoutException)
+            {
+                throw new RemoteException($"Der Agent auf {target.Host} hat kein Ergebnis geliefert (Verbindung während des Jobs verloren?).");
+            }
+        }
+        finally
+        {
+            hub.Withdraw(pending);
+        }
+    }
+}

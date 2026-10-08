@@ -24,8 +24,23 @@ Wie er dorthin kommt, bestimmt der Transport – einstellbar global und je Rechn
 | SMB + Dienst (Standard) | Freigabe `ADMIN$`, Port 445, Konto mit lokalen Adminrechten | Lokales System |
 | WinRM | PowerShell-Remoting aktiv, Port 5985, PowerShell im vollen Sprachmodus | hinterlegtes Konto |
 
+| Agent (optional) | Dienst „Inventory Agent“, ausgehende Verbindung zum Server | Lokales System |
+
 Auf dem Zielrechner entsteht `%SystemRoot%\Inventory` (nur SYSTEM und Administratoren): der Runner bleibt dort
 liegen, Job-Verzeichnisse und der temporäre Dienst werden nach jedem Lauf entfernt.
+
+### Agent
+
+Für Rechner, die der Server nicht direkt erreicht (Notebooks unterwegs, andere Netze), gibt es denselben Runner als
+dauerhaften Dienst. Er meldet sich einmalig mit dem Anmeldegeheimnis an, erhält einen eigenen Schlüssel und fragt
+danach fortlaufend über HTTP(S) nach Jobs. Einrichtung:
+
+1. Unter *Einstellungen → Agenten* die Adresse eintragen, unter der die Rechner den Server erreichen (HTTPS empfohlen).
+2. Unter *Rechner* die Ziele auswählen und *Aktionen → Agent installieren/aktualisieren* wählen. Die Installation
+   selbst läuft agentenlos (SMB oder WinRM) nach `%ProgramFiles%\Inventory Agent`.
+3. Sobald sich der Dienst meldet, steht der Rechner auf Transport „Agent“; je Rechner lässt sich das wieder umstellen.
+
+Zur Fehlersuche: `InventoryRunner.exe --agent-console` im Agentenordner, Protokoll in `agent.log`.
 
 ## Aufbau
 

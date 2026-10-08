@@ -7,6 +7,10 @@
             <MudSelect T="TransportKind?" @bind-Value="_transport" Label="Transport" Variant="Variant.Outlined" Clearable="true" Placeholder="Standard">
                 <MudSelectItem T="TransportKind?" Value="@(TransportKind.SmbService)">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
                 <MudSelectItem T="TransportKind?" Value="@(TransportKind.WinRm)">@Display.Transport(TransportKind.WinRm)</MudSelectItem>
+                @if (Computer.AgentKeyHash is not null)
+                {
+                    <MudSelectItem T="TransportKind?" Value="@(TransportKind.Agent)">@Display.Transport(TransportKind.Agent)</MudSelectItem>
+                }
             </MudSelect>
             <MudSelect T="int?" @bind-Value="_credentialId" Label="Zugangsdaten" Variant="Variant.Outlined" Clearable="true" Placeholder="Standard">
                 @foreach (var credential in Credentials)

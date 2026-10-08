@@ -22,6 +22,11 @@ public class Computer
     public int? CredentialId { get; set; }
     public Credential? Credential { get; set; }
 
+    /// <summary>SHA-256 des Schlüssels, mit dem sich der Agent dieses Rechners ausweist; null = kein Agent angemeldet.</summary>
+    public string? AgentKeyHash { get; set; }
+    public string? AgentVersion { get; set; }
+    public DateTime? AgentLastSeenUtc { get; set; }
+
     // Aus dem letzten Inventar-Scan
     /// <summary>Name, den der Rechner selbst meldet; kann vom Eintrag abweichen (veralteter DNS-Eintrag, CNAME, IP-Adresse).</summary>
     public string? ReportedName { get; set; }

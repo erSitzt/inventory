@@ -15,7 +15,9 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
     };
 
     /// <summary>Liefert immer ein Ergebnis; Zustellfehler stehen in <see cref="JobResult.Error"/>.</summary>
-    public async Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default, IReadOnlyList<JobFile>? files = null)
+    /// <param name="agentless">Den Agenten umgehen, auch wenn der Rechner einen hat (z. B. um den Agenten selbst zu installieren).</param>
+    public async Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default,
+        IReadOnlyList<JobFile>? files = null, bool agentless = false)
     {
         try
         {
@@ -24,6 +26,8 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
                 return JobResult.Failed(job.JobId, $"Rechner {computerId} nicht gefunden");
 
             var kind = computer.Transport ?? await settings.GetDefaultTransportAsync(ct);
+            if (agentless && kind == TransportKind.Agent)
+                kind = await settings.GetDefaultTransportAsync(ct);
             var transport = transports.FirstOrDefault(t => t.Kind == kind);
             if (transport is null)
                 return JobResult.Failed(job.JobId, $"Der Transport {kind} steht auf diesem Server nicht zur Verfügung");

@@ -28,7 +28,21 @@ namespace Inventory.Runner
                 return result.Success ? 0 : 1;
             }
 
-            Console.Error.WriteLine("Aufruf: InventoryRunner (--service|--console) <jobdir|job-id> | --version");
+            if (args.Length == 1 && args[0] == RunnerModes.Agent)
+            {
+                ServiceBase.Run(new AgentService());
+                return 0;
+            }
+
+            if (args.Length == 1 && args[0] == RunnerModes.AgentConsole)
+            {
+                var loop = new AgentLoop();
+                Console.CancelKeyPress += (_, e) => { e.Cancel = true; loop.Stop(); };
+                loop.Run();
+                return 0;
+            }
+
+            Console.Error.WriteLine("Aufruf: InventoryRunner (--service|--console) <jobdir|job-id> | --agent | --agent-console | --version");
             return 2;
         }
 

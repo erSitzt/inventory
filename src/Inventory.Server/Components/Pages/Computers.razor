@@ -3,6 +3,9 @@
 @inject CredentialService CredentialService
 @inject CollectionService CollectionService
 @inject ScanService ScanService
+@inject AgentService AgentService
+@inject RemoteJobService Jobs
+@inject Inventory.Remoting.RunnerPackage Runner
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -32,6 +35,7 @@
         </MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">Paket bereitstellen</MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">Befehl ausführen</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">Agent installieren/aktualisieren</MudMenuItem>
         <MudDivider />
         @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
         {
@@ -73,7 +77,15 @@
         </TemplateColumn>
         <TemplateColumn Title="Status" SortBy="c => c.IsOnline">
             <CellTemplate>
-                @if (context.Item.LastProbeUtc is null && context.Item.LastScanUtc is null)
+                @if (context.Item.AgentKeyHash is not null)
+                {
+                    <MudTooltip Text="@($"Agent {context.Item.AgentVersion}, letzter Kontakt {Display.LocalTime(context.Item.AgentLastSeenUtc)}")">
+                        <MudChip T="string" Size="Size.Small" Color="@(Display.AgentConnected(context.Item) ? Color.Success : Color.Default)" Icon="@Icons.Material.Filled.SettingsRemote">
+                            @(Display.AgentConnected(context.Item) ? "Agent" : "Agent getrennt")
+                        </MudChip>
+                    </MudTooltip>
+                }
+                else if (context.Item.LastProbeUtc is null && context.Item.LastScanUtc is null)
                 {
                     <MudChip T="string" Size="Size.Small">ungeprüft</MudChip>
                 }
@@ -246,6 +258,47 @@
     {
         var parameters = new DialogParameters<DeployDialog> { { d => d.ComputerIds, _selected.Select(c => c.Id).ToList() } };
         return Dialogs.ShowAsync<DeployDialog>("Paket bereitstellen", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+    }
+
+    private async Task InstallAgentAsync()
+    {
+        BuiltJob job;
+        try
+        {
+            job = await AgentService.BuildInstallJobAsync(Runner.Files);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+
+        var targets = _selected.ToList();
+        _busy = true;
+        _progressText = $"Installiere Agent auf {targets.Count} Rechnern …";
+        await Audit.LogAsync("Agent-Installation gestartet", string.Join(", ", targets.Select(c => c.Name)));
+        try
+        {
+            var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
+            await Parallel.ForEachAsync(targets, new ParallelOptions { MaxDegreeOfParallelism = 8 }, async (computer, ct) =>
+            {
+                // Jeder Rechner braucht eine eigene Job-ID; der Agent selbst kann sich nicht aktualisieren, daher immer agentenlos.
+                var manifest = new JobManifest { Steps = job.Manifest.Steps };
+                var result = await Jobs.RunAsync(computer.Id, manifest, null, ct, job.Files, agentless: true);
+                if (!result.Success)
+                    failures.Add($"{computer.Name}: {result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error ?? result.Steps.LastOrDefault()?.Output}");
+            });
+            if (failures.IsEmpty)
+                Snackbar.Add($"Agent auf {targets.Count} Rechnern installiert. Sie erscheinen als „Agent“, sobald sich der Dienst meldet.", Severity.Success);
+            else
+                Snackbar.Add($"{failures.Count} von {targets.Count} fehlgeschlagen – {string.Join("; ", failures.Take(3))}", Severity.Error);
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _progressText = null;
+        }
     }
 
     private void RunCommand() => Navigation.NavigateTo($"run?ids={string.Join(',', _selected.Select(c => c.Id))}");

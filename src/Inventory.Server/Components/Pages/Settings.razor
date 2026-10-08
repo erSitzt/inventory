@@ -2,6 +2,7 @@
 @using Microsoft.Extensions.Options
 @inject SettingsService SettingsService
 @inject AdSyncService AdSync
+@inject AgentService Agents
 @inject CredentialService CredentialService
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
@@ -75,7 +76,41 @@
     </MudStack>
 </MudPaper>
 
+<MudPaper Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">Agenten</MudText>
+        <MudText Typo="Typo.body2">
+            Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server
+            nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“.
+        </MudText>
+        <MudTextField @bind-Value="_agentUrl" Label="Adresse dieses Servers aus Sicht der Agenten" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Placeholder="https://inventory.firma.local:5100" HelperText="HTTPS empfohlen: Über diese Verbindung erhält der Agent Befehle, die er als Lokales System ausführt." />
+        <MudTextField Value="_agentToken" Label="Anmeldegeheimnis" Variant="Variant.Outlined" Margin="Margin.Dense" ReadOnly="true"
+                      HelperText="Wird bei der Installation mitgegeben. Erneuern sperrt nur neue Anmeldungen, vorhandene Agenten bleiben verbunden." />
+        <MudStack Row="true">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAgentAsync">Speichern</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="RenewAgentTokenAsync">Geheimnis erneuern</MudButton>
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
 @code {
+    private string? _agentUrl;
+    private string _agentToken = "";
+
+    private async Task SaveAgentAsync()
+    {
+        await Agents.SetServerUrlAsync(_agentUrl);
+        await Audit.LogAsync("Einstellung geändert", $"Server-Adresse für Agenten: {_agentUrl}");
+        Snackbar.Add("Gespeichert.", Severity.Success);
+    }
+
+    private async Task RenewAgentTokenAsync()
+    {
+        _agentToken = await Agents.RenewEnrollmentTokenAsync();
+        await Audit.LogAsync("Einstellung geändert", "Anmeldegeheimnis für Agenten erneuert");
+    }
+
     private bool _adEnabled;
     private string? _adServer;
     private string? _adBaseDns;
@@ -148,6 +183,8 @@
         _transport = await SettingsService.GetDefaultTransportAsync();
         _fallback = await SettingsService.GetTransportFallbackAsync();
         await LoadAdAsync();
+        _agentUrl = await Agents.GetServerUrlAsync();
+        _agentToken = await Agents.GetEnrollmentTokenAsync();
     }
 
     private async Task SetFallbackAsync(bool enabled)

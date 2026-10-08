@@ -96,6 +96,15 @@ namespace Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AgentKeyHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("AgentLastSeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AgentVersion")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("BiosVersion")
                         .HasColumnType("TEXT");
 
