@@ -1,4 +1,5 @@
 using Inventory.Contracts;
+using Inventory.Core;
 using Inventory.Core.Model;
 using Inventory.Data.Services;
 
@@ -39,6 +40,15 @@ public static class ComputerEndpoints
             await computers.GetDetailAsync(id, ct) is { } computer
                 ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new { s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser }))
                 : Results.NotFound());
+
+        // Lädt eine .rdp-Datei; Windows öffnet sie direkt mit der Remotedesktopverbindung.
+        group.MapGet("{id:int}/rdp", async (int id, ComputerService computers, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if (await computers.GetAsync(id, ct) is not { } computer)
+                return Results.NotFound();
+            await audit.LogAsync(http.User.Identity?.Name ?? "(ohne Anmeldung)", "Fernzugriff: Remotedesktop", computer.Name, ct);
+            return Results.File(System.Text.Encoding.ASCII.GetBytes(RemoteAccessLinks.RdpFile(computer.Name)), "application/x-rdp", $"{computer.Name}.rdp");
+        });
 
         group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, AuditService audit, HttpContext http, CancellationToken ct) =>
         {

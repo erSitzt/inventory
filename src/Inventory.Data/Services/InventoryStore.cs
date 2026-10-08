@@ -68,6 +68,12 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         computer.CpuLogicalProcessors = data.CpuLogicalProcessors;
         computer.MemoryBytes = data.MemoryBytes;
         computer.LoggedOnUser = data.LoggedOnUser;
+        if (data.RemoteAccess is { } remote)
+        {
+            computer.SessionId = remote.SessionId;
+            computer.TeamViewerId = remote.TeamViewerId;
+            computer.AnyDeskId = remote.AnyDeskId;
+        }
         if (data.Security is { } security)
         {
             computer.FirewallDomain = security.FirewallDomain;

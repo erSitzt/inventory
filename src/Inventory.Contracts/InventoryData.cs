@@ -38,6 +38,9 @@ namespace Inventory.Contracts
         /// <summary>Firewall, Virenschutz und Windows Update; null bei Runnern, die das noch nicht erfassen.</summary>
         public SecurityStatus? Security { get; set; }
 
+        /// <summary>Angaben für den Fernzugriff; null bei Runnern, die das noch nicht erfassen.</summary>
+        public RemoteAccessInfo? RemoteAccess { get; set; }
+
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
     }
@@ -133,5 +136,13 @@ namespace Inventory.Contracts
         public List<string>? UpdatePending { get; set; }
         /// <summary>WSUS-Server aus der Richtlinie; leer = Microsoft Update.</summary>
         public string? UpdateServer { get; set; }
+    }
+
+    public sealed class RemoteAccessInfo
+    {
+        /// <summary>Sitzungsnummer des angemeldeten Benutzers (für die RDP-Spiegelung); null, wenn niemand angemeldet ist.</summary>
+        public int? SessionId { get; set; }
+        public string? TeamViewerId { get; set; }
+        public string? AnyDeskId { get; set; }
     }
 }

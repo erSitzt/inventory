@@ -147,6 +147,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("AntivirusProducts")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AnyDeskId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("BiosVersion")
                         .HasColumnType("TEXT");
 
@@ -256,6 +259,12 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SerialNumber")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TeamViewerId")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("Transport")

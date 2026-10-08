@@ -54,4 +54,14 @@ public class ComputerTests
 
         Assert.Equal(await probe.ProbeAsync("PC-01"), await probe.ProbeAsync("pc-01"));
     }
+
+    [Fact]
+    public void Remote_access_commands_and_links_are_built_from_name_and_ids()
+    {
+        Assert.Equal("msra.exe /offerRA pc-01", RemoteAccessLinks.OfferAssistance("pc-01"));
+        Assert.Equal("mstsc.exe /v:pc-01.corp.local /shadow:3 /control", RemoteAccessLinks.Shadow("pc-01.corp.local", 3));
+        Assert.Equal("teamviewer10://control?device=123456789", RemoteAccessLinks.TeamViewer("123456789"));
+        Assert.Equal("anydesk:123%20456", RemoteAccessLinks.AnyDesk("123 456"));
+        Assert.StartsWith("full address:s:pc-01\r\n", RemoteAccessLinks.RdpFile("pc-01"));
+    }
 }

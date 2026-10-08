@@ -161,8 +161,9 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Sortable="false" CellStyle="width: 1%">
+        <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
+                <RemoteAccessMenu Computer="context.Item" Compact="true" />
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Bearbeiten" OnClick="@(() => EditAsync(context.Item))" />
             </CellTemplate>
         </TemplateColumn>

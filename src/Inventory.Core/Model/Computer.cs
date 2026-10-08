@@ -81,6 +81,12 @@ public class Computer
     public string? UpdatePending { get; set; }
     public string? UpdateServer { get; set; }
 
+    // Fernzugriff, aus dem letzten Scan
+    /// <summary>Sitzungsnummer des beim Scan angemeldeten Benutzers, für die RDP-Spiegelung.</summary>
+    public int? SessionId { get; set; }
+    public string? TeamViewerId { get; set; }
+    public string? AnyDeskId { get; set; }
+
     /// <summary>true, wenn mindestens ein Firewall-Profil abgeschaltet ist.</summary>
     public bool FirewallOff => FirewallDomain == false || FirewallPrivate == false || FirewallPublic == false;
 

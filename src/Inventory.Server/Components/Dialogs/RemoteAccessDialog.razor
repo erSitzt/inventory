@@ -1,0 +1,74 @@
+@inject IJSRuntime Js
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (Computer.NameMismatch)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Unter dem Namen @Computer.Name antwortet der Rechner @Computer.ReportedName. Die Verbindung ginge an den falschen Rechner.
+                </MudAlert>
+            }
+            <MudText Typo="Typo.body2">
+                Diesen Befehl auf deinem PC ausführen (Windows-Taste + R, einfügen, Eingabe):
+            </MudText>
+            <MudTextField T="string" Value="@Command" ReadOnly="true" Variant="Variant.Outlined" Style="font-family: monospace"
+                          Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentCopy" AdornmentAriaLabel="Kopieren" OnAdornmentClick="CopyAsync" />
+
+            @if (Kind == RemoteAccessKind.Assistance)
+            {
+                <MudText Typo="Typo.body2">
+                    Der Benutzer sieht eine Anfrage und muss zustimmen; danach seht ihr beide denselben Bildschirm, und du kannst die Steuerung anfordern.
+                </MudText>
+                <MudText Typo="Typo.caption">
+                    Voraussetzung auf den Rechnern: Gruppenrichtlinie „Remoteunterstützung anbieten konfigurieren“
+                    (Computerkonfiguration → Administrative Vorlagen → System → Remoteunterstützung) mit deinem Konto oder deiner Gruppe als Helfer,
+                    und die Firewall-Regelgruppe „Remoteunterstützung“ ist aktiv.
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">
+                    @if (Computer.SessionId is null)
+                    {
+                        <span>Beim letzten Scan war niemand angemeldet; der Befehl nimmt deshalb Sitzung 1 an. </span>
+                    }
+                    else
+                    {
+                        <span>Sitzung @Computer.SessionId stammt aus dem letzten Scan (@Display.LocalTime(Computer.LastScanUtc)). </span>
+                    }
+                    Stimmt die Nummer nicht mehr, zeigt <code>@RemoteAccessLinks.ListSessions(Computer.Name)</code> die aktuellen Sitzungen.
+                </MudText>
+                <MudText Typo="Typo.caption">
+                    Voraussetzung auf den Rechnern: Gruppenrichtlinie „Regeln für Remotesteuerung von Remotedesktopdienste-Benutzersitzungen festlegen“
+                    (… Windows-Komponenten → Remotedesktopdienste → Remotedesktopsitzungs-Host → Verbindungen) und die Firewall-Regeln
+                    „Remotedesktop – Schatten“ sowie „Datei- und Druckerfreigabe (SMB eingehend)“. Je nach Richtlinie muss der Benutzer zustimmen.
+                </MudText>
+            }
+        </MudStack>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [Parameter, EditorRequired] public Computer Computer { get; set; } = default!;
+    [Parameter] public RemoteAccessKind Kind { get; set; }
+
+    private string Command => Kind == RemoteAccessKind.Assistance
+        ? RemoteAccessLinks.OfferAssistance(Computer.Name)
+        : RemoteAccessLinks.Shadow(Computer.Name, Computer.SessionId ?? 1);
+
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", Command);
+            Snackbar.Add("Befehl kopiert.", Severity.Success);
+        }
+        catch (JSException)
+        {
+            // Die Zwischenablage steht Webseiten nur über HTTPS oder localhost zur Verfügung.
+            Snackbar.Add("Kopieren ist nur über HTTPS möglich – bitte den Befehl markieren und mit Strg+C kopieren.", Severity.Info);
+        }
+    }
+}

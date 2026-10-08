@@ -1,0 +1,49 @@
+@inject IDialogService Dialogs
+@inject Auditor Audit
+
+@* Eigene Schaltfläche des Menüs statt ActivatorContent: sonst läge eine Schaltfläche in einer Schaltfläche. *@
+<MudMenu Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+         Label="@(Compact ? null : "Fernzugriff")" Variant="@(Compact ? Variant.Text : Variant.Outlined)" Size="@(Compact ? Size.Small : Size.Medium)"
+         Icon="@(Compact ? Icons.Material.Filled.ConnectedTv : null)" StartIcon="@(Compact ? null : Icons.Material.Filled.ConnectedTv)"
+         EndIcon="@(Compact ? null : Icons.Material.Filled.KeyboardArrowDown)" AriaLabel="Fernzugriff">
+    <ChildContent>
+        @if (Computer.NameMismatch)
+        {
+            <MudMenuItem Disabled="true" Icon="@Icons.Material.Filled.Warning">Unter diesem Namen antwortet @Computer.ReportedName</MudMenuItem>
+            <MudDivider />
+        }
+        <MudMenuItem Icon="@Icons.Material.Filled.SupportAgent" OnClick="@(() => ShowAsync(RemoteAccessKind.Assistance))">Remoteunterstützung anbieten …</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.ScreenShare" OnClick="@(() => ShowAsync(RemoteAccessKind.Shadow))">Sitzung spiegeln …</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.DesktopWindows" Href="@($"api/computers/{Computer.Id}/rdp")" Target="_blank">Remotedesktop (RDP)</MudMenuItem>
+        @if (Computer.TeamViewerId is not null || Computer.AnyDeskId is not null)
+        {
+            <MudDivider />
+        }
+        @if (Computer.TeamViewerId is not null)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew" Href="@RemoteAccessLinks.TeamViewer(Computer.TeamViewerId)" OnClick="@(() => Audit.LogAsync("Fernzugriff: TeamViewer", Computer.Name))">
+                TeamViewer (@Computer.TeamViewerId)
+            </MudMenuItem>
+        }
+        @if (Computer.AnyDeskId is not null)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew" Href="@RemoteAccessLinks.AnyDesk(Computer.AnyDeskId)" OnClick="@(() => Audit.LogAsync("Fernzugriff: AnyDesk", Computer.Name))">
+                AnyDesk (@Computer.AnyDeskId)
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter, EditorRequired] public Computer Computer { get; set; } = default!;
+    /// <summary>Nur ein Symbol statt einer beschrifteten Schaltfläche (für Tabellenzeilen).</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    private async Task ShowAsync(RemoteAccessKind kind)
+    {
+        await Audit.LogAsync(kind == RemoteAccessKind.Assistance ? "Fernzugriff: Remoteunterstützung" : "Fernzugriff: Spiegelung", Computer.Name);
+        var parameters = new DialogParameters<RemoteAccessDialog> { { d => d.Computer, Computer }, { d => d.Kind, kind } };
+        var title = kind == RemoteAccessKind.Assistance ? $"Remoteunterstützung für {Computer.Name}" : $"Sitzung auf {Computer.Name} spiegeln";
+        await Dialogs.ShowAsync<RemoteAccessDialog>(title, parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small, CloseButton = true });
+    }
+}

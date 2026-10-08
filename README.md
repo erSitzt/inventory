@@ -20,6 +20,7 @@ Zugangsdaten.
 - **Paketbibliothek**: fertige Pakete gängiger Programme (täglich aus den winget-Manifesten erzeugt), Import per
   Klick, automatische Übernahme neuer Versionen und eine mitwandernde Sammlung „… veraltet“
 - **Ausführungskontext** je Schritt: als Lokales System oder in der Sitzung des angemeldeten Benutzers
+- **Fernzugriff** je Rechner: Remoteunterstützung anbieten, Sitzung spiegeln, Remotedesktop, TeamViewer/AnyDesk
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
 - **Zeitpläne**, Software-Übersicht, CSV-Export, Protokoll, tägliche Datensicherung
 
@@ -53,6 +54,20 @@ Agenten aktualisieren sich selbst: Liefert der Server nach einem Update neuere R
 bei seiner nächsten Anfrage, tauscht sie aus und startet sich über die Wiederherstellung des Dienstes neu.
 
 Zur Fehlersuche: `InventoryRunner.exe --agent-console` im Agentenordner, Protokoll in `agent.log`.
+
+### Fernzugriff
+
+In der Rechnerliste und auf der Detailseite gibt es das Menü *Fernzugriff*. Es kommt ohne Zusatzprogramm auf dem
+Admin-PC aus:
+
+| Weg | Was passiert | Voraussetzung auf den Rechnern |
+|---|---|---|
+| Remoteunterstützung anbieten | zeigt den Befehl `msra.exe /offerRA <Rechner>` zum Kopieren | Richtlinie „Remoteunterstützung anbieten konfigurieren“, Firewall-Gruppe „Remoteunterstützung“ |
+| Sitzung spiegeln | zeigt `mstsc.exe /v:<Rechner> /shadow:<Sitzung> /control`; die Sitzungsnummer stammt aus dem letzten Scan | Richtlinie „Regeln für Remotesteuerung von Remotedesktopdienste-Benutzersitzungen festlegen“, Firewall-Regeln „Remotedesktop – Schatten“ |
+| Remotedesktop | lädt eine `.rdp`-Datei, die Windows direkt öffnet | Remotedesktop aktiviert |
+| TeamViewer / AnyDesk | öffnet das Programm über dessen eigenen Link mit der beim Scan erfassten Geräte-ID | Programm auf beiden Seiten installiert |
+
+Jeder Aufruf steht im Protokoll. Antwortet unter dem eingetragenen Namen ein anderer Rechner, warnt das Menü.
 
 ### Paketbibliothek
 

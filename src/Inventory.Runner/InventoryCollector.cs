@@ -32,6 +32,8 @@ namespace Inventory.Runner
             Section(data, "Defender", () => ReadDefender(data.Security));
             Section(data, "Virenschutz", () => ReadAntivirusProducts(data.Security));
             Section(data, "Windows Update", () => ReadWindowsUpdate(data.Security));
+            data.RemoteAccess = new RemoteAccessInfo();
+            Section(data, "Fernzugriff", () => ReadRemoteAccess(data.RemoteAccess));
             return data;
         }
 
@@ -260,6 +262,34 @@ namespace Inventory.Runner
                 NetApiBufferFree(buffer);
             }
             data.LocalAdmins = data.LocalAdmins.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private static void ReadRemoteAccess(RemoteAccessInfo info)
+        {
+            info.SessionId = UserSession.ActiveSessionId();
+
+            // TeamViewer legt seine Geräte-ID je nach Version unter dem 64- oder 32-Bit-Zweig ab.
+            foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+            {
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
+                using (var key = hklm.OpenSubKey(@"SOFTWARE\TeamViewer"))
+                {
+                    var id = key?.GetValue("ClientID");
+                    if (id != null && info.TeamViewerId == null && Convert.ToInt64(id) > 0)
+                        info.TeamViewerId = Convert.ToInt64(id).ToString();
+                }
+            }
+
+            // AnyDesk speichert die ID in einer Textdatei; installiert unter ProgramData.
+            var anyDesk = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "AnyDesk", "system.conf");
+            if (System.IO.File.Exists(anyDesk))
+            {
+                foreach (var line in System.IO.File.ReadAllLines(anyDesk))
+                {
+                    if (line.StartsWith("ad.anynet.id=", StringComparison.Ordinal))
+                        info.AnyDeskId = line.Substring("ad.anynet.id=".Length).Trim();
+                }
+            }
         }
 
         private static void ReadFirewall(SecurityStatus status)

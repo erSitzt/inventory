@@ -88,6 +88,12 @@ internal static class SimulatedInventory
             UpdateLastSearchUtc = DateTime.UtcNow.AddHours(-random.Next(1, 30)), UpdateLastInstallUtc = DateTime.UtcNow.AddDays(-random.Next(1, 60)),
             UpdateRebootRequired = pending.Count > 0 && random.Next(2) == 0, UpdatePending = pending, UpdateServer = "http://wsus.corp.example:8530",
         };
+        data.RemoteAccess = new RemoteAccessInfo
+        {
+            SessionId = data.LoggedOnUser is null ? null : 1,
+            TeamViewerId = random.Next(3) == 0 ? null : random.Next(100_000_000, 999_999_999).ToString(),
+            AnyDeskId = random.Next(4) == 0 ? random.Next(100_000_000, 999_999_999).ToString() : null,
+        };
         data.LocalUsers.Add(new LocalUserItem { Name = "Administrator", Disabled = true, Description = "Vordefiniertes Konto" });
         data.LocalUsers.Add(new LocalUserItem { Name = "Gast", Disabled = true });
         data.LocalAdmins.Add(new LocalAdminItem { Name = $"{data.ComputerName}\\Administrator" });

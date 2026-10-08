@@ -133,6 +133,9 @@ namespace Inventory.Runner
             }
         }
 
+        /// <summary>Nummer der Sitzung, in der gerade jemand angemeldet ist; null, wenn niemand angemeldet ist.</summary>
+        public static int? ActiveSessionId() => FindActiveSession();
+
         private static int? FindActiveSession()
         {
             if (!WTSEnumerateSessions(IntPtr.Zero, 0, 1, out var buffer, out var count))
