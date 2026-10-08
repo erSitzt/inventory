@@ -1,0 +1,70 @@
+name: Release
+
+# Ein Tag vX.Y.Z erzeugt Setup, ZIP und Prüfsummen und veröffentlicht sie als GitHub-Release.
+# Tags mit Zusatz (v1.2.0-rc1) werden als Vorabversion markiert; die Update-Prüfung des Servers ignoriert sie.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      SIGNING_CERT_PFX: ${{ secrets.SIGNING_CERT_PFX }}
+      SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Version aus dem Tag
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Tests
+        run: dotnet test -c Release -p:Version=${{ env.VERSION }}
+
+      - name: Veröffentlichen
+        run: dotnet publish src/Inventory.Server -c Release -r win-x64 --self-contained true -p:Version=${{ env.VERSION }} -o publish
+
+      # Läuft nur, wenn ein Zertifikat als Secret hinterlegt ist (Base64 der PFX-Datei und ihr Passwort).
+      - name: Programmdateien signieren
+        if: env.SIGNING_CERT_PFX != ''
+        shell: pwsh
+        run: ./installer/sign.ps1 -Files publish/Inventory.Server.exe, publish/runner/InventoryRunner.exe
+
+      - name: Setup bauen
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y }
+          & $iscc "/DAppVersion=$env:VERSION" "/DSourceDir=..\publish" installer\inventory.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup ist fehlgeschlagen ($LASTEXITCODE)" }
+
+      - name: Setup signieren
+        if: env.SIGNING_CERT_PFX != ''
+        shell: pwsh
+        run: ./installer/sign.ps1 -Files dist/Inventory-Setup-${{ env.VERSION }}.exe
+
+      - name: ZIP und Prüfsummen
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish\* -DestinationPath "dist\Inventory-$env:VERSION-win-x64.zip"
+          # Format wie sha256sum: Hash, zwei Leerzeichen, Dateiname. Der Server prüft Downloads dagegen.
+          Get-ChildItem dist -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content -Path dist\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist\SHA256SUMS.txt
+
+      - name: Release anlegen
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE=""
+          if [[ "$VERSION" == *-* ]]; then PRERELEASE="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Inventory $VERSION" --generate-notes $PRERELEASE

@@ -5,6 +5,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <Version>0.1.0</Version>
+    <!-- Releases setzen die Version aus dem Git-Tag (-p:Version=…); lokal gebaute Stände sind als Entwicklungsversion erkennbar. -->
+    <Version>0.0.0-dev</Version>
   </PropertyGroup>
 </Project>

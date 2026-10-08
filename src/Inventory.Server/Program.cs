@@ -16,6 +16,16 @@ using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Einstellungen des Betreibers liegen außerhalb des Programmordners, damit Updates sie nie überschreiben.
+// Umgebungsvariablen und Befehlszeile behalten Vorrang.
+if (OperatingSystem.IsWindows())
+{
+    builder.Configuration
+        .AddJsonFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Inventory", "appsettings.json"), optional: true, reloadOnChange: false)
+        .AddEnvironmentVariables()
+        .AddCommandLine(args);
+}
+
 // Unter Windows als Dienst lauffähig; unter Linux/WSL und in der Konsole ohne Wirkung.
 builder.Host.UseWindowsService(options => options.ServiceName = "Inventory");
 
