@@ -94,7 +94,13 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
         {
             using var scm = OpenSCManagerW(host, null, SC_MANAGER_CONNECT | SC_MANAGER_CREATE_SERVICE);
             if (scm.IsInvalid)
-                throw new RemoteException($"Dienststeuerung auf {host} nicht erreichbar: {Describe(Marshal.GetLastWin32Error())}");
+            {
+                var error = Marshal.GetLastWin32Error();
+                throw new RemoteException(error == 5 && IsLocalMachine(host)
+                    ? $"Dienststeuerung auf {host} verweigert den Zugriff. {host} ist dieser Server selbst: lokale Zugriffe laufen immer mit dem Konto des " +
+                      "Server-Prozesses, nicht mit den hinterlegten Zugangsdaten. Den Server als Dienst bzw. mit Administratorrechten starten oder einen anderen Rechner als Ziel wählen."
+                    : $"Dienststeuerung auf {host} nicht erreichbar: {Describe(error)}");
+            }
 
             // %SystemRoot% wird vom Zielrechner aufgelöst; der Runner findet das Job-Verzeichnis über die ID selbst.
             var binPath = $"\"%SystemRoot%\\{JobFiles.RemoteRoot}\\{JobFiles.RunnerFolder}\\{runner.Hash}\\{JobFiles.RunnerExe}\" {RunnerModes.Service} {job.JobId}";
@@ -118,6 +124,13 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
             }
             TryDeleteDirectory(jobDir);
         }
+    }
+
+    internal static bool IsLocalMachine(string host)
+    {
+        var name = host.Split('.')[0];
+        return name.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
+               || name.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host is "127.0.0.1" or "::1";
     }
 
     private static JobResult WaitForResult(string host, string jobDir, ServiceHandle service, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct)
