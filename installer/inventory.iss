@@ -48,8 +48,10 @@ german.PortLabel=Port der Weboberfläche:
 german.GroupsLabel=Erlaubte Windows-Gruppen (Name oder SID, mehrere mit Semikolon; leer = lokale Administratoren):
 german.AccountCaption=Dienstkonto
 german.AccountDescription=Unter welchem Konto soll der Dienst laufen?
-german.AccountSystem=Lokales System (empfohlen; Zielrechner werden mit den in Inventory hinterlegten Zugangsdaten angesprochen)
-german.AccountCustom=Bestimmtes Konto (braucht das Recht "Anmelden als Dienst" und für Updates lokale Administratorrechte):
+german.AccountSystem=Lokales System (empfohlen)
+german.AccountSystemHint=Zielrechner werden mit den in Inventory hinterlegten Zugangsdaten angesprochen.
+german.AccountCustom=Bestimmtes Konto
+german.AccountCustomHint=Braucht das Recht "Anmelden als Dienst" und für Updates lokale Administratorrechte.
 german.AccountUser=Konto (DOMÄNE\benutzer):
 german.AccountPassword=Passwort:
 german.FirewallTask=Port in der Windows-Firewall freigeben
@@ -62,8 +64,10 @@ english.PortLabel=Port of the web interface:
 english.GroupsLabel=Allowed Windows groups (name or SID, separate several with semicolons; empty = local administrators):
 english.AccountCaption=Service account
 english.AccountDescription=Which account should the service run as?
-english.AccountSystem=Local System (recommended; target computers are accessed with the credentials stored in Inventory)
-english.AccountCustom=Specific account (needs the "Log on as a service" right and local administrator rights for updates):
+english.AccountSystem=Local System (recommended)
+english.AccountSystemHint=Target computers are accessed with the credentials stored in Inventory.
+english.AccountCustom=Specific account
+english.AccountCustomHint=Needs the "Log on as a service" right and local administrator rights for updates.
 english.AccountUser=Account (DOMAIN\user):
 english.AccountPassword=Password:
 english.FirewallTask=Open the port in Windows Firewall
@@ -125,7 +129,7 @@ begin
   Result := FreshInstall;
 end;
 
-function Port(): String;
+function PortValue(): String;
 begin
   if WizardSilent() or (SettingsPage = nil) then
     Result := ExpandConstant('{param:PORT|5100}')
@@ -169,16 +173,47 @@ end;
 
 function GetLocalUrl(Param: String): String;
 begin
-  Result := 'http://localhost:' + Port();
+  Result := 'http://localhost:' + PortValue();
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  // Bei einem Update bleiben Port, Gruppen und Dienstkonto unangetastet; die Seiten dazu entfallen.
+  FreshInstall := not ServiceExists();
+  Result := True;
+end;
+
+function AddHint(Page: TWizardPage; const Text: String; Top: Integer): TNewStaticText;
+begin
+  Result := TNewStaticText.Create(Page);
+  Result.Parent := Page.Surface;
+  Result.AutoSize := False;
+  Result.WordWrap := True;
+  Result.Caption := Text;
+  Result.Left := ScaleX(18);
+  Result.Top := Top;
+  Result.Width := Page.SurfaceWidth - ScaleX(18);
+  Result.Height := ScaleY(30);
+end;
+
+function AddEdit(Page: TWizardPage; const LabelText: String; Top: Integer): TEdit;
+var
+  Caption: TNewStaticText;
+begin
+  Caption := TNewStaticText.Create(Page);
+  Caption.Parent := Page.Surface;
+  Caption.Caption := LabelText;
+  Caption.Left := ScaleX(18);
+  Caption.Top := Top;
+  Result := TEdit.Create(Page);
+  Result.Parent := Page.Surface;
+  Result.Left := ScaleX(18);
+  Result.Top := Top + ScaleY(18);
+  Result.Width := ScaleX(280);
 end;
 
 procedure InitializeWizard();
-var
-  UserLabel, PasswordLabel: TLabel;
 begin
-  // Bei einem Update bleiben Port, Gruppen und Dienstkonto unangetastet; die Seiten entfallen.
-  FreshInstall := not ServiceExists();
-
   SettingsPage := CreateInputQueryPage(wpSelectDir, CustomMessage('SettingsCaption'), CustomMessage('SettingsDescription'), '');
   SettingsPage.Add(CustomMessage('PortLabel'), False);
   SettingsPage.Add(CustomMessage('GroupsLabel'), False);
@@ -189,32 +224,23 @@ begin
   SystemAccountRadio := TRadioButton.Create(AccountPage);
   SystemAccountRadio.Parent := AccountPage.Surface;
   SystemAccountRadio.Caption := CustomMessage('AccountSystem');
-  SystemAccountRadio.SetBounds(0, 0, AccountPage.SurfaceWidth, ScaleY(34));
-  SystemAccountRadio.WordWrap := True;
+  SystemAccountRadio.Left := 0;
+  SystemAccountRadio.Top := 0;
+  SystemAccountRadio.Width := AccountPage.SurfaceWidth;
   SystemAccountRadio.Checked := True;
+  AddHint(AccountPage, CustomMessage('AccountSystemHint'), ScaleY(20));
 
   CustomAccountRadio := TRadioButton.Create(AccountPage);
   CustomAccountRadio.Parent := AccountPage.Surface;
   CustomAccountRadio.Caption := CustomMessage('AccountCustom');
-  CustomAccountRadio.SetBounds(0, ScaleY(44), AccountPage.SurfaceWidth, ScaleY(34));
-  CustomAccountRadio.WordWrap := True;
+  CustomAccountRadio.Left := 0;
+  CustomAccountRadio.Top := ScaleY(58);
+  CustomAccountRadio.Width := AccountPage.SurfaceWidth;
+  AddHint(AccountPage, CustomMessage('AccountCustomHint'), ScaleY(78));
 
-  UserLabel := TLabel.Create(AccountPage);
-  UserLabel.Parent := AccountPage.Surface;
-  UserLabel.Caption := CustomMessage('AccountUser');
-  UserLabel.SetBounds(ScaleX(18), ScaleY(88), AccountPage.SurfaceWidth, ScaleY(16));
-  AccountUserEdit := TEdit.Create(AccountPage);
-  AccountUserEdit.Parent := AccountPage.Surface;
-  AccountUserEdit.SetBounds(ScaleX(18), ScaleY(106), ScaleX(280), ScaleY(22));
-
-  PasswordLabel := TLabel.Create(AccountPage);
-  PasswordLabel.Parent := AccountPage.Surface;
-  PasswordLabel.Caption := CustomMessage('AccountPassword');
-  PasswordLabel.SetBounds(ScaleX(18), ScaleY(136), AccountPage.SurfaceWidth, ScaleY(16));
-  AccountPasswordEdit := TEdit.Create(AccountPage);
-  AccountPasswordEdit.Parent := AccountPage.Surface;
+  AccountUserEdit := AddEdit(AccountPage, CustomMessage('AccountUser'), ScaleY(114));
+  AccountPasswordEdit := AddEdit(AccountPage, CustomMessage('AccountPassword'), ScaleY(162));
   AccountPasswordEdit.PasswordChar := '*';
-  AccountPasswordEdit.SetBounds(ScaleX(18), ScaleY(154), ScaleX(280), ScaleY(22));
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
@@ -229,7 +255,7 @@ begin
   Result := True;
   if CurPageID = SettingsPage.ID then
   begin
-    Number := StrToIntDef(Port(), 0);
+    Number := StrToIntDef(PortValue(), 0);
     Result := (Number > 0) and (Number < 65536);
     if not Result then
       MsgBox(CustomMessage('PortLabel') + ' 1-65535', mbError, MB_OK);
@@ -316,7 +342,7 @@ begin
   ConfigFile := DataDir + '\appsettings.json';
   if FileExists(ConfigFile) then
     Exit;
-  Json := '{' + #13#10 + '  "Urls": "http://*:' + Port() + '",' + #13#10 + '  "Inventory": {' + #13#10 + '    "Authentication": "Windows"';
+  Json := '{' + #13#10 + '  "Urls": "http://*:' + PortValue() + '",' + #13#10 + '  "Inventory": {' + #13#10 + '    "Authentication": "Windows"';
   if GroupsJson() <> '' then
     Json := Json + ',' + #13#10 + '    "AllowedGroups": [ ' + GroupsJson() + ' ]';
   Json := Json + #13#10 + '  }' + #13#10 + '}' + #13#10;
@@ -350,7 +376,7 @@ begin
     if WantFirewallRule() then
     begin
       RunHidden(ExpandConstant('{sys}\netsh.exe'), 'advfirewall firewall delete rule name="{#FirewallRule}"');
-      RunHidden(ExpandConstant('{sys}\netsh.exe'), 'advfirewall firewall add rule name="{#FirewallRule}" dir=in action=allow protocol=TCP localport=' + Port());
+      RunHidden(ExpandConstant('{sys}\netsh.exe'), 'advfirewall firewall add rule name="{#FirewallRule}" dir=in action=allow protocol=TCP localport=' + PortValue());
     end;
   end;
   StartResult := Sc('start {#ServiceName}');
