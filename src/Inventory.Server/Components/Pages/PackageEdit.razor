@@ -22,6 +22,15 @@
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_package.Steps.Count == 0)" OnClick="DeployAsync">Bereitstellen</MudButton>
 </MudStack>
 
+@if (_package.CatalogId is not null)
+{
+    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
+        Aus der <MudLink Href="library">Paketbibliothek</MudLink> importiert (@_package.CatalogId).
+        @(_package.CatalogAutoUpdate ? "Neue Versionen werden automatisch übernommen" : "Neue Versionen werden nicht automatisch übernommen");
+        dabei wird der Installationsschritt mit dem Setup ersetzt, eigene Schritte und Dateien bleiben erhalten.
+    </MudAlert>
+}
+
 <MudGrid>
     <MudItem xs="12" lg="7">
         <MudPaper Class="pa-4 mb-4" Outlined="true">

@@ -12,6 +12,13 @@ public class Package
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime ModifiedUtc { get; set; } = DateTime.UtcNow;
     public List<PackageStep> Steps { get; set; } = [];
+
+    /// <summary>Gesetzt = aus der Paketbibliothek importiert (ID des Katalogeintrags).</summary>
+    public string? CatalogId { get; set; }
+    /// <summary>Neue Versionen aus der Bibliothek automatisch übernehmen.</summary>
+    public bool CatalogAutoUpdate { get; set; }
+    /// <summary>Dynamische Sammlung "… veraltet", deren Versionsgrenze mit dem Paket mitwandert.</summary>
+    public int? CatalogCollectionId { get; set; }
 }
 
 public class PackageStep

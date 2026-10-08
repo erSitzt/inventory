@@ -1,0 +1,37 @@
+name: Paketbibliothek
+
+# Baut täglich den Katalog der Paketbibliothek aus den winget-Manifesten und legt ihn im Branch "catalog" ab.
+# Die Server laden ihn von dort (Inventory:Catalog:Url).
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['catalog/**', '.github/workflows/catalog.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: catalog
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet pyyaml
+      - name: Katalog erzeugen
+        run: python3 catalog/build_catalog.py out/catalog.json "$RUNNER_TEMP/winget-pkgs"
+      - name: In den Branch catalog schreiben
+        working-directory: out
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Ein einzelner, jeweils ersetzter Commit: der Katalog hat keine Historie, die das Repository aufblähen müsste.
+          git init --quiet --initial-branch=catalog
+          git add catalog.json
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit --quiet -m "Katalog vom $(date -u +%Y-%m-%d)"
+          git push --quiet --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" catalog

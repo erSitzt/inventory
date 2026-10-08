@@ -1,0 +1,35 @@
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.body2">
+                <b>@Entry.Name @Entry.Version</b> von @(Entry.Publisher ?? "unbekanntem Hersteller")
+                @if (!string.IsNullOrWhiteSpace(Entry.License))
+                {
+                    <span> · Lizenz: @Entry.License</span>
+                }
+            </MudText>
+            <MudText Typo="Typo.caption" Style="word-break: break-all">Download: @Entry.Url</MudText>
+            <MudText Typo="Typo.caption">Installation: @(Entry.InstallerType is "wix" or "msi" ? "MSI, still über /qn /norestart" : "Setup") @Entry.Arguments</MudText>
+            <MudCheckBox T="bool" @bind-Value="_autoUpdate" Dense="true" Label="Neue Versionen automatisch übernehmen" />
+            <MudCheckBox T="bool" @bind-Value="_createCollection" Dense="true"
+                         Label="@($"Dynamische Sammlung „{Entry.Name} veraltet“ anlegen (Rechner mit älterer Version)")" />
+            <MudText Typo="Typo.caption">
+                Bitte die Lizenzbedingungen des Herstellers beachten; die Bibliothek verweist nur auf dessen Download.
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => MudDialog.Close(DialogResult.Ok(new Choice(_autoUpdate, _createCollection))))">Importieren</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public sealed record Choice(bool AutoUpdate, bool CreateCollection);
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public Inventory.Core.Abstractions.CatalogEntry Entry { get; set; } = default!;
+
+    private bool _autoUpdate = true;
+    private bool _createCollection = true;
+}

@@ -670,6 +670,15 @@ namespace Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("CatalogAutoUpdate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CatalogCollectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CatalogId")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
 
@@ -689,6 +698,8 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CatalogCollectionId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -915,6 +926,14 @@ namespace Inventory.Data.Migrations
                         .HasForeignKey("ComputerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.Package", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Collection", null)
+                        .WithMany()
+                        .HasForeignKey("CatalogCollectionId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.PackageStep", b =>

@@ -1,0 +1,169 @@
+@page "/library"
+@inject CatalogService Catalog
+@inject Auditor Audit
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Paketbibliothek – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">Paketbibliothek</MudText>
+    <MudSpacer />
+    <MudTextField @bind-Value="_search" Placeholder="Programm oder Hersteller suchen" Adornment="Adornment.Start" Immediate="true"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="_busy" OnClick="@(() => ReloadAsync(force: true))">Neu laden</MudButton>
+</MudStack>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    Fertige Pakete gängiger Programme mit geprüfter Download-Adresse und Silent-Parametern. Beim Import lädt der Server das Setup
+    direkt vom Hersteller und prüft es gegen die Prüfsumme aus dem Katalog. Der Katalog wird täglich aus den Manifesten des
+    winget-Repositories erzeugt@(Catalog.Current?.Generated is { } generated ? $" (Stand {Display.LocalTime(generated)})" : "").
+</MudText>
+
+@if (Catalog.LastError is not null)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">@Catalog.LastError</MudAlert>
+}
+@if (_busyText is not null)
+{
+    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">@_busyText</MudAlert>
+}
+
+<MudDataGrid T="CatalogItem" Items="_items" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50" Loading="_busy"
+             QuickFilter="@(i => string.IsNullOrWhiteSpace(_search) || i.Entry.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (i.Entry.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))">
+    <Columns>
+        <TemplateColumn Title="Programm" SortBy="i => i.Entry.Name">
+            <CellTemplate>
+                <MudText Typo="Typo.body2"><b>@context.Item.Entry.Name</b></MudText>
+                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@context.Item.Entry.Description</MudText>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Hersteller" SortBy="i => i.Entry.Publisher">
+            <CellTemplate>@context.Item.Entry.Publisher</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Version" Sortable="false">
+            <CellTemplate>@context.Item.Entry.Version</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Status" SortBy="i => i.Package == null ? 2 : i.UpdateAvailable ? 0 : 1">
+            <CellTemplate>
+                @if (context.Item.Package is null)
+                {
+                    <span>–</span>
+                }
+                else if (context.Item.UpdateAvailable)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">importiert @context.Item.Package.Version – neuer verfügbar</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">importiert, aktuell</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Automatisch aktuell halten" Sortable="false">
+            <CellTemplate>
+                @if (context.Item.Package is not null)
+                {
+                    <MudSwitch T="bool" Value="context.Item.Package.CatalogAutoUpdate" ValueChanged="@(on => SetAutoAsync(context.Item, on))" Color="Color.Primary" Size="Size.Small" />
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
+            <CellTemplate>
+                @if (context.Item.Package is null)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Disabled="_busy" OnClick="@(() => ImportAsync(context.Item))">Importieren</MudButton>
+                }
+                else
+                {
+                    @if (context.Item.UpdateAvailable)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="@(() => UpdateAsync(context.Item))">Aktualisieren</MudButton>
+                    }
+                    <MudButton Size="Size.Small" Href="@($"packages/{context.Item.Package.Id}")">Paket öffnen</MudButton>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">Die Bibliothek ist leer oder nicht erreichbar. Quelle: @Catalog.Location</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudDataGridPager T="CatalogItem" PageSizeOptions="@(new[] { 50, 100 })" RowsPerPageString="Zeilen pro Seite" />
+    </PagerContent>
+</MudDataGrid>
+
+<MudText Typo="Typo.caption" Class="mt-4" Style="display: block">
+    Tipp: Beim Import entsteht auf Wunsch eine dynamische Sammlung „… veraltet“ mit allen Rechnern, auf denen eine ältere Version installiert ist.
+    Ein Zeitplan, der das Paket regelmäßig auf diese Sammlung bereitstellt, hält das Programm überall aktuell.
+</MudText>
+
+@code {
+    private List<CatalogItem> _items = [];
+    private string _search = "";
+    private bool _busy;
+    private string? _busyText;
+
+    protected override Task OnInitializedAsync() => ReloadAsync(force: false);
+
+    private async Task ReloadAsync(bool force)
+    {
+        _busy = true;
+        try
+        {
+            if (force)
+                await Catalog.RefreshAsync(force: true);
+            _items = await Catalog.ListAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ImportAsync(CatalogItem item)
+    {
+        var parameters = new DialogParameters<ImportPackageDialog> { { d => d.Entry, item.Entry } };
+        var dialog = await Dialogs.ShowAsync<ImportPackageDialog>($"{item.Entry.Name} importieren", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is not { Canceled: false, Data: ImportPackageDialog.Choice choice })
+            return;
+        await RunAsync($"Lade {item.Entry.Name} {item.Entry.Version} vom Hersteller …", async () =>
+        {
+            await Catalog.ImportAsync(item.Entry.Id, choice.AutoUpdate, choice.CreateCollection, await Audit.UserNameAsync());
+            Snackbar.Add($"{item.Entry.Name} {item.Entry.Version} importiert.", Severity.Success);
+        });
+    }
+
+    private Task UpdateAsync(CatalogItem item) => RunAsync($"Lade {item.Entry.Name} {item.Entry.Version} vom Hersteller …", async () =>
+    {
+        await Catalog.UpdateAsync(item.Package!.Id, await Audit.UserNameAsync());
+        Snackbar.Add($"{item.Package.Name} auf {item.Entry.Version} aktualisiert.", Severity.Success);
+    });
+
+    private async Task SetAutoAsync(CatalogItem item, bool enabled)
+    {
+        await Catalog.SetAutoUpdateAsync(item.Package!.Id, enabled);
+        await Audit.LogAsync("Paket-Automatik geändert", $"{item.Package.Name}: {(enabled ? "an" : "aus")}");
+        _items = await Catalog.ListAsync();
+    }
+
+    private async Task RunAsync(string text, Func<Task> action)
+    {
+        _busy = true;
+        _busyText = text;
+        try
+        {
+            await action();
+        }
+        catch (Exception ex) when (ex is Inventory.Core.Abstractions.RemoteException or InvalidOperationException)
+        {
+            Snackbar.Add(ex.Message, Severity.Error, options => options.RequireInteraction = true);
+        }
+        finally
+        {
+            _busy = false;
+            _busyText = null;
+            _items = await Catalog.ListAsync();
+        }
+    }
+}

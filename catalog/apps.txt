@@ -1,0 +1,45 @@
+# Programme der Paketbibliothek: je Zeile eine Paket-ID aus dem winget-Repository (https://github.com/microsoft/winget-pkgs).
+# Die Action .github/workflows/catalog.yml erzeugt daraus täglich catalog.json mit aktueller Version, Download-Adresse,
+# Prüfsumme und Silent-Parametern. Neue Einträge einfach ergänzen; Pakete ohne unbeaufsichtigt installierbares
+# Setup (MSIX, Store, portable ZIPs) werden übersprungen und im Lauf der Action gemeldet.
+7zip.7zip
+Notepad++.Notepad++
+Mozilla.Firefox
+Mozilla.Firefox.de
+Mozilla.Firefox.ESR
+Mozilla.Thunderbird
+Mozilla.Thunderbird.de
+Google.Chrome
+VideoLAN.VLC
+Adobe.Acrobat.Reader.64-bit
+Git.Git
+PuTTY.PuTTY
+WinSCP.WinSCP
+KeePassXCTeam.KeePassXC
+DominikReichl.KeePass
+Microsoft.VisualStudioCode
+Microsoft.PowerShell
+Microsoft.VCRedist.2015+.x64
+Microsoft.DotNet.DesktopRuntime.8
+Oracle.JavaRuntimeEnvironment
+EclipseAdoptium.Temurin.21.JRE
+TheDocumentFoundation.LibreOffice
+GIMP.GIMP
+Inkscape.Inkscape
+IrfanSkiljan.IrfanView
+Greenshot.Greenshot
+TeamViewer.TeamViewer
+AnyDesk.AnyDesk
+Zoom.Zoom
+SumatraPDF.SumatraPDF
+PDFsam.PDFsam
+voidtools.Everything
+WinMerge.WinMerge
+WiresharkFoundation.Wireshark
+Audacity.Audacity
+OBSProject.OBSStudio
+Python.Python.3.13
+OpenJS.NodeJS.LTS
+Foxit.FoxitReader
+CPUID.CPU-Z
+CrystalDewWorld.CrystalDiskInfo

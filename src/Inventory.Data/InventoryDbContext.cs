@@ -79,6 +79,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.Property(p => p.Name).UseCollation("NOCASE").HasMaxLength(200);
             e.HasIndex(p => p.Name).IsUnique();
             e.HasMany(p => p.Steps).WithOne().HasForeignKey(s => s.PackageId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Collection>().WithMany().HasForeignKey(p => p.CatalogCollectionId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PackageStep>(e =>

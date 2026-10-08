@@ -20,6 +20,8 @@ public sealed class InventoryOptions
 
     public UpdateSettingsOptions Update { get; set; } = new();
 
+    public CatalogOptions Catalog { get; set; } = new();
+
     private string[] Modes => (Authentication ?? "").Split([',', ';', ' ', '+'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     public bool OidcEnabled => Modes.Contains("Oidc", StringComparer.OrdinalIgnoreCase);
@@ -165,4 +167,11 @@ public sealed class UpdateSettingsOptions
     /// Leer (solange Releases unsigniert sind) sichert nur die Prüfsumme die Übertragung.
     /// </summary>
     public string? RequiredPublisher { get; set; }
+}
+
+/// <summary>Quelle der Paketbibliothek.</summary>
+public sealed class CatalogOptions
+{
+    /// <summary>Web-Adresse oder lokaler Pfad der catalog.json; z. B. ein eigener, intern gepflegter Katalog.</summary>
+    public string Url { get; set; } = "https://raw.githubusercontent.com/erSitzt/inventory/catalog/catalog.json";
 }

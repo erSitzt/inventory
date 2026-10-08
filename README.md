@@ -17,6 +17,9 @@ Zugangsdaten.
 - **Remote-Befehl** (cmd/PowerShell) mit Live-Ausgabe
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
   Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten
+- **Paketbibliothek**: fertige Pakete gängiger Programme (täglich aus den winget-Manifesten erzeugt), Import per
+  Klick, automatische Übernahme neuer Versionen und eine mitwandernde Sammlung „… veraltet“
+- **Ausführungskontext** je Schritt: als Lokales System oder in der Sitzung des angemeldeten Benutzers
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
 - **Zeitpläne**, Software-Übersicht, CSV-Export, Protokoll, tägliche Datensicherung
 
@@ -50,6 +53,28 @@ Agenten aktualisieren sich selbst: Liefert der Server nach einem Update neuere R
 bei seiner nächsten Anfrage, tauscht sie aus und startet sich über die Wiederherstellung des Dienstes neu.
 
 Zur Fehlersuche: `InventoryRunner.exe --agent-console` im Agentenordner, Protokoll in `agent.log`.
+
+### Paketbibliothek
+
+Die Action `.github/workflows/catalog.yml` liest täglich die Manifeste der in `catalog/apps.txt` aufgeführten Programme
+aus dem [winget-Repository](https://github.com/microsoft/winget-pkgs) und schreibt `catalog.json` in den Branch
+`catalog`: je Programm aktuelle Version, Download-Adresse des Herstellers, SHA-256 und Silent-Parameter. Der Server
+lädt diese Datei (`Inventory:Catalog:Url`), zeigt sie unter *Paketbibliothek* an und lädt beim Import das Setup direkt
+vom Hersteller; stimmt die Prüfsumme nicht, wird nichts übernommen.
+
+- Weitere Programme: winget-ID in `catalog/apps.txt` ergänzen.
+- Eigener Katalog: `Inventory:Catalog:Url` auf eine eigene Datei oder Adresse zeigen lassen (gleiches Format).
+- Programme automatisch aktuell halten: beim Import die Sammlung „… veraltet“ anlegen lassen und einen Zeitplan
+  einrichten, der das Paket regelmäßig auf diese Sammlung bereitstellt.
+
+### Ausführungskontext
+
+Befehle, PowerShell-Skripte und Installationen laufen standardmäßig als **Lokales System**. Für alles, was das
+Benutzerprofil betrifft (HKCU, AppData, Netzlaufwerke), lässt sich je Schritt **Angemeldeter Benutzer** wählen: Der
+Runner startet den Prozess dann in der aktiven Sitzung mit den Rechten dieses Benutzers. Ist niemand angemeldet, wird
+der Schritt übersprungen. Das setzt voraus, dass der Runner als Lokales System läuft (SMB + Dienst oder Agent, nicht
+WinRM). Skript und Paketdateien liegen dafür während des Laufs in einem für Benutzer lesbaren Ordner unter
+`%ProgramData%\InventoryRunner` – in solche Schritte gehören deshalb keine Geheimnisse.
 
 ## Aufbau
 
@@ -137,6 +162,7 @@ markiert und von der Update-Prüfung ignoriert. Liegen die Secrets `SIGNING_CERT
 | `Inventory:Oidc:ClientId`, `ClientSecret` | Aus der App-Registrierung |
 | `Inventory:Oidc:AllowedGroups` | Objekt-IDs der erlaubten Gruppen oder Namen von App-Rollen; ohne Eintrag startet der Server nicht |
 | `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher` | Update-Prüfung, Quelle der Releases, erwarteter Herausgeber der Signatur |
+| `Inventory:Catalog:Url` | Adresse oder Pfad der `catalog.json` der Paketbibliothek |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 
 ### Anmeldung
