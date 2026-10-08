@@ -17,6 +17,13 @@ public static class ComputerEndpoints
 
     public static IEndpointRouteBuilder MapComputerEndpoints(this IEndpointRouteBuilder app)
     {
+        // Starter für Admin-PCs: öffnet Fernzugriffe direkt aus der Oberfläche (inventory://-Links).
+        app.MapGet("/download/launcher", () =>
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "launcher", "InventoryLauncher.exe");
+            return File.Exists(path) ? Results.File(path, "application/octet-stream", "InventoryLauncher.exe") : Results.NotFound();
+        });
+
         var group = app.MapGroup("/api/computers");
 
         group.MapGet("", async (ComputerService computers, CancellationToken ct) =>

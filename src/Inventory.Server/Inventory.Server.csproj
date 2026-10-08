@@ -26,6 +26,9 @@
     <ItemGroup>
       <RunnerFile Include="..\Inventory.Runner\bin\$(Configuration)\net48\*.exe;..\Inventory.Runner\bin\$(Configuration)\net48\*.dll;..\Inventory.Runner\bin\$(Configuration)\net48\*.config" />
       <Content Include="@(RunnerFile)" Link="runner\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+      <!-- Der Starter für Admin-PCs wird über die Oberfläche zum Download angeboten. -->
+      <LauncherFile Include="..\Inventory.Launcher\bin\$(Configuration)\net48\InventoryLauncher.exe;..\Inventory.Launcher\bin\$(Configuration)\net48\InventoryLauncher.exe.config" />
+      <Content Include="@(LauncherFile)" Link="launcher\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
 

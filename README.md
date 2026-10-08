@@ -57,15 +57,23 @@ Zur Fehlersuche: `InventoryRunner.exe --agent-console` im Agentenordner, Protoko
 
 ### Fernzugriff
 
-In der Rechnerliste und auf der Detailseite gibt es das Menü *Fernzugriff*. Es kommt ohne Zusatzprogramm auf dem
-Admin-PC aus:
+In der Rechnerliste und auf der Detailseite gibt es das Menü *Fernzugriff*:
 
-| Weg | Was passiert | Voraussetzung auf den Rechnern |
+| Weg | Was gestartet wird | Voraussetzung auf den Rechnern |
 |---|---|---|
-| Remoteunterstützung anbieten | zeigt den Befehl `msra.exe /offerRA <Rechner>` zum Kopieren | Richtlinie „Remoteunterstützung anbieten konfigurieren“, Firewall-Gruppe „Remoteunterstützung“ |
-| Sitzung spiegeln | zeigt `mstsc.exe /v:<Rechner> /shadow:<Sitzung> /control`; die Sitzungsnummer stammt aus dem letzten Scan | Richtlinie „Regeln für Remotesteuerung von Remotedesktopdienste-Benutzersitzungen festlegen“, Firewall-Regeln „Remotedesktop – Schatten“ |
-| Remotedesktop | lädt eine `.rdp`-Datei, die Windows direkt öffnet | Remotedesktop aktiviert |
-| TeamViewer / AnyDesk | öffnet das Programm über dessen eigenen Link mit der beim Scan erfassten Geräte-ID | Programm auf beiden Seiten installiert |
+| Remoteunterstützung anbieten | `msra.exe /offerRA <Rechner>` | Richtlinie „Remoteunterstützung anbieten konfigurieren“, Firewall-Gruppe „Remoteunterstützung“ |
+| Sitzung spiegeln | `mstsc.exe /v:<Rechner> /shadow:<Sitzung> /control`; die Sitzungsnummer stammt aus dem letzten Scan | Richtlinie „Regeln für Remotesteuerung von Remotedesktopdienste-Benutzersitzungen festlegen“, Firewall-Regeln „Remotedesktop – Schatten“ |
+| Remotedesktop | `mstsc.exe /v:<Rechner>` | Remotedesktop aktiviert |
+| TeamViewer / AnyDesk | das Programm über dessen eigenen Link mit der beim Scan erfassten Geräte-ID | Programm auf beiden Seiten installiert |
+
+Damit die ersten drei per Klick starten, braucht der Admin-PC einmalig den **Starter** (`InventoryLauncher.exe`, wenige
+Kilobyte): im Menü unter „Starter einrichten“ herunterladen, an einem festen Ort ablegen und einmal doppelklicken. Er
+trägt sich für das Benutzerkonto als Ziel für `inventory://`-Links ein (ohne Adminrechte). Für mehrere Admin-PCs gibt
+es unter *Rechner → Aktionen* „Starter für Fernzugriff installieren“ (nach `%ProgramFiles%\Inventory Launcher`, für
+alle Benutzer). Der Starter nimmt nur diese drei Aktionen an, prüft Rechnername und Sitzungsnummer und startet
+ausschließlich `msra.exe` und `mstsc.exe` aus System32 – andere Webseiten können über den Link nichts anderes auslösen.
+
+Ohne Starter zeigt derselbe Dialog die Befehle zum Kopieren und bietet Remotedesktop als `.rdp`-Datei an.
 
 Jeder Aufruf steht im Protokoll. Antwortet unter dem eingetragenen Namen ein anderer Rechner, warnt das Menü.
 
@@ -100,6 +108,7 @@ WinRM). Skript und Paketdateien liegen dafür während des Laufs in einem für B
 | `Inventory.Data` | EF Core/SQLite, Dienste (Scan, Pakete, Deployments, Zeitpläne …) |
 | `Inventory.Remoting` | Transporte (SMB, WinRM, Simulation), Erreichbarkeit, LDAP |
 | `Inventory.Runner` | Programm für den Zielrechner (net48) |
+| `Inventory.Launcher` | Starter für den Admin-PC: öffnet Fernzugriffe aus `inventory://`-Links (net48) |
 | `Inventory.Server` | ASP.NET Core: Blazor-Oberfläche, REST-API unter `/api`, Zeitplaner |
 
 ## Entwicklung unter WSL2

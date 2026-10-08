@@ -39,6 +39,7 @@
         <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">Paket bereitstellen</MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">Befehl ausführen</MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">Agent installieren</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">Starter für Fernzugriff installieren</MudMenuItem>
         <MudDivider />
         @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
         {
@@ -399,6 +400,45 @@
             else
                 Snackbar.Add($"{failures.Count} von {targets.Count} fehlgeschlagen – {string.Join("; ", failures.Take(3))}", Severity.Error);
             await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _progressText = null;
+        }
+    }
+
+    /// <summary>Richtet auf den gewählten (Admin-)PCs den Starter ein, der Fernzugriffe direkt aus der Oberfläche öffnet.</summary>
+    private async Task InstallLauncherAsync()
+    {
+        BuiltJob job;
+        try
+        {
+            job = AgentService.BuildLauncherInstallJob(Path.Combine(AppContext.BaseDirectory, "launcher"));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+
+        var targets = _selected.ToList();
+        _busy = true;
+        _progressText = $"Installiere den Starter auf {targets.Count} Rechnern …";
+        await Audit.LogAsync("Starter für Fernzugriff installiert", string.Join(", ", targets.Select(c => c.Name)));
+        try
+        {
+            var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
+            await Parallel.ForEachAsync(targets, new ParallelOptions { MaxDegreeOfParallelism = 8 }, async (computer, ct) =>
+            {
+                var result = await Jobs.RunAsync(computer.Id, new JobManifest { Steps = job.Manifest.Steps }, null, ct, job.Files);
+                if (!result.Success)
+                    failures.Add($"{computer.Name}: {result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error}");
+            });
+            if (failures.IsEmpty)
+                Snackbar.Add($"Starter auf {targets.Count} Rechnern eingerichtet. Fernzugriffe öffnen sich dort jetzt per Klick.", Severity.Success);
+            else
+                Snackbar.Add($"{failures.Count} von {targets.Count} fehlgeschlagen – {string.Join("; ", failures.Take(3))}", Severity.Error);
         }
         finally
         {

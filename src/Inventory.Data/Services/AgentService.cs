@@ -135,5 +135,27 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         return new BuiltJob(manifest, files);
     }
 
+    /// <summary>
+    /// Job, der den Starter für den Fernzugriff auf einem Admin-PC für alle Benutzer einrichtet: Programm nach
+    /// %ProgramFiles%\Inventory Launcher kopieren und als Ziel für inventory://-Links eintragen.
+    /// </summary>
+    public static BuiltJob BuildLauncherInstallJob(string launcherDirectory)
+    {
+        const string folder = "launcher";
+        const string target = @"%ProgramFiles%\Inventory Launcher";
+        var files = Directory.GetFiles(launcherDirectory).Select(f => new JobFile(f, $@"{folder}\{Path.GetFileName(f)}")).ToList();
+        if (files.Count == 0)
+            throw new InvalidOperationException("Der Starter liegt dem Server nicht bei.");
+        var manifest = new JobManifest
+        {
+            Steps =
+            [
+                new JobStep { Name = "Starter kopieren", Type = StepType.FileCopy, File = folder, Destination = target },
+                new JobStep { Name = "Starter eintragen", Type = StepType.Command, Script = $"\"{target}\\InventoryLauncher.exe\" --register-machine", TimeoutSeconds = 60 },
+            ],
+        };
+        return new BuiltJob(manifest, files);
+    }
+
     private static string Hash(string key) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));
 }

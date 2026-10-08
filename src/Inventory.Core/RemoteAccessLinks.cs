@@ -19,4 +19,11 @@ public static class RemoteAccessLinks
     public static string TeamViewer(string id) => $"teamviewer10://control?device={Uri.EscapeDataString(id)}";
 
     public static string AnyDesk(string id) => $"anydesk:{Uri.EscapeDataString(id)}";
+
+    // Links für den Starter auf dem Admin-PC (InventoryLauncher.exe); er prüft sie und öffnet die Verbindung direkt.
+    public static string LaunchAssistance(string host) => $"inventory://assist/{Uri.EscapeDataString(host)}";
+
+    public static string LaunchShadow(string host, int sessionId) => $"inventory://shadow/{Uri.EscapeDataString(host)}?session={sessionId}";
+
+    public static string LaunchRdp(string host) => $"inventory://rdp/{Uri.EscapeDataString(host)}";
 }

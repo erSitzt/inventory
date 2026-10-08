@@ -64,4 +64,40 @@ public class ComputerTests
         Assert.Equal("anydesk:123%20456", RemoteAccessLinks.AnyDesk("123 456"));
         Assert.StartsWith("full address:s:pc-01\r\n", RemoteAccessLinks.RdpFile("pc-01"));
     }
+
+    [Theory]
+    [InlineData("inventory://assist/pc-01", "msra.exe", "/offerRA pc-01")]
+    [InlineData("inventory://rdp/srv1.corp.local", "mstsc.exe", "/v:srv1.corp.local")]
+    [InlineData("inventory://shadow/PC-01?session=3", "mstsc.exe", "/v:PC-01 /shadow:3 /control")]
+    [InlineData("INVENTORY://ASSIST/pc-01/", "msra.exe", "/offerRA pc-01")]
+    public void Launcher_translates_valid_links(string link, string file, string arguments)
+    {
+        Assert.True(Inventory.Launcher.LinkParser.TryParse(link, out var fileName, out var args, out _));
+        Assert.Equal((file, arguments), (fileName, args));
+    }
+
+    [Theory]
+    [InlineData("inventory://assist/pc-01%20/public")]          // eingeschleuster Parameter
+    [InlineData("inventory://assist/pc-01 & calc")]
+    [InlineData("inventory://assist/pc%2201")]
+    [InlineData("inventory://assist/-pc")]
+    [InlineData("inventory://assist/")]
+    [InlineData("inventory://run/pc-01")]                       // unbekannte Aktion
+    [InlineData("inventory://shadow/pc-01")]                    // Sitzung fehlt
+    [InlineData("inventory://shadow/pc-01?session=1%20/prompt")]
+    [InlineData("inventory://shadow/pc-01?session=-1")]
+    [InlineData("https://assist/pc-01")]
+    [InlineData("pc-01")]
+    public void Launcher_rejects_everything_else(string link)
+    {
+        Assert.False(Inventory.Launcher.LinkParser.TryParse(link, out _, out _, out var error));
+        Assert.NotEqual("", error);
+    }
+
+    [Fact]
+    public void Server_links_are_accepted_by_the_launcher()
+    {
+        foreach (var link in new[] { RemoteAccessLinks.LaunchAssistance("pc-01"), RemoteAccessLinks.LaunchRdp("srv1.corp.local"), RemoteAccessLinks.LaunchShadow("PC_01", 2) })
+            Assert.True(Inventory.Launcher.LinkParser.TryParse(link, out _, out _, out _), link);
+    }
 }
