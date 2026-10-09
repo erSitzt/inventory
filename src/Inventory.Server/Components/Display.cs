@@ -188,6 +188,22 @@ public static class Display
         _ => kind.ToString(),
     };
 
+    /// <summary>Bei Software sagt "aktualisiert" mehr als "geändert".</summary>
+    public static string Change(InventoryChange change)
+    {
+        if (change is not { Category: "Software", Kind: ChangeKind.Changed, OldValue: { } old, NewValue: { } updated })
+            return Change(change.Kind);
+        return Inventory.Contracts.VersionComparer.Compare(old, updated) switch
+        {
+            < 0 => "aktualisiert",
+            > 0 => "ältere Version",
+            _ => "geändert",
+        };
+    }
+
+    public static Color ChangeColor(InventoryChange change) =>
+        change.Kind == ChangeKind.Changed && Change(change) == "ältere Version" ? Color.Warning : ChangeColor(change.Kind);
+
     public static Color ChangeColor(ChangeKind kind) => kind switch
     {
         ChangeKind.Added => Color.Success,

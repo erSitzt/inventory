@@ -147,7 +147,21 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             .OrderByDescending(c => c.Id).Take(take)
             .Join(db.Computers, c => c.ComputerId, k => k.Id, (c, k) => new { Change = c, k.Name })
             .ToListAsync(ct);
-        return rows.Select(r => (r.Change, r.Name)).ToList();
+        var names = rows.GroupBy(r => r.Change.ComputerId).ToDictionary(g => g.Key, g => g.First().Name);
+        // Ein Scan schreibt alle seine Änderungen mit derselben Zeit: zusammenhalten und nach Bereich und Eintrag ordnen,
+        // statt in der zufälligen Reihenfolge der Erfassung. Ältere Einträge "entfernt" + "neu" desselben Programms
+        // werden wie neue als Update dargestellt.
+        return InventoryDiff.MergeUpdates(rows.Select(r => r.Change).ToList())
+            .OrderByDescending(c => c.TimeUtc).ThenBy(c => names[c.ComputerId], StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.Category, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.Item, StringComparer.OrdinalIgnoreCase)
+            .Select(c => (c, names[c.ComputerId])).ToList();
+    }
+
+    /// <summary>Kennung der jüngsten Änderung; ändert sie sich, gibt es Neues anzuzeigen.</summary>
+    public async Task<long> LatestChangeIdAsync(int? computerId = null, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.InventoryChanges.Where(c => computerId == null || c.ComputerId == computerId).MaxAsync(c => (long?)c.Id, ct) ?? 0;
     }
 
     /// <summary>Entfernt Verlaufseinträge, die älter als die Aufbewahrungsfrist sind.</summary>

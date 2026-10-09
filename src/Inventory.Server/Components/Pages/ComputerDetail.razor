@@ -16,6 +16,8 @@
     return;
 }
 
+<AutoRefresh OnTick="RefreshAsync" />
+
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
     <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="computers" aria-label="Zurück zur Übersicht" />
     <MudText Typo="Typo.h5">@_computer.Name</MudText>
@@ -289,11 +291,24 @@ else if (_computer.ReverseDnsMismatch)
     private string _softwareSearch = "";
     private List<(InventoryChange Change, string Computer)> _changes = [];
 
+    private DateTime? _shownScanUtc;
+
     protected override async Task OnParametersSetAsync()
     {
         _computer = await ComputerService.GetDetailAsync(Id);
         _changes = await Store.ChangesAsync(Id);
+        _shownScanUtc = _computer?.LastScanUtc;
         _loaded = true;
+    }
+
+    /// <summary>Lädt neu, wenn inzwischen ein Scan gelaufen ist (Zeitplan, Deployment, anderer Benutzer).</summary>
+    private async Task RefreshAsync()
+    {
+        if (_scanning || _computer is null || await ComputerService.GetAsync(Id) is not { } current || current.LastScanUtc == _shownScanUtc)
+            return;
+        _computer = await ComputerService.GetDetailAsync(Id);
+        _changes = await Store.ChangesAsync(Id);
+        _shownScanUtc = _computer?.LastScanUtc;
     }
 
     private async Task ScanAsync()

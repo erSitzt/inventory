@@ -19,6 +19,13 @@ public sealed class AuditService(IDbContextFactory<InventoryDbContext> dbFactory
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Kennung des jüngsten Eintrags; ändert sie sich, gibt es Neues anzuzeigen.</summary>
+    public async Task<long> LatestIdAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.AuditEntries.MaxAsync(e => (long?)e.Id, ct) ?? 0;
+    }
+
     public async Task<List<AuditEntry>> ListAsync(int take = 500, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

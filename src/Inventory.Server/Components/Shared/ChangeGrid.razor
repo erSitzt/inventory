@@ -14,7 +14,7 @@
         </TemplateColumn>
         <TemplateColumn Title="Art">
             <CellTemplate>
-                <MudChip T="string" Size="Size.Small" Color="@Display.ChangeColor(context.Item.Change.Kind)">@Display.Change(context.Item.Change.Kind)</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="@Display.ChangeColor(context.Item.Change)">@Display.Change(context.Item.Change)</MudChip>
             </CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="Eintrag">

@@ -21,6 +21,36 @@ public class HistoryTests
     };
 
     [Fact]
+    public async Task An_update_of_a_program_with_the_version_in_its_name_is_one_change_and_changes_are_grouped()
+    {
+        using var db = new TestDb();
+        var store = new InventoryStore(db);
+        var id = (await new ComputerService(db, new SimulatedHostProbe()).ImportAsync("pc-01"))[0].Id;
+        InventoryData With(params (string Name, string? Version)[] software) =>
+            new() { ComputerName = "PC-01", Software = software.Select(s => new SoftwareItem { Name = s.Name, Version = s.Version }).ToList() };
+
+        await store.SaveAsync(id, With(("7-Zip 24.08 (x64)", "24.08"), ("Python 3.12.1 (64-bit)", "3.12.1150.0"), ("Zoom 5", null), ("Tool A 1.0", "1.0"), ("Tool A 1.1", "1.1"), ("Alt", "1")));
+        await store.SaveAsync(id, With(("7-Zip 26.04 (x64)", "26.04"), ("Python 3.11.9 (64-bit)", "3.11.9150.0"), ("Zoom 6.1", null), ("Tool A 2.0", "2.0"), ("Neu", "1")));
+
+        var changes = (await store.ChangesAsync(id)).Select(c => c.Change).ToList();
+        // Nach Bereich und Eintrag geordnet, nicht in der Reihenfolge der Erfassung.
+        Assert.Equal(
+        [
+            "Changed|7-Zip 26.04 (x64)|24.08|26.04",
+            "Removed|Alt|1|",
+            "Added|Neu||1",
+            "Changed|Python 3.11.9 (64-bit)|3.12.1150.0|3.11.9150.0",
+            // Zwei alte Versionen, eine neue: nicht eindeutig, bleibt einzeln stehen.
+            "Removed|Tool A 1.0|1.0|",
+            "Removed|Tool A 1.1|1.1|",
+            "Added|Tool A 2.0||2.0",
+            // Zoom nennt keine Version; "Zoom 5" und "Zoom 6.1" sind verschiedene Namen und bleiben einzeln.
+            "Removed|Zoom 5||",
+            "Added|Zoom 6.1||",
+        ], changes.Select(c => $"{c.Kind}|{c.Item}|{c.OldValue}|{c.NewValue}"));
+    }
+
+    [Fact]
     public async Task First_scan_is_the_baseline_and_later_scans_record_what_changed()
     {
         using var db = new TestDb();

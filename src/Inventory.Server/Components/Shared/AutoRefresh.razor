@@ -1,0 +1,34 @@
+@* Ruft in festen Abständen OnTick auf, solange die Seite offen ist; die Seite entscheidet selbst, ob sie neu lädt. *@
+@implements IDisposable
+
+@code {
+    [Parameter] public int Seconds { get; set; } = 10;
+    [Parameter, EditorRequired] public EventCallback OnTick { get; set; }
+
+    private readonly CancellationTokenSource _stop = new();
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+            _ = RunAsync();
+    }
+
+    private async Task RunAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(Seconds));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_stop.Token))
+                await InvokeAsync(OnTick.InvokeAsync);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+            // Die Verbindung zum Browser ist beendet.
+        }
+    }
+
+    public void Dispose() => _stop.Cancel();
+}

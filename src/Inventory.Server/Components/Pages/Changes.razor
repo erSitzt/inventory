@@ -12,8 +12,9 @@
 
 <MudText Typo="Typo.body2" Class="mb-4">
     Was sich von Scan zu Scan geändert hat: Software, Hotfixes, Hardware, Dienste, lokale Benutzer und Administratoren.
-    Angezeigt werden die letzten @MaxRows Einträge; der Verlauf wird zwei Jahre aufbewahrt.
+    Angezeigt werden die letzten @MaxRows Einträge; der Verlauf wird zwei Jahre aufbewahrt. Die Liste aktualisiert sich von selbst.
 </MudText>
+<AutoRefresh OnTick="RefreshAsync" />
 
 @if (_changes.Count == 0)
 {
@@ -30,5 +31,20 @@ else
     private List<(InventoryChange Change, string Computer)> _changes = [];
     private string _search = "";
 
-    protected override async Task OnInitializedAsync() => _changes = await Store.ChangesAsync(null, MaxRows);
+    private long _latest;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _latest = await Store.LatestChangeIdAsync();
+        _changes = await Store.ChangesAsync(null, MaxRows);
+    }
+
+    private async Task RefreshAsync()
+    {
+        var latest = await Store.LatestChangeIdAsync();
+        if (latest == _latest)
+            return;
+        _latest = latest;
+        _changes = await Store.ChangesAsync(null, MaxRows);
+    }
 }

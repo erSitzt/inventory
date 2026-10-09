@@ -90,7 +90,45 @@ public static partial class InventoryDiff
         Set("Lokaler Administrator",
             previous.LocalAdmins.Select(a => (a.Name, (string?)null)),
             current.LocalAdmins.Select(a => (a.Name, (string?)null)));
-        return changes;
+        return MergeUpdates(changes);
+    }
+
+    /// <summary>Versionsnummern im Programmnamen, z. B. "7-Zip 24.08 (x64)" oder "Python 3.12.1".</summary>
+    [GeneratedRegex(@"\bv?\d+(\.\d+)+\b", RegexOptions.IgnoreCase)]
+    private static partial Regex VersionInName();
+
+    /// <summary>
+    /// Viele Programme tragen die Version im Namen; ein Update erscheint dann als "entfernt" plus "neu". Solche Paare
+    /// innerhalb eines Scans werden zu einer Änderung "alte Version → neue Version" zusammengefasst.
+    /// </summary>
+    public static List<InventoryChange> MergeUpdates(List<InventoryChange> changes)
+    {
+        var result = new List<InventoryChange>(changes);
+        var groups = changes
+            .Where(c => c.Category == "Software" && c.Kind != ChangeKind.Changed)
+            .GroupBy(c => (c.ComputerId, c.TimeUtc, Key: NameWithoutVersion(c.Item, c.OldValue ?? c.NewValue)));
+        foreach (var group in groups)
+        {
+            // Nur eindeutige Paare: bei mehreren Kandidaten ließe sich nicht sagen, welche Version welche ersetzt hat.
+            if (group.Key.Key.Length == 0 || group.Count() != 2
+                || group.SingleOrDefault(c => c.Kind == ChangeKind.Removed) is not { } removed || group.SingleOrDefault(c => c.Kind == ChangeKind.Added) is not { } added)
+                continue;
+            result[result.IndexOf(added)] = new InventoryChange
+            {
+                Id = added.Id, ComputerId = added.ComputerId, TimeUtc = added.TimeUtc, Category = added.Category, Kind = ChangeKind.Changed,
+                Item = added.Item, OldValue = removed.OldValue ?? removed.Item, NewValue = added.NewValue ?? added.Item,
+            };
+            result.Remove(removed);
+        }
+        return result;
+    }
+
+    private static string NameWithoutVersion(string name, string? version)
+    {
+        if (!string.IsNullOrEmpty(version) && !version.Contains(','))
+            name = name.Replace(version, " ", StringComparison.OrdinalIgnoreCase);
+        name = VersionInName().Replace(name, " ");
+        return string.Join(' ', name.Split([' ', '-', '_'], StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
     }
 
     /// <summary>Mehrere Einträge mit gleichem Schlüssel (z. B. zwei Versionen eines Programms) werden zu einem Wert zusammengefasst.</summary>
