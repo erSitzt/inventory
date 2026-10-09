@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Management;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using Inventory.Contracts;
@@ -294,9 +295,29 @@ namespace Inventory.Runner
 
         private static void ReadFirewall(SecurityStatus status)
         {
-            status.FirewallDomain = FirewallEnabled("DomainProfile");
-            status.FirewallPrivate = FirewallEnabled("StandardProfile");
-            status.FirewallPublic = FirewallEnabled("PublicProfile");
+            // Die Firewall-API liefert den wirksamen Zustand je Profil – so wie ihn Windows-Sicherheit und netsh anzeigen,
+            // einschließlich Richtlinien (Gruppenrichtlinie, MDM). Die Registry ist nur der Ausweg, falls die API fehlt.
+            status.FirewallDomain = FirewallEnabledByApi(1) ?? FirewallEnabled("DomainProfile");
+            status.FirewallPrivate = FirewallEnabledByApi(2) ?? FirewallEnabled("StandardProfile");
+            status.FirewallPublic = FirewallEnabledByApi(4) ?? FirewallEnabled("PublicProfile");
+        }
+
+        /// <param name="profileType">NET_FW_PROFILE_TYPE2: 1 = Domäne, 2 = Privat, 4 = Öffentlich.</param>
+        private static bool? FirewallEnabledByApi(int profileType)
+        {
+            try
+            {
+                var type = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
+                if (type == null)
+                    return null;
+                var policy = Activator.CreateInstance(type);
+                var enabled = type.InvokeMember("FirewallEnabled", BindingFlags.GetProperty, null, policy, new object[] { profileType });
+                return enabled is bool value ? value : (bool?)null;
+            }
+            catch (Exception ex) when (ex is COMException || ex is TargetInvocationException || ex is MissingMethodException || ex is InvalidCastException)
+            {
+                return null;
+            }
         }
 
         private static bool? FirewallEnabled(string profile)
