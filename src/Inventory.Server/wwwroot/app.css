@@ -277,3 +277,6 @@ a:hover > .kpi {
     display: block;
     height: 100%;
 }
+
+/* Dunkles Design: Die Kacheln nutzen die Palettenvariablen und folgen dem Farbschema von selbst; die Farbflächen der
+   Symbole sind halbtransparent und funktionieren auf hellem wie dunklem Grund. */

@@ -185,6 +185,9 @@
   <data name="API tokens" xml:space="preserve">
     <value>API-Tokens</value>
   </data>
+  <data name="Appearance" xml:space="preserve">
+    <value>Darstellung</value>
+  </data>
   <data name="Applies to all computers without a transport of their own." xml:space="preserve">
     <value>Gilt für alle Rechner, bei denen kein eigener Transport eingestellt ist.</value>
   </data>
@@ -433,6 +436,9 @@
   </data>
   <data name="Daily inventory scan" xml:space="preserve">
     <value>Täglicher Inventar-Scan</value>
+  </data>
+  <data name="Dark" xml:space="preserve">
+    <value>Dunkel</value>
   </data>
   <data name="Data directory" xml:space="preserve">
     <value>Datenverzeichnis</value>
@@ -934,6 +940,9 @@
   </data>
   <data name="License: {0}" xml:space="preserve">
     <value>Lizenz: {0}</value>
+  </data>
+  <data name="Light" xml:space="preserve">
+    <value>Hell</value>
   </data>
   <data name="Loading versions …" xml:space="preserve">
     <value>Versionen werden geladen …</value>
@@ -1918,6 +1927,9 @@
   </data>
   <data name="System" xml:space="preserve">
     <value>System</value>
+  </data>
+  <data name="System setting" xml:space="preserve">
+    <value>Systemeinstellung</value>
   </data>
   <data name="Take over collection" xml:space="preserve">
     <value>Sammlung übernehmen</value>

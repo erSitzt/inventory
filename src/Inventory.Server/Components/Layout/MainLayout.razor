@@ -2,8 +2,9 @@
 @inject UpdateService Updates
 @inject IStringLocalizer<SharedResource> L
 @inject NavigationManager Navigation
+@inject IJSRuntime Js
 
-<MudThemeProvider Theme="Theme" />
+<MudThemeProvider @ref="_themeProvider" Theme="Theme" IsDarkMode="_dark" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -19,6 +20,11 @@
             <MudButton Href="settings#updates" Color="Color.Inherit" Variant="Variant.Outlined" Size="Size.Small" Class="mr-4"
                        StartIcon="@Icons.Material.Filled.SystemUpdateAlt">@L["Version {0} available", Updates.Latest!.Version]</MudButton>
         }
+        <MudMenu Icon="@ThemeIcon" Color="Color.Inherit" AriaLabel="@L["Appearance"]" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <MudMenuItem Icon="@Icons.Material.Filled.BrightnessAuto" Disabled="@(_preference == "system")" OnClick="@(() => SetThemeAsync("system"))">@L["System setting"]</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.LightMode" Disabled="@(_preference == "light")" OnClick="@(() => SetThemeAsync("light"))">@L["Light"]</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.DarkMode" Disabled="@(_preference == "dark")" OnClick="@(() => SetThemeAsync("dark"))">@L["Dark"]</MudMenuItem>
+        </MudMenu>
         @if (AvailableLanguages.Count > 1)
         {
             <MudMenu Icon="@Icons.Material.Filled.Translate" Color="Color.Inherit" AriaLabel="@L["Language"]" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
@@ -57,6 +63,62 @@
 
 @code {
     private bool _drawerOpen = true;
+
+    // Hell/Dunkel: Vorgabe ist die Systemeinstellung des Browsers; eine eigene Wahl bleibt im Browser gespeichert.
+    private MudThemeProvider _themeProvider = default!;
+    private bool _dark;
+    private bool _systemDark;
+    private string _preference = "system";
+
+    private string ThemeIcon => _preference switch
+    {
+        "light" => Icons.Material.Filled.LightMode,
+        "dark" => Icons.Material.Filled.DarkMode,
+        _ => Icons.Material.Filled.BrightnessAuto,
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        _systemDark = await _themeProvider.GetSystemDarkModeAsync();
+        await _themeProvider.WatchSystemDarkModeAsync(OnSystemDarkModeChanged);
+        try
+        {
+            _preference = await Js.InvokeAsync<string?>("localStorage.getItem", "inventory.theme") ?? "system";
+        }
+        catch (JSException)
+        {
+            // Ohne localStorage (privates Fenster, gesperrte Website-Daten) gilt die Systemeinstellung.
+        }
+        ApplyTheme();
+        StateHasChanged();
+    }
+
+    private Task OnSystemDarkModeChanged(bool dark)
+    {
+        _systemDark = dark;
+        ApplyTheme();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetThemeAsync(string preference)
+    {
+        _preference = preference;
+        ApplyTheme();
+        try
+        {
+            if (preference == "system")
+                await Js.InvokeVoidAsync("localStorage.removeItem", "inventory.theme");
+            else
+                await Js.InvokeVoidAsync("localStorage.setItem", "inventory.theme", preference);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private void ApplyTheme() => _dark = _preference switch { "dark" => true, "light" => false, _ => _systemDark };
 
     private static readonly IReadOnlyList<(string Code, string Name)> AvailableLanguages = Languages.Available();
 
