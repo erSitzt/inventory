@@ -1,6 +1,8 @@
 using Inventory.Contracts;
 using Inventory.Core.Model;
+using Inventory.Core;
 using Inventory.Data.Services;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Http.Features;
 
 namespace Inventory.Server.Api;
@@ -19,7 +21,7 @@ public static class PackageEndpoints
     {
         app.MapGet("/api/packages", async (PackageService packages, CancellationToken ct) =>
             (await packages.ListAsync(ct)).Select(p => new PackageDto(p.Id, p.Name, p.Version, p.Description, p.Steps.Count, p.ModifiedUtc)))
-            .WithTags("Pakete").WithSummary("Alle Pakete");
+            .WithTags("Packages").WithSummary("All packages");
 
         // Rohdaten im Body, damit sich große Installer per Skript (curl -T) ohne Browser hochladen lassen.
         app.MapPut("/api/packages/{id:int}/files/{**path}", async (int id, string path, HttpContext http, PackageService packages, CancellationToken ct) =>
@@ -36,28 +38,28 @@ public static class PackageEndpoints
                 return Results.BadRequest(ex.Message);
             }
             return Results.NoContent();
-        }).WithTags("Pakete").WithSummary("Datei hochladen").WithDescription("Legt die Datei unter dem angegebenen Pfad im Paket ab; der Body ist der rohe Dateiinhalt (z. B. curl -T setup.msi). Vorhandene Dateien werden ersetzt.")
+        }).WithTags("Packages").WithSummary("Upload file").WithDescription("Stores the file under the given path in the package; the body is the raw file content (e.g. curl -T setup.msi). Existing files are replaced.")
             .Accepts<byte[]>("application/octet-stream").Produces(204).Produces(404).Produces(400);
 
-        app.MapPost("/api/deployments", async (DeployRequest request, DeploymentService deployments, AuditService audit, HttpContext http, CancellationToken ct) =>
+        app.MapPost("/api/deployments", async (DeployRequest request, DeploymentService deployments, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
         {
             try
             {
                 var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, request.ScanAfter, request.RetryOffline, ct);
-                await audit.LogAsync(http.User.Identity?.Name ?? "(API ohne Anmeldung)", "Deployment über API gestartet",
-                    $"#{deployment.Id} {deployment.PackageName} auf {string.Join(", ", deployment.Targets.Select(t => t.ComputerName))}", ct);
+                await audit.LogAsync(http.User.Identity?.Name ?? L["(API, not signed in)"], L["Deployment started via API"],
+                    L["#{0} {1} on {2}", deployment.Id, deployment.PackageName, string.Join(", ", deployment.Targets.Select(t => t.ComputerName))], ct);
                 return Results.Created($"/api/deployments/{deployment.Id}", ToDto(deployment));
             }
             catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
             {
                 return Results.BadRequest(ex.Message);
             }
-        }).WithTags("Deployments").WithSummary("Deployment starten").WithDescription("Stellt das Paket auf den Rechnern bereit und kehrt sofort zurück; den Fortschritt liefert GET /api/deployments/{id}. ScanAfter: danach Inventar neu scannen. RetryOffline: nicht erreichbare Rechner bis zu 3 Tage nachholen.")
+        }).WithTags("Deployments").WithSummary("Start deployment").WithDescription("Deploys the package to the computers and returns immediately; GET /api/deployments/{id} delivers the progress. ScanAfter: rescan inventory afterwards. RetryOffline: retry unreachable computers for up to 3 days.")
             .Produces<DeploymentDto>(201).Produces(400);
 
         app.MapGet("/api/deployments/{id:int}", async (int id, DeploymentService deployments, CancellationToken ct) =>
             await deployments.GetAsync(id, ct) is { } deployment ? Results.Ok(ToDto(deployment)) : Results.NotFound())
-            .WithTags("Deployments").WithSummary("Ein Deployment").WithDescription("Status je Rechner: Queued, Running, Succeeded, Failed, Cancelled oder WaitingOffline.").Produces<DeploymentDto>().Produces(404);
+            .WithTags("Deployments").WithSummary("One deployment").WithDescription("Status per computer: Queued, Running, Succeeded, Failed, Cancelled or WaitingOffline.").Produces<DeploymentDto>().Produces(404);
 
         return app;
     }

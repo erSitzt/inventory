@@ -23,12 +23,12 @@ public sealed class TcpHostProbe : IHostProbe
         }
         catch (SocketException ex)
         {
-            return new ProbeResult(false, null, $"Namensauflösung fehlgeschlagen: {ex.SocketErrorCode}");
+            return new ProbeResult(false, null, $"Name resolution failed: {ex.SocketErrorCode}");
         }
 
         var address = addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork) ?? addresses.FirstOrDefault();
         if (address is null)
-            return new ProbeResult(false, null, "Keine Adresse gefunden");
+            return new ProbeResult(false, null, "No address found");
 
         var reverse = ReverseLookupAsync(address, ct);
         foreach (var port in Ports)
@@ -39,7 +39,7 @@ public sealed class TcpHostProbe : IHostProbe
             var identity = await SmbNameQuery.QueryAsync(address, IdentityTimeout, ct);
             return new ProbeResult(true, address.ToString(), null, identity?.NetbiosName ?? identity?.DnsName?.Split('.')[0], await reverse);
         }
-        return new ProbeResult(false, address.ToString(), $"Ports {string.Join("/", Ports)} nicht erreichbar", null, await reverse);
+        return new ProbeResult(false, address.ToString(), $"Ports {string.Join("/", Ports)} unreachable", null, await reverse);
     }
 
     private static async Task<string?> ReverseLookupAsync(IPAddress address, CancellationToken ct)

@@ -1,15 +1,17 @@
 @inject PackageService PackageService
 @inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_step.Name" Label="Name des Schritts" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" AutoFocus="true" />
+            <MudTextField @bind-Value="_step.Name" Label="@L["Step name"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" AutoFocus="true" />
 
             @if (Nested)
             {
-                <MudSelect T="int?" @bind-Value="_nestedPackageId" Label="Paket" Variant="Variant.Outlined" Margin="Margin.Dense"
-                           HelperText="Die Schritte des gewählten Pakets laufen an dieser Stelle; seine Dateien werden mitkopiert.">
+                <MudSelect T="int?" @bind-Value="_nestedPackageId" Label="@L["Package"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           HelperText="@L["The steps of the selected package run at this point; its files are copied along."]">
                     @foreach (var package in _packages)
                     {
                         <MudSelectItem T="int?" Value="@package.Id">@package.Name @package.Version</MudSelectItem>
@@ -21,58 +23,58 @@
                 @switch (Type)
                 {
                     case StepType.Command:
-                        <MudTextField @bind-Value="_step.Script" Label="Befehl" Variant="Variant.Outlined" Lines="3" Style="font-family: monospace" Immediate="true"
+                        <MudTextField @bind-Value="_step.Script" Label="@L["Command"]" Variant="Variant.Outlined" Lines="3" Style="font-family: monospace" Immediate="true"
                                       HelperText="@CommandHelp" />
                         break;
                     case StepType.PowerShell:
-                        <MudTextField @bind-Value="_step.Script" Label="Skript" Variant="Variant.Outlined" Lines="10" Style="font-family: monospace" Immediate="true"
-                                      HelperText="Windows PowerShell 5.1, 64 Bit. Der Exitcode des Skripts (exit N) entscheidet über Erfolg." />
+                        <MudTextField @bind-Value="_step.Script" Label="@L["Script"]" Variant="Variant.Outlined" Lines="10" Style="font-family: monospace" Immediate="true"
+                                      HelperText="@L["Windows PowerShell 5.1, 64 bit. The script's exit code (exit N) decides about success."]" />
                         break;
                     case StepType.Install:
-                        <MudSelect T="string" Value="_step.File" ValueChanged="SelectInstallerAsync" Label="Installationsdatei" HelperText="msi, msp, msu, exe, cmd/bat oder ps1 aus den Dateien des Pakets" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelect T="string" Value="_step.File" ValueChanged="SelectInstallerAsync" Label="@L["Installer file"]" HelperText="@L["msi, msp, msu, exe, cmd/bat or ps1 from the package's files"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var option in FileOptions)
                             {
-                                <MudSelectItem T="string" Value="option">@option@(Files.Contains(option) || Folders.Contains(option) ? "" : " (nicht mehr vorhanden)")</MudSelectItem>
+                                <MudSelectItem T="string" Value="option">@option@(Files.Contains(option) || Folders.Contains(option) ? "" : $" ({L["no longer present"]})")</MudSelectItem>
                             }
                         </MudSelect>
                         @if (FileOptions.Count == 0)
                         {
-                            <MudAlert Severity="Severity.Warning" Dense="true">Das Paket enthält noch keine Dateien. Bitte zuerst unter „Dateien“ hochladen.</MudAlert>
+                            <MudAlert Severity="Severity.Warning" Dense="true">@L["The package has no files yet. Please upload under \"Files\" first."]</MudAlert>
                         }
                         @if (_suggestion is not null)
                         {
-                            <MudAlert Severity="@(_suggestion.Installer.StartsWith("Unbekannt") ? Severity.Warning : Severity.Info)" Dense="true">
-                                <b>@_suggestion.Installer.</b> @_suggestion.Note
+                            <MudAlert Severity="@(_suggestion.Known ? Severity.Info : Severity.Warning)" Dense="true">
+                                <b>@L[_suggestion.Installer].</b> @L[_suggestion.Note]
                                 @if (_suggestion.Arguments.Length > 0)
                                 {
-                                    <span> Empfohlene Silent-Parameter: <code>@_suggestion.Arguments</code></span>
+                                    <span> @L["Recommended silent parameters:"] <code>@_suggestion.Arguments</code></span>
                                     @if (_step.Arguments != _suggestion.Arguments)
                                     {
-                                        <MudButton Size="Size.Small" Class="ml-2" OnClick="@(() => _step.Arguments = _suggestion.Arguments)">Übernehmen</MudButton>
+                                        <MudButton Size="Size.Small" Class="ml-2" OnClick="@(() => _step.Arguments = _suggestion.Arguments)">@L["Apply"]</MudButton>
                                     }
                                 }
                             </MudAlert>
                         }
-                        <MudTextField @bind-Value="_step.Arguments" Label="Parameter" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
-                                      HelperText="Werden an den Installer übergeben. Bei erkannten Installern sind die Silent-Parameter bereits eingetragen." />
+                        <MudTextField @bind-Value="_step.Arguments" Label="@L["Parameters"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                      HelperText="@L["Passed to the installer. For recognized installers the silent parameters are already filled in."]" />
                         break;
                     case StepType.FileCopy:
-                        <MudSelect T="string" @bind-Value="_step.File" Label="Quelle" HelperText="Datei oder Ordner aus den Dateien des Pakets" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelect T="string" @bind-Value="_step.File" Label="@L["Source"]" HelperText="@L["File or folder from the package's files"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var option in FileOptions)
                             {
-                                <MudSelectItem T="string" Value="option">@option@(Files.Contains(option) || Folders.Contains(option) ? "" : " (nicht mehr vorhanden)")</MudSelectItem>
+                                <MudSelectItem T="string" Value="option">@option@(Files.Contains(option) || Folders.Contains(option) ? "" : $" ({L["no longer present"]})")</MudSelectItem>
                             }
                         </MudSelect>
                         @if (FileOptions.Count == 0)
                         {
-                            <MudAlert Severity="Severity.Warning" Dense="true">Das Paket enthält noch keine Dateien. Bitte zuerst unter „Dateien“ hochladen.</MudAlert>
+                            <MudAlert Severity="Severity.Warning" Dense="true">@L["The package has no files yet. Please upload under \"Files\" first."]</MudAlert>
                         }
-                        <MudTextField @bind-Value="_step.Destination" Label="Ziel auf dem Rechner" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
-                                      HelperText="Z. B. %ProgramData%\Firma\ – ein abschließender \ bedeutet Ordner. Vorhandene Dateien werden überschrieben." />
+                        <MudTextField @bind-Value="_step.Destination" Label="@L["Destination on the computer"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                      HelperText="@L["E.g. %ProgramData%\\Company\\ – a trailing \\ means folder. Existing files are overwritten."]" />
                         break;
                     case StepType.Service:
-                        <MudTextField @bind-Value="_step.ServiceName" Label="Dienstname" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" HelperText="Kurzname des Dienstes, z. B. Spooler" />
-                        <MudSelect T="ServiceAction" @bind-Value="_step.ServiceAction" Label="Aktion" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudTextField @bind-Value="_step.ServiceName" Label="@L["Service name"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" HelperText="@L["Short name of the service, e.g. Spooler"]" />
+                        <MudSelect T="ServiceAction" @bind-Value="_step.ServiceAction" Label="@L["Action"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var action in Enum.GetValues<ServiceAction>())
                             {
                                 <MudSelectItem T="ServiceAction" Value="action">@Display.ServiceActionName(action)</MudSelectItem>
@@ -80,24 +82,24 @@
                         </MudSelect>
                         break;
                     case StepType.Sleep:
-                        <MudNumericField T="int" @bind-Value="_step.Seconds" Label="Wartezeit (Sekunden)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="86400" />
+                        <MudNumericField T="int" @bind-Value="_step.Seconds" Label="@L["Wait time (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="86400" />
                         break;
                     case StepType.Reboot:
-                        <MudNumericField T="int" @bind-Value="_step.Seconds" Label="Verzögerung (Sekunden)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="86400" />
-                        <MudTextField @bind-Value="_step.Script" Label="Hinweis für angemeldete Benutzer" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                        <MudAlert Severity="Severity.Info" Dense="true">Schritte nach einem Neustart werden nicht mehr ausgeführt. Der Neustart sollte der letzte Schritt sein.</MudAlert>
+                        <MudNumericField T="int" @bind-Value="_step.Seconds" Label="@L["Delay (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="86400" />
+                        <MudTextField @bind-Value="_step.Script" Label="@L["Message for logged-on users"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudAlert Severity="Severity.Info" Dense="true">@L["Steps after a reboot are not executed. The reboot should be the last step."]</MudAlert>
                         break;
                     case StepType.InventoryScan:
-                        <MudText Typo="Typo.body2">Erfasst Hard- und Software des Rechners neu, z. B. nach einer Installation.</MudText>
+                        <MudText Typo="Typo.body2">@L["Re-captures the computer's hardware and software, e.g. after an installation."]</MudText>
                         break;
                 }
 
                 @if (Display.SupportsRunAs(Type))
                 {
-                    <MudSelect T="StepRunAs" @bind-Value="_step.RunAs" Label="Ausführen als" Variant="Variant.Outlined" Margin="Margin.Dense"
+                    <MudSelect T="StepRunAs" @bind-Value="_step.RunAs" Label="@L["Run as"]" Variant="Variant.Outlined" Margin="Margin.Dense"
                                HelperText="@(_step.RunAs == StepRunAs.LoggedOnUser
-                                   ? "Läuft in der Sitzung des angemeldeten Benutzers mit dessen Rechten (HKCU, Profil, Netzlaufwerke). Ist niemand angemeldet, wird der Schritt übersprungen. Nur über SMB + Dienst oder Agent."
-                                   : "Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.")">
+                                   ? L["Runs in the logged-on user's session with their rights (HKCU, profile, network drives). If nobody is logged on, the step is skipped. Only via SMB + service or agent."]
+                                   : L["Full rights on the computer, but no access to a user's profile and settings."])">
                         <MudSelectItem T="StepRunAs" Value="StepRunAs.System">@Display.RunAs(StepRunAs.System)</MudSelectItem>
                         <MudSelectItem T="StepRunAs" Value="StepRunAs.LoggedOnUser">@Display.RunAs(StepRunAs.LoggedOnUser)</MudSelectItem>
                     </MudSelect>
@@ -105,45 +107,45 @@
                 @if (Type is StepType.Command or StepType.PowerShell or StepType.Install)
                 {
                     <MudStack Row="true" Spacing="3">
-                        <MudTextField @bind-Value="_successCodes" Label="Erfolgs-Exitcodes" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      Placeholder="@(Type == StepType.Install ? "0, 3010, 1641" : "0")" HelperText="Durch Komma getrennt; leer = Standard" />
-                        <MudNumericField T="int" @bind-Value="_step.TimeoutSeconds" Label="Zeitlimit (Sekunden)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="86400" />
+                        <MudTextField @bind-Value="_successCodes" Label="@L["Success exit codes"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Placeholder="@(Type == StepType.Install ? "0, 3010, 1641" : "0")" HelperText="@L["Comma-separated; empty = default"]" />
+                        <MudNumericField T="int" @bind-Value="_step.TimeoutSeconds" Label="@L["Timeout (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="86400" />
                     </MudStack>
                 }
-                <MudCheckBox T="bool" @bind-Value="_step.ContinueOnError" Label="Bei Fehler mit dem nächsten Schritt fortfahren" Dense="true" />
+                <MudCheckBox T="bool" @bind-Value="_step.ContinueOnError" Label="@L["Continue with the next step on error"]" Dense="true" />
 
                 <MudExpansionPanels Elevation="0" Outlined="true">
-                    <MudExpansionPanel Text="@(_conditions.IsEmpty ? "Bedingungen (keine)" : "Bedingungen (aktiv)")">
-                        <MudText Typo="Typo.body2" Class="mb-3">Der Schritt läuft nur, wenn alle ausgefüllten Bedingungen zutreffen. Sonst wird er übersprungen, ohne als Fehler zu zählen.</MudText>
+                    <MudExpansionPanel Text="@(_conditions.IsEmpty ? L["Conditions (none)"] : L["Conditions (active)"])">
+                        <MudText Typo="Typo.body2" Class="mb-3">@L["The step only runs if all filled-in conditions apply. Otherwise it is skipped without counting as an error."]</MudText>
                         <MudGrid Spacing="2">
                             <MudItem xs="12" sm="4">
-                                <MudTextField @bind-Value="_conditions.MinOsVersion" Label="Windows ab Version" Placeholder="10.0.22000" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <MudTextField @bind-Value="_conditions.MinOsVersion" Label="@L["Windows from version"]" Placeholder="10.0.22000" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="4">
-                                <MudTextField @bind-Value="_conditions.BelowOsVersion" Label="Windows unter Version" Placeholder="10.0.22000" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <MudTextField @bind-Value="_conditions.BelowOsVersion" Label="@L["Windows below version"]" Placeholder="10.0.22000" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="4">
-                                <MudSelect T="string" @bind-Value="_conditions.Architecture" Label="Architektur" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="beliebig">
+                                <MudSelect T="string" @bind-Value="_conditions.Architecture" Label="@L["Architecture"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["any"]">
                                     <MudSelectItem T="string" Value="@("x64")">64 Bit</MudSelectItem>
                                     <MudSelectItem T="string" Value="@("x86")">32 Bit</MudSelectItem>
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="_conditions.FileExists" Label="Datei/Ordner vorhanden" Placeholder="%ProgramFiles%\App\app.exe" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <MudTextField @bind-Value="_conditions.FileExists" Label="@L["File/folder exists"]" Placeholder="%ProgramFiles%\App\app.exe" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="_conditions.FileMissing" Label="Datei/Ordner fehlt" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <MudTextField @bind-Value="_conditions.FileMissing" Label="@L["File/folder missing"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="_conditions.RegistryKeyExists" Label="Registry-Schlüssel vorhanden" Placeholder="HKLM\SOFTWARE\Firma\Produkt" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <MudTextField @bind-Value="_conditions.RegistryKeyExists" Label="@L["Registry key exists"]" Placeholder="HKLM\SOFTWARE\Company\Product" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="_conditions.RegistryKeyMissing" Label="Registry-Schlüssel fehlt" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <MudTextField @bind-Value="_conditions.RegistryKeyMissing" Label="@L["Registry key missing"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="6">
-                                <MudSelect T="bool?" @bind-Value="_conditions.UserLoggedOn" Label="Benutzeranmeldung" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="egal">
-                                    <MudSelectItem T="bool?" Value="true">nur wenn jemand angemeldet ist</MudSelectItem>
-                                    <MudSelectItem T="bool?" Value="false">nur wenn niemand angemeldet ist</MudSelectItem>
+                                <MudSelect T="bool?" @bind-Value="_conditions.UserLoggedOn" Label="@L["User logged on"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["any"]">
+                                    <MudSelectItem T="bool?" Value="true">@L["only if someone is logged on"]</MudSelectItem>
+                                    <MudSelectItem T="bool?" Value="false">@L["only if nobody is logged on"]</MudSelectItem>
                                 </MudSelect>
                             </MudItem>
                         </MudGrid>
@@ -158,8 +160,8 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)" OnClick="SaveAsync">Speichern</MudButton>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)" OnClick="SaveAsync">@L["Save"]</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -172,7 +174,7 @@
     [Parameter] public bool Nested { get; set; }
     [Parameter] public List<string> Files { get; set; } = [];
 
-    private string CommandHelp => $"Wird mit cmd.exe /c ausgeführt. Die Dateien dieses Pakets liegen im Arbeitsverzeichnis unter p{PackageId}\\.";
+    private string CommandHelp => L["Executed with cmd.exe /c. The files of this package are in the working directory under p{0}\\.", PackageId];
 
     private JobStep _step = new();
     private StepConditions _conditions = new();
@@ -270,7 +272,7 @@
         {
             if (!int.TryParse(part, out var code))
             {
-                _error = $"„{part}“ ist kein gültiger Exitcode.";
+                _error = L["\"{0}\" is not a valid exit code.", part];
                 return;
             }
             codes.Add(code);
@@ -282,7 +284,7 @@
         try
         {
             await PackageService.SaveStepAsync(PackageId, Step?.Id, _step, Nested ? _nestedPackageId : null);
-            await Audit.LogAsync(Step is null ? "Paketschritt angelegt" : "Paketschritt geändert", $"Paket {PackageId}: {_step.Name} – {Display.StepSummary(_step)}");
+            await Audit.LogAsync(Step is null ? L["Package step created"] : L["Package step changed"], $"{L["Package"]} {PackageId}: {_step.Name} – {Display.StepSummary(_step)}");
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (InvalidOperationException ex)

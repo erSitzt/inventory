@@ -4,42 +4,44 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Deployment – Inventory</PageTitle>
+<PageTitle>@L["Deployment"] – Inventory</PageTitle>
 
 @if (_deployment is null)
 {
     @if (_loaded)
     {
-        <MudAlert Severity="Severity.Warning">Dieses Deployment existiert nicht. <MudLink Href="deployments">Zur Übersicht</MudLink></MudAlert>
+        <MudAlert Severity="Severity.Warning">@L["This deployment does not exist."] <MudLink Href="deployments">@L["Back to the list"]</MudLink></MudAlert>
     }
     return;
 }
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="deployments" aria-label="Zurück zur Übersicht" />
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="deployments" aria-label="@L["Back to the list"]" />
     <MudText Typo="Typo.h5">@_deployment.PackageName @_deployment.PackageVersion</MudText>
     <MudSpacer />
     @if (Running || Waiting)
     {
-        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="CancelAsync">Abbrechen</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="CancelAsync">@L["Cancel"]</MudButton>
     }
     else if (FailedTargets.Count > 0 && _deployment.PackageId is not null)
     {
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Replay" OnClick="RetryAsync">@FailedTargets.Count fehlgeschlagene wiederholen</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Replay" OnClick="RetryAsync">@L["Retry {0} failed", FailedTargets.Count]</MudButton>
     }
 </MudStack>
 
 <MudText Typo="Typo.body2" Class="mb-4">
-    Gestartet @Display.LocalTime(_deployment.CreatedUtc)
+    @L["Started {0}", Display.LocalTime(_deployment.CreatedUtc)]
     @if (_deployment.FinishedUtc is not null)
     {
-        <span> · beendet @Display.LocalTime(_deployment.FinishedUtc)</span>
+        <span> · @L["finished {0}", Display.LocalTime(_deployment.FinishedUtc)]</span>
     }
-    · @_deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded) von @_deployment.Targets.Count erfolgreich
+    · @L["{0} of {1} succeeded", _deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded), _deployment.Targets.Count]
     @if (Waiting)
     {
-        <span> · Offline-Rechner werden bis @Display.LocalTime(_deployment.RetryUntilUtc) nachgeholt</span>
+        <span> · @L["Offline computers are retried until {0}", Display.LocalTime(_deployment.RetryUntilUtc)]</span>
     }
 </MudText>
 
@@ -74,7 +76,7 @@
                 }
                 else if (target.Steps.Count == 0)
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(target.Status == TargetStatus.Queued ? "Wartet auf einen freien Platz." : target.Error ?? "Es wurde kein Schritt ausgeführt.")</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(target.Status == TargetStatus.Queued ? L["Waiting for a free slot."] : target.Error ?? L["No step was executed."])</MudText>
                 }
                 else
                 {
@@ -85,7 +87,7 @@
                             <MudChip T="string" Size="Size.Small" Color="@Display.StatusColor(step.Status)">@Display.Status(step.Status)</MudChip>
                             @if (step.ExitCode is { } exitCode)
                             {
-                                <MudText Typo="Typo.caption">Exitcode @exitCode</MudText>
+                                <MudText Typo="Typo.caption">@L["Exit code {0}", exitCode]</MudText>
                             }
                             @if (step.Status != StepStatus.Skipped)
                             {
@@ -146,7 +148,7 @@
 
     private async Task CancelAsync()
     {
-        await Audit.LogAsync("Deployment abgebrochen", $"#{Id} {_deployment!.PackageName}");
+        await Audit.LogAsync(L["Deployment cancelled"], $"#{Id} {_deployment!.PackageName}");
         await DeploymentService.CancelAsync(Id);
     }
 
@@ -155,7 +157,7 @@
         try
         {
             var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), _deployment.ScanAfter, _deployment.RetryUntilUtc is not null);
-            await Audit.LogAsync("Deployment wiederholt", $"#{retry.Id} {retry.PackageName} auf {string.Join(", ", retry.Targets.Select(t => t.ComputerName))}");
+            await Audit.LogAsync(L["Deployment retried"], L["#{0} {1} on {2}", retry.Id, retry.PackageName, string.Join(", ", retry.Targets.Select(t => t.ComputerName))]);
             Navigation.NavigateTo($"deployments/{retry.Id}");
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)

@@ -1,17 +1,19 @@
+@inject IStringLocalizer<SharedResource> L
+
 <MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Übersicht</MudNavLink>
-    <MudNavLink Href="computers" Icon="@Icons.Material.Filled.Computer">Rechner</MudNavLink>
-    <MudNavLink Href="run" Icon="@Icons.Material.Filled.Terminal">Remote-Befehl</MudNavLink>
-    <MudNavLink Href="collections" Icon="@Icons.Material.Filled.Folder">Sammlungen</MudNavLink>
-    <MudNavLink Href="packages" Icon="@Icons.Material.Filled.Inventory2">Pakete</MudNavLink>
-    <MudNavLink Href="library" Icon="@Icons.Material.Filled.LocalLibrary">Paketbibliothek</MudNavLink>
-    <MudNavLink Href="deployments" Icon="@Icons.Material.Filled.RocketLaunch">Deployments</MudNavLink>
-    <MudNavLink Href="schedules" Icon="@Icons.Material.Filled.Schedule">Zeitpläne</MudNavLink>
-    <MudNavLink Href="software" Icon="@Icons.Material.Filled.Apps">Software</MudNavLink>
-    <MudNavLink Href="changes" Icon="@Icons.Material.Filled.Timeline">Änderungen</MudNavLink>
-    <MudNavLink Href="credentials" Icon="@Icons.Material.Filled.Key">Zugangsdaten</MudNavLink>
-    <MudNavLink Href="tokens" Icon="@Icons.Material.Filled.VpnKey">API-Tokens</MudNavLink>
-    <MudNavLink Href="audit" Icon="@Icons.Material.Filled.History">Protokoll</MudNavLink>
-    <MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">Einstellungen</MudNavLink>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">@L["Overview"]</MudNavLink>
+    <MudNavLink Href="computers" Icon="@Icons.Material.Filled.Computer">@L["Computers"]</MudNavLink>
+    <MudNavLink Href="run" Icon="@Icons.Material.Filled.Terminal">@L["Remote command"]</MudNavLink>
+    <MudNavLink Href="collections" Icon="@Icons.Material.Filled.Folder">@L["Collections"]</MudNavLink>
+    <MudNavLink Href="packages" Icon="@Icons.Material.Filled.Inventory2">@L["Packages"]</MudNavLink>
+    <MudNavLink Href="library" Icon="@Icons.Material.Filled.LocalLibrary">@L["Package library"]</MudNavLink>
+    <MudNavLink Href="deployments" Icon="@Icons.Material.Filled.RocketLaunch">@L["Deployments"]</MudNavLink>
+    <MudNavLink Href="schedules" Icon="@Icons.Material.Filled.Schedule">@L["Schedules"]</MudNavLink>
+    <MudNavLink Href="software" Icon="@Icons.Material.Filled.Apps">@L["Software"]</MudNavLink>
+    <MudNavLink Href="changes" Icon="@Icons.Material.Filled.Timeline">@L["Changes"]</MudNavLink>
+    <MudNavLink Href="credentials" Icon="@Icons.Material.Filled.Key">@L["Credentials"]</MudNavLink>
+    <MudNavLink Href="tokens" Icon="@Icons.Material.Filled.VpnKey">@L["API tokens"]</MudNavLink>
+    <MudNavLink Href="audit" Icon="@Icons.Material.Filled.History">@L["Audit log"]</MudNavLink>
+    <MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">@L["Settings"]</MudNavLink>
 </MudNavMenu>
 <MudText Typo="Typo.caption" Class="pa-4" Style="color: var(--mud-palette-text-secondary)">Version @AppVersion.Current</MudText>

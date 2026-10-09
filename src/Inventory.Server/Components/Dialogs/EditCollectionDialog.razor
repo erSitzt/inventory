@@ -1,32 +1,34 @@
 @inject CollectionService CollectionService
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
-            <MudTextField @bind-Value="_description" Label="Beschreibung" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
+            <MudTextField @bind-Value="_description" Label="@L["Description"]" Variant="Variant.Outlined" />
 
             @if (IsDynamic)
             {
                 <MudStack Row="true" AlignItems="AlignItems.Center">
-                    <MudText>Ein Rechner gehört dazu, wenn</MudText>
-                    <MudSelect T="bool" @bind-Value="_matchAll" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 200px" aria-label="Verknüpfung">
-                        <MudSelectItem T="bool" Value="true">alle Regeln</MudSelectItem>
-                        <MudSelectItem T="bool" Value="false">mindestens eine Regel</MudSelectItem>
+                    <MudText>@L["A computer belongs to it if"]</MudText>
+                    <MudSelect T="bool" @bind-Value="_matchAll" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 200px" aria-label="@L["Combination"]">
+                        <MudSelectItem T="bool" Value="true">@L["all rules"]</MudSelectItem>
+                        <MudSelectItem T="bool" Value="false">@L["at least one rule"]</MudSelectItem>
                     </MudSelect>
-                    <MudText>@(_matchAll ? "zutreffen." : "zutrifft.")</MudText>
+                    <MudText>@(_matchAll ? L["apply."] : L["applies."])</MudText>
                 </MudStack>
 
                 @foreach (var rule in _rules)
                 {
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudSelect T="RuleField" Value="rule.Field" ValueChanged="@(f => SetField(rule, f))" Label="Feld" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelect T="RuleField" Value="rule.Field" ValueChanged="@(f => SetField(rule, f))" Label="@L["Field"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var field in Enum.GetValues<RuleField>())
                             {
                                 <MudSelectItem T="RuleField" Value="field">@Display.Field(field)</MudSelectItem>
                             }
                         </MudSelect>
-                        <MudSelect T="RuleOperator" @bind-Value="rule.Operator" Label="Bedingung" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelect T="RuleOperator" @bind-Value="rule.Operator" Label="@L["Condition"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var op in Display.OperatorsFor(rule.Field))
                             {
                                 <MudSelectItem T="RuleOperator" Value="op">@Display.Operator(op)</MudSelectItem>
@@ -34,24 +36,24 @@
                         </MudSelect>
                         @if (Display.IsFlag(rule.Field))
                         {
-                            <MudSelect T="string" @bind-Value="rule.Value" Label="Wert" Variant="Variant.Outlined" Margin="Margin.Dense">
-                                <MudSelectItem T="string" Value="@("true")">ja</MudSelectItem>
-                                <MudSelectItem T="string" Value="@("false")">nein</MudSelectItem>
+                            <MudSelect T="string" @bind-Value="rule.Value" Label="@L["Value"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                <MudSelectItem T="string" Value="@("true")">@L["yes"]</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("false")">@L["no"]</MudSelectItem>
                             </MudSelect>
                         }
                         else
                         {
-                            <MudTextField @bind-Value="rule.Value" Label="@(rule.Field == RuleField.Software ? "Programmname" : "Wert")" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+                            <MudTextField @bind-Value="rule.Value" Label="@(rule.Field == RuleField.Software ? L["Program name"] : L["Value"])" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
                         }
                         @if (rule.Field == RuleField.Software && rule.Operator is not (RuleOperator.NotContains or RuleOperator.NotEquals))
                         {
-                            <MudTextField @bind-Value="rule.Value2" Label="Version kleiner als (optional)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            <MudTextField @bind-Value="rule.Value2" Label="@L["Version less than (optional)"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
                         }
-                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="Regel entfernen" OnClick="@(() => _rules.Remove(rule))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Remove rule"]" OnClick="@(() => _rules.Remove(rule))" />
                     </MudStack>
                 }
                 <div>
-                    <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _rules.Add(new CollectionRule()))">Regel hinzufügen</MudButton>
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _rules.Add(new CollectionRule()))">@L["Add rule"]</MudButton>
                 </div>
             }
             @if (_error is not null)
@@ -61,8 +63,8 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)" OnClick="SaveAsync">Speichern</MudButton>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)" OnClick="SaveAsync">@L["Save"]</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -94,7 +96,7 @@
             _rules.Add(new CollectionRule { Field = RuleField.Software });
     }
 
-    private static void SetField(CollectionRule rule, RuleField field)
+    private void SetField(CollectionRule rule, RuleField field)
     {
         rule.Field = field;
         var allowed = Display.OperatorsFor(field);
@@ -113,7 +115,7 @@
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)
         {
-            _error = $"Es gibt bereits eine Sammlung mit dem Namen „{_name.Trim()}“.";
+            _error = L["A collection named \"{0}\" already exists.", _name.Trim()];
         }
     }
 }

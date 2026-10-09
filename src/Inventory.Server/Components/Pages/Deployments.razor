@@ -2,55 +2,57 @@
 @implements IDisposable
 @inject DeploymentService DeploymentService
 @inject IDialogService Dialogs
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
 
-<PageTitle>Deployments – Inventory</PageTitle>
+<PageTitle>@L["Deployments"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h5">Deployments</MudText>
+    <MudText Typo="Typo.h5">@L["Deployments"]</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick="DeployAsync">Paket bereitstellen</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick="DeployAsync">@L["Deploy package"]</MudButton>
 </MudStack>
 
 <MudDataGrid T="Deployment" Items="_deployments" Dense="true" Hover="true" SortMode="SortMode.None">
     <Columns>
-        <TemplateColumn Title="Paket">
+        <TemplateColumn Title="@L["Package"]">
             <CellTemplate><MudLink Href="@($"deployments/{context.Item.Id}")">@context.Item.PackageName @context.Item.PackageVersion</MudLink></CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Gestartet">
+        <TemplateColumn Title="@L["Started"]">
             <CellTemplate>@Display.LocalTime(context.Item.CreatedUtc)</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Status">
+        <TemplateColumn Title="@L["Status"]">
             <CellTemplate>
                 @if (context.Item.FinishedUtc is null)
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Info">läuft</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">@L["running"]</MudChip>
                 }
                 else if (context.Item.Targets.Any(t => t.Status == TargetStatus.WaitingOffline))
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">wartet auf Offline-Rechner</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["waiting for offline computers"]</MudChip>
                 }
                 else
                 {
-                    <MudChip T="string" Size="Size.Small">beendet</MudChip>
+                    <MudChip T="string" Size="Size.Small">@L["finished"]</MudChip>
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Ergebnis">
+        <TemplateColumn Title="@L["Result"]">
             <CellTemplate>
                 @{
                     var targets = context.Item.Targets;
                     var failed = targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled);
                 }
-                <span>@targets.Count(t => t.Status == TargetStatus.Succeeded) von @targets.Count erfolgreich</span>
+                <span>@L["{0} of {1} succeeded", targets.Count(t => t.Status == TargetStatus.Succeeded), targets.Count]</span>
                 @if (failed > 0)
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Error" Inline="true"> · @failed fehlgeschlagen</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Error" Inline="true"> · @L["{0} failed", failed]</MudText>
                 }
             </CellTemplate>
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
-        <MudText Class="pa-4">Noch keine Deployments. Ein Paket lässt sich hier oder direkt aus der Paket- bzw. Rechnerliste bereitstellen.</MudText>
+        <MudText Class="pa-4">@L["No deployments yet. A package can be deployed here or directly from the package or computer list."]</MudText>
     </NoRecordsContent>
 </MudDataGrid>
 
@@ -70,7 +72,7 @@
     });
 
     private Task DeployAsync() =>
-        Dialogs.ShowAsync<DeployDialog>("Paket bereitstellen", new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        Dialogs.ShowAsync<DeployDialog>(L["Deploy package"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
 
     public void Dispose() => DeploymentService.Changed -= OnChanged;
 }

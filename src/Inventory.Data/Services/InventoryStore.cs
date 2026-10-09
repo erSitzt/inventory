@@ -3,11 +3,15 @@ using Inventory.Core;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 /// <summary>Speichert Scan-Ergebnisse; pro Rechner wird nur der jeweils letzte Stand gehalten.</summary>
-public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFactory)
-{
+public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFactory, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     // Scans laufen parallel, SQLite erlaubt aber nur einen Schreiber: nacheinander speichern statt auf Sperrkonflikte zu laufen.
     private readonly SemaphoreSlim _writeLock = new(1, 1);
 
@@ -34,7 +38,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
                            .Include(c => c.Software).Include(c => c.Hotfixes).Include(c => c.Disks).Include(c => c.NetworkAdapters)
                            .Include(c => c.Services).Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
                            .FirstOrDefaultAsync(c => c.Id == computerId, ct)
-                       ?? throw new KeyNotFoundException($"Rechner {computerId} nicht gefunden");
+                       ?? throw new KeyNotFoundException(L["Computer {0} not found", computerId]);
 
         var now = DateTime.UtcNow;
         db.InventoryChanges.AddRange(InventoryDiff.Compare(computer, data, now));

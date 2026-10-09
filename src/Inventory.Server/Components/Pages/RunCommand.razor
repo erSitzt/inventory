@@ -3,45 +3,47 @@
 @inject ComputerService ComputerService
 @inject RemoteJobService Jobs
 @inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Remote-Befehl – Inventory</PageTitle>
+<PageTitle>@L["Remote command"] – Inventory</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-4">Remote-Befehl</MudText>
+<MudText Typo="Typo.h5" Class="mb-4">@L["Remote command"]</MudText>
 
 <MudGrid>
     <MudItem xs="12" md="5">
         <MudPaper Class="pa-4" Outlined="true">
             <MudStack Spacing="3">
-                <MudSelect T="Computer" MultiSelection="true" @bind-SelectedValues="_targets" Label="Zielrechner" Variant="Variant.Outlined"
-                           ToStringFunc="@(c => c?.Name ?? "")" MultiSelectionTextFunc="@(names => $"{names.Count} Rechner ausgewählt")" SelectAll="true"
-                           SelectAllText="Alle auswählen" Disabled="_running">
+                <MudSelect T="Computer" MultiSelection="true" @bind-SelectedValues="_targets" Label="@L["Target computers"]" Variant="Variant.Outlined"
+                           ToStringFunc="@(c => c?.Name ?? "")" MultiSelectionTextFunc="@(names => L["{0} computers selected", names.Count])" SelectAll="true"
+                           SelectAllText="@L["Select all"]" Disabled="_running">
                     @foreach (var computer in _computers)
                     {
                         <MudSelectItem T="Computer" Value="computer">@computer.Name</MudSelectItem>
                     }
                 </MudSelect>
                 <MudRadioGroup T="StepType" @bind-Value="_type" Disabled="_running">
-                    <MudRadio T="StepType" Value="StepType.Command">Eingabeaufforderung (cmd)</MudRadio>
+                    <MudRadio T="StepType" Value="StepType.Command">@L["Command prompt (cmd)"]</MudRadio>
                     <MudRadio T="StepType" Value="StepType.PowerShell">PowerShell</MudRadio>
                 </MudRadioGroup>
-                <MudSelect T="StepRunAs" @bind-Value="_runAs" Label="Ausführen als" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="_running">
+                <MudSelect T="StepRunAs" @bind-Value="_runAs" Label="@L["Run as"]" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="_running">
                     <MudSelectItem T="StepRunAs" Value="StepRunAs.System">@Display.RunAs(StepRunAs.System)</MudSelectItem>
                     <MudSelectItem T="StepRunAs" Value="StepRunAs.LoggedOnUser">@Display.RunAs(StepRunAs.LoggedOnUser)</MudSelectItem>
                 </MudSelect>
-                <MudTextField @bind-Value="_script" Label="@(_type == StepType.Command ? "Befehl" : "Skript")" Variant="Variant.Outlined" Immediate="true"
+                <MudTextField @bind-Value="_script" Label="@(_type == StepType.Command ? L["Command"] : L["Script"])" Variant="Variant.Outlined" Immediate="true"
                               Lines="@(_type == StepType.Command ? 2 : 8)" Disabled="_running" Style="font-family: monospace"
                               HelperText="@(_runAs == StepRunAs.LoggedOnUser
-                                  ? "Läuft in der Sitzung des angemeldeten Benutzers; ohne Anmeldung wird nichts ausgeführt."
-                                  : "Läuft auf dem Zielrechner als Lokales System.")" />
-                <MudNumericField T="int" @bind-Value="_timeoutSeconds" Label="Zeitlimit (Sekunden)" Variant="Variant.Outlined" Min="1" Max="86400" Disabled="_running" />
+                                  ? L["Runs in the session of the logged-on user; nothing runs without a logged-on user."]
+                                  : L["Runs on the target computer as Local System."])" />
+                <MudNumericField T="int" @bind-Value="_timeoutSeconds" Label="@L["Timeout (seconds)"]" Variant="Variant.Outlined" Min="1" Max="86400" Disabled="_running" />
                 <MudStack Row="true">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
                                Disabled="@(_running || _targets.Count == 0 || string.IsNullOrWhiteSpace(_script))" OnClick="RunAsync">
-                        Ausführen
+                        @L["Run"]
                     </MudButton>
                     @if (_running)
                     {
-                        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="@(() => _cts?.Cancel())">Abbrechen</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="@(() => _cts?.Cancel())">@L["Cancel"]</MudButton>
                     }
                 </MudStack>
             </MudStack>
@@ -51,7 +53,7 @@
     <MudItem xs="12" md="7">
         @if (_runs.Count == 0)
         {
-            <MudText Color="Color.Secondary">Die Ausgabe erscheint hier, sobald ein Befehl läuft.</MudText>
+            <MudText Color="Color.Secondary">@L["The output appears here as soon as a command runs."]</MudText>
         }
         else
         {
@@ -65,21 +67,21 @@
                                 @switch (run.State)
                                 {
                                     case RunState.Waiting:
-                                        <MudChip T="string" Size="Size.Small">wartet</MudChip>
+                                        <MudChip T="string" Size="Size.Small">@L["queued"]</MudChip>
                                         break;
                                     case RunState.Running:
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">läuft</MudChip>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">@L["running"]</MudChip>
                                         break;
                                     case RunState.Succeeded:
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">erfolgreich</MudChip>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">@L["succeeded"]</MudChip>
                                         break;
                                     default:
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">fehlgeschlagen</MudChip>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">@L["failed"]</MudChip>
                                         break;
                                 }
                                 @if (run.ExitCode is { } exitCode)
                                 {
-                                    <MudText Typo="Typo.caption">Exitcode @exitCode</MudText>
+                                    <MudText Typo="Typo.caption">@L["Exit code {0}", exitCode]</MudText>
                                 }
                             </MudStack>
                         </TitleContent>
@@ -135,7 +137,7 @@
     private async Task RunAsync()
     {
         _runs = _targets.OrderBy(c => c.Name).Select(c => new TargetRun(c)).ToList();
-        await Audit.LogAsync($"Remote-Befehl ({_type}, {Display.RunAs(_runAs)})", $"{string.Join(", ", _runs.Select(r => r.Computer.Name))}: {_script}");
+        await Audit.LogAsync(L["Remote command ({0}, {1})", _type, Display.RunAs(_runAs)], $"{string.Join(", ", _runs.Select(r => r.Computer.Name))}: {_script}");
         _running = true;
         _cts = new CancellationTokenSource();
         // Ausgabe trifft aus Hintergrund-Threads ein; gebündelt neu zeichnen statt je Zeile.
@@ -158,7 +160,7 @@
         run.State = RunState.Running;
         var job = new JobManifest
         {
-            Steps = [new JobStep { Name = "Befehl", Type = _type, Script = _script, TimeoutSeconds = _timeoutSeconds, RunAs = _runAs }],
+            Steps = [new JobStep { Name = L["Command"], Type = _type, Script = _script, TimeoutSeconds = _timeoutSeconds, RunAs = _runAs }],
         };
         var progress = new SyncProgress(e =>
         {

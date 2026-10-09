@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Server.Services;
 
 /// <summary>
@@ -111,7 +114,7 @@ public static class AccessControl
                     if (!options.Oidc.IsAllowed(user))
                     {
                         context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(AccessControl))
-                            .LogWarning("OIDC-Anmeldung abgelehnt: {User} gehört zu keiner erlaubten Gruppe oder Rolle", name);
+                            .LogWarning("OIDC sign-in rejected: {User} is not in any allowed group or role", name);
                         context.HandleResponse();
                         context.Response.Redirect("/denied");
                         return Task.CompletedTask;
@@ -146,9 +149,9 @@ public static class AccessControl
 
         if (windows)
         {
-            app.MapGet("/login", (string? returnUrl) => Results.Content(Page("Anmelden", $"""
-                <p>Bitte einen Anmeldeweg wählen.</p>
-                <a class="button" href="/login/windows?returnUrl={Uri.EscapeDataString(LocalUrl(returnUrl))}">Windows-Anmeldung</a>
+            app.MapGet("/login", (string? returnUrl, IStringLocalizer<SharedResource> L) => Results.Content(Page(L["Sign in"], $"""
+                <p>{L["Please choose how to sign in."]}</p>
+                <a class="button" href="/login/windows?returnUrl={Uri.EscapeDataString(LocalUrl(returnUrl))}">{L["Windows sign-in"]}</a>
                 <a class="button" href="/login/oidc?returnUrl={Uri.EscapeDataString(LocalUrl(returnUrl))}">{System.Net.WebUtility.HtmlEncode(options.Oidc.DisplayName)}</a>
                 """), "text/html; charset=utf-8")).AllowAnonymous();
 
@@ -160,19 +163,19 @@ public static class AccessControl
                     return Results.Challenge(null, [NegotiateDefaults.AuthenticationScheme]);
                 if (!options.IsAllowed(result.Principal))
                     return Results.Redirect("/denied");
-                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(result.Principal.Identity?.Name ?? "unbekannt", "windows"));
+                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(result.Principal.Identity?.Name ?? "unknown", "windows"));
                 return Results.Redirect(LocalUrl(returnUrl));
             }).AllowAnonymous();
         }
 
-        app.MapGet("/logout", async (HttpContext http) =>
+        app.MapGet("/logout", async (HttpContext http, IStringLocalizer<SharedResource> L) =>
         {
             await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return Results.Content(Page("Abgemeldet", """<p>Du bist abgemeldet.</p><a class="button" href="/">Erneut anmelden</a><a class="button secondary" href="/login/oidc?switchAccount=true">Mit anderem Konto anmelden</a>"""), "text/html; charset=utf-8");
+            return Results.Content(Page(L["Signed out"], $"""<p>{L["You are signed out."]}</p><a class="button" href="/">{L["Sign in again"]}</a><a class="button secondary" href="/login/oidc?switchAccount=true">{L["Sign in with another account"]}</a>"""), "text/html; charset=utf-8");
         }).AllowAnonymous();
 
-        app.MapGet("/denied", () => Results.Content(Page("Kein Zugriff",
-            """<p>Dein Konto gehört zu keiner Gruppe, die Inventory nutzen darf.</p><a class="button" href="/login/oidc?switchAccount=true">Mit anderem Konto anmelden</a>"""),
+        app.MapGet("/denied", (IStringLocalizer<SharedResource> L) => Results.Content(Page(L["No access"],
+            $"""<p>{L["Your account is not a member of any group that may use Inventory."]}</p><a class="button" href="/login/oidc?switchAccount=true">{L["Sign in with another account"]}</a>"""),
             "text/html; charset=utf-8", statusCode: StatusCodes.Status403Forbidden)).AllowAnonymous();
     }
 
@@ -185,7 +188,7 @@ public static class AccessControl
 
     private static string Page(string title, string body) => $$"""
         <!DOCTYPE html>
-        <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+        <html lang="{{System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{title}} – Inventory</title>
         <style>
           body { font-family: Roboto, Segoe UI, sans-serif; background: #f5f5f5; margin: 0; display: grid; place-items: center; min-height: 100vh; color: #212121; }

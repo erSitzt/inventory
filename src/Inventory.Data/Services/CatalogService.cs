@@ -4,6 +4,9 @@ using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 /// <param name="Package">Das importierte Paket; null, wenn der Eintrag noch nicht importiert ist.</param>
@@ -18,8 +21,10 @@ public sealed record CatalogItem(CatalogEntry Entry, Package? Package, bool Cura
 /// vom Hersteller, prüft die Prüfsumme aus dem Katalog und legt ein gewöhnliches Paket an, das sich aktuell halten lässt.
 /// </summary>
 public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFactory, ICatalogSource source, PackageService packages,
-    CollectionService collections, AuditService audit, TimeProvider time, string catalogLocation, string? indexLocation = null, string? versionsLocation = null)
-{
+    CollectionService collections, AuditService audit, TimeProvider time, string catalogLocation, string? indexLocation = null, string? versionsLocation = null, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromHours(6);
     private static readonly TimeSpan IndexRefreshInterval = TimeSpan.FromHours(24);
     private readonly SemaphoreSlim _indexLock = new(1, 1);
@@ -143,7 +148,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
     /// <exception cref="RemoteException">Die Versionsliste ist nicht erreichbar.</exception>
     public async Task<List<CatalogEntry>> VersionsAsync(string catalogId, CancellationToken ct = default)
     {
-        var current = Find(catalogId) ?? throw new InvalidOperationException("Dieser Eintrag ist nicht (mehr) in der Bibliothek.");
+        var current = Find(catalogId) ?? throw new InvalidOperationException(L["This entry is not (anymore) in the library."]);
         // Die Kennung wird Teil einer Adresse bzw. eines Pfades.
         if (!VersionsAvailable || !System.Text.RegularExpressions.Regex.IsMatch(catalogId, @"^[A-Za-z0-9][A-Za-z0-9.+_-]*$"))
             return [current];
@@ -177,11 +182,11 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         await _lock.WaitAsync(ct);
         try
         {
-            var entry = Find(catalogId) ?? throw new InvalidOperationException("Dieser Eintrag ist nicht (mehr) in der Bibliothek.");
+            var entry = Find(catalogId) ?? throw new InvalidOperationException(L["This entry is not (anymore) in the library."]);
             var pinned = version is not null && version != entry.Version;
             if (pinned)
                 entry = (await VersionsAsync(catalogId, ct)).FirstOrDefault(v => v.Version == version)
-                        ?? throw new InvalidOperationException($"{entry.Name} {version} wird im winget-Repository nicht (mehr) geführt.");
+                        ?? throw new InvalidOperationException(L["{0} {1} is not (anymore) listed in the winget repository.", entry.Name, version]);
             string name;
             await using (var db = await dbFactory.CreateDbContextAsync(ct))
             {
@@ -194,7 +199,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
                 else
                 {
                     if (await db.Packages.AnyAsync(p => p.CatalogId == catalogId, ct))
-                        throw new InvalidOperationException($"{entry.Name} ist bereits importiert.");
+                        throw new InvalidOperationException(L["{0} is already imported.", entry.Name]);
                     // Ein selbst angelegtes Paket gleichen Namens bleibt unangetastet.
                     name = await db.Packages.AnyAsync(p => p.Name == entry.Name, ct) ? $"{entry.Name} (Bibliothek)" : entry.Name;
                 }
@@ -215,10 +220,10 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
             int? collectionId = null;
             if (createCollection)
             {
-                var collectionName = $"{name} veraltet";
+                var collectionName = L["{0} outdated", name].Value;
                 var existing = (await collections.ListAsync(ct)).Any(c => c.Collection.Name.Equals(collectionName, StringComparison.OrdinalIgnoreCase));
                 if (!existing)
-                    collectionId = (await collections.SaveAsync(null, collectionName, $"Rechner mit {entry.Match} älter als die Bibliotheksversion", true, true, [OutdatedRule(entry)], ct)).Id;
+                    collectionId = (await collections.SaveAsync(null, collectionName, L["Computers with {0} older than the library version", entry.Match], true, true, [OutdatedRule(entry)], ct)).Id;
             }
 
             if (!pinned)
@@ -229,7 +234,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
                     .SetProperty(p => p.CatalogAutoUpdate, autoUpdate)
                     .SetProperty(p => p.CatalogCollectionId, collectionId), ct);
             }
-            await audit.LogAsync(user, "Paket aus Bibliothek importiert", pinned ? $"{name} (feste Version)" : $"{name} {entry.Version}", ct);
+            await audit.LogAsync(user, L["Package imported from library"], pinned ? $"{name} (feste Version)" : $"{name} {entry.Version}", ct);
             return (await packages.GetAsync(package.Id, ct))!;
         }
         finally
@@ -271,7 +276,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
             if (package.CatalogCollectionId is { } collectionId && await collections.GetAsync(collectionId, ct) is { } collection)
                 await collections.SaveAsync(collectionId, collection.Name, collection.Description, true, collection.MatchAll, [OutdatedRule(entry)], ct);
 
-            await audit.LogAsync(user, "Paket aus Bibliothek aktualisiert", $"{package.Name}: {previous} → {entry.Version}", ct);
+            await audit.LogAsync(user, L["Package updated from library"], $"{package.Name}: {previous} → {entry.Version}", ct);
             return true;
         }
         finally
@@ -295,12 +300,12 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         {
             try
             {
-                if (await UpdateAsync(item.Package!.Id, "(automatisch)", ct))
+                if (await UpdateAsync(item.Package!.Id, L["(automatic)"], ct))
                     updated++;
             }
             catch (RemoteException ex)
             {
-                await audit.LogAsync("(automatisch)", "Paket-Aktualisierung fehlgeschlagen", $"{item.Package!.Name}: {ex.Message}", ct);
+                await audit.LogAsync(L["(automatic)"], L["Package update failed"], $"{item.Package!.Name}: {ex.Message}", ct);
             }
         }
         return updated;
@@ -323,8 +328,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
             await using (var stream = File.OpenRead(temp))
                 actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, ct));
             if (!actual.Equals(entry.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new RemoteException($"Die Prüfsumme des Setups von {entry.Name} stimmt nicht mit der Bibliothek überein. " +
-                                          "Vermutlich hat der Hersteller die Datei bereits durch eine neuere ersetzt; nach dem nächsten Katalog-Lauf erneut versuchen.");
+                throw new RemoteException(L["The checksum of the setup for {0} does not match the library. The vendor has probably already replaced the file with a newer one; try again after the next catalog run.", entry.Name]);
             File.Move(temp, target, overwrite: true);
         }
         finally
@@ -334,9 +338,9 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         }
     }
 
-    private static JobStep InstallStep(CatalogEntry entry) => new()
+    private JobStep InstallStep(CatalogEntry entry) => new()
     {
-        Name = $"{entry.Name} installieren",
+        Name = L["Install {0}", entry.Name],
         Type = StepType.Install,
         File = Path.GetFileName(entry.FileName),
         Arguments = entry.Arguments,

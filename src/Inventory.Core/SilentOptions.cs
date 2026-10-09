@@ -2,10 +2,11 @@ using System.Text;
 
 namespace Inventory.Core;
 
-/// <param name="Installer">Erkannte Installer-Technik, z. B. "Inno Setup".</param>
+/// <param name="Installer">Erkannte Installer-Technik, z. B. "Inno Setup" (englischer Text; die Oberfläche übersetzt).</param>
 /// <param name="Arguments">Empfohlene Parameter für die unbeaufsichtigte Installation; leer, wenn keine nötig sind.</param>
 /// <param name="Note">Hinweis für die Oberfläche.</param>
-public sealed record SilentSuggestion(string Installer, string Arguments, string Note);
+/// <param name="Known">false, wenn die Installer-Technik nicht erkannt wurde.</param>
+public sealed record SilentSuggestion(string Installer, string Arguments, string Note, bool Known = true);
 
 /// <summary>Erkennt gängige Installer-Techniken an der Datei und schlägt die passenden Silent-Parameter vor.</summary>
 public static class SilentOptions
@@ -32,13 +33,13 @@ public static class SilentOptions
         switch (Path.GetExtension(path).ToLowerInvariant())
         {
             case ".msi":
-                return new SilentSuggestion("Windows Installer (MSI)", "", "Läuft automatisch still mit /qn /norestart. Zusätzliche Eigenschaften wie ALLUSERS=1 oder TRANSFORMS=datei.mst können als Parameter angegeben werden.");
+                return new SilentSuggestion("Windows Installer (MSI)", "", "Runs silently with /qn /norestart automatically. Additional properties such as ALLUSERS=1 or TRANSFORMS=file.mst can be given as parameters.");
             case ".msp":
-                return new SilentSuggestion("Windows-Installer-Patch (MSP)", "", "Läuft automatisch still mit /qn /norestart.");
+                return new SilentSuggestion("Windows Installer patch (MSP)", "", "Runs silently with /qn /norestart automatically.");
             case ".msu":
-                return new SilentSuggestion("Windows-Update (MSU)", "", "Läuft automatisch still mit /quiet /norestart.");
+                return new SilentSuggestion("Windows Update (MSU)", "", "Runs silently with /quiet /norestart automatically.");
             case ".ps1" or ".cmd" or ".bat":
-                return new SilentSuggestion("Skript", "", "Skripte laufen ohne Fenster; Parameter werden unverändert übergeben.");
+                return new SilentSuggestion("Script", "", "Scripts run without a window; parameters are passed unchanged.");
             case ".exe":
                 break;
             default:
@@ -55,9 +56,9 @@ public static class SilentOptions
         {
             // Kennungen stehen je nach Stelle als ANSI (Abschnittsnamen, Manifest) oder UTF-16 (Versionsinfo) in der Datei.
             if (data.IndexOf(Encoding.ASCII.GetBytes(signature)) >= 0 || data.IndexOf(Encoding.Unicode.GetBytes(signature)) >= 0)
-                return new SilentSuggestion(installer, arguments, $"Erkannt als {installer}.");
+                return new SilentSuggestion(installer, arguments, "Recognized by its signature.");
         }
-        return new SilentSuggestion("Unbekannter Installer", "",
-            "Die Installer-Technik wurde nicht erkannt. Häufige Silent-Parameter sind /S, /silent, /quiet oder /qn – im Zweifel die Dokumentation des Herstellers prüfen.");
+        return new SilentSuggestion("Unknown installer", "",
+            "The installer technology was not recognized. Common silent parameters are /S, /silent, /quiet or /qn – when in doubt, check the vendor's documentation.", Known: false);
     }
 }

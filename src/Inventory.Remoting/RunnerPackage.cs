@@ -10,7 +10,7 @@ public sealed class RunnerPackage
     {
         Directory = directory;
         if (!File.Exists(Path.Combine(directory, JobFiles.RunnerExe)))
-            throw new FileNotFoundException($"Runner nicht gefunden: {Path.Combine(directory, JobFiles.RunnerExe)}");
+            throw new FileNotFoundException($"Runner not found: {Path.Combine(directory, JobFiles.RunnerExe)}");
 
         Files = System.IO.Directory.GetFiles(directory).Where(f => !f.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase)).Order(StringComparer.Ordinal).ToList();
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);

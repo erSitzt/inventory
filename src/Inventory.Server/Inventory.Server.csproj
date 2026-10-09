@@ -11,8 +11,14 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.12" />
     <PackageReference Include="MudBlazor" Version="9.11.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.17.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Übersetzungen: eine Datei je Sprache, Schlüssel = englischer Text. -->
+    <Content Update="Locales\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

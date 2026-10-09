@@ -1,12 +1,17 @@
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 /// <summary>Legt beim ersten Start Beispiele an, die zeigen, was möglich ist – deaktiviert, damit nichts von selbst läuft.</summary>
-public sealed class ExampleData(IDbContextFactory<InventoryDbContext> dbFactory, SettingsService settings)
-{
-    public const string Prefix = "Beispiel: ";
+public sealed class ExampleData(IDbContextFactory<InventoryDbContext> dbFactory, SettingsService settings, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
+    public const string Prefix = "Example: ";
 
     /// <summary>Beispiel-Zeitpläne, einmalig und nur in eine leere Liste; liefert die Zahl der angelegten.</summary>
     public async Task<int> SeedSchedulesAsync(CancellationToken ct = default)
@@ -18,33 +23,33 @@ public sealed class ExampleData(IDbContextFactory<InventoryDbContext> dbFactory,
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (await db.Schedules.AnyAsync(ct))
             return 0;
-        db.Schedules.AddRange(ExampleSchedules());
+        db.Schedules.AddRange(ExampleSchedules(L));
         await db.SaveChangesAsync(ct);
         return db.Schedules.Local.Count;
     }
 
     /// <summary>Nur Scans: ein Paket-Zeitplan braucht ein Paket, das es beim ersten Start noch nicht gibt.</summary>
-    public static List<Schedule> ExampleSchedules() =>
+    public static List<Schedule> ExampleSchedules(IStringLocalizer<SharedResource> L) =>
     [
         new()
         {
-            Name = Prefix + "Täglicher Inventar-Scan", Enabled = false, Action = ScheduleAction.Scan,
+            Name = L[Prefix] + L["Daily inventory scan"], Enabled = false, Action = ScheduleAction.Scan,
             Trigger = ScheduleTrigger.Daily, TimeOfDay = new TimeSpan(6, 0, 0),
         },
         new()
         {
-            Name = Prefix + "Scan alle 4 Stunden", Enabled = false, Action = ScheduleAction.Scan,
+            Name = L[Prefix] + L["Scan every 4 hours"], Enabled = false, Action = ScheduleAction.Scan,
             Trigger = ScheduleTrigger.Interval, IntervalMinutes = 240,
         },
         new()
         {
-            Name = Prefix + "Scan werktags nach Feierabend", Enabled = false, Action = ScheduleAction.Scan,
+            Name = L[Prefix] + L["Scan on weekdays after hours"], Enabled = false, Action = ScheduleAction.Scan,
             Trigger = ScheduleTrigger.Weekly, TimeOfDay = new TimeSpan(18, 30, 0),
             DaysOfWeek = Days(DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday),
         },
         new()
         {
-            Name = Prefix + "Scan am Wochenende", Enabled = false, Action = ScheduleAction.Scan,
+            Name = L[Prefix] + L["Scan on weekends"], Enabled = false, Action = ScheduleAction.Scan,
             Trigger = ScheduleTrigger.Weekly, TimeOfDay = new TimeSpan(3, 0, 0),
             DaysOfWeek = Days(DayOfWeek.Saturday, DayOfWeek.Sunday),
         },

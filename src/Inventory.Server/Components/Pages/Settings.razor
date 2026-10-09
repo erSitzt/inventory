@@ -9,56 +9,54 @@
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
 @inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Einstellungen – Inventory</PageTitle>
+<PageTitle>@L["Settings"] – Inventory</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-4">Einstellungen</MudText>
+<MudText Typo="Typo.h5" Class="mb-4">@L["Settings"]</MudText>
 
 <MudPaper Class="pa-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="4">
-        <MudSelect T="TransportKind" Value="_transport" ValueChanged="SetTransportAsync" Label="Standard-Transport" Variant="Variant.Outlined"
-                   HelperText="Gilt für alle Rechner, bei denen kein eigener Transport eingestellt ist.">
+        <MudSelect T="TransportKind" Value="_transport" ValueChanged="SetTransportAsync" Label="@L["Default transport"]" Variant="Variant.Outlined"
+                   HelperText="@L["Applies to all computers without a transport of their own."]">
             <MudSelectItem T="TransportKind" Value="TransportKind.SmbService">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
             <MudSelectItem T="TransportKind" Value="TransportKind.WinRm">@Display.Transport(TransportKind.WinRm)</MudSelectItem>
         </MudSelect>
         <MudSwitch T="bool" Value="_fallback" ValueChanged="SetFallbackAsync" Color="Color.Primary"
-                   Label="Bei Zustellfehlern den anderen Transport versuchen" />
+                   Label="@L["Try the other transport on delivery errors"]" />
         <MudSwitch T="bool" Value="_verifyName" ValueChanged="SetVerifyNameAsync" Color="Color.Primary"
-                   Label="Rechnernamen vor der Ausführung prüfen" />
+                   Label="@L["Verify computer name before execution"]" />
         <MudText Typo="Typo.body2">
-            Befehle und Deployments laufen nur, wenn der erreichte Rechner so heißt wie eingetragen. Das verhindert, dass ein
-            veralteter DNS-Eintrag eine Installation auf einen fremden Rechner lenkt. Scans sind davon ausgenommen: sie laufen
-            trotzdem und zeigen so, welcher Rechner tatsächlich antwortet. Die erfassten Daten gehören dann zu diesem Rechner,
-            und der Eintrag gilt nicht als online.
+            @L["Commands and deployments only run if the reached computer has the listed name. This prevents a stale DNS entry from steering an installation to a foreign computer. Scans are exempt: they still run and thus show which computer actually responds. The captured data then belongs to that computer, and the entry does not count as online."]
         </MudText>
         <MudText Typo="Typo.body2">
-            SMB + Dienst braucht die Freigabe ADMIN$ und den Dienststeuerungs-Manager (Port 445), der Job läuft als Lokales System.
-            WinRM braucht aktiviertes PowerShell-Remoting (Port 5985), der Job läuft mit dem hinterlegten Konto.
+            @L["SMB + service needs the ADMIN$ share and the Service Control Manager (port 445); the job runs as Local System. WinRM needs PowerShell remoting enabled (port 5985); the job runs with the stored account."]
         </MudText>
-        <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="Datenverzeichnis" Variant="Variant.Outlined" ReadOnly="true"
-                      HelperText="Datenbank, Schlüssel, Paketdateien und tägliche Sicherungen (Unterordner backups, 14 Stück). Änderbar über Inventory:DataDirectory." />
+        <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="@L["Data directory"]" Variant="Variant.Outlined" ReadOnly="true"
+                      HelperText="@L["Database, keys, package files and daily backups (subfolder backups, 14 copies). Configurable via Inventory:DataDirectory."]" />
         <MudText Typo="Typo.body2">
-            Anmeldung:
+            @L["Sign-in:"]
             @if (!Options.Value.AuthenticationEnabled)
             {
-                <span>abgeschaltet</span>
+                <span>@L["disabled"]</span>
             }
             @if (Options.Value.ResolveWindowsAuthentication())
             {
-                <span>Windows-Anmeldung, erlaubt für @string.Join(", ", Options.Value.DescribeAllowedGroups()). </span>
+                <span>@L["Windows sign-in, allowed for {0}.", string.Join(", ", Options.Value.DescribeAllowedGroups())] </span>
             }
             @if (Options.Value.OidcEnabled)
             {
-                <span>@Options.Value.Oidc.DisplayName (@Options.Value.Oidc.ResolveAuthority()), erlaubt für @string.Join(", ", Options.Value.Oidc.AllowedGroups).</span>
+                <span>@L["{0} ({1}), allowed for {2}.", Options.Value.Oidc.DisplayName, Options.Value.Oidc.ResolveAuthority(), string.Join(", ", Options.Value.Oidc.AllowedGroups)]</span>
             }
         </MudText>
         @if (!Options.Value.AuthenticationEnabled && !Options.Value.ResolveSimulate())
         {
-            <MudAlert Severity="Severity.Error">Die Anmeldung ist abgeschaltet: Jeder, der diese Adresse erreicht, kann mit den hinterlegten Zugangsdaten Befehle auf den Zielrechnern ausführen.</MudAlert>
+            <MudAlert Severity="Severity.Error">@L["Sign-in is disabled: anyone who can reach this address can run commands on the target computers with the stored credentials."]</MudAlert>
         }
         @if (Options.Value.ResolveSimulate())
         {
-            <MudAlert Severity="Severity.Warning">Simulationsmodus: Es finden keine echten Zugriffe auf Zielrechner statt.</MudAlert>
+            <MudAlert Severity="Severity.Warning">@L["Simulation mode: no real access to target computers takes place."]</MudAlert>
         }
     </MudStack>
 </MudPaper>
@@ -67,16 +65,14 @@
     <MudStack Spacing="3">
         <MudText Typo="Typo.h6">Heartbeat</MudText>
         <MudText Typo="Typo.body2">
-            Prüft in festen Abständen die Erreichbarkeit aller Rechner, damit der Online-Status in der Rechnerliste und auf der
-            Übersicht aktuell bleibt. Rechner mit Namensauffälligkeiten – ein anderer Rechner antwortet unter dem Namen oder
-            Reverse-DNS nennt einen anderen – werden übersprungen, bis die Abweichung geklärt ist.
+            @L["Checks the reachability of all computers at fixed intervals so the online status in the computer list and on the overview stays current. Computers with name anomalies – a different computer responds under the name, or reverse DNS names another – are skipped until the discrepancy is resolved."]
         </MudText>
-        <MudSwitch T="bool" @bind-Value="_hbEnabled" Color="Color.Primary" Label="Erreichbarkeit regelmäßig prüfen" />
-        <MudNumericField T="int" @bind-Value="_hbIntervalMinutes" Label="Intervall (Minuten)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="1440"
-                         HelperText="Die Prüfung ist leichtgewichtig (Port 445, wenige Pakete je Rechner); 5 Minuten sind ein guter Wert" />
+        <MudSwitch T="bool" @bind-Value="_hbEnabled" Color="Color.Primary" Label="@L["Check reachability regularly"]" />
+        <MudNumericField T="int" @bind-Value="_hbIntervalMinutes" Label="@L["Interval (minutes)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="1440"
+                         HelperText="@L["The check is lightweight (port 445, a few packets per computer); 5 minutes is a good value"]" />
         <MudStack Row="true" Wrap="Wrap.Wrap">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveHeartbeatAsync">Speichern</MudButton>
-            <MudButton Variant="Variant.Outlined" Disabled="_hbBusy" OnClick="RunHeartbeatAsync">Jetzt prüfen</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveHeartbeatAsync">@L["Save"]</MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_hbBusy" OnClick="RunHeartbeatAsync">@L["Check now"]</MudButton>
         </MudStack>
         @if (_hbMessage is not null)
         {
@@ -84,7 +80,7 @@
         }
         @if (_hbLastResult is not null)
         {
-            <MudText Typo="Typo.caption">Letzter Lauf @Display.LocalTime(_hbLastRunUtc): @_hbLastResult</MudText>
+            <MudText Typo="Typo.caption">@L["Last run {0}: {1}", Display.LocalTime(_hbLastRunUtc), _hbLastResult]</MudText>
         }
     </MudStack>
 </MudPaper>
@@ -93,47 +89,44 @@
     <MudStack Spacing="3">
         <MudText Typo="Typo.h6">Active Directory</MudText>
         <MudText Typo="Typo.body2">
-            Legt Computerkonten aus dem Verzeichnis als Rechner an und kennzeichnet Rechner, deren Konto dort nicht mehr gefunden wird.
-            Von Hand angelegte Rechner, die das Verzeichnis nie gekannt hat, bleiben unberührt.
+            @L["Creates computers from the directory's computer accounts and marks computers whose account is no longer found there. Manually added computers the directory never knew remain untouched."]
         </MudText>
-        <MudSwitch T="bool" @bind-Value="_adEnabled" Color="Color.Primary" Label="Regelmäßig synchronisieren" />
-        <MudTextField @bind-Value="_adServer" Label="Domänencontroller oder Domäne" Variant="Variant.Outlined" Margin="Margin.Dense"
-                      HelperText="Leer = Domäne, der dieser Server angehört" />
-        <MudTextField @bind-Value="_adBaseDns" Label="Suchwurzeln (OUs)" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3"
-                      Placeholder="OU=Clients,DC=firma,DC=local" HelperText="Eine je Zeile; leer = gesamte Domäne" />
-        <MudSelect T="int?" @bind-Value="_adCredentialId" Label="Zugangsdaten" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
-                   Placeholder="Konto des Server-Dienstes">
+        <MudSwitch T="bool" @bind-Value="_adEnabled" Color="Color.Primary" Label="@L["Synchronize regularly"]" />
+        <MudTextField @bind-Value="_adServer" Label="@L["Domain controller or domain"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      HelperText="@L["Empty = the domain this server belongs to"]" />
+        <MudTextField @bind-Value="_adBaseDns" Label="@L["Search roots (OUs)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3"
+                      Placeholder="OU=Clients,DC=example,DC=local" HelperText="@L["One per line; empty = whole domain"]" />
+        <MudSelect T="int?" @bind-Value="_adCredentialId" Label="@L["Credentials"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                   Placeholder="@L["Account of the server service"]">
             @foreach (var credential in _credentials)
             {
                 <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
             }
         </MudSelect>
-        <MudNumericField T="int" @bind-Value="_adIntervalHours" Label="Intervall (Stunden)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="720" />
-        <MudSwitch T="bool" @bind-Value="_adExcludeDisabled" Color="Color.Primary" Label="Deaktivierte Computerkonten ausschließen" />
+        <MudNumericField T="int" @bind-Value="_adIntervalHours" Label="@L["Interval (hours)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="720" />
+        <MudSwitch T="bool" @bind-Value="_adExcludeDisabled" Color="Color.Primary" Label="@L["Exclude disabled computer accounts"]" />
         <MudText Typo="Typo.caption">
-            Deaktivierte Konten werden nicht angelegt; ist ein bereits vorhandener Rechner im Verzeichnis deaktiviert, gilt er als nicht mehr gefunden.
+            @L["Disabled accounts are not created; if an existing computer is disabled in the directory, it counts as no longer found."]
         </MudText>
-        <MudSelect T="AdMissingAction" @bind-Value="_adMissingAction" Label="Rechner, die im Verzeichnis nicht mehr gefunden werden" Variant="Variant.Outlined" Margin="Margin.Dense">
-            <MudSelectItem Value="AdMissingAction.Keep">Behalten und als „nicht im AD“ kennzeichnen</MudSelectItem>
-            <MudSelectItem Value="AdMissingAction.Delete">Kennzeichnen und nach einer Frist löschen</MudSelectItem>
+        <MudSelect T="AdMissingAction" @bind-Value="_adMissingAction" Label="@L["Computers no longer found in the directory"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelectItem Value="AdMissingAction.Keep">@L["Keep and mark as \"not in AD\""]</MudSelectItem>
+            <MudSelectItem Value="AdMissingAction.Delete">@L["Mark and delete after a grace period"]</MudSelectItem>
         </MudSelect>
         @if (_adMissingAction == AdMissingAction.Delete)
         {
-            <MudNumericField T="int" @bind-Value="_adMissingDays" Label="Frist (Tage)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="3650"
-                             HelperText="So lange muss ein Rechner ununterbrochen fehlen, bevor er gelöscht wird" />
+            <MudNumericField T="int" @bind-Value="_adMissingDays" Label="@L["Grace period (days)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="3650"
+                             HelperText="@L["A computer must be missing continuously for this long before it is deleted"]" />
             <MudAlert Severity="Severity.Warning" Dense="true">
-                Mit dem Rechner werden seine Inventardaten und sein Verlauf gelöscht. Wer die Suchwurzeln einschränkt, lässt alle Rechner
-                außerhalb davon als fehlend gelten. Wären auf einmal auffällig viele Rechner zu löschen, löscht der Lauf nichts und meldet das.
+                @L["Along with the computer, its inventory data and history are deleted. Narrowing the search roots makes all computers outside them count as missing. If conspicuously many computers were to be deleted at once, the run deletes nothing and reports it."]
             </MudAlert>
         }
         <MudText Typo="Typo.caption">
-            Gekennzeichnete Rechner stehen in der Rechnerliste unter dem Filter „Nicht (mehr) im AD“ und lassen sich über das Regelfeld
-            „Nicht (mehr) im Active Directory“ in dynamischen Sammlungen verwenden, etwa um sie von Zeitplänen auszunehmen.
+            @L["Marked computers appear in the computer list under the filter \"Not (anymore) in AD\" and can be used in dynamic collections via the rule field \"Not (anymore) in Active Directory\", e.g. to exclude them from schedules."]
         </MudText>
         <MudStack Row="true" Wrap="Wrap.Wrap">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAdAsync">Speichern</MudButton>
-            <MudButton Variant="Variant.Outlined" Disabled="_adBusy" OnClick="PreviewAdAsync">Vorschau</MudButton>
-            <MudButton Variant="Variant.Outlined" Disabled="_adBusy" OnClick="SyncAdAsync">Jetzt synchronisieren</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAdAsync">@L["Save"]</MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_adBusy" OnClick="PreviewAdAsync">@L["Preview"]</MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_adBusy" OnClick="SyncAdAsync">@L["Synchronize now"]</MudButton>
         </MudStack>
         @if (_adMessage is not null)
         {
@@ -141,53 +134,51 @@
         }
         @if (_adLastResult is not null)
         {
-            <MudText Typo="Typo.caption">Letzter Lauf @Display.LocalTime(_adLastRunUtc): @_adLastResult</MudText>
+            <MudText Typo="Typo.caption">@L["Last run {0}: {1}", Display.LocalTime(_adLastRunUtc), _adLastResult]</MudText>
         }
     </MudStack>
 </MudPaper>
 
 <MudPaper Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="3">
-        <MudText Typo="Typo.h6">Agenten</MudText>
+        <MudText Typo="Typo.h6">@L["Agents"]</MudText>
         <MudText Typo="Typo.body2">
-            Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server
-            nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“.
-            Nach einem Update des Servers aktualisieren sich die Agenten bei ihrer nächsten Anfrage selbst.
+            @L["Optional: a permanently installed agent fetches jobs over an outbound connection – useful for computers the server cannot reach directly (notebooks on the road, other networks). It is installed via \"Computers → Actions → Install agent\". After a server update the agents update themselves on their next request."]
         </MudText>
-        <MudTextField @bind-Value="_agentUrl" Label="Adresse dieses Servers aus Sicht der Agenten" Variant="Variant.Outlined" Margin="Margin.Dense"
-                      Placeholder="https://inventory.firma.local:5100" HelperText="HTTPS empfohlen: Über diese Verbindung erhält der Agent Befehle, die er als Lokales System ausführt." />
-        <MudTextField Value="_agentToken" Label="Anmeldegeheimnis" Variant="Variant.Outlined" Margin="Margin.Dense" ReadOnly="true"
-                      HelperText="Wird bei der Installation mitgegeben. Erneuern sperrt nur neue Anmeldungen, vorhandene Agenten bleiben verbunden." />
+        <MudTextField @bind-Value="_agentUrl" Label="@L["Address of this server as seen by the agents"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Placeholder="https://inventory.example.local:5100" HelperText="@L["HTTPS recommended: over this connection the agent receives commands that it runs as Local System."]" />
+        <MudTextField Value="_agentToken" Label="@L["Enrollment secret"]" Variant="Variant.Outlined" Margin="Margin.Dense" ReadOnly="true"
+                      HelperText="@L["Passed along at installation. Renewing only blocks new enrollments; existing agents stay connected."]" />
         <MudStack Row="true">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAgentAsync">Speichern</MudButton>
-            <MudButton Variant="Variant.Outlined" OnClick="RenewAgentTokenAsync">Geheimnis erneuern</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAgentAsync">@L["Save"]</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="RenewAgentTokenAsync">@L["Renew secret"]</MudButton>
         </MudStack>
     </MudStack>
 </MudPaper>
 
 <MudPaper id="updates" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="3">
-        <MudText Typo="Typo.h6">Updates</MudText>
-        <MudText Typo="Typo.body2">Installierte Version: <b>@Updates.CurrentVersion</b></MudText>
+        <MudText Typo="Typo.h6">@L["Updates"]</MudText>
+        <MudText Typo="Typo.body2">@L["Installed version:"] <b>@Updates.CurrentVersion</b></MudText>
         @if (Updates.IsDevelopmentBuild)
         {
-            <MudAlert Severity="Severity.Info" Dense="true">Lokal gebauter Entwicklungsstand – es wird nicht nach Updates gesucht.</MudAlert>
+            <MudAlert Severity="Severity.Info" Dense="true">@L["Locally built development version – no update check."]</MudAlert>
         }
         else if (!Updates.Enabled)
         {
-            <MudAlert Severity="Severity.Info" Dense="true">Die Update-Prüfung ist in der Konfiguration abgeschaltet (Inventory:Update:Enabled).</MudAlert>
+            <MudAlert Severity="Severity.Info" Dense="true">@L["The update check is disabled in the configuration (Inventory:Update:Enabled)."]</MudAlert>
         }
         else
         {
             @if (Updates.UpdateAvailable)
             {
                 <MudAlert Severity="Severity.Success" Dense="true">
-                    <b>Version @Updates.Latest!.Version ist verfügbar</b>
+                    <b>@L["Version {0} is available", Updates.Latest!.Version]</b>
                     @if (Updates.Latest.PublishedUtc is not null)
                     {
-                        <span> (veröffentlicht @Display.LocalTime(Updates.Latest.PublishedUtc))</span>
+                        <span> (@L["published {0}", Display.LocalTime(Updates.Latest.PublishedUtc)])</span>
                     }
-                    <span>. </span><MudLink Href="@Updates.Latest.PageUrl" Target="_blank">Änderungen und Download</MudLink>
+                    <span>. </span><MudLink Href="@Updates.Latest.PageUrl" Target="_blank">@L["Changes and download"]</MudLink>
                 </MudAlert>
                 @if (!string.IsNullOrWhiteSpace(Updates.Latest!.Notes))
                 {
@@ -195,12 +186,12 @@
                 }
                 @if (Updates.CannotInstallReason is not null)
                 {
-                    <MudAlert Severity="Severity.Warning" Dense="true">@Updates.CannotInstallReason</MudAlert>
+                    <MudAlert Severity="Severity.Warning" Dense="true">@L[Updates.CannotInstallReason]</MudAlert>
                 }
             }
             else if (Updates.LastCheckUtc is not null && Updates.LastError is null)
             {
-                <MudText Typo="Typo.body2">Inventory ist aktuell (geprüft @Display.LocalTime(Updates.LastCheckUtc), Quelle: github.com/@Updates.Repository).</MudText>
+                <MudText Typo="Typo.body2">@L["Inventory is up to date (checked {0}, source: github.com/{1}).", Display.LocalTime(Updates.LastCheckUtc), Updates.Repository]</MudText>
             }
             @if (Updates.LastError is not null)
             {
@@ -211,25 +202,22 @@
                 <MudAlert Severity="@_updateSeverity" Dense="true">@_updateMessage</MudAlert>
             }
             <MudStack Row="true" Wrap="Wrap.Wrap">
-                <MudButton Variant="Variant.Outlined" Disabled="_updateBusy" OnClick="CheckUpdateAsync">Jetzt prüfen</MudButton>
+                <MudButton Variant="Variant.Outlined" Disabled="_updateBusy" OnClick="CheckUpdateAsync">@L["Check now"]</MudButton>
                 @if (Updates.UpdateAvailable && Updates.CannotInstallReason is null)
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_updateBusy || Updates.Installing)" OnClick="ApplyUpdateAsync">
-                        @(Updates.Installing ? "Wird installiert …" : "Jetzt aktualisieren")
+                        @(Updates.Installing ? L["Installing …"] : L["Update now"])
                     </MudButton>
                 }
             </MudStack>
             @if (Updates.CannotInstallReason is null)
             {
-                <MudSwitch T="bool" @bind-Value="_updateAuto" Color="Color.Primary" Label="Automatisch im Wartungsfenster aktualisieren" />
-                <MudTimePicker @bind-Time="_updateWindow" Label="Beginn des Wartungsfensters (2 Stunden)" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Disabled="@(!_updateAuto)" />
-                <div><MudButton Variant="Variant.Outlined" OnClick="SaveUpdateSettingsAsync">Speichern</MudButton></div>
+                <MudSwitch T="bool" @bind-Value="_updateAuto" Color="Color.Primary" Label="@L["Update automatically in the maintenance window"]" />
+                <MudTimePicker @bind-Time="_updateWindow" Label="@L["Start of the maintenance window (2 hours)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Disabled="@(!_updateAuto)" />
+                <div><MudButton Variant="Variant.Outlined" OnClick="SaveUpdateSettingsAsync">@L["Save"]</MudButton></div>
             }
             <MudText Typo="Typo.caption">
-                Vor jeder Aktualisierung wird die Datenbank gesichert; laufende Deployments werden abgewartet. Die Oberfläche ist währenddessen
-                kurz nicht erreichbar, Agenten aktualisieren sich danach selbst. Hinweis: Über diesen Weg gelangt neuer Programmcode auf den
-                Server und über die Agenten auf alle Rechner. Solange Releases unsigniert sind, sichert die Prüfsumme nur die Übertragung,
-                nicht die Herkunft – die Automatik ist deshalb standardmäßig aus.
+                @L["The database is backed up before every update; running deployments are awaited. The interface is briefly unavailable meanwhile; agents update themselves afterwards. Note: this path brings new program code onto the server and, via the agents, onto all computers. As long as releases are unsigned, the checksum only secures the transfer, not the origin – which is why automatic updates are off by default."]
             </MudText>
         }
     </MudStack>
@@ -268,7 +256,7 @@
         try
         {
             var error = await Updates.ApplyAsync(await Audit.UserNameAsync());
-            _updateMessage = error ?? $"Die Aktualisierung auf {Updates.Latest?.Version} läuft. Der Dienst startet gleich neu; diese Seite danach neu laden.";
+            _updateMessage = error ?? L["The update to {0} is running. The service restarts shortly; reload this page afterwards.", Updates.Latest?.Version];
             _updateSeverity = error is null ? Severity.Info : Severity.Error;
         }
         finally
@@ -280,8 +268,8 @@
     private async Task SaveUpdateSettingsAsync()
     {
         await Updates.SaveSettingsAsync(_updateAuto, _updateWindow ?? new TimeSpan(3, 0, 0));
-        await Audit.LogAsync("Einstellung geändert", $"Automatische Aktualisierung: {(_updateAuto ? $"an, ab {_updateWindow:hh\\:mm} Uhr" : "aus")}");
-        Snackbar.Add("Gespeichert.", Severity.Success);
+        await Audit.LogAsync(L["Setting changed"], L["Automatic update: {0}", _updateAuto ? L["on, from {0}", $"{_updateWindow:hh\\:mm}"] : Display.OnOff(false)]);
+        Snackbar.Add(L["Saved."], Severity.Success);
     }
 
     private string? _agentUrl;
@@ -290,14 +278,14 @@
     private async Task SaveAgentAsync()
     {
         await Agents.SetServerUrlAsync(_agentUrl);
-        await Audit.LogAsync("Einstellung geändert", $"Server-Adresse für Agenten: {_agentUrl}");
-        Snackbar.Add("Gespeichert.", Severity.Success);
+        await Audit.LogAsync(L["Setting changed"], L["Server address for agents: {0}", _agentUrl]);
+        Snackbar.Add(L["Saved."], Severity.Success);
     }
 
     private async Task RenewAgentTokenAsync()
     {
         _agentToken = await Agents.RenewEnrollmentTokenAsync();
-        await Audit.LogAsync("Einstellung geändert", "Anmeldegeheimnis für Agenten erneuert");
+        await Audit.LogAsync(L["Setting changed"], L["Enrollment secret for agents renewed"]);
     }
 
     private bool _adEnabled;
@@ -331,8 +319,8 @@
     private async Task SaveHeartbeatAsync()
     {
         await Heartbeat.SaveSettingsAsync(_hbEnabled, _hbIntervalMinutes);
-        await Audit.LogAsync("Einstellung geändert", $"Heartbeat: {(_hbEnabled ? $"an, alle {_hbIntervalMinutes} min" : "aus")}");
-        Snackbar.Add("Gespeichert.", Severity.Success);
+        await Audit.LogAsync(L["Setting changed"], $"Heartbeat: {(_hbEnabled ? L["on, every {0} min", _hbIntervalMinutes] : Display.OnOff(false))}");
+        Snackbar.Add(L["Saved."], Severity.Success);
     }
 
     private async Task RunHeartbeatAsync()
@@ -364,9 +352,10 @@
     private async Task SaveAdAsync()
     {
         await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays);
-        await Audit.LogAsync("Einstellung geändert", $"AD-Synchronisation: {(_adEnabled ? "an" : "aus")}, Server {_adServer ?? "(Domäne)"}, alle {_adIntervalHours} h, " +
-            $"deaktivierte Konten {(_adExcludeDisabled ? "ausgeschlossen" : "einbezogen")}, fehlende Rechner {(_adMissingAction == AdMissingAction.Delete ? $"nach {_adMissingDays} Tagen löschen" : "behalten")}");
-        Snackbar.Add("Gespeichert.", Severity.Success);
+        await Audit.LogAsync(L["Setting changed"], L["AD synchronization: {0}, server {1}, every {2} h, disabled accounts {3}, missing computers: {4}",
+            Display.OnOff(_adEnabled), _adServer ?? L["(domain)"], _adIntervalHours, _adExcludeDisabled ? L["excluded"] : L["included"],
+            _adMissingAction == AdMissingAction.Delete ? L["delete after {0} days", _adMissingDays] : L["keep"]]);
+        Snackbar.Add(L["Saved."], Severity.Success);
     }
 
     private async Task PreviewAdAsync()
@@ -375,12 +364,12 @@
         {
             var preview = await AdSync.PreviewAsync();
             static string Names(List<string> names) => names.Count == 0 ? "" : ": " + string.Join(", ", names.Take(15)) + (names.Count > 15 ? " …" : "");
-            var text = $"{preview.Total} Computerkonten gefunden ({preview.Disabled} deaktiviert). Neu anzulegen: {preview.NewNames.Count}{Names(preview.NewNames)}. " +
-                       $"Nicht im AD: {preview.MissingNames!.Count}{Names(preview.MissingNames)}.";
+            var text = L["{0} computer accounts found ({1} disabled). To be created: {2}{3}. Not in AD: {4}{5}.",
+                preview.Total, preview.Disabled, preview.NewNames.Count, Names(preview.NewNames), preview.MissingNames!.Count, Names(preview.MissingNames)].Value;
             if (preview.DeleteNames!.Count > 0)
-                text += preview.DeleteBlocked
-                    ? $" Zu löschen wären {preview.DeleteNames.Count} – auffällig viele auf einmal, der Lauf würde deshalb nichts löschen."
-                    : $" Der nächste Lauf löscht {preview.DeleteNames.Count}{Names(preview.DeleteNames)}.";
+                text += " " + (preview.DeleteBlocked
+                    ? L["{0} would be deleted – conspicuously many at once, so the run would delete nothing.", preview.DeleteNames.Count]
+                    : L["The next run deletes {0}{1}.", preview.DeleteNames.Count, Names(preview.DeleteNames)]);
             return text;
         });
     }
@@ -396,7 +385,7 @@
         {
             await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays);
             _adMessage = await action();
-            _adSeverity = _adMessage.StartsWith("Fehler") ? Severity.Error : Severity.Success;
+            _adSeverity = _adMessage.StartsWith(L["Error"]) ? Severity.Error : Severity.Success;
         }
         catch (Inventory.Core.Abstractions.RemoteException ex)
         {
@@ -420,8 +409,8 @@
     {
         _verifyName = enabled;
         await SettingsService.SetVerifyTargetNameAsync(enabled);
-        await Audit.LogAsync("Einstellung geändert", $"Rechnernamen vor der Ausführung prüfen: {(enabled ? "an" : "aus")}");
-        Snackbar.Add("Gespeichert.", Severity.Success);
+        await Audit.LogAsync(L["Setting changed"], $"{L["Verify computer name before execution"]}: {Display.OnOff(enabled)}");
+        Snackbar.Add(L["Saved."], Severity.Success);
     }
 
     protected override async Task OnInitializedAsync()
@@ -440,15 +429,15 @@
     {
         _fallback = enabled;
         await SettingsService.SetTransportFallbackAsync(enabled);
-        await Audit.LogAsync("Einstellung geändert", $"Ausweich-Transport: {(enabled ? "an" : "aus")}");
-        Snackbar.Add("Gespeichert.", Severity.Success);
+        await Audit.LogAsync(L["Setting changed"], $"{L["Fallback transport"]}: {Display.OnOff(enabled)}");
+        Snackbar.Add(L["Saved."], Severity.Success);
     }
 
     private async Task SetTransportAsync(TransportKind kind)
     {
         _transport = kind;
         await SettingsService.SetDefaultTransportAsync(kind);
-        await Audit.LogAsync("Einstellung geändert", $"Standard-Transport: {Display.Transport(kind)}");
-        Snackbar.Add("Gespeichert.", Severity.Success);
+        await Audit.LogAsync(L["Setting changed"], $"{L["Default transport"]}: {Display.Transport(kind)}");
+        Snackbar.Add(L["Saved."], Severity.Success);
     }
 }

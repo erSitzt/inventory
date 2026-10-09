@@ -10,52 +10,54 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
 
-<PageTitle>Rechner – Inventory</PageTitle>
+<PageTitle>@L["Computers"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
-    <MudText Typo="Typo.h5">Rechner</MudText>
+    <MudText Typo="Typo.h5">@L["Computers"]</MudText>
     <MudSpacer />
-    <MudSelect T="string" Value="_view" ValueChanged="SetView" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 260px" aria-label="Ansicht">
+    <MudSelect T="string" Value="_view" ValueChanged="SetView" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 260px" aria-label="@L["View"]">
         @foreach (var (key, label) in BuiltInViews)
         {
-            <MudSelectItem T="string" Value="@key">@label (@_all.Count(c => InView(key, c)))</MudSelectItem>
+            <MudSelectItem T="string" Value="@key">@L[label] (@_all.Count(c => InView(key, c)))</MudSelectItem>
         }
         @foreach (var summary in _collections)
         {
-            <MudSelectItem T="string" Value="@($"c:{summary.Collection.Id}")">Sammlung: @summary.Collection.Name (@summary.Count)</MudSelectItem>
+            <MudSelectItem T="string" Value="@($"c:{summary.Collection.Id}")">@L["Collection"]: @summary.Collection.Name (@summary.Count)</MudSelectItem>
         }
     </MudSelect>
-    <MudTextField @bind-Value="_search" Placeholder="Suchen" Adornment="Adornment.Start" Immediate="true"
+    <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" Immediate="true"
                   AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 240px" />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">Hinzufügen</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">@L["Add"]</MudButton>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_busy" OnClick="ScanAsync">
-        @(_selected.Count > 0 ? $"Scannen ({_selected.Count})" : "Alle scannen")
+        @(_selected.Count > 0 ? L["Scan ({0})", _selected.Count] : L["Scan all"])
     </MudButton>
-    <MudMenu Label="Aktionen" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Disabled="_busy">
+    <MudMenu Label="@L["Actions"]" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Disabled="_busy">
         <MudMenuItem Icon="@Icons.Material.Filled.NetworkCheck" OnClick="ProbeAsync">
-            @(_selected.Count > 0 ? "Erreichbarkeit der Auswahl prüfen" : "Erreichbarkeit aller prüfen")
+            @(_selected.Count > 0 ? L["Check reachability of selection"] : L["Check reachability of all"])
         </MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">Paket bereitstellen</MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">Befehl ausführen</MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">Agent installieren</MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">Starter für Fernzugriff installieren</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">@L["Deploy package"]</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">@L["Run command"]</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">@L["Install remote access launcher"]</MudMenuItem>
         <MudDivider />
         @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
         {
             var target = summary.Collection;
             <MudMenuItem Icon="@Icons.Material.Filled.CreateNewFolder" Disabled="@(_selected.Count == 0)" OnClick="@(() => AddToCollectionAsync(target))">
-                Zu „@target.Name“ hinzufügen
+                @L["Add to \"{0}\"", target.Name]
             </MudMenuItem>
         }
         @if (_activeCollection is { IsDynamic: false })
         {
             <MudMenuItem Icon="@Icons.Material.Filled.FolderOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveFromCollectionAsync">
-                Aus „@_activeCollection.Name“ entfernen
+                @L["Remove from \"{0}\"", _activeCollection.Name]
             </MudMenuItem>
         }
         <MudDivider />
-        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(_selected.Count == 0)" OnClick="DeleteAsync">Löschen</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(_selected.Count == 0)" OnClick="DeleteAsync">@L["Delete"]</MudMenuItem>
     </MudMenu>
 </MudStack>
 
@@ -73,19 +75,19 @@
                 <MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink>
                 @if (context.Item.NameMismatch)
                 {
-                    <MudTooltip Text="@($"Unter diesem Namen hat sich der Rechner {context.Item.ReportedName} gemeldet (veralteter DNS-Eintrag oder Alias?)")">
-                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">ist @context.Item.ReportedName</MudChip>
+                    <MudTooltip Text="@L["Under this name the computer {0} responded (stale DNS entry or alias?)", context.Item.ReportedName]">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">@L["is {0}", context.Item.ReportedName]</MudChip>
                     </MudTooltip>
                 }
                 @if (context.Item.MissingInDirectory)
                 {
-                    <MudTooltip Text="@($"Das Computerkonto {(context.Item.DirectoryDisabled ? "ist im Active Directory deaktiviert" : "fehlt im Active Directory")}, seit {Display.LocalTime(context.Item.DirectoryMissingSinceUtc)}.")">
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Icon="@Icons.Material.Filled.PersonOff">@(context.Item.DirectoryDisabled ? "im AD deaktiviert" : "nicht im AD")</MudChip>
+                    <MudTooltip Text="@(context.Item.DirectoryDisabled ? L["The computer account is disabled in Active Directory, since {0}.", Display.LocalTime(context.Item.DirectoryMissingSinceUtc)] : L["The computer account is missing in Active Directory, since {0}.", Display.LocalTime(context.Item.DirectoryMissingSinceUtc)])">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Icon="@Icons.Material.Filled.PersonOff">@(context.Item.DirectoryDisabled ? L["disabled in AD"] : L["not in AD"])</MudChip>
                     </MudTooltip>
                 }
                 else if (context.Item.ReverseDnsMismatch)
                 {
-                    <MudTooltip Text="@($"Die Adresse {context.Item.IpAddress} gehört laut Reverse-DNS zu {context.Item.ReverseDnsName}. Der Rechner selbst hat seinen Namen noch nicht genannt – ein Scan schafft Klarheit.")">
+                    <MudTooltip Text="@L["According to reverse DNS the address {0} belongs to {1}. The computer has not reported its own name yet – a scan will tell.", context.Item.IpAddress, context.Item.ReverseDnsName]">
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Icon="@Icons.Material.Filled.HelpOutline">DNS: @context.Item.ReverseDnsName!.Split('.')[0]</MudChip>
                     </MudTooltip>
                 }
@@ -95,70 +97,70 @@
             <CellTemplate>
                 @if (context.Item.AgentKeyHash is not null)
                 {
-                    <MudTooltip Text="@($"Agent {context.Item.AgentVersion}, letzter Kontakt {Display.LocalTime(context.Item.AgentLastSeenUtc)}")">
+                    <MudTooltip Text="@L["Agent {0}, last contact {1}", context.Item.AgentVersion, Display.LocalTime(context.Item.AgentLastSeenUtc)]">
                         <MudChip T="string" Size="Size.Small" Color="@(Display.AgentConnected(context.Item) ? Color.Success : Color.Default)" Icon="@Icons.Material.Filled.SettingsRemote">
-                            @(Display.AgentConnected(context.Item) ? "Agent" : "Agent getrennt")
+                            @(Display.AgentConnected(context.Item) ? L["Agent"] : L["Agent disconnected"])
                         </MudChip>
                     </MudTooltip>
                 }
                 else if (context.Item.LastProbeUtc is null && context.Item.LastScanUtc is null)
                 {
-                    <MudChip T="string" Size="Size.Small">ungeprüft</MudChip>
+                    <MudChip T="string" Size="Size.Small">@L["unchecked"]</MudChip>
                 }
                 else if (context.Item.IsOnline)
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Success">online</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">@L["online"]</MudChip>
                 }
                 else if (context.Item.NameMismatch)
                 {
-                    <MudTooltip Text="Unter der Adresse dieses Namens antwortet ein anderer Rechner; der eingetragene ist damit nicht erreichbar.">
-                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">nicht erreichbar</MudChip>
+                    <MudTooltip Text="@L["A different computer responds at this name's address; the listed one is therefore unreachable."]">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["unreachable"]</MudChip>
                     </MudTooltip>
                 }
                 else
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Default">offline</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">@L["offline"]</MudChip>
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Betriebssystem" SortBy="c => Display.Os(c)">
+        <TemplateColumn Title="@L["Operating system"]" SortBy="c => Display.Os(c)">
             <CellTemplate>@Display.Os(context.Item)</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Sicherheit" Sortable="false">
+        <TemplateColumn Title="@L["Security"]" Sortable="false">
             <CellTemplate>
                 @if (context.Item.FirewallOff)
                 {
-                    <MudTooltip Text="Mindestens ein Firewall-Profil ist abgeschaltet"><MudIcon Icon="@Icons.Material.Filled.GppBad" Color="Color.Error" Size="Size.Small" /></MudTooltip>
+                    <MudTooltip Text="@L["At least one firewall profile is off"]"><MudIcon Icon="@Icons.Material.Filled.GppBad" Color="Color.Error" Size="Size.Small" /></MudTooltip>
                 }
                 @if (context.Item.AntivirusProblem)
                 {
-                    <MudTooltip Text="Kein Echtzeit-Virenschutz aktiv"><MudIcon Icon="@Icons.Material.Filled.BugReport" Color="Color.Error" Size="Size.Small" /></MudTooltip>
+                    <MudTooltip Text="@L["No real-time antivirus active"]"><MudIcon Icon="@Icons.Material.Filled.BugReport" Color="Color.Error" Size="Size.Small" /></MudTooltip>
                 }
                 @if (context.Item.UpdatePendingCount > 0)
                 {
-                    <MudTooltip Text="@($"{context.Item.UpdatePendingCount} Updates ausstehend")"><MudIcon Icon="@Icons.Material.Filled.SystemUpdateAlt" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
+                    <MudTooltip Text="@L["{0} updates pending", context.Item.UpdatePendingCount]"><MudIcon Icon="@Icons.Material.Filled.SystemUpdateAlt" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
                 }
                 @if (context.Item.UpdateRebootRequired == true)
                 {
-                    <MudTooltip Text="Neustart ausstehend"><MudIcon Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
+                    <MudTooltip Text="@L["Reboot pending"]"><MudIcon Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
                 }
                 @if (context.Item.FirewallDomain is not null && !context.Item.FirewallOff && !context.Item.AntivirusProblem && !(context.Item.UpdatePendingCount > 0) && context.Item.UpdateRebootRequired != true)
                 {
-                    <MudTooltip Text="Firewall an, Virenschutz aktiv, keine Updates ausstehend"><MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Color="Color.Success" Size="Size.Small" /></MudTooltip>
+                    <MudTooltip Text="@L["Firewall on, antivirus active, no updates pending"]"><MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Color="Color.Success" Size="Size.Small" /></MudTooltip>
                 }
             </CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="c => c.Model" Title="Modell" />
-        <PropertyColumn Property="c => c.LoggedOnUser" Title="Benutzer" />
-        <PropertyColumn Property="c => c.IpAddress" Title="IP-Adresse" />
-        <TemplateColumn Title="Letzter Scan" SortBy="c => c.LastScanUtc">
+        <PropertyColumn Property="c => c.Model" Title="@L["Model"]" />
+        <PropertyColumn Property="c => c.LoggedOnUser" Title="@L["User"]" />
+        <PropertyColumn Property="c => c.IpAddress" Title="@L["IP address"]" />
+        <TemplateColumn Title="@L["Last scan"]" SortBy="c => c.LastScanUtc">
             <CellTemplate>
                 @if (context.Item.LastScanError is not null)
                 {
                     <MudTooltip Text="@context.Item.LastScanError">
                         <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
                             <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Small" />
-                            <span>fehlgeschlagen</span>
+                            <span>@L["failed"]</span>
                         </MudStack>
                     </MudTooltip>
                 }
@@ -171,19 +173,19 @@
         <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
                 <RemoteAccessMenu Computer="context.Item" Compact="true" />
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Bearbeiten" OnClick="@(() => EditAsync(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" />
             </CellTemplate>
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
         <MudText Class="pa-4">
             @(_activeCollection is null
-                ? "Noch keine Rechner vorhanden. Über „Hinzufügen“ lassen sich Namen einzeln oder als Liste anlegen."
-                : "Diese Sammlung enthält keine Rechner.")
+                ? L["No computers yet. Use \"Add\" to enter names one by one or as a list."]
+                : L["This collection contains no computers."])
         </MudText>
     </NoRecordsContent>
     <PagerContent>
-        <MudDataGridPager T="Computer" PageSizeOptions="@(new[] { 25, 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+        <MudDataGridPager T="Computer" PageSizeOptions="@(new[] { 25, 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
     </PagerContent>
 </MudDataGrid>
 
@@ -193,9 +195,9 @@
 
     private static readonly (string Key, string Label)[] BuiltInViews =
     [
-        ("all", "Alle Rechner"), ("online", "Online"), ("offline", "Offline"), ("mismatch", "Falscher Rechner antwortet"),
-        ("nodirectory", "Nicht (mehr) im AD"), ("unscanned", "Noch nicht gescannt"), ("scanerror", "Scan fehlgeschlagen"), ("agent", "Mit Agent"),
-        ("firewall", "Firewall aus"), ("antivirus", "Kein Echtzeit-Virenschutz"), ("updates", "Updates ausstehend"), ("reboot", "Neustart ausstehend"),
+        ("all", "All computers"), ("online", "Online"), ("offline", "Offline"), ("mismatch", "Wrong computer responds"),
+        ("nodirectory", "Not (anymore) in AD"), ("unscanned", "Not scanned yet"), ("scanerror", "Scan failed"), ("agent", "With agent"),
+        ("firewall", "Firewall off"), ("antivirus", "No real-time antivirus"), ("updates", "Updates pending"), ("reboot", "Reboot pending"),
     ];
 
     private List<Computer> _all = [];
@@ -263,22 +265,22 @@
 
     private async Task AddAsync()
     {
-        var dialog = await Dialogs.ShowAsync<AddComputersDialog>("Rechner hinzufügen", new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        var dialog = await Dialogs.ShowAsync<AddComputersDialog>(L["Add computers"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is { Canceled: false, Data: string text })
         {
             var added = await ComputerService.ImportAsync(text);
             if (added.Count == 0)
             {
-                Snackbar.Add("Keine neuen Rechner – alle Namen waren bereits vorhanden oder ungültig.", Severity.Warning);
+                Snackbar.Add(L["No new computers – all names already existed or were invalid."], Severity.Warning);
                 return;
             }
-            await Audit.LogAsync("Rechner hinzugefügt", string.Join(", ", added.Select(c => c.Name)));
+            await Audit.LogAsync(L["Computers added"], string.Join(", ", added.Select(c => c.Name)));
             if (_activeCollection is { IsDynamic: false })
                 await CollectionService.AddMembersAsync(_activeCollection.Id, added.Select(c => c.Id));
 
             // Gleich prüfen, wer unter den neuen Namen wirklich antwortet: veraltete DNS-Einträge fallen so sofort auf.
             _busy = true;
-            _progressText = $"Prüfe {added.Count} neue Rechner …";
+            _progressText = L["Checking {0} new computers …", added.Count];
             StateHasChanged();
             try
             {
@@ -286,13 +288,13 @@
                 await ComputerService.ProbeAsync(ids);
                 var all = await ComputerService.ListAsync();
                 var fresh = all.Where(c => ids.Contains(c.Id)).ToList();
-                Snackbar.Add($"{added.Count} Rechner hinzugefügt, {fresh.Count(c => c.IsOnline)} davon erreichbar.", Severity.Success);
+                Snackbar.Add(L["{0} computers added, {1} of them reachable.", added.Count, fresh.Count(c => c.IsOnline)], Severity.Success);
                 foreach (var computer in fresh.Where(c => c.NameMismatch))
                 {
                     var known = all.FirstOrDefault(c => c.Id != computer.Id && string.Equals(c.ExpectedMachineName, computer.ReportedName, StringComparison.OrdinalIgnoreCase));
                     Snackbar.Add(known is null
-                            ? $"Unter „{computer.Name}“ antwortet der Rechner {computer.ReportedName} – vermutlich ein veralteter DNS-Eintrag oder Alias."
-                            : $"Unter „{computer.Name}“ antwortet {computer.ReportedName}, der bereits als „{known.Name}“ eingetragen ist.",
+                            ? L["Under \"{0}\" the computer {1} responds – probably a stale DNS entry or alias.", computer.Name, computer.ReportedName]
+                            : L["Under \"{0}\" {1} responds, which is already listed as \"{2}\".", computer.Name, computer.ReportedName, known.Name],
                         Severity.Warning, options => options.RequireInteraction = true);
                 }
             }
@@ -324,22 +326,22 @@
             return;
         _busy = true;
         var done = 0;
-        _progressText = $"Scanne {ids.Count} Rechner …";
-        await Audit.LogAsync("Inventar-Scan gestartet", $"{ids.Count} Rechner"); 
+        _progressText = L["Scanning {0} computers …", ids.Count];
+        await Audit.LogAsync(L["Inventory scan started"], L["{0} computers", ids.Count]);
         try
         {
             var outcomes = await ScanService.ScanAsync(ids, _ =>
             {
                 var current = Interlocked.Increment(ref done);
-                _progressText = $"Scanne … {current} von {ids.Count} fertig";
+                _progressText = L["Scanning … {0} of {1} done", current, ids.Count];
                 InvokeAsync(StateHasChanged);
             });
             var failed = outcomes.Count(o => !o.Success);
-            Snackbar.Add(failed == 0 ? $"{outcomes.Count} Rechner gescannt." : $"{outcomes.Count - failed} gescannt, {failed} fehlgeschlagen.",
+            Snackbar.Add(failed == 0 ? L["{0} computers scanned.", outcomes.Count] : L["{0} scanned, {1} failed.", outcomes.Count - failed, failed],
                 failed == 0 ? Severity.Success : Severity.Warning);
             var mismatched = outcomes.Count(o => o.MismatchedName is not null);
             if (mismatched > 0)
-                Snackbar.Add($"{mismatched} Rechner haben sich mit einem anderen Namen gemeldet als eingetragen – siehe Markierung in der Liste.", Severity.Warning);
+                Snackbar.Add(L["{0} computers reported a different name than listed – see the marker in the list.", mismatched], Severity.Warning);
             await ReloadAsync();
         }
         finally
@@ -356,11 +358,11 @@
         try
         {
             var online = await ComputerService.ProbeAsync(ids);
-            Snackbar.Add($"{online} von {ids.Count} Rechnern erreichbar.", Severity.Info);
+            Snackbar.Add(L["{0} of {1} computers reachable.", online, ids.Count], Severity.Info);
             await ReloadAsync();
             var mismatched = _computers.Count(c => ids.Contains(c.Id) && c.NameMismatch);
             if (mismatched > 0)
-                Snackbar.Add($"Bei {mismatched} Rechnern antwortet ein anderer Rechner als eingetragen – siehe Markierung in der Liste.", Severity.Warning);
+                Snackbar.Add(L["For {0} computers a different computer responds than listed – see the marker in the list.", mismatched], Severity.Warning);
         }
         finally
         {
@@ -371,7 +373,7 @@
     private Task DeployAsync()
     {
         var parameters = new DialogParameters<DeployDialog> { { d => d.ComputerIds, _selected.Select(c => c.Id).ToList() } };
-        return Dialogs.ShowAsync<DeployDialog>("Paket bereitstellen", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        return Dialogs.ShowAsync<DeployDialog>(L["Deploy package"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
     }
 
     private async Task InstallAgentAsync()
@@ -389,8 +391,8 @@
 
         var targets = _selected.ToList();
         _busy = true;
-        _progressText = $"Installiere Agent auf {targets.Count} Rechnern …";
-        await Audit.LogAsync("Agent-Installation gestartet", string.Join(", ", targets.Select(c => c.Name)));
+        _progressText = L["Installing agent on {0} computers …", targets.Count];
+        await Audit.LogAsync(L["Agent installation started"], string.Join(", ", targets.Select(c => c.Name)));
         try
         {
             var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
@@ -403,9 +405,9 @@
                     failures.Add($"{computer.Name}: {result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error ?? result.Steps.LastOrDefault()?.Output}");
             });
             if (failures.IsEmpty)
-                Snackbar.Add($"Agent auf {targets.Count} Rechnern installiert. Sie erscheinen als „Agent“, sobald sich der Dienst meldet.", Severity.Success);
+                Snackbar.Add(L["Agent installed on {0} computers. They show as \"Agent\" as soon as the service reports in.", targets.Count], Severity.Success);
             else
-                Snackbar.Add($"{failures.Count} von {targets.Count} fehlgeschlagen – {string.Join("; ", failures.Take(3))}", Severity.Error);
+                Snackbar.Add(L["{0} of {1} failed – {2}", failures.Count, targets.Count, string.Join("; ", failures.Take(3))], Severity.Error);
             await ReloadAsync();
         }
         finally
@@ -431,8 +433,8 @@
 
         var targets = _selected.ToList();
         _busy = true;
-        _progressText = $"Installiere den Starter auf {targets.Count} Rechnern …";
-        await Audit.LogAsync("Starter für Fernzugriff installiert", string.Join(", ", targets.Select(c => c.Name)));
+        _progressText = L["Installing the launcher on {0} computers …", targets.Count];
+        await Audit.LogAsync(L["Remote access launcher installed"], string.Join(", ", targets.Select(c => c.Name)));
         try
         {
             var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
@@ -443,9 +445,9 @@
                     failures.Add($"{computer.Name}: {result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error}");
             });
             if (failures.IsEmpty)
-                Snackbar.Add($"Starter auf {targets.Count} Rechnern eingerichtet. Fernzugriffe öffnen sich dort jetzt per Klick.", Severity.Success);
+                Snackbar.Add(L["Launcher set up on {0} computers. Remote access now opens there with one click.", targets.Count], Severity.Success);
             else
-                Snackbar.Add($"{failures.Count} von {targets.Count} fehlgeschlagen – {string.Join("; ", failures.Take(3))}", Severity.Error);
+                Snackbar.Add(L["{0} of {1} failed – {2}", failures.Count, targets.Count, string.Join("; ", failures.Take(3))], Severity.Error);
         }
         finally
         {
@@ -459,27 +461,27 @@
     private async Task AddToCollectionAsync(Collection collection)
     {
         var added = await CollectionService.AddMembersAsync(collection.Id, _selected.Select(c => c.Id));
-        Snackbar.Add($"{added} Rechner zu „{collection.Name}“ hinzugefügt.", Severity.Success);
+        Snackbar.Add(L["{0} computers added to \"{1}\".", added, collection.Name], Severity.Success);
         await ReloadAsync();
     }
 
     private async Task RemoveFromCollectionAsync()
     {
         var removed = await CollectionService.RemoveMembersAsync(_activeCollection!.Id, _selected.Select(c => c.Id));
-        Snackbar.Add($"{removed} Rechner aus „{_activeCollection.Name}“ entfernt.", Severity.Success);
+        Snackbar.Add(L["{0} computers removed from \"{1}\".", removed, _activeCollection.Name], Severity.Success);
         await ReloadAsync();
     }
 
     private async Task DeleteAsync()
     {
         var count = _selected.Count;
-        var confirmed = await Dialogs.ShowMessageBoxAsync("Rechner löschen",
-            $"{count} Rechner samt Inventardaten wirklich löschen? Das lässt sich nicht rückgängig machen.", yesText: "Löschen", cancelText: "Abbrechen");
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete computers"],
+            L["Really delete {0} computers including their inventory data? This cannot be undone.", count], yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;
         await ComputerService.DeleteAsync(_selected.Select(c => c.Id));
-        await Audit.LogAsync("Rechner gelöscht", string.Join(", ", _selected.Select(c => c.Name)));
-        Snackbar.Add($"{count} Rechner gelöscht.", Severity.Success);
+        await Audit.LogAsync(L["Computers deleted"], string.Join(", ", _selected.Select(c => c.Name)));
+        Snackbar.Add(L["{0} computers deleted.", count], Severity.Success);
         await ReloadAsync();
     }
 }

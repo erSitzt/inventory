@@ -2,6 +2,7 @@ using Inventory.Contracts;
 using Inventory.Core;
 using Inventory.Core.Model;
 using Inventory.Data.Services;
+using Microsoft.Extensions.Localization;
 
 namespace Inventory.Server.Api;
 
@@ -26,57 +27,57 @@ public static class ComputerEndpoints
         {
             var path = Path.Combine(AppContext.BaseDirectory, "launcher", "InventoryLauncher.exe");
             return File.Exists(path) ? Results.File(path, "application/octet-stream", "InventoryLauncher.exe") : Results.NotFound();
-        }).WithTags("Downloads").WithSummary("Starter für Admin-PCs").WithDescription("InventoryLauncher.exe: registriert inventory://-Links, über die die Oberfläche Remoteunterstützung, RDP und RDP-Spiegelung direkt öffnet.");
+        }).WithTags("Downloads").WithSummary("Launcher for admin PCs").WithDescription("InventoryLauncher.exe: registers inventory:// links through which the UI opens Remote Assistance, RDP and RDP shadowing directly.");
 
-        var group = app.MapGroup("/api/computers").WithTags("Rechner");
+        var group = app.MapGroup("/api/computers").WithTags("Computers");
 
         group.MapGet("", async (ComputerService computers, CancellationToken ct) =>
             (await computers.ListAsync(ct)).Select(ToDto))
-            .WithSummary("Alle Rechner").WithDescription("Stammdaten, Status und die wichtigsten Inventarwerte aller Rechner.");
+            .WithSummary("All computers").WithDescription("Master data, status and the most important inventory values of all computers.");
 
         group.MapGet("{id:int}", async (int id, ComputerService computers, CancellationToken ct) =>
             await computers.GetAsync(id, ct) is { } computer ? Results.Ok(ToDto(computer)) : Results.NotFound())
-            .WithSummary("Ein Rechner").Produces<ComputerDto>().Produces(404);
+            .WithSummary("One computer").Produces<ComputerDto>().Produces(404);
 
         group.MapPost("", async (ImportRequest request, ComputerService computers, CancellationToken ct) =>
             (await computers.ImportAsync(request.Names, ct)).Select(ToDto))
-            .WithSummary("Rechner anlegen").WithDescription("Namen durch Zeilenumbruch, Komma, Semikolon oder Leerzeichen getrennt. Liefert nur die neu angelegten Rechner; vorhandene bleiben unverändert.");
+            .WithSummary("Create computers").WithDescription("Names separated by newline, comma, semicolon or space. Returns only the newly created computers; existing ones stay unchanged.");
 
         group.MapDelete("{id:int}", async (int id, ComputerService computers, CancellationToken ct) =>
             await computers.DeleteAsync([id], ct) > 0 ? Results.NoContent() : Results.NotFound())
-            .WithSummary("Rechner löschen").WithDescription("Löscht den Rechner samt Inventardaten und Verlauf.").Produces(204).Produces(404);
+            .WithSummary("Delete computer").WithDescription("Deletes the computer including its inventory data and history.").Produces(204).Produces(404);
 
         group.MapPost("probe", async (int[]? ids, ComputerService computers, CancellationToken ct) =>
             new ProbeResponse(await computers.ProbeAsync(ids is { Length: > 0 } ? ids : null, ct)))
-            .WithSummary("Erreichbarkeit prüfen").WithDescription("Body: JSON-Array mit Rechner-IDs; leer oder null = alle Rechner. Liefert die Zahl der erreichbaren Rechner.");
+            .WithSummary("Check reachability").WithDescription("Body: JSON array of computer IDs; empty or null = all computers. Returns the number of reachable computers.");
 
         group.MapPost("{id:int}/scan", async (int id, ScanService scans, CancellationToken ct) => await scans.ScanAsync(id, ct))
-            .WithSummary("Inventar-Scan").WithDescription("Scannt den Rechner sofort und wartet auf das Ergebnis (je nach Transport einige Sekunden bis Minuten).");
+            .WithSummary("Inventory scan").WithDescription("Scans the computer immediately and waits for the result (seconds to minutes depending on the transport).");
 
         group.MapGet("{id:int}/software", async (int id, ComputerService computers, CancellationToken ct) =>
             await computers.GetDetailAsync(id, ct) is { } computer
                 ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new SoftwareDto(s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser)))
                 : Results.NotFound())
-            .WithSummary("Installierte Software").Produces<IEnumerable<SoftwareDto>>().Produces(404);
+            .WithSummary("Installed software").Produces<IEnumerable<SoftwareDto>>().Produces(404);
 
         // Lädt eine .rdp-Datei; Windows öffnet sie direkt mit der Remotedesktopverbindung.
-        group.MapGet("{id:int}/rdp", async (int id, ComputerService computers, AuditService audit, HttpContext http, CancellationToken ct) =>
+        group.MapGet("{id:int}/rdp", async (int id, ComputerService computers, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
         {
             if (await computers.GetAsync(id, ct) is not { } computer)
                 return Results.NotFound();
-            await audit.LogAsync(http.User.Identity?.Name ?? "(ohne Anmeldung)", "Fernzugriff: Remotedesktop", computer.Name, ct);
+            await audit.LogAsync(http.User.Identity?.Name ?? L["(not signed in)"], L["Remote access: Remote Desktop"], computer.Name, ct);
             return Results.File(System.Text.Encoding.ASCII.GetBytes(RemoteAccessLinks.RdpFile(computer.Name)), "application/x-rdp", $"{computer.Name}.rdp");
-        }).WithSummary("RDP-Datei").WithDescription("Verbindungsdatei für die Remotedesktopverbindung; der Abruf wird protokolliert.").Produces(404);
+        }).WithSummary("RDP file").WithDescription("Connection file for Remote Desktop Connection; the download is logged.").Produces(404);
 
-        group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, AuditService audit, HttpContext http, CancellationToken ct) =>
+        group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
         {
-            await audit.LogAsync(http.User.Identity?.Name ?? "(API ohne Anmeldung)", $"Remote-Befehl über API ({request.Type})", $"Rechner {id}: {request.Script}", ct);
+            await audit.LogAsync(http.User.Identity?.Name ?? L["(API, not signed in)"], L["Remote command via API ({0})", request.Type], $"{L["Computer"]} {id}: {request.Script}", ct);
             var job = new JobManifest
             {
-                Steps = [new JobStep { Name = "Befehl", Type = request.Type, Script = request.Script, TimeoutSeconds = request.TimeoutSeconds ?? 600, RunAs = request.RunAs }],
+                Steps = [new JobStep { Name = L["Command"], Type = request.Type, Script = request.Script, TimeoutSeconds = request.TimeoutSeconds ?? 600, RunAs = request.RunAs }],
             };
             return await jobs.RunAsync(id, job, null, ct);
-        }).WithSummary("Befehl ausführen").WithDescription("Führt ein Kommando (Type = Command) oder PowerShell-Skript (Type = PowerShell) auf dem Rechner aus und wartet auf das Ergebnis. RunAs: System (Standard) oder LoggedOnUser. Wird protokolliert.");
+        }).WithSummary("Run command").WithDescription("Runs a command (Type = Command) or PowerShell script (Type = PowerShell) on the computer and waits for the result. RunAs: System (default) or LoggedOnUser. Logged.");
 
         return app;
     }

@@ -19,7 +19,7 @@ public sealed class HttpCatalogSource(HttpClient http) : ICatalogSource
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or JsonException or UnauthorizedAccessException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
-            throw new RemoteException($"Die Paketbibliothek ließ sich nicht laden ({location}): {ex.Message}", ex);
+            throw new RemoteException($"The package library could not be loaded ({location}): {ex.Message}", ex);
         }
     }
 
@@ -37,7 +37,7 @@ public sealed class HttpCatalogSource(HttpClient http) : ICatalogSource
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
-            throw new RemoteException($"Download von {url} fehlgeschlagen: {ex.Message}", ex);
+            throw new RemoteException($"Download from {url} failed: {ex.Message}", ex);
         }
     }
 }

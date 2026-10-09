@@ -71,7 +71,7 @@ public class ScheduleTests
         Assert.Equal(0, await schedules.RunDueAsync());
 
         var stored = (await schedules.ListAsync()).Single(s => s.Name == "Stündlich");
-        Assert.Equal("2 Rechner gescannt", stored.LastResult);
+        Assert.Equal("2 computers scanned", stored.LastResult);
         Assert.Equal(clock.GetUtcNow().UtcDateTime.AddMinutes(60), stored.NextRunUtc);
         Assert.Null((await schedules.ListAsync()).Single(s => s.Name == "Aus").NextRunUtc);
         Assert.Equal([true, true, false], (await computers.ListAsync()).Select(c => c.LastScanUtc is not null));
@@ -99,13 +99,13 @@ public class ScheduleTests
         Assert.False(await sync.SyncIfDueAsync());
 
         Assert.Equal(["pc-01.corp.local", "PC-02"], (await computers.ListAsync()).Select(c => c.Name));
-        Assert.Equal("2 Computerkonten gefunden, 1 neu angelegt", (await sync.GetSettingsAsync()).LastResult);
+        Assert.Equal("2 computer accounts found, 1 newly created", (await sync.GetSettingsAsync()).LastResult);
         Assert.Equal(["OU=Clients,DC=corp,DC=local", "OU=Server,DC=corp,DC=local"], directory.LastQuery!.BaseDns);
 
         clock.Advance(TimeSpan.FromHours(13));
         directory.Fail = "Server nicht erreichbar";
         Assert.True(await sync.SyncIfDueAsync());
-        Assert.Equal("Fehler: Server nicht erreichbar", (await sync.GetSettingsAsync()).LastResult);
+        Assert.Equal("Error: Server nicht erreichbar", (await sync.GetSettingsAsync()).LastResult);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class ScheduleTests
         await sync.SaveSettingsAsync(true, null, null, null, 24, excludeDisabled: true, AdMissingAction.Delete, missingDays: 30);
 
         // Deaktivierte Konten werden nicht angelegt; ein vorhandener Rechner mit deaktiviertem Konto gilt als fehlend.
-        Assert.Equal("3 Computerkonten gefunden, 2 neu angelegt, 1 deaktiviert, 1 nicht im AD", await sync.SyncAsync());
+        Assert.Equal("3 computer accounts found, 2 newly created, 1 disabled, 1 not in AD", await sync.SyncAsync());
         var list = await computers.ListAsync();
         Assert.Equal(["handarbeit", "PC-01", "PC-02", "pc-03"], list.Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase));
         Assert.Equal(["pc-03"], list.Where(c => c.MissingInDirectory).Select(c => c.Name));
@@ -134,7 +134,7 @@ public class ScheduleTests
         await sync.SyncAsync();
         clock.Advance(TimeSpan.FromDays(25));
         Assert.Equal(("PC-02,pc-03", "pc-03"), await Preview());
-        Assert.EndsWith("2 nicht im AD, 1 gelöscht", await sync.SyncAsync());
+        Assert.EndsWith("2 not in AD, 1 deleted", await sync.SyncAsync());
         clock.Advance(TimeSpan.FromDays(10));
         // Taucht das Konto wieder auf, verschwindet die Kennzeichnung und die Frist beginnt neu.
         directory.Computers = [new("PC-01", null, null, null), new("PC-02", null, null, null)];
@@ -170,7 +170,7 @@ public class ScheduleTests
         directory.Computers = [.. all.Take(2)];
         await sync.SyncAsync();
         clock.Advance(TimeSpan.FromDays(2));
-        Assert.Contains("auffällig viele", await sync.SyncAsync());
+        Assert.Contains("conspicuously many", await sync.SyncAsync());
         Assert.Equal(10, (await computers.ListAsync()).Count);
         Assert.Equal(8, (await computers.ListAsync()).Count(c => c.MissingInDirectory));
 
@@ -200,7 +200,7 @@ public class ScheduleTests
         Assert.True(await heartbeat.RunIfDueAsync());
         // Beim ersten Lauf ist noch keine Auffälligkeit bekannt; sie wird dabei entdeckt.
         Assert.Equal(["alt", "pc-01", "pc-03"], probed.Order());
-        Assert.Equal("3 Rechner geprüft, 2 online", (await heartbeat.GetSettingsAsync()).LastResult);
+        Assert.Equal("3 computers checked, 2 online", (await heartbeat.GetSettingsAsync()).LastResult);
         Assert.False((await computers.ListAsync()).Single(c => c.Name == "alt").IsOnline);
 
         // Innerhalb des Intervalls passiert nichts; danach wird der auffällige Rechner übersprungen.
@@ -210,7 +210,7 @@ public class ScheduleTests
         clock.Advance(TimeSpan.FromMinutes(2));
         Assert.True(await heartbeat.RunIfDueAsync());
         Assert.Equal(["pc-01", "pc-03"], probed.Order());
-        Assert.Equal("2 Rechner geprüft, 2 online, 1 wegen Namensauffälligkeit übersprungen", (await heartbeat.GetSettingsAsync()).LastResult);
+        Assert.Equal("2 computers checked, 2 online, 1 skipped due to name anomaly", (await heartbeat.GetSettingsAsync()).LastResult);
     }
 
     [Fact]

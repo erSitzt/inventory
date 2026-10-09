@@ -72,7 +72,7 @@ public class AgentTests
 
         var error = await Assert.ThrowsAsync<RemoteException>(() => transport.RunAsync(new RemoteTarget("PC-01", null), Job, [], null, CancellationToken.None));
 
-        Assert.Contains("nicht abgeholt", error.Message);
+        Assert.Contains("did not pick up", error.Message);
         Assert.Null(await hub.DequeueAsync("PC-01", TimeSpan.FromMilliseconds(50), CancellationToken.None));
     }
 

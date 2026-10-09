@@ -2,6 +2,7 @@ using System.Text;
 using Inventory.Core;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
@@ -41,8 +42,10 @@ public sealed class DashboardStats
     public int AttentionItems => FirewallOff + AntivirusProblems + RebootRequired + WithPendingUpdates + ScanErrors + NameMismatch + MissingInDirectory;
 }
 
-public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactory)
-{
+public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactory, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     /// <summary>Jede Kombination aus Programm und Version mit der Zahl der Rechner, auf denen sie installiert ist.</summary>
     public async Task<List<SoftwareSummary>> SoftwareAsync(CancellationToken ct = default)
     {
@@ -106,13 +109,13 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var csv = new StringBuilder();
-        Row(csv, "Name", "Gemeldeter Name", "Online", "IP-Adresse", "Betriebssystem", "Version", "Funktionsupdate", "Hersteller", "Modell", "Seriennummer",
-            "Prozessor", "Arbeitsspeicher (GB)", "Benutzer", "Letzter Start (UTC)", "Letzter Scan (UTC)", "Beschreibung",
-            "Firewall Domäne", "Firewall Privat", "Firewall Öffentlich", "Defender Echtzeitschutz", "Defender-Signatur (UTC)", "Virenschutz",
-            "Letzte Update-Installation (UTC)", "Ausstehende Updates", "Neustart ausstehend");
+        Row(csv, L["Name"], L["Reported name"], L["Online"], L["IP address"], L["Operating system"], L["Version"], L["Feature update"], L["Manufacturer"], L["Model"], L["Serial number"],
+            L["Processor"], L["Memory (GB)"], L["User"], L["Last boot (UTC)"], L["Last scan (UTC)"], L["Description"],
+            L["Firewall domain"], L["Firewall private"], L["Firewall public"], L["Defender real-time protection"], L["Defender signature (UTC)"], L["Antivirus"],
+            L["Last update installation (UTC)"], L["Pending updates"], L["Reboot pending"]);
         foreach (var c in await db.Computers.AsNoTracking().OrderBy(c => c.Name).ToListAsync(ct))
         {
-            Row(csv, c.Name, c.ReportedName, c.IsOnline ? "ja" : "nein", c.IpAddress, c.OsName, c.OsVersion, c.OsRelease, c.Manufacturer, c.Model, c.SerialNumber,
+            Row(csv, c.Name, c.ReportedName, YesNo(c.IsOnline), c.IpAddress, c.OsName, c.OsVersion, c.OsRelease, c.Manufacturer, c.Model, c.SerialNumber,
                 c.CpuName, c.MemoryBytes is { } bytes ? Math.Round(bytes / 1024d / 1024 / 1024).ToString() : null, c.LoggedOnUser,
                 c.LastBootUtc?.ToString("yyyy-MM-dd HH:mm"), c.LastScanUtc?.ToString("yyyy-MM-dd HH:mm"), c.Description,
                 YesNo(c.FirewallDomain), YesNo(c.FirewallPrivate), YesNo(c.FirewallPublic), YesNo(c.DefenderRealTime),
@@ -129,13 +132,13 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
             .Join(db.Computers, s => s.ComputerId, c => c.Id, (s, c) => new { Computer = c.Name, s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser })
             .OrderBy(r => r.Computer).ThenBy(r => r.Name).ToListAsync(ct);
         var csv = new StringBuilder();
-        Row(csv, "Rechner", "Programm", "Version", "Hersteller", "Installiert", "Architektur", "Pro Benutzer");
+        Row(csv, L["Computer"], L["Program"], L["Version"], L["Publisher"], L["Installed"], L["Architecture"], L["Per user"]);
         foreach (var r in rows)
-            Row(csv, r.Computer, r.Name, r.Version, r.Publisher, r.InstallDate, r.Is64Bit ? "64 Bit" : "32 Bit", r.PerUser ? "ja" : "nein");
+            Row(csv, r.Computer, r.Name, r.Version, r.Publisher, r.InstallDate, r.Is64Bit ? "64 Bit" : "32 Bit", YesNo(r.PerUser));
         return csv.ToString();
     }
 
-    private static string? YesNo(bool? value) => value is null ? null : value.Value ? "ja" : "nein";
+    private string? YesNo(bool? value) => value is null ? null : value.Value ? L["yes"] : L["no"];
 
     /// <summary>Semikolon-getrennt, wie es ein deutsches Excel beim Doppelklick erwartet.</summary>
     internal static void Row(StringBuilder csv, params string?[] values)

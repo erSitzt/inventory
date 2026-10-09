@@ -2,10 +2,14 @@ using Inventory.Core;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
-public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, ScanService scans, DeploymentService deployments, TimeProvider time)
-{
+public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, ScanService scans, DeploymentService deployments, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     public async Task<List<Schedule>> ListAsync(CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
@@ -46,7 +50,7 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
             // Erst den nächsten Termin festschreiben: ein Absturz mitten im Lauf darf nicht zur Endlosschleife werden.
             schedule.LastRunUtc = now;
             schedule.NextRunUtc = NextUtc(schedule);
-            schedule.LastResult = "läuft";
+            schedule.LastResult = L["running"];
             await StoreAsync(schedule, ct);
 
             schedule.LastResult = await RunAsync(schedule, ct);
@@ -82,19 +86,19 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
                 ids = await db.Computers.Select(c => c.Id).ToListAsync(ct);
             }
             if (ids.Count == 0)
-                return "Keine Rechner in der Sammlung";
+                return L["No computers in the collection"];
 
             if (schedule.Action == ScheduleAction.Scan)
             {
                 var outcomes = await scans.ScanAsync(ids, null, ct);
                 var failed = outcomes.Count(o => !o.Success);
-                return failed == 0 ? $"{outcomes.Count} Rechner gescannt" : $"{outcomes.Count - failed} gescannt, {failed} fehlgeschlagen";
+                return failed == 0 ? L["{0} computers scanned", outcomes.Count] : L["{0} scanned, {1} failed", outcomes.Count - failed, failed];
             }
 
             if (schedule.PackageId is not { } packageId)
-                return "Kein Paket gewählt";
+                return L["No package selected"];
             var deployment = await deployments.StartAsync(packageId, ids, schedule.ScanAfter, schedule.RetryOffline, ct);
-            return $"Deployment #{deployment.Id} auf {deployment.Targets.Count} Rechner gestartet";
+            return L["Deployment #{0} started on {1} computers", deployment.Id, deployment.Targets.Count];
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
         {

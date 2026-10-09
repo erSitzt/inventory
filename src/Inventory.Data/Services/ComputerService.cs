@@ -3,10 +3,14 @@ using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
-public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFactory, IHostProbe probe)
-{
+public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFactory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private const int MaxParallelProbes = 32;
 
     public async Task<List<Computer>> ListAsync(CancellationToken ct = default)
@@ -50,7 +54,7 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
     public async Task UpdateAsync(int id, string? description, TransportKind? transport, int? credentialId, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var computer = await db.Computers.FindAsync([id], ct) ?? throw new KeyNotFoundException($"Rechner {id} nicht gefunden");
+        var computer = await db.Computers.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Computer {0} not found", id]);
         computer.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         computer.Transport = transport;
         computer.CredentialId = credentialId;
@@ -62,11 +66,11 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
     public async Task<string> RenameToReportedAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var computer = await db.Computers.FindAsync([id], ct) ?? throw new KeyNotFoundException($"Rechner {id} nicht gefunden");
-        var name = computer.ReportedName ?? throw new InvalidOperationException("Der Rechner hat noch keinen Namen gemeldet.");
+        var computer = await db.Computers.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Computer {0} not found", id]);
+        var name = computer.ReportedName ?? throw new InvalidOperationException(L["The computer has not reported a name yet."]);
         var names = await db.Computers.Where(c => c.Id != id).Select(c => c.Name).ToListAsync(ct);
         if (names.Any(n => n.Split('.')[0].Equals(name, StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidOperationException($"{name} ist bereits als eigener Rechner eingetragen. Dieser Eintrag ist ein Duplikat und kann gelöscht werden.");
+            throw new InvalidOperationException(L["{0} is already listed as a computer of its own. This entry is a duplicate and can be deleted.", name]);
         computer.Name = name;
         await db.SaveChangesAsync(ct);
         return name;

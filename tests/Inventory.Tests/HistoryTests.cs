@@ -75,14 +75,14 @@ public class HistoryTests
         var changes = (await store.ChangesAsync(id)).Select(c => $"{c.Change.Category}|{c.Change.Kind}|{c.Change.Item}|{c.Change.OldValue}|{c.Change.NewValue}").Order().ToList();
         Assert.Equal(
         [
-            "Dienst|Changed|Spooler|Auto|Disabled",
-            "Lokaler Administrator|Added|CORP\\max||",
-            "Lokaler Benutzer|Changed|Administrator|deaktiviert|aktiv",
+            "Local administrator|Added|CORP\\max||",
+            "Local user|Changed|Administrator|disabled|active",
+            "Service|Changed|Spooler|Auto|Disabled",
             "Software|Added|VLC||3.0.21",
             "Software|Changed|Google Chrome|139.0|141.0",
             "Software|Removed|7-Zip|24.08|",
-            "System|Changed|Arbeitsspeicher|16 GB|32 GB",
-            "System|Changed|Windows-Version|10.0.26100.1|10.0.26100.2",
+            "System|Changed|Memory|16 GB|32 GB",
+            "System|Changed|Windows version|10.0.26100.1|10.0.26100.2",
         ], changes);
         Assert.Equal("pc-01", (await store.ChangesAsync())[0].Computer);
 
@@ -148,7 +148,7 @@ public class SecurityStatusTests
         Assert.True(Matches(broken, RuleField.PendingUpdates, RuleOperator.GreaterOrEqual, "2"));
 
         var changes = (await store.ChangesAsync(id)).Select(c => $"{c.Change.Item}: {c.Change.OldValue} → {c.Change.NewValue}").Order().ToList();
-        Assert.Equal(["Defender-Echtzeitschutz: an → aus", "Firewall (Domäne): an → aus"], changes);
+        Assert.Equal(["Defender real-time protection: on → off", "Firewall (domain): on → off"], changes);
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 @* Alles, was der Katalog über ein Programm weiß; Fehlendes wird weggelassen. *@
 <MudStack Spacing="2" Class="pa-3">
     @if ((Entry.Details ?? Entry.Description) is { } text)
@@ -6,35 +8,35 @@
     }
     <MudSimpleTable Dense="true" Elevation="0" Style="max-width: 900px">
         <tbody>
-            <tr><td style="width: 200px">Setup</td><td>@Display.InstallerFormat(Entry.InstallerType) – @Display.InstallerTechnology(Entry.InstallerType)@(Entry.Architecture is null ? "" : $", {Entry.Architecture}")@(Display.InstallerScope(Entry.Scope) is { Length: > 0 } scope ? $", {scope}" : "")</td></tr>
-            <tr><td>Silent-Parameter</td><td><code>@(Display.InstallerFormat(Entry.InstallerType) == "MSI" ? $"/qn /norestart {Entry.Arguments}".Trim() : Entry.Arguments)</code></td></tr>
-            <tr><td>Erfolgscodes</td><td>@string.Join(", ", Entry.SuccessCodes)</td></tr>
+            <tr><td style="width: 200px">@L["Setup"]</td><td>@Display.InstallerFormat(Entry.InstallerType) – @Display.InstallerTechnology(Entry.InstallerType)@(Entry.Architecture is null ? "" : $", {Entry.Architecture}")@(Display.InstallerScope(Entry.Scope) is { Length: > 0 } scope ? $", {scope}" : "")</td></tr>
+            <tr><td>@L["Silent parameters"]</td><td><code>@(Display.InstallerFormat(Entry.InstallerType) == "MSI" ? $"/qn /norestart {Entry.Arguments}".Trim() : Entry.Arguments)</code></td></tr>
+            <tr><td>@L["Success codes"]</td><td>@string.Join(", ", Entry.SuccessCodes)</td></tr>
             <tr><td>Download</td><td style="word-break: break-all">@Entry.Url</td></tr>
             <tr><td>SHA-256</td><td style="word-break: break-all"><code>@Entry.Sha256</code></td></tr>
             @if (Entry.ReleaseDate is not null)
             {
-                <tr><td>Veröffentlicht</td><td>@Entry.ReleaseDate</td></tr>
+                <tr><td>@L["Released"]</td><td>@Entry.ReleaseDate</td></tr>
             }
             @if (Entry.MinimumOsVersion is not null)
             {
-                <tr><td>Mindestens Windows</td><td>@Entry.MinimumOsVersion</td></tr>
+                <tr><td>@L["Minimum Windows"]</td><td>@Entry.MinimumOsVersion</td></tr>
             }
             @if (Entry.License is not null)
             {
-                <tr><td>Lizenz</td><td>@if (Display.WebLink(Entry.LicenseUrl) is { } licenseUrl) { <MudLink Href="@licenseUrl" Target="_blank" rel="noopener noreferrer">@Entry.License</MudLink> } else { @Entry.License }</td></tr>
+                <tr><td>@L["License"]</td><td>@if (Display.WebLink(Entry.LicenseUrl) is { } licenseUrl) { <MudLink Href="@licenseUrl" Target="_blank" rel="noopener noreferrer">@Entry.License</MudLink> } else { @Entry.License }</td></tr>
             }
-            <tr><td>Erkennung im Inventar</td><td>Programmname enthält „@Entry.Match“</td></tr>
-            <tr><td>winget-Kennung</td><td>@Entry.Id@(Entry.Moniker is null ? "" : $" ({Entry.Moniker})")</td></tr>
+            <tr><td>@L["Detection in inventory"]</td><td>@L["Program name contains \"{0}\"", Entry.Match]</td></tr>
+            <tr><td>@L["winget ID"]</td><td>@Entry.Id@(Entry.Moniker is null ? "" : $" ({Entry.Moniker})")</td></tr>
         </tbody>
     </MudSimpleTable>
     <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
         @if (Display.WebLink(Entry.Homepage) is { } homepage)
         {
-            <MudLink Href="@homepage" Target="_blank" rel="noopener noreferrer">Webseite</MudLink>
+            <MudLink Href="@homepage" Target="_blank" rel="noopener noreferrer">@L["Website"]</MudLink>
         }
         @if (Display.WebLink(Entry.ReleaseNotesUrl) is { } notes)
         {
-            <MudLink Href="@notes" Target="_blank" rel="noopener noreferrer">Versionshinweise</MudLink>
+            <MudLink Href="@notes" Target="_blank" rel="noopener noreferrer">@L["Release notes"]</MudLink>
         }
         @if (Display.WebLink(Entry.SupportUrl) is { } support)
         {

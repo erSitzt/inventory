@@ -2,6 +2,9 @@ using System.Globalization;
 using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 /// <summary>Was mit Rechnern geschieht, deren Computerkonto im Verzeichnis nicht mehr gefunden wird.</summary>
@@ -31,8 +34,10 @@ public sealed record AdSyncPreview(int Total, List<string> NewNames, int Disable
 /// das Verzeichnis nie gekannt hat, bleiben unberührt.
 /// </summary>
 public sealed class AdSyncService(IDirectorySource directory, SettingsService settings, CredentialService credentials, ComputerService computers, TimeProvider time,
-    AuditService? audit = null)
-{
+    AuditService? audit = null, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     /// <summary>Mehr als so viele Löschungen in einem Lauf gelten als Hinweis auf eine falsche Suchwurzel, wenn sie zugleich einen großen Teil ausmachen.</summary>
     private const int MassDeleteCount = 5;
     private const double MassDeleteShare = 0.25;
@@ -79,26 +84,26 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
                 plan.States[computer.Id] = (true, false);
             await computers.SetDirectoryStateAsync(plan.States, plan.NowUtc, ct);
 
-            result = $"{preview.Total} Computerkonten gefunden, {added.Count} neu angelegt";
+            result = L["{0} computer accounts found, {1} newly created", preview.Total, added.Count].Value;
             if (preview.Disabled > 0)
-                result += $", {preview.Disabled} deaktiviert";
+                result += ", " + L["{0} disabled", preview.Disabled];
             if (preview.MissingNames!.Count > 0)
-                result += $", {preview.MissingNames.Count} nicht im AD";
+                result += ", " + L["{0} not in AD", preview.MissingNames.Count];
             if (preview.DeleteBlocked)
             {
-                result += $" – {plan.DeleteIds.Count} Rechner wären zu löschen; das sind auffällig viele auf einmal, deshalb wurde nichts gelöscht (Suchwurzeln prüfen oder von Hand löschen)";
+                result += " – " + L["{0} computers would be deleted; that is conspicuously many at once, so nothing was deleted (check the search roots or delete manually)", plan.DeleteIds.Count];
             }
             else if (plan.DeleteIds.Count > 0)
             {
                 await computers.DeleteAsync(plan.DeleteIds, ct);
-                result += $", {plan.DeleteIds.Count} gelöscht";
+                result += ", " + L["{0} deleted", plan.DeleteIds.Count];
                 if (audit is not null)
-                    await audit.LogAsync("(automatisch)", "Rechner gelöscht (nicht mehr im AD)", string.Join(", ", preview.DeleteNames!), ct);
+                    await audit.LogAsync(L["(automatic)"], L["Computers deleted (no longer in AD)"], string.Join(", ", preview.DeleteNames!), ct);
             }
         }
         catch (RemoteException ex)
         {
-            result = $"Fehler: {ex.Message}";
+            result = L["Error"] + $": {ex.Message}";
         }
         await settings.SetAsync(SettingKeys.AdSyncLastRunUtc, time.GetUtcNow().UtcDateTime.ToString("O", CultureInfo.InvariantCulture), ct);
         await settings.SetAsync(SettingKeys.AdSyncLastResult, result, ct);

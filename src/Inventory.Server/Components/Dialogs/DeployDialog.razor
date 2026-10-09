@@ -4,36 +4,37 @@
 @inject DeploymentService DeploymentService
 @inject NavigationManager Navigation
 @inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
 
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
             @if (PackageId is null)
             {
-                <MudSelect T="int?" @bind-Value="_packageId" Label="Paket" Variant="Variant.Outlined">
+                <MudSelect T="int?" @bind-Value="_packageId" Label="@L["Package"]" Variant="Variant.Outlined">
                     @foreach (var package in _packages)
                     {
                         <MudSelectItem T="int?" Value="@package.Id">@package.Name @package.Version</MudSelectItem>
                     }
                 </MudSelect>
             }
-            <MudSelect T="int?" Value="_collectionId" ValueChanged="SelectCollectionAsync" Label="Sammlung übernehmen" Variant="Variant.Outlined" Clearable="true"
-                       Placeholder="keine" HelperText="Wählt alle Rechner der Sammlung aus (Stand jetzt).">
+            <MudSelect T="int?" Value="_collectionId" ValueChanged="SelectCollectionAsync" Label="@L["Take over collection"]" Variant="Variant.Outlined" Clearable="true"
+                       Placeholder="@L["none"]" HelperText="@L["Selects all computers of the collection (as of now)."]">
                 @foreach (var summary in _collections)
                 {
                     <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
                 }
             </MudSelect>
-            <MudSelect T="Computer" MultiSelection="true" @bind-SelectedValues="_targets" Label="Zielrechner" Variant="Variant.Outlined"
-                       ToStringFunc="@(c => c?.Name ?? "")" MultiSelectionTextFunc="@(names => $"{names.Count} Rechner ausgewählt")"
-                       SelectAll="true" SelectAllText="Alle auswählen">
+            <MudSelect T="Computer" MultiSelection="true" @bind-SelectedValues="_targets" Label="@L["Target computers"]" Variant="Variant.Outlined"
+                       ToStringFunc="@(c => c?.Name ?? "")" MultiSelectionTextFunc="@(names => L["{0} computers selected", names.Count])"
+                       SelectAll="true" SelectAllText="@L["Select all"]">
                 @foreach (var computer in _computers)
                 {
-                    <MudSelectItem T="Computer" Value="computer">@computer.Name@(computer.IsOnline ? "" : " (offline)")</MudSelectItem>
+                    <MudSelectItem T="Computer" Value="computer">@computer.Name@(computer.IsOnline ? "" : $" ({L["offline"]})")</MudSelectItem>
                 }
             </MudSelect>
-            <MudCheckBox T="bool" @bind-Value="_scanAfter" Label="Danach Inventar neu scannen" Dense="true" />
-            <MudCheckBox T="bool" @bind-Value="_retryOffline" Label="Offline-Rechner nachholen, sobald sie erreichbar sind (bis zu 3 Tage)" Dense="true" />
+            <MudCheckBox T="bool" @bind-Value="_scanAfter" Label="@L["Rescan inventory afterwards"]" Dense="true" />
+            <MudCheckBox T="bool" @bind-Value="_retryOffline" Label="@L["Retry offline computers once they are reachable (up to 3 days)"]" Dense="true" />
             @if (_error is not null)
             {
                 <MudAlert Severity="Severity.Error">@_error</MudAlert>
@@ -41,10 +42,10 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.RocketLaunch"
                    Disabled="@(_packageId is null || _targets.Count == 0 || _starting)" OnClick="StartAsync">
-            Auf @_targets.Count Rechner bereitstellen
+            @L["Deploy to {0} computers", _targets.Count]
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -92,7 +93,7 @@
         try
         {
             var deployment = await DeploymentService.StartAsync(_packageId!.Value, _targets.Select(c => c.Id), _scanAfter, _retryOffline);
-            await Audit.LogAsync("Deployment gestartet", $"#{deployment.Id} {deployment.PackageName} {deployment.PackageVersion} auf {string.Join(", ", deployment.Targets.Select(t => t.ComputerName))}");
+            await Audit.LogAsync(L["Deployment started"], L["#{0} {1} on {2}", deployment.Id, $"{deployment.PackageName} {deployment.PackageVersion}", string.Join(", ", deployment.Targets.Select(t => t.ComputerName))]);
             MudDialog.Close(DialogResult.Ok(deployment.Id));
             Navigation.NavigateTo($"deployments/{deployment.Id}");
         }

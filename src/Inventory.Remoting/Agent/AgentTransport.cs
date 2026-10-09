@@ -2,14 +2,19 @@ using Inventory.Contracts;
 using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Remoting.Agent;
 
 /// <summary>
 /// Zustellung über den fest installierten Agenten: der Job wird bereitgelegt, der Agent holt ihn über seine
 /// ausgehende Verbindung ab. Funktioniert damit auch für Rechner, die der Server nicht direkt erreicht.
 /// </summary>
-public sealed class AgentTransport(AgentHub hub) : IRemoteTransport
-{
+public sealed class AgentTransport(AgentHub hub, IStringLocalizer<SharedResource>? localizer = null) : IRemoteTransport
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     /// <summary>Der Agent fragt im Normalfall ununterbrochen nach; meldet er sich so lange nicht, ist er offline.</summary>
     public TimeSpan PickupTimeout { get; init; } = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan Slack = TimeSpan.FromMinutes(10);
@@ -27,7 +32,7 @@ public sealed class AgentTransport(AgentHub hub) : IRemoteTransport
             }
             catch (TimeoutException)
             {
-                throw new RemoteException($"Der Agent auf {target.Host} hat den Job nicht abgeholt – der Rechner ist aus oder der Agent läuft nicht.");
+                throw new RemoteException(L["The agent on {0} did not pick up the job – the computer is off or the agent is not running.", target.Host]);
             }
 
             // Die Schritte haben eigene Zeitlimits; die Obergrenze fängt nur einen mitten im Job verschwundenen Agenten ab.
@@ -38,7 +43,7 @@ public sealed class AgentTransport(AgentHub hub) : IRemoteTransport
             }
             catch (TimeoutException)
             {
-                throw new RemoteException($"Der Agent auf {target.Host} hat kein Ergebnis geliefert (Verbindung während des Jobs verloren?).");
+                throw new RemoteException(L["The agent on {0} returned no result (connection lost during the job?).", target.Host]);
             }
         }
         finally

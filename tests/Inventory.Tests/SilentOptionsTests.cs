@@ -40,7 +40,8 @@ public sealed class SilentOptionsTests : IDisposable
 
         var unknown = SilentOptions.Detect(Write("tool.exe", Filler(2000)))!;
         Assert.Equal("", unknown.Arguments);
-        Assert.Contains("nicht erkannt", unknown.Note);
+        Assert.Contains("not recognized", unknown.Note);
+        Assert.False(unknown.Known);
 
         Assert.Null(SilentOptions.Detect(Write("readme.txt", Filler(10))));
     }

@@ -19,7 +19,7 @@ public sealed class LdapDirectorySource : IDirectorySource
     {
         var server = string.IsNullOrWhiteSpace(query.Server) ? IPGlobalProperties.GetIPGlobalProperties().DomainName : query.Server.Trim();
         if (string.IsNullOrWhiteSpace(server))
-            throw new RemoteException("Kein Domänencontroller angegeben, und der Server gehört keiner Domäne an.");
+            throw new RemoteException("No domain controller specified, and the server is not a member of a domain.");
 
         try
         {
@@ -64,11 +64,11 @@ public sealed class LdapDirectorySource : IDirectorySource
         }
         catch (LdapException ex)
         {
-            throw new RemoteException($"LDAP-Abfrage an {server} fehlgeschlagen: {ex.Message}", ex);
+            throw new RemoteException($"LDAP query to {server} failed: {ex.Message}", ex);
         }
         catch (DirectoryOperationException ex)
         {
-            throw new RemoteException($"LDAP-Abfrage an {server} abgelehnt: {ex.Message}", ex);
+            throw new RemoteException($"LDAP query to {server} rejected: {ex.Message}", ex);
         }
     }
 
@@ -77,7 +77,7 @@ public sealed class LdapDirectorySource : IDirectorySource
         var response = (SearchResponse)connection.SendRequest(new SearchRequest("", "(objectClass=*)", SearchScope.Base, "defaultNamingContext"));
         return response.Entries.Count > 0 && Value(response.Entries[0], "defaultNamingContext") is { } context
             ? context
-            : throw new RemoteException("Die Domäne konnte nicht ermittelt werden; bitte eine Suchwurzel (OU) angeben.");
+            : throw new RemoteException("The domain could not be determined; please specify a search root (OU).");
     }
 
     private static string? Value(SearchResultEntry entry, string attribute) =>

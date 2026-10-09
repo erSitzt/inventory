@@ -25,11 +25,11 @@ public sealed class ApiTokenHandler(IOptionsMonitor<AuthenticationSchemeOptions>
 
         var token = await tokens.ValidateAsync(header[HeaderPrefix.Length..].Trim(), Context.RequestAborted);
         if (token is null)
-            return AuthenticateResult.Fail("Unbekanntes oder abgelaufenes API-Token");
+            return AuthenticateResult.Fail("Unknown or expired API token");
 
         var identity = new ClaimsIdentity(
         [
-            new Claim(ClaimTypes.Name, $"API-Token „{token.Name}“ ({token.CreatedBy})"),
+            new Claim(ClaimTypes.Name, $"API token \"{token.Name}\" ({token.CreatedBy})"),
             new Claim(AccessControl.AccessClaim, "api-token"),
         ], SchemeName);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName));

@@ -3,31 +3,33 @@
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>@(_package?.Name ?? "Paket") – Inventory</PageTitle>
+<PageTitle>@(_package?.Name ?? L["Package"]) – Inventory</PageTitle>
 
 @if (_package is null)
 {
     @if (_loaded)
     {
-        <MudAlert Severity="Severity.Warning">Dieses Paket existiert nicht (mehr). <MudLink Href="packages">Zur Übersicht</MudLink></MudAlert>
+        <MudAlert Severity="Severity.Warning">@L["This package does not exist (anymore)."] <MudLink Href="packages">@L["Back to the list"]</MudLink></MudAlert>
     }
     return;
 }
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="packages" aria-label="Zurück zur Übersicht" />
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="packages" aria-label="@L["Back to the list"]" />
     <MudText Typo="Typo.h5">@_package.Name</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_package.Steps.Count == 0)" OnClick="DeployAsync">Bereitstellen</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_package.Steps.Count == 0)" OnClick="DeployAsync">@L["Deploy"]</MudButton>
 </MudStack>
 
 @if (_package.CatalogId is not null)
 {
     <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
-        Aus der <MudLink Href="library">Paketbibliothek</MudLink> importiert (@_package.CatalogId).
-        @(_package.CatalogAutoUpdate ? "Neue Versionen werden automatisch übernommen" : "Neue Versionen werden nicht automatisch übernommen");
-        dabei wird der Installationsschritt mit dem Setup ersetzt, eigene Schritte und Dateien bleiben erhalten.
+        @L["Imported from the"] <MudLink Href="library">@L["package library"]</MudLink> (@_package.CatalogId).
+        @(_package.CatalogAutoUpdate ? L["New versions are adopted automatically"] : L["New versions are not adopted automatically"]);
+        @L["the installation step is then replaced with the new setup, own steps and files are kept."]
     </MudAlert>
 }
 
@@ -35,21 +37,21 @@
     <MudItem xs="12" lg="7">
         <MudPaper Class="pa-4 mb-4" Outlined="true">
             <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-                <MudText Typo="Typo.h6">Schritte</MudText>
+                <MudText Typo="Typo.h6">@L["Steps"]</MudText>
                 <MudSpacer />
-                <MudMenu Label="Schritt hinzufügen" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
+                <MudMenu Label="@L["Add step"]" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
                     @foreach (var type in AddableTypes)
                     {
                         <MudMenuItem Icon="@Display.StepIcon(type)" OnClick="@(() => EditStepAsync(null, type, false))">@Display.Step(type)</MudMenuItem>
                     }
                     <MudDivider />
-                    <MudMenuItem Icon="@Icons.Material.Filled.Inventory2" OnClick="@(() => EditStepAsync(null, StepType.Command, true))">Anderes Paket ausführen</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Inventory2" OnClick="@(() => EditStepAsync(null, StepType.Command, true))">@L["Run another package"]</MudMenuItem>
                 </MudMenu>
             </MudStack>
 
             @if (_package.Steps.Count == 0)
             {
-                <MudText Color="Color.Secondary">Noch keine Schritte. Die Schritte laufen auf dem Zielrechner der Reihe nach als Lokales System.</MudText>
+                <MudText Color="Color.Secondary">@L["No steps yet. Steps run on the target computer one after another as Local System."]</MudText>
             }
             <MudList T="string" Dense="true">
                 @foreach (var (step, index) in _package.Steps.Select((s, i) => (s, i)))
@@ -63,7 +65,7 @@
                                 <MudText Typo="Typo.caption" Class="step-summary">
                                     @if (step.NestedPackageId is not null)
                                     {
-                                        <span>Paket „@step.NestedPackage?.Name“</span>
+                                        <span>@L["Package \"{0}\"", step.NestedPackage?.Name]</span>
                                     }
                                     else
                                     {
@@ -71,22 +73,22 @@
                                     }
                                     @if (step.NestedPackageId is null && step.Definition.RunAs == StepRunAs.LoggedOnUser)
                                     {
-                                        <span> · als angemeldeter Benutzer</span>
+                                        <span> · @L["as logged-on user"]</span>
                                     }
                                     @if (step.Definition.Conditions is { IsEmpty: false })
                                     {
-                                        <span> · mit Bedingung</span>
+                                        <span> · @L["with condition"]</span>
                                     }
                                     @if (step.Definition.ContinueOnError)
                                     {
-                                        <span> · bei Fehler fortfahren</span>
+                                        <span> · @L["continue on error"]</span>
                                     }
                                 </MudText>
                             </div>
-                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" aria-label="Nach oben" Disabled="@(index == 0)" OnClick="@(() => MoveAsync(step, -1))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" aria-label="Nach unten" Disabled="@(index == _package.Steps.Count - 1)" OnClick="@(() => MoveAsync(step, 1))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Bearbeiten" OnClick="@(() => EditStepAsync(step, step.Definition.Type, step.NestedPackageId is not null))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Löschen" OnClick="@(() => DeleteStepAsync(step))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" aria-label="@L["Move up"]" Disabled="@(index == 0)" OnClick="@(() => MoveAsync(step, -1))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" aria-label="@L["Move down"]" Disabled="@(index == _package.Steps.Count - 1)" OnClick="@(() => MoveAsync(step, 1))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditStepAsync(step, step.Definition.Type, step.NestedPackageId is not null))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteStepAsync(step))" />
                         </MudStack>
                     </MudListItem>
                 }
@@ -96,33 +98,32 @@
 
     <MudItem xs="12" lg="5">
         <MudPaper Class="pa-4 mb-4" Outlined="true">
-            <MudText Typo="Typo.h6" Class="mb-2">Eigenschaften</MudText>
+            <MudText Typo="Typo.h6" Class="mb-2">@L["Properties"]</MudText>
             <MudStack Spacing="3">
-                <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
-                <MudTextField @bind-Value="_version" Label="Version" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                <MudTextField @bind-Value="_description" Label="Beschreibung" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" />
+                <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+                <MudTextField @bind-Value="_version" Label="@L["Version"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudTextField @bind-Value="_description" Label="@L["Description"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" />
                 <div>
-                    <MudButton Variant="Variant.Outlined" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="SaveHeaderAsync">Speichern</MudButton>
+                    <MudButton Variant="Variant.Outlined" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="SaveHeaderAsync">@L["Save"]</MudButton>
                 </div>
             </MudStack>
         </MudPaper>
 
         <MudPaper Class="pa-4" Outlined="true">
             <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-                <MudText Typo="Typo.h6">Dateien</MudText>
+                <MudText Typo="Typo.h6">@L["Files"]</MudText>
                 <MudSpacer />
                 <MudButton HtmlTag="label" for="package-files" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="_uploading">
-                    @(_uploading ? _uploadText : "Hochladen")
+                    @(_uploading ? _uploadText : L["Upload"])
                 </MudButton>
                 <InputFile id="package-files" OnChange="UploadAsync" multiple hidden />
             </MudStack>
             <MudText Typo="Typo.body2" Class="mb-2">
-                Alle Dateien des Pakets werden bei jeder Bereitstellung auf den Zielrechner kopiert.
-                Große Dateien lassen sich auch direkt auf dem Server ablegen: <code>@PackageService.Repository.DirectoryFor(Id)</code>
+                @L["All files of the package are copied to the target computer with every deployment. Large files can also be placed directly on the server:"] <code>@PackageService.Repository.DirectoryFor(Id)</code>
             </MudText>
             @if (_files.Count == 0)
             {
-                <MudText Color="Color.Secondary">Keine Dateien.</MudText>
+                <MudText Color="Color.Secondary">@L["No files."]</MudText>
             }
             else
             {
@@ -133,7 +134,7 @@
                             <tr>
                                 <td style="word-break: break-all">@file.RelativePath</td>
                                 <td style="white-space: nowrap; text-align: right">@Display.FileSize(file.Size)</td>
-                                <td style="width: 1%"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Datei löschen" OnClick="@(() => DeleteFile(file))" /></td>
+                                <td style="width: 1%"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete file"]" OnClick="@(() => DeleteFile(file))" /></td>
                             </tr>
                         }
                     </tbody>
@@ -183,12 +184,12 @@
         try
         {
             await PackageService.SaveAsync(Id, _name, _version, _description);
-            Snackbar.Add("Gespeichert.", Severity.Success);
+            Snackbar.Add(L["Saved."], Severity.Success);
             await ReloadAsync();
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)
         {
-            Snackbar.Add($"Es gibt bereits ein Paket mit dem Namen „{_name.Trim()}“.", Severity.Error);
+            Snackbar.Add(L["A package named \"{0}\" already exists.", _name.Trim()], Severity.Error);
         }
     }
 
@@ -202,7 +203,7 @@
             { d => d.Nested, nested },
             { d => d.Files, _files.Select(f => f.RelativePath).ToList() },
         };
-        var title = step is null ? $"Neuer Schritt: {(nested ? "Paket ausführen" : Display.Step(type))}" : step.Definition.Name;
+        var title = step is null ? L["New step: {0}", nested ? L["Run package"] : Display.Step(type)] : step.Definition.Name;
         var dialog = await Dialogs.ShowAsync<EditStepDialog>(title, parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium });
         if (await dialog.Result is { Canceled: false })
             await ReloadAsync();
@@ -217,7 +218,7 @@
     private async Task DeleteStepAsync(PackageStep step)
     {
         await PackageService.DeleteStepAsync(Id, step.Id);
-        await Audit.LogAsync("Paketschritt gelöscht", $"{_package!.Name}: {step.Definition.Name}");
+        await Audit.LogAsync(L["Package step deleted"], $"{_package!.Name}: {step.Definition.Name}");
         await ReloadAsync();
     }
 
@@ -229,21 +230,21 @@
             var files = e.GetMultipleFiles(maximumFileCount: 200);
             foreach (var (file, index) in files.Select((f, i) => (f, i)))
             {
-                _uploadText = $"Lade {index + 1} von {files.Count} …";
+                _uploadText = L["Uploading {0} of {1} …", index + 1, files.Count];
                 StateHasChanged();
                 if (file.Size > MaxUploadBytes)
                 {
-                    Snackbar.Add($"{file.Name} ist zu groß für den Upload im Browser – bitte direkt im Repository-Ordner ablegen.", Severity.Error);
+                    Snackbar.Add(L["{0} is too large for the browser upload – please place it directly in the repository folder.", file.Name], Severity.Error);
                     continue;
                 }
                 await using var stream = file.OpenReadStream(MaxUploadBytes);
                 await PackageService.Repository.SaveAsync(Id, Path.GetFileName(file.Name), stream);
-                await Audit.LogAsync("Paketdatei hochgeladen", $"{_package!.Name}: {file.Name} ({Display.FileSize(file.Size)})");
+                await Audit.LogAsync(L["Package file uploaded"], $"{_package!.Name}: {file.Name} ({Display.FileSize(file.Size)})");
             }
         }
         catch (Exception ex) when (ex is IOException or ArgumentException)
         {
-            Snackbar.Add($"Upload fehlgeschlagen: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["Upload failed: {0}", ex.Message], Severity.Error);
         }
         finally
         {
@@ -255,13 +256,13 @@
     private void DeleteFile(Inventory.Data.RepositoryFile file)
     {
         PackageService.Repository.Delete(Id, file.RelativePath);
-        _ = Audit.LogAsync("Paketdatei gelöscht", $"{_package!.Name}: {file.RelativePath}");
+        _ = Audit.LogAsync(L["Package file deleted"], $"{_package!.Name}: {file.RelativePath}");
         _files = PackageService.Repository.List(Id);
     }
 
     private async Task DeployAsync()
     {
         var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, Id } };
-        await Dialogs.ShowAsync<DeployDialog>($"„{_package!.Name}“ bereitstellen", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        await Dialogs.ShowAsync<DeployDialog>(L["Deploy \"{0}\"", _package!.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
     }
 }

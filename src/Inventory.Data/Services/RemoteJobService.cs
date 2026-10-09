@@ -2,11 +2,16 @@ using Inventory.Contracts;
 using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 /// <summary>Führt einen Job auf einem Rechner aus und wählt dafür Transport und Zugangsdaten (Rechner-Einstellung vor Standard).</summary>
-public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, ComputerService computers, CredentialService credentials, SettingsService settings)
-{
+public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, ComputerService computers, CredentialService credentials, SettingsService settings, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private IRemoteTransport? Fallback(TransportKind primary) => primary switch
     {
         TransportKind.SmbService => transports.FirstOrDefault(t => t.Kind == TransportKind.WinRm),
@@ -23,14 +28,14 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
         {
             var computer = await computers.GetAsync(computerId, ct);
             if (computer is null)
-                return JobResult.Failed(job.JobId, $"Rechner {computerId} nicht gefunden");
+                return JobResult.Failed(job.JobId, L["Computer {0} not found", computerId]);
 
             var kind = computer.Transport ?? await settings.GetDefaultTransportAsync(ct);
             if (agentless && kind == TransportKind.Agent)
                 kind = await settings.GetDefaultTransportAsync(ct);
             var transport = transports.FirstOrDefault(t => t.Kind == kind);
             if (transport is null)
-                return JobResult.Failed(job.JobId, $"Der Transport {kind} steht auf diesem Server nicht zur Verfügung");
+                return JobResult.Failed(job.JobId, L["The transport {0} is not available on this server", kind]);
 
             // Reine Scans dürfen überall laufen: sie zeigen ja gerade, welcher Rechner tatsächlich antwortet.
             if (job.Steps.Any(s => s.Type != StepType.InventoryScan) && await settings.GetVerifyTargetNameAsync(ct))
@@ -53,7 +58,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
                 }
                 catch (RemoteException second)
                 {
-                    return JobResult.Failed(job.JobId, $"{ex.Message} – Ausweichversuch über {fallback.Kind}: {second.Message}");
+                    return JobResult.Failed(job.JobId, $"{ex.Message} – " + L["fallback attempt via {0}: {1}", fallback.Kind, second.Message]);
                 }
             }
         }

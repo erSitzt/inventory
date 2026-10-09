@@ -11,6 +11,9 @@ using Inventory.Core.Model;
 using Microsoft.Win32.SafeHandles;
 using static Inventory.Remoting.Smb.NativeMethods;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Remoting.Smb;
 
 /// <summary>
@@ -18,8 +21,10 @@ namespace Inventory.Remoting.Smb;
 /// als temporären Dienst (LocalSystem) starten, Fortschritt und Ergebnis über die Freigabe lesen, danach aufräumen.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
-{
+public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<SharedResource>? localizer = null) : IRemoteTransport
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
     /// <summary>So lange darf nach dem Ende des Dienstes das Ergebnis noch auf sich warten lassen.</summary>
     private static readonly TimeSpan ResultGrace = TimeSpan.FromSeconds(5);
@@ -31,7 +36,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
         Task.Factory.StartNew(() => RunImpersonated(target, () => RunCore(target.Host, job, files, progress, ct)),
             ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-    private static JobResult RunImpersonated(RemoteTarget target, Func<JobResult> action)
+    private JobResult RunImpersonated(RemoteTarget target, Func<JobResult> action)
     {
         if (target.Credential is null)
             return action();
@@ -40,7 +45,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
         // NEW_CREDENTIALS: lokal bleibt die Identität des Servers, nur Netzwerkzugriffe (SMB, RPC) nutzen das angegebene Konto.
         // Die Anmeldung wird dabei erst beim ersten Zugriff auf den Zielrechner geprüft.
         if (!LogonUserW(user, domain, target.Credential.Password, LOGON32_LOGON_NEW_CREDENTIALS, LOGON32_PROVIDER_WINNT50, out var token))
-            throw new RemoteException($"Anmeldung als {target.Credential.UserName} nicht möglich: {Describe(Marshal.GetLastWin32Error())}");
+            throw new RemoteException(L["Logon as {0} not possible: {1}", target.Credential.UserName, L[Describe(Marshal.GetLastWin32Error())]]);
         using (token)
             return WindowsIdentity.RunImpersonated(token, action);
     }
@@ -86,7 +91,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             TryDeleteDirectory(jobDir);
-            throw new RemoteException($"Kopieren nach \\\\{host}\\ADMIN$ fehlgeschlagen: {DescribeIo(ex)}", ex);
+            throw new RemoteException(L["Copying to \\\\{0}\\ADMIN$ failed: {1}", host, DescribeIo(ex)], ex);
         }
 
         ServiceHandle? service = null;
@@ -97,9 +102,8 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
             {
                 var error = Marshal.GetLastWin32Error();
                 throw new RemoteException(error == 5 && IsLocalMachine(host)
-                    ? $"Dienststeuerung auf {host} verweigert den Zugriff. {host} ist dieser Server selbst: lokale Zugriffe laufen immer mit dem Konto des " +
-                      "Server-Prozesses, nicht mit den hinterlegten Zugangsdaten. Den Server als Dienst bzw. mit Administratorrechten starten oder einen anderen Rechner als Ziel wählen."
-                    : $"Dienststeuerung auf {host} nicht erreichbar: {Describe(error)}");
+                    ? L["Service control on {0} denies access. {0} is this server itself: local access always runs with the account of the server process, not with the stored credentials. Run the server as a service or with administrator rights, or choose another computer as target.", host]
+                    : L["Service control on {0} unreachable: {1}", host, L[Describe(error)]]);
             }
 
             // %SystemRoot% wird vom Zielrechner aufgelöst; der Runner findet das Job-Verzeichnis über die ID selbst.
@@ -107,10 +111,10 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
             service = CreateServiceW(scm, serviceName, "Inventory Job " + job.JobId, SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS,
                 SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, binPath, null, IntPtr.Zero, null, null, null);
             if (service.IsInvalid)
-                throw new RemoteException($"Dienst auf {host} konnte nicht angelegt werden: {Describe(Marshal.GetLastWin32Error())}");
+                throw new RemoteException(L["Service on {0} could not be created: {1}", host, L[Describe(Marshal.GetLastWin32Error())]]);
 
             if (!StartServiceW(service, 0, IntPtr.Zero))
-                throw new RemoteException($"Dienst auf {host} konnte nicht gestartet werden: {Describe(Marshal.GetLastWin32Error())}");
+                throw new RemoteException(L["Service on {0} could not be started: {1}", host, L[Describe(Marshal.GetLastWin32Error())]]);
 
             return WaitForResult(host, jobDir, service, job, progress, ct);
         }
@@ -126,14 +130,14 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
         }
     }
 
-    internal static bool IsLocalMachine(string host)
+    internal bool IsLocalMachine(string host)
     {
         var name = host.Split('.')[0];
         return name.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
                || name.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host is "127.0.0.1" or "::1";
     }
 
-    private static JobResult WaitForResult(string host, string jobDir, ServiceHandle service, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct)
+    private JobResult WaitForResult(string host, string jobDir, ServiceHandle service, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct)
     {
         var resultPath = Path.Combine(jobDir, JobFiles.Result);
         var progressPath = Path.Combine(jobDir, JobFiles.Progress);
@@ -156,15 +160,14 @@ public sealed class SmbServiceTransport(RunnerPackage runner) : IRemoteTransport
             {
                 PumpProgress(progressPath, progressOffset, progress);
                 return JobJson.Deserialize<JobResult>(ReadShared(resultPath))
-                       ?? throw new RemoteException($"Leeres Ergebnis von {host}");
+                       ?? throw new RemoteException(L["Empty result from {0}", host]);
             }
 
             if (QueryServiceStatus(service, out var status) && status.dwCurrentState == SERVICE_STOPPED)
             {
                 stoppedSince ??= DateTime.UtcNow;
                 if (DateTime.UtcNow - stoppedSince > ResultGrace)
-                    throw new RemoteException($"Der Runner auf {host} wurde beendet, ohne ein Ergebnis zu liefern (Exitcode {status.dwWin32ExitCode}). " +
-                                              "Mögliche Ursachen: .NET Framework 4.8 fehlt, Virenscanner oder AppLocker blockiert die Ausführung.");
+                    throw new RemoteException(L["The runner on {0} exited without delivering a result (exit code {1}). Possible causes: .NET Framework 4.8 is missing, or antivirus or AppLocker blocks execution.", host, status.dwWin32ExitCode]);
             }
 
             Thread.Sleep(PollInterval);

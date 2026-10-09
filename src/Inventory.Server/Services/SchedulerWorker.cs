@@ -40,7 +40,7 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
             catch (Exception ex)
             {
                 // Ein Fehler in einem Durchlauf darf den Takt nicht beenden.
-                logger.LogError(ex, "Fehler im Zeitplaner");
+                logger.LogError(ex, "Error in the scheduler");
             }
         } while (await timer.WaitForNextTickAsync(stoppingToken).AsTask().ContinueWith(t => t.IsCompletedSuccessfully && t.Result, TaskScheduler.Default));
     }

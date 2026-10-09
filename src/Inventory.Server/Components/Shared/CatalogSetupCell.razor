@@ -1,3 +1,5 @@
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(Format == "MSI" ? Color.Info : Color.Default)">@Format</MudChip>
     <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@Summary</MudText>
@@ -12,6 +14,6 @@
     {
         Format == "MSI" ? null : Display.InstallerTechnology(Entry.InstallerType),
         Entry.Architecture,
-        Entry.Scope == "user" ? "Benutzer" : null,
+        Entry.Scope == "user" ? L["User"].Value : null,
     }.Where(p => !string.IsNullOrEmpty(p)));
 }

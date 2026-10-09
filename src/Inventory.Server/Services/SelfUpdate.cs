@@ -16,13 +16,13 @@ public static class SelfUpdate
     public static string? CannotInstallReason()
     {
         if (!OperatingSystem.IsWindows())
-            return "Die Selbstaktualisierung gibt es nur unter Windows.";
+            return "Self-update is only available on Windows.";
         if (!File.Exists(Path.Combine(AppContext.BaseDirectory, UninstallerName)))
-            return "Diese Instanz wurde nicht mit dem Setup installiert und kann sich deshalb nicht selbst aktualisieren.";
+            return "This instance was not installed with the setup and therefore cannot update itself.";
         using var identity = WindowsIdentity.GetCurrent();
         return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator)
             ? null
-            : $"Das Dienstkonto {identity.Name} hat keine lokalen Administratorrechte; das Setup muss von Hand ausgeführt werden.";
+            : $"The service account {identity.Name} has no local administrator rights; the setup has to be run manually.";
     }
 
     /// <summary>Startet das Setup unbeaufsichtigt. Es beendet diesen Dienst, ersetzt die Dateien und startet ihn neu.</summary>
@@ -42,7 +42,7 @@ public static class SelfUpdate
     {
         var trust = VerifyTrust(path);
         if (trust != 0)
-            return $"Die Signatur von {Path.GetFileName(path)} ist ungültig oder fehlt (0x{trust:X8}).";
+            return $"The signature of {Path.GetFileName(path)} is invalid or missing (0x{trust:X8}).";
         string subject;
         try
         {
@@ -54,11 +54,11 @@ public static class SelfUpdate
         }
         catch (System.Security.Cryptography.CryptographicException ex)
         {
-            return $"Das Signaturzertifikat von {Path.GetFileName(path)} ließ sich nicht lesen: {ex.Message}";
+            return $"The signing certificate of {Path.GetFileName(path)} could not be read: {ex.Message}";
         }
         return subject.Contains(requiredPublisher, StringComparison.OrdinalIgnoreCase)
             ? null
-            : $"{Path.GetFileName(path)} ist von „{subject}“ signiert, erwartet wird „{requiredPublisher}“.";
+            : $"{Path.GetFileName(path)} is signed by \"{subject}\", expected \"{requiredPublisher}\".";
     }
 
     [SupportedOSPlatform("windows")]

@@ -16,6 +16,9 @@ public sealed class InventoryOptions
     /// </summary>
     public string? Authentication { get; set; }
 
+    /// <summary>Sprache der Oberfläche, wenn der Browser keine der verfügbaren Sprachen nennt, und der Hintergrundläufe (Protokoll). Leer = en.</summary>
+    public string? Language { get; set; }
+
     public OidcOptions Oidc { get; set; } = new();
 
     public UpdateSettingsOptions Update { get; set; } = new();
@@ -136,7 +139,7 @@ public sealed class OidcOptions
     public string ResolveAuthority() =>
         !string.IsNullOrWhiteSpace(Authority) ? Authority.TrimEnd('/')
         : !string.IsNullOrWhiteSpace(TenantId) ? $"https://login.microsoftonline.com/{TenantId}/v2.0"
-        : throw new InvalidOperationException("Für die OIDC-Anmeldung muss Inventory:Oidc:TenantId oder Inventory:Oidc:Authority gesetzt sein.");
+        : throw new InvalidOperationException("OIDC sign-in requires Inventory:Oidc:TenantId or Inventory:Oidc:Authority.");
 
     public bool IsAllowed(System.Security.Claims.ClaimsPrincipal user) => user.Claims.Any(c =>
         (c.Type.Equals(GroupClaim, StringComparison.OrdinalIgnoreCase) || c.Type == "roles")
@@ -147,9 +150,9 @@ public sealed class OidcOptions
     {
         _ = ResolveAuthority();
         if (string.IsNullOrWhiteSpace(ClientId))
-            throw new InvalidOperationException("Für die OIDC-Anmeldung muss Inventory:Oidc:ClientId gesetzt sein.");
+            throw new InvalidOperationException("OIDC sign-in requires Inventory:Oidc:ClientId.");
         if (AllowedGroups.Length == 0)
-            throw new InvalidOperationException("Für die OIDC-Anmeldung muss Inventory:Oidc:AllowedGroups mindestens eine Gruppe oder App-Rolle enthalten; sonst dürfte sich niemand anmelden.");
+            throw new InvalidOperationException("OIDC sign-in requires at least one group or app role in Inventory:Oidc:AllowedGroups; otherwise every account of the tenant could sign in.");
     }
 }
 

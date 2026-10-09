@@ -5,15 +5,20 @@ using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 /// <summary>Legt Deployments an, führt sie im Hintergrund aus und hält den Live-Stand laufender Ziele bereit.</summary>
-public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe)
-{
+public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private const int MaxParallelTargets = 16;
     /// <summary>So lange werden Offline-Rechner nachgeholt, bevor das Ziel als fehlgeschlagen gilt.</summary>
     public static readonly TimeSpan RetryWindow = TimeSpan.FromDays(3);
-    private const string WaitingText = "Rechner nicht erreichbar – wird nachgeholt, sobald er online ist";
+    private string WaitingText => L["Computer unreachable – will be retried as soon as it is online"];
 
     // Über alle Deployments hinweg begrenzt, damit mehrere gleichzeitige Deployments Server und Netz nicht überlasten.
     private readonly SemaphoreSlim _slots = new(MaxParallelTargets, MaxParallelTargets);
@@ -73,7 +78,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             var package = await db.Packages.AsNoTracking().FirstAsync(p => p.Id == packageId, ct);
             var computers = await db.Computers.AsNoTracking().Where(c => ids.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
             if (computers.Count == 0)
-                throw new InvalidOperationException("Keine Zielrechner ausgewählt.");
+                throw new InvalidOperationException(L["No target computers selected."]);
             deployment = new Deployment
             {
                 PackageId = packageId, PackageName = package.Name, PackageVersion = package.Version, ScanAfter = scanAfter,
@@ -144,14 +149,14 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             }
 
             BuiltJob? built = null;
-            string? failure = expired ? "Rechner war bis zum Ablauf der Frist nicht erreichbar" : null;
+            string? failure = expired ? L["Computer was unreachable until the deadline expired"].Value : null;
             if (ready.Count > 0)
             {
                 try
                 {
                     built = deployment.PackageId is { } packageId
                         ? await BuildAsync(packageId, deployment.ScanAfter, ct)
-                        : throw new InvalidOperationException("Das Paket wurde gelöscht");
+                        : throw new InvalidOperationException(L["The package was deleted"]);
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
                 {
@@ -180,9 +185,10 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var now = DateTime.UtcNow;
+        var serverStopped = L["The server was stopped during execution"].Value;
         await db.DeploymentTargets.Where(t => t.Status == TargetStatus.Queued || t.Status == TargetStatus.Running)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed)
-                .SetProperty(t => t.Error, "Der Server wurde während der Ausführung beendet")
+                .SetProperty(t => t.Error, serverStopped)
                 .SetProperty(t => t.FinishedUtc, now), ct);
         await db.Deployments.Where(d => d.FinishedUtc == null).ExecuteUpdateAsync(s => s.SetProperty(d => d.FinishedUtc, now), ct);
     }
@@ -242,7 +248,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
             var result = target.ComputerId is { } computerId
                 ? await jobs.RunAsync(computerId, job, progress, ct, built.Files)
-                : JobResult.Failed(job.JobId, "Der Rechner wurde gelöscht");
+                : JobResult.Failed(job.JobId, L["The computer was deleted"]);
             steps = result.Steps;
             error = result.Error ?? (result.Success ? null : steps.FirstOrDefault(s => s.Status == StepStatus.Failed)?.Error);
             status = result.Success ? TargetStatus.Succeeded : ct.IsCancellationRequested ? TargetStatus.Cancelled : TargetStatus.Failed;

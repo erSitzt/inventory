@@ -4,6 +4,8 @@ using System.Text.Json;
 using Inventory.Core;
 using Inventory.Core.Abstractions;
 
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 public sealed class UpdateOptions
@@ -28,8 +30,10 @@ public sealed record UpdateSettings(bool Automatic, TimeSpan WindowStart);
 
 /// <summary>Sucht nach neuen Versionen und spielt sie auf Wunsch oder automatisch im Wartungsfenster ein.</summary>
 public sealed class UpdateService(IReleaseSource source, SettingsService settings, BackupService backups, DeploymentService deployments,
-    AuditService audit, TimeProvider time, UpdateOptions options)
-{
+    AuditService audit, TimeProvider time, UpdateOptions options, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private const string AutoKey = "Update.Automatic";
     private const string WindowKey = "Update.WindowStart";
     private const string AttemptedKey = "Update.AttemptedVersion";
@@ -95,17 +99,17 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
     public async Task<string?> ApplyAsync(string user, CancellationToken ct = default)
     {
         if (!await _lock.WaitAsync(0, ct))
-            return "Eine Aktualisierung läuft bereits.";
+            return L["An update is already running."];
         try
         {
             if (options.CannotInstallReason is { } reason)
                 return reason;
             if (!UpdateAvailable || Latest is not { SetupUrl: not null, SetupName: not null } release)
-                return "Es liegt keine neuere Version mit Setup vor.";
+                return L["There is no newer version with a setup."];
             if (release.ChecksumsUrl is null)
-                return "Das Release enthält keine Prüfsummen; ohne sie wird nichts installiert.";
+                return L["The release contains no checksums; nothing is installed without them."];
             if (deployments.AnyRunning)
-                return "Es laufen noch Deployments. Bitte warten, bis sie beendet sind.";
+                return L["Deployments are still running. Please wait until they have finished."];
 
             Installing = true;
             Changed?.Invoke();
@@ -116,7 +120,7 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
             await source.DownloadAsync(release.ChecksumsUrl, sums, ct);
             await source.DownloadAsync(release.SetupUrl, setup, ct);
 
-            if (VerifyChecksum(setup, await File.ReadAllTextAsync(sums, ct)) is { } checksumError)
+            if (VerifyChecksum(setup, await File.ReadAllTextAsync(sums, ct), L) is { } checksumError)
                 return Fail(setup, checksumError);
             if (options.VerifySignature?.Invoke(setup) is { } signatureError)
                 return Fail(setup, signatureError);
@@ -125,7 +129,7 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
             var log = Path.Combine(options.UpdatesDirectory, $"setup-{release.Version}.log");
             await File.WriteAllTextAsync(MarkerPath, JsonSerializer.Serialize(new Marker(options.CurrentVersion, release.Version, log, time.GetUtcNow().UtcDateTime, user)), ct);
             await settings.SetAsync(AttemptedKey, release.Version, ct);
-            await audit.LogAsync(user, "Aktualisierung gestartet", $"{options.CurrentVersion} → {release.Version}", ct);
+            await audit.LogAsync(user, L["Update started"], $"{options.CurrentVersion} → {release.Version}", ct);
             options.Launch(setup, log);
             return null;
         }
@@ -182,13 +186,13 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
         Installing = false;
         if (SemVer.Compare(options.CurrentVersion, marker.To) == 0)
         {
-            await audit.LogAsync(marker.User, "Aktualisierung abgeschlossen", $"{marker.From} → {marker.To}", ct);
+            await audit.LogAsync(marker.User, L["Update completed"], $"{marker.From} → {marker.To}", ct);
         }
         else
         {
-            var tail = File.Exists(marker.Log) ? string.Join(" | ", (await File.ReadAllLinesAsync(marker.Log, ct)).TakeLast(6)) : "kein Setup-Protokoll vorhanden";
-            LastError = $"Die Aktualisierung auf {marker.To} ist fehlgeschlagen; es läuft weiter {options.CurrentVersion}. Setup-Protokoll: {marker.Log}";
-            await audit.LogAsync(marker.User, "Aktualisierung fehlgeschlagen", $"{marker.From} → {marker.To}: {tail}", ct);
+            var tail = File.Exists(marker.Log) ? string.Join(" | ", (await File.ReadAllLinesAsync(marker.Log, ct)).TakeLast(6)) : L["no setup log available"].Value;
+            LastError = L["The update to {0} failed; {1} keeps running. Setup log: {2}", marker.To, options.CurrentVersion, marker.Log];
+            await audit.LogAsync(marker.User, L["Update failed"], $"{marker.From} → {marker.To}: {tail}", ct);
         }
         Changed?.Invoke();
     }
@@ -212,8 +216,9 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
     }
 
     /// <summary>Vergleicht die Datei mit ihrem Eintrag in einer SHA256SUMS-Liste; liefert eine Fehlermeldung oder null.</summary>
-    internal static string? VerifyChecksum(string path, string checksums)
+    internal static string? VerifyChecksum(string path, string checksums, IStringLocalizer<SharedResource>? localizer = null)
     {
+        var L = localizer ?? PassthroughLocalizer.Instance;
         var name = Path.GetFileName(path);
         var expected = checksums.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(line => line.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -221,11 +226,11 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
             .Select(parts => parts[0])
             .FirstOrDefault();
         if (expected is null)
-            return $"Für {name} steht keine Prüfsumme in der Liste des Releases.";
+            return L["No checksum for {0} in the release's list.", name];
         using var stream = File.OpenRead(path);
         var actual = Convert.ToHexString(SHA256.HashData(stream));
         return actual.Equals(expected, StringComparison.OrdinalIgnoreCase)
             ? null
-            : $"Die Prüfsumme von {name} stimmt nicht mit dem Release überein; die Datei wurde verworfen.";
+            : L["The checksum of {0} does not match the release; the file was discarded.", name];
     }
 }

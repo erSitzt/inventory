@@ -45,7 +45,7 @@ public sealed class CatalogTests : IDisposable
         Assert.Equal("7zip.7zip-24.08.msi", Assert.Single(_packages.Repository.List(package.Id)).RelativePath);
 
         var collection = (await _collections.GetAsync(package.CatalogCollectionId!.Value))!;
-        Assert.Equal("7-Zip veraltet", collection.Name);
+        Assert.Equal("7-Zip outdated", collection.Name);
         var outdated = new Computer { Name = "alt", Software = [new ComputerSoftware { Name = "7-Zip 23.01 (x64)", Version = "23.01" }] };
         var current = new Computer { Name = "neu", Software = [new ComputerSoftware { Name = "7-Zip 24.08 (x64)", Version = "24.08" }] };
         Assert.True(CollectionEvaluator.Matches(collection, outdated));
@@ -75,7 +75,7 @@ public sealed class CatalogTests : IDisposable
 
         var updated = (await _packages.GetAsync(package.Id))!;
         Assert.Equal("25.01", updated.Version);
-        Assert.Equal(["7-Zip installieren", "Verknüpfung entfernen"], updated.Steps.Select(s => s.Definition.Name));
+        Assert.Equal(["Install 7-Zip", "Verknüpfung entfernen"], updated.Steps.Select(s => s.Definition.Name));
         Assert.Equal(("7zip.7zip-25.01.msi", "/norestart"), (updated.Steps[0].Definition.File, updated.Steps[0].Definition.Arguments));
         Assert.Equal(["7zip.7zip-25.01.msi", "eigene.cfg"], _packages.Repository.List(package.Id).Select(f => f.RelativePath));
         Assert.Equal("25.01", (await _collections.GetAsync(updated.CatalogCollectionId!.Value))!.Rules.Single().Value2);
@@ -97,7 +97,7 @@ public sealed class CatalogTests : IDisposable
         _source.Corrupt = true;
 
         var error = await Assert.ThrowsAsync<RemoteException>(() => _catalog.ImportAsync("7zip.7zip", false, true, "anna"));
-        Assert.Contains("Prüfsumme", error.Message);
+        Assert.Contains("checksum", error.Message);
         Assert.Empty(await _packages.ListAsync());
         Assert.Empty(await _collections.ListAsync());
 
@@ -172,7 +172,7 @@ public sealed class CatalogTests : IDisposable
         var old = await _catalog.ImportAsync("7zip.7zip", autoUpdate: true, createCollection: true, "anna", version: "23.01");
         Assert.Equal(("7-Zip 23.01", "23.01", null, false), (old.Name, old.Version, old.CatalogId, old.CatalogAutoUpdate));
         Assert.Equal("7zip.7zip-23.01.msi", Assert.Single(_packages.Repository.List(old.Id)).RelativePath);
-        Assert.Contains(await _collections.ListAsync(), c => c.Collection.Name == "7-Zip 23.01 veraltet");
+        Assert.Contains(await _collections.ListAsync(), c => c.Collection.Name == "7-Zip 23.01 outdated");
 
         // Das aktuelle Paket lässt sich daneben importieren; die feste Version bleibt bei Aktualisierungen unberührt.
         Assert.Null((await _catalog.ListAsync()).Single().Package);

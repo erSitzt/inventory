@@ -1,42 +1,43 @@
 @inject IDialogService Dialogs
 @inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
 
 @* Eigene Schaltfläche des Menüs statt ActivatorContent: sonst läge eine Schaltfläche in einer Schaltfläche. *@
 <MudMenu Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-         Label="@(Compact ? null : "Fernzugriff")" Variant="@(Compact ? Variant.Text : Variant.Outlined)" Size="@(Compact ? Size.Small : Size.Medium)"
+         Label="@(Compact ? null : L["Remote access"].Value)" Variant="@(Compact ? Variant.Text : Variant.Outlined)" Size="@(Compact ? Size.Small : Size.Medium)"
          Icon="@(Compact ? Icons.Material.Filled.ConnectedTv : null)" StartIcon="@(Compact ? null : Icons.Material.Filled.ConnectedTv)"
-         EndIcon="@(Compact ? null : Icons.Material.Filled.KeyboardArrowDown)" AriaLabel="Fernzugriff">
+         EndIcon="@(Compact ? null : Icons.Material.Filled.KeyboardArrowDown)" AriaLabel="@L["Remote access"]">
     <ChildContent>
         @if (Computer.NameMismatch)
         {
-            <MudMenuItem Disabled="true" Icon="@Icons.Material.Filled.Warning">Unter diesem Namen antwortet @Computer.ReportedName</MudMenuItem>
+            <MudMenuItem Disabled="true" Icon="@Icons.Material.Filled.Warning">@L["Under this name {0} responds", Computer.ReportedName]</MudMenuItem>
             <MudDivider />
         }
         @* Direktstart über den Starter auf dem Admin-PC; ohne ihn passiert bei diesen Einträgen nichts. *@
         <MudMenuItem Icon="@Icons.Material.Filled.SupportAgent" Href="@RemoteAccessLinks.LaunchAssistance(Computer.Name)"
-                     OnClick="@(() => Audit.LogAsync("Fernzugriff: Remoteunterstützung", Computer.Name))">Remoteunterstützung anbieten</MudMenuItem>
+                     OnClick="@(() => Audit.LogAsync(L["Remote access: Remote Assistance"], Computer.Name))">@L["Offer Remote Assistance"]</MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.ScreenShare" Href="@RemoteAccessLinks.LaunchShadow(Computer.Name, Computer.SessionId ?? 1)"
-                     OnClick="@(() => Audit.LogAsync("Fernzugriff: Spiegelung", Computer.Name))">Sitzung spiegeln@(Computer.SessionId is null ? "" : $" (Sitzung {Computer.SessionId})")</MudMenuItem>
+                     OnClick="@(() => Audit.LogAsync(L["Remote access: shadowing"], Computer.Name))">@L["Shadow session"]@(Computer.SessionId is null ? "" : $" ({L["session {0}", Computer.SessionId]})")</MudMenuItem>
         <MudMenuItem Icon="@Icons.Material.Filled.DesktopWindows" Href="@RemoteAccessLinks.LaunchRdp(Computer.Name)"
-                     OnClick="@(() => Audit.LogAsync("Fernzugriff: Remotedesktop", Computer.Name))">Remotedesktop</MudMenuItem>
+                     OnClick="@(() => Audit.LogAsync(L["Remote access: Remote Desktop"], Computer.Name))">@L["Remote Desktop"]</MudMenuItem>
         @if (Computer.TeamViewerId is not null || Computer.AnyDeskId is not null)
         {
             <MudDivider />
         }
         @if (Computer.TeamViewerId is not null)
         {
-            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew" Href="@RemoteAccessLinks.TeamViewer(Computer.TeamViewerId)" OnClick="@(() => Audit.LogAsync("Fernzugriff: TeamViewer", Computer.Name))">
+            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew" Href="@RemoteAccessLinks.TeamViewer(Computer.TeamViewerId)" OnClick="@(() => Audit.LogAsync(L["Remote access: TeamViewer"], Computer.Name))">
                 TeamViewer (@Computer.TeamViewerId)
             </MudMenuItem>
         }
         @if (Computer.AnyDeskId is not null)
         {
-            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew" Href="@RemoteAccessLinks.AnyDesk(Computer.AnyDeskId)" OnClick="@(() => Audit.LogAsync("Fernzugriff: AnyDesk", Computer.Name))">
+            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew" Href="@RemoteAccessLinks.AnyDesk(Computer.AnyDeskId)" OnClick="@(() => Audit.LogAsync(L["Remote access: AnyDesk"], Computer.Name))">
                 AnyDesk (@Computer.AnyDeskId)
             </MudMenuItem>
         }
         <MudDivider />
-        <MudMenuItem Icon="@Icons.Material.Filled.HelpOutline" OnClick="ShowHelpAsync">Passiert nichts? Starter einrichten / Befehle anzeigen …</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.HelpOutline" OnClick="ShowHelpAsync">@L["Nothing happens? Set up the launcher / show commands …"]</MudMenuItem>
     </ChildContent>
 </MudMenu>
 
@@ -48,6 +49,6 @@
     private Task ShowHelpAsync()
     {
         var parameters = new DialogParameters<RemoteAccessDialog> { { d => d.Computer, Computer } };
-        return Dialogs.ShowAsync<RemoteAccessDialog>($"Fernzugriff auf {Computer.Name}", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true });
+        return Dialogs.ShowAsync<RemoteAccessDialog>(L["Remote access to {0}", Computer.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true });
     }
 }

@@ -1,24 +1,24 @@
 @page "/changes"
 @inject InventoryStore Store
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Änderungen – Inventory</PageTitle>
+<PageTitle>@L["Changes"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h5">Änderungen</MudText>
+    <MudText Typo="Typo.h5">@L["Changes"]</MudText>
     <MudSpacer />
-    <MudTextField @bind-Value="_search" Placeholder="Rechner, Programm, Benutzer …" Adornment="Adornment.Start" Immediate="true"
+    <MudTextField @bind-Value="_search" Placeholder="@L["Computer, program, user …"]" Adornment="Adornment.Start" Immediate="true"
                   AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />
 </MudStack>
 
 <MudText Typo="Typo.body2" Class="mb-4">
-    Was sich von Scan zu Scan geändert hat: Software, Hotfixes, Hardware, Dienste, lokale Benutzer und Administratoren.
-    Angezeigt werden die letzten @MaxRows Einträge; der Verlauf wird zwei Jahre aufbewahrt. Die Liste aktualisiert sich von selbst.
+    @L["What changed from scan to scan: software, hotfixes, hardware, services, local users and administrators. The last {0} entries are shown; the history is kept for two years. The list refreshes itself.", MaxRows]
 </MudText>
 <AutoRefresh OnTick="RefreshAsync" />
 
 @if (_changes.Count == 0)
 {
-    <MudAlert Severity="Severity.Info">Noch keine Änderungen erfasst. Der erste Scan eines Rechners ist die Ausgangslage; ab dem zweiten entsteht der Verlauf.</MudAlert>
+    <MudAlert Severity="Severity.Info">@L["No changes recorded yet. The first scan of a computer is the baseline; the history starts with the second."]</MudAlert>
 }
 else
 {

@@ -4,44 +4,45 @@
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>API-Tokens – Inventory</PageTitle>
+<PageTitle>@L["API tokens"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h5">API-Tokens</MudText>
+    <MudText Typo="Typo.h5">@L["API tokens"]</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">Neues Token</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">@L["New token"]</MudButton>
 </MudStack>
 
 <MudText Typo="Typo.body2" Class="mb-4">
-    Für Skripte und andere Programme, die die REST-API ohne Browser-Anmeldung nutzen. Ein Token hat vollen Zugriff auf die API –
-    wie ein angemeldeter Benutzer. Aufruf z. B.:
+    @L["For scripts and other programs that use the REST API without a browser login. A token has full access to the API – like a signed-in user. Example call:"]
     <code>curl -H "Authorization: Bearer inv_…" @(Navigation.BaseUri)api/computers</code>
 </MudText>
 
 @if (_created is not null)
 {
     <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _created = null)">
-        <b>Token angelegt – jetzt kopieren.</b> Es wird nur dieses eine Mal angezeigt und lässt sich später nicht mehr abrufen.
+        <b>@L["Token created – copy it now."]</b> @L["It is shown only this once and cannot be retrieved later."]
         <pre class="run-output mt-2" style="user-select: all">@_created</pre>
     </MudAlert>
 }
 
 <MudDataGrid T="ApiToken" Items="_tokens" Dense="true" Hover="true" SortMode="SortMode.None">
     <Columns>
-        <PropertyColumn Property="t => t.Name" Title="Name" />
+        <PropertyColumn Property="t => t.Name" Title="@L["Name"]" />
         <TemplateColumn Title="Token"><CellTemplate><code>@(context.Item.Prefix)…</code></CellTemplate></TemplateColumn>
-        <PropertyColumn Property="t => t.CreatedBy" Title="Angelegt von" />
-        <TemplateColumn Title="Angelegt"><CellTemplate>@Display.LocalTime(context.Item.CreatedUtc)</CellTemplate></TemplateColumn>
-        <TemplateColumn Title="Gültig bis">
+        <PropertyColumn Property="t => t.CreatedBy" Title="@L["Created by"]" />
+        <TemplateColumn Title="@L["Created"]"><CellTemplate>@Display.LocalTime(context.Item.CreatedUtc)</CellTemplate></TemplateColumn>
+        <TemplateColumn Title="@L["Valid until"]">
             <CellTemplate>
                 @if (context.Item.ExpiresUtc is null)
                 {
-                    <span>unbegrenzt</span>
+                    <span>@L["unlimited"]</span>
                 }
                 else if (context.Item.ExpiresUtc < DateTime.UtcNow)
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Error">abgelaufen</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error">@L["expired"]</MudChip>
                 }
                 else
                 {
@@ -49,15 +50,15 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Zuletzt verwendet"><CellTemplate>@Display.LocalTime(context.Item.LastUsedUtc)</CellTemplate></TemplateColumn>
+        <TemplateColumn Title="@L["Last used"]"><CellTemplate>@Display.LocalTime(context.Item.LastUsedUtc)</CellTemplate></TemplateColumn>
         <TemplateColumn CellStyle="width: 1%">
             <CellTemplate>
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Token widerrufen" OnClick="@(() => DeleteAsync(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Revoke token"]" OnClick="@(() => DeleteAsync(context.Item))" />
             </CellTemplate>
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
-        <MudText Class="pa-4">Noch keine Tokens vorhanden.</MudText>
+        <MudText Class="pa-4">@L["No tokens yet."]</MudText>
     </NoRecordsContent>
 </MudDataGrid>
 
@@ -69,24 +70,24 @@
 
     private async Task CreateAsync()
     {
-        var dialog = await Dialogs.ShowAsync<CreateTokenDialog>("Neues API-Token", new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
+        var dialog = await Dialogs.ShowAsync<CreateTokenDialog>(L["New API token"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
         if (await dialog.Result is not { Canceled: false, Data: CreateTokenDialog.Request request })
             return;
         var expires = request.Days is { } days ? DateTime.UtcNow.AddDays(days) : (DateTime?)null;
         _created = await TokenService.CreateAsync(request.Name, await Audit.UserNameAsync(), expires);
-        await Audit.LogAsync("API-Token angelegt", $"{request.Name}, gültig {(request.Days is null ? "unbegrenzt" : $"{request.Days} Tage")}");
+        await Audit.LogAsync(L["API token created"], $"{request.Name}, {(request.Days is null ? L["valid without limit"] : L["valid {0} days", request.Days])}");
         _tokens = await TokenService.ListAsync();
     }
 
     private async Task DeleteAsync(ApiToken token)
     {
-        var confirmed = await Dialogs.ShowMessageBoxAsync("Token widerrufen",
-            $"„{token.Name}“ wirklich widerrufen? Skripte, die es verwenden, verlieren sofort den Zugriff.", yesText: "Widerrufen", cancelText: "Abbrechen");
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Revoke token"],
+            L["Really revoke \"{0}\"? Scripts using it lose access immediately.", token.Name], yesText: L["Revoke"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;
         await TokenService.DeleteAsync(token.Id);
-        await Audit.LogAsync("API-Token widerrufen", token.Name);
-        Snackbar.Add("Token widerrufen.", Severity.Success);
+        await Audit.LogAsync(L["API token revoked"], token.Name);
+        Snackbar.Add(L["Token revoked."], Severity.Success);
         _tokens = await TokenService.ListAsync();
     }
 }

@@ -26,7 +26,7 @@ public static class AgentEndpoints
             var key = request is null ? null : await agents.EnrollAsync(request, ct);
             if (key is null)
                 return Results.Unauthorized();
-            await audit.LogAsync("(Agent)", "Agent angemeldet", $"{request!.HostName}, Version {request.Version}, von {http.Connection.RemoteIpAddress}", ct);
+            await audit.LogAsync("(Agent)", "Agent enrolled", $"{request!.HostName}, version {request.Version}, from {http.Connection.RemoteIpAddress}", ct);
             return Json(new AgentEnrollResponse { AgentKey = key });
         });
 

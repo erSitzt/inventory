@@ -52,7 +52,7 @@ public sealed class PackageRepository(string root)
         var directory = Path.GetFullPath(DirectoryFor(packageId));
         var path = Path.GetFullPath(Path.Combine(directory, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
         if (!path.StartsWith(directory + Path.DirectorySeparatorChar, StringComparison.Ordinal))
-            throw new ArgumentException($"Ungültiger Dateipfad: {relativePath}", nameof(relativePath));
+            throw new ArgumentException($"Invalid file path: {relativePath}", nameof(relativePath));
         return path;
     }
 }

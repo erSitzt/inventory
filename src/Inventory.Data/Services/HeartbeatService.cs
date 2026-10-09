@@ -1,6 +1,9 @@
 using System.Globalization;
 using Inventory.Core.Model;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 public sealed record HeartbeatSettings(bool Enabled, int IntervalMinutes, DateTime? LastRunUtc, string? LastResult);
@@ -10,8 +13,10 @@ public sealed record HeartbeatSettings(bool Enabled, int IntervalMinutes, DateTi
 /// Scan oder Klick aktuell wird. Rechner mit Namensauffälligkeiten (ein anderer Rechner antwortet, Reverse-DNS nennt einen
 /// anderen Namen) bleiben außen vor: dort würde die Prüfung nur die falsche Maschine anpingen.
 /// </summary>
-public sealed class HeartbeatService(ComputerService computers, SettingsService settings, TimeProvider time)
-{
+public sealed class HeartbeatService(ComputerService computers, SettingsService settings, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     public const int DefaultIntervalMinutes = 5;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -45,14 +50,14 @@ public sealed class HeartbeatService(ComputerService computers, SettingsService 
     public async Task<string> RunAsync(CancellationToken ct = default)
     {
         if (!await _lock.WaitAsync(0, ct))
-            return "läuft bereits";
+            return L["already running"];
         try
         {
             var all = await computers.ListAsync(ct);
             var ids = all.Where(Eligible).Select(c => c.Id).ToList();
             var skipped = all.Count - ids.Count;
             var online = ids.Count == 0 ? 0 : await computers.ProbeAsync(ids, ct);
-            var result = $"{ids.Count} Rechner geprüft, {online} online" + (skipped > 0 ? $", {skipped} wegen Namensauffälligkeit übersprungen" : "");
+            var result = L["{0} computers checked, {1} online", ids.Count, online] + (skipped > 0 ? ", " + L["{0} skipped due to name anomaly", skipped] : "");
             await settings.SetAsync(SettingKeys.HeartbeatLastRunUtc, time.GetUtcNow().UtcDateTime.ToString("O", CultureInfo.InvariantCulture), ct);
             await settings.SetAsync(SettingKeys.HeartbeatLastResult, result, ct);
             return result;

@@ -2,12 +2,16 @@ using Inventory.Core;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 public sealed record CollectionSummary(Collection Collection, int Count);
 
-public sealed class CollectionService(IDbContextFactory<InventoryDbContext> dbFactory)
-{
+public sealed class CollectionService(IDbContextFactory<InventoryDbContext> dbFactory, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     public async Task<List<CollectionSummary>> ListAsync(CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
@@ -48,7 +52,7 @@ public sealed class CollectionService(IDbContextFactory<InventoryDbContext> dbFa
         }
         else
         {
-            collection = await db.Collections.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException($"Sammlung {id} nicht gefunden");
+            collection = await db.Collections.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException(L["Collection {0} not found", id]);
             collection.Name = name.Trim();
         }
         collection.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();

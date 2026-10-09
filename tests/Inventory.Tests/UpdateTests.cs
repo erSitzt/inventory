@@ -98,12 +98,12 @@ public sealed class UpdateTests : IDisposable
         Assert.True(File.Exists(setup));
         Assert.EndsWith("setup-1.1.0.log", log);
         Assert.Single(Directory.GetFiles(Path.Combine(_dir, "backups")));
-        Assert.Contains(await new AuditService(_db).ListAsync(), e => e is { Action: "Aktualisierung gestartet", Details: "1.0.0 → 1.1.0" });
+        Assert.Contains(await new AuditService(_db).ListAsync(), e => e is { Action: "Update started", Details: "1.0.0 → 1.1.0" });
 
         // Nach dem Neustart mit der neuen Version wird der Erfolg festgehalten.
         var restarted = Create("1.1.0");
         await restarted.ReportPreviousAsync(startup: true);
-        Assert.Contains(await new AuditService(_db).ListAsync(), e => e.Action == "Aktualisierung abgeschlossen");
+        Assert.Contains(await new AuditService(_db).ListAsync(), e => e.Action == "Update completed");
         Assert.Null(restarted.LastError);
     }
 
@@ -115,7 +115,7 @@ public sealed class UpdateTests : IDisposable
         var updates = Create();
         await updates.CheckAsync();
 
-        Assert.Contains("Prüfsumme", await updates.ApplyAsync("anna"));
+        Assert.Contains("checksum", await updates.ApplyAsync("anna"));
         Assert.Empty(_launched);
         Assert.Empty(Directory.GetFiles(Path.Combine(_dir, "updates"), "*.exe"));
 
@@ -137,7 +137,7 @@ public sealed class UpdateTests : IDisposable
         _source.Publish("1.2.0", withChecksums: false);
         var updates = Create();
         await updates.CheckAsync();
-        Assert.Contains("keine Prüfsummen", await updates.ApplyAsync("anna"));
+        Assert.Contains("no checksums", await updates.ApplyAsync("anna"));
         Assert.Empty(_launched);
     }
 
@@ -160,7 +160,7 @@ public sealed class UpdateTests : IDisposable
         var again = Create();
         await again.CheckAsync();
         await again.ReportPreviousAsync(startup: true);
-        Assert.Contains("fehlgeschlagen", again.LastError);
+        Assert.Contains("failed", again.LastError);
         Assert.False(await again.ApplyIfDueAsync());
         Assert.Single(_launched);
     }

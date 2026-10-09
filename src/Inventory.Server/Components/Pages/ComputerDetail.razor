@@ -4,14 +4,16 @@
 @inject InventoryStore Store
 @inject ISnackbar Snackbar
 @inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
 
-<PageTitle>@(_computer?.Name ?? "Rechner") – Inventory</PageTitle>
+<PageTitle>@(_computer?.Name ?? L["Computer"]) – Inventory</PageTitle>
 
 @if (_computer is null)
 {
     @if (_loaded)
     {
-        <MudAlert Severity="Severity.Warning">Dieser Rechner existiert nicht (mehr). <MudLink Href="computers">Zur Übersicht</MudLink></MudAlert>
+        <MudAlert Severity="Severity.Warning">@L["This computer does not exist (anymore)."] <MudLink Href="computers">@L["Back to the list"]</MudLink></MudAlert>
     }
     return;
 }
@@ -19,108 +21,104 @@
 <AutoRefresh OnTick="RefreshAsync" />
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="computers" aria-label="Zurück zur Übersicht" />
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="computers" aria-label="@L["Back to the list"]" />
     <MudText Typo="Typo.h5">@_computer.Name</MudText>
-    <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : _computer.NameMismatch ? Color.Warning : Color.Default)">@(_computer.IsOnline ? "online" : _computer.NameMismatch ? "nicht erreichbar" : "offline")</MudChip>
+    <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : _computer.NameMismatch ? Color.Warning : Color.Default)">@(_computer.IsOnline ? L["online"] : _computer.NameMismatch ? L["unreachable"] : L["offline"])</MudChip>
     <MudSpacer />
     <RemoteAccessMenu Computer="_computer" />
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">Befehl ausführen</MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">@L["Run command"]</MudButton>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_scanning" OnClick="ScanAsync">
-        @(_scanning ? "Scan läuft …" : "Jetzt scannen")
+        @(_scanning ? L["Scanning …"] : L["Scan now"])
     </MudButton>
 </MudStack>
 
 @if (_computer.NameMismatch)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-4">
-        Unter dem Namen <b>@_computer.Name</b> antwortet der Rechner <b>@_computer.ReportedName</b> (Adresse @_computer.IpAddress).
-        Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias (CNAME) auf diesen Rechner; vorhandene Inventardaten gehören zu @_computer.ReportedName.
-        Befehle und Deployments werden auf diesem Eintrag nicht ausgeführt, solange die Namen abweichen.
-        Scans laufen weiterhin – sie erfassen dann aber @_computer.ReportedName, nicht @_computer.Name.
+        @L["Under the name {0} the computer {1} responds (address {2}). Probably a stale DNS entry or an alias (CNAME) points to this computer; existing inventory data belongs to {1}. Commands and deployments are not executed on this entry while the names differ. Scans still run – but they capture {1}, not {0}.", _computer.Name, _computer.ReportedName, _computer.IpAddress]
         <div class="mt-2">
-            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="RenameAsync">Eintrag in @_computer.ReportedName umbenennen</MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="RenameAsync">@L["Rename entry to {0}", _computer.ReportedName]</MudButton>
         </div>
     </MudAlert>
 }
 else if (_computer.ReverseDnsMismatch)
 {
     <MudAlert Severity="Severity.Info" Class="mb-4">
-        Die Adresse @_computer.IpAddress gehört laut Reverse-DNS zu <b>@_computer.ReverseDnsName</b>, eingetragen ist <b>@_computer.Name</b>.
-        Der Rechner selbst hat seinen Namen noch nicht genannt; ein Scan zeigt, wer wirklich antwortet.
+        @L["According to reverse DNS the address {0} belongs to {1}, listed is {2}. The computer has not reported its own name yet; a scan shows who really responds.", _computer.IpAddress, _computer.ReverseDnsName, _computer.Name]
     </MudAlert>
 }
 @if (_computer.MissingInDirectory)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-4">
-        Das Computerkonto @(_computer.DirectoryDisabled ? "ist im Active Directory deaktiviert" : "wurde im Active Directory nicht mehr gefunden")
-        (seit @Display.LocalTime(_computer.DirectoryMissingSinceUtc)@(_computer.DirectorySeenUtc is null ? "" : $", zuletzt vorhanden {Display.LocalTime(_computer.DirectorySeenUtc)}")).
-        Was mit solchen Rechnern geschieht, legen die Einstellungen unter „Active Directory“ fest.
+        @(_computer.DirectoryDisabled ? L["The computer account is disabled in Active Directory"] : L["The computer account was no longer found in Active Directory"])
+        (@L["since {0}", Display.LocalTime(_computer.DirectoryMissingSinceUtc)]@(_computer.DirectorySeenUtc is null ? "" : ", " + L["last present {0}", Display.LocalTime(_computer.DirectorySeenUtc)])).
+        @L["What happens to such computers is set under \"Active Directory\" in the settings."]
     </MudAlert>
 }
 @if (_computer.LastScanError is not null)
 {
-    <MudAlert Severity="Severity.Error" Class="mb-4">Letzter Scan fehlgeschlagen: @_computer.LastScanError</MudAlert>
+    <MudAlert Severity="Severity.Error" Class="mb-4">@L["Last scan failed: {0}", _computer.LastScanError]</MudAlert>
 }
 @if (_computer.LastScanUtc is null)
 {
-    <MudAlert Severity="Severity.Info" Class="mb-4">Dieser Rechner wurde noch nicht gescannt.</MudAlert>
+    <MudAlert Severity="Severity.Info" Class="mb-4">@L["This computer has not been scanned yet."]</MudAlert>
 }
 
 <MudTabs Outlined="true" Border="true" TabPanelsClass="pt-4" ApplyEffectsToContainer="true">
-    <MudTabPanel Text="Übersicht">
+    <MudTabPanel Text="@L["Overview"]">
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
                     <tbody>
-                        @Row("Gemeldeter Name", _computer.ReportedName)
-                        @Row("Betriebssystem", Display.Os(_computer))
-                        @Row("Version", $"{_computer.OsVersion} {_computer.OsArchitecture}".Trim())
-                        @Row("Installiert am", Display.LocalTime(_computer.OsInstalledUtc))
-                        @Row("Letzter Start", Display.LocalTime(_computer.LastBootUtc))
-                        @Row("Angemeldeter Benutzer", _computer.LoggedOnUser)
-                        @Row("Domäne", _computer.Domain)
-                        @Row("IP-Adresse", _computer.IpAddress)
-                        @Row("Reverse-DNS", _computer.ReverseDnsName)
-                        @Row("Letzter Scan", Display.LocalTime(_computer.LastScanUtc))
-                        @Row("Zuletzt gesehen", Display.LocalTime(_computer.LastSeenUtc))
+                        @Row(L["Reported name"], _computer.ReportedName)
+                        @Row(L["Operating system"], Display.Os(_computer))
+                        @Row(L["Version"], $"{_computer.OsVersion} {_computer.OsArchitecture}".Trim())
+                        @Row(L["Installed on"], Display.LocalTime(_computer.OsInstalledUtc))
+                        @Row(L["Last boot"], Display.LocalTime(_computer.LastBootUtc))
+                        @Row(L["Logged-on user"], _computer.LoggedOnUser)
+                        @Row(L["Domain"], _computer.Domain)
+                        @Row(L["IP address"], _computer.IpAddress)
+                        @Row(L["Reverse DNS"], _computer.ReverseDnsName)
+                        @Row(L["Last scan"], Display.LocalTime(_computer.LastScanUtc))
+                        @Row(L["Last seen"], Display.LocalTime(_computer.LastSeenUtc))
                     </tbody>
                 </MudSimpleTable>
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
                     <tbody>
-                        @Row("Hersteller", _computer.Manufacturer)
-                        @Row("Modell", _computer.Model)
-                        @Row("Seriennummer", _computer.SerialNumber)
+                        @Row(L["Manufacturer"], _computer.Manufacturer)
+                        @Row(L["Model"], _computer.Model)
+                        @Row(L["Serial number"], _computer.SerialNumber)
                         @Row("BIOS", _computer.BiosVersion)
-                        @Row("Prozessor", _computer.CpuName)
-                        @Row("Kerne / Threads", _computer.CpuCores is null ? null : $"{_computer.CpuCores} / {_computer.CpuLogicalProcessors}")
-                        @Row("Arbeitsspeicher", Display.Bytes(_computer.MemoryBytes))
-                        @Row("Sammlungen", string.Join(", ", _computer.Collections.Select(c => c.Name)))
-                        @Row("Agent", _computer.AgentKeyHash is null ? "nicht installiert" : $"Version {_computer.AgentVersion}, letzter Kontakt {Display.LocalTime(_computer.AgentLastSeenUtc)}")
-                        @Row("Beschreibung", _computer.Description)
+                        @Row(L["Processor"], _computer.CpuName)
+                        @Row(L["Cores / threads"], _computer.CpuCores is null ? null : $"{_computer.CpuCores} / {_computer.CpuLogicalProcessors}")
+                        @Row(L["Memory"], Display.Bytes(_computer.MemoryBytes))
+                        @Row(L["Collections"], string.Join(", ", _computer.Collections.Select(c => c.Name)))
+                        @Row(L["Agent"], _computer.AgentKeyHash is null ? L["not installed"] : L["Version {0}, last contact {1}", _computer.AgentVersion, Display.LocalTime(_computer.AgentLastSeenUtc)])
+                        @Row(L["Description"], _computer.Description)
                     </tbody>
                 </MudSimpleTable>
             </MudItem>
         </MudGrid>
     </MudTabPanel>
 
-    <MudTabPanel Text="@($"Software ({_computer.Software.Count})")">
-        <MudTextField @bind-Value="_softwareSearch" Placeholder="Software suchen" Adornment="Adornment.Start" Immediate="true" Class="mb-2"
+    <MudTabPanel Text="@($"{L["Software"]} ({_computer.Software.Count})")">
+        <MudTextField @bind-Value="_softwareSearch" Placeholder="@L["Search software"]" Adornment="Adornment.Start" Immediate="true" Class="mb-2"
                       AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />
         <MudDataGrid T="ComputerSoftware" Items="_computer.Software" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50"
                      QuickFilter="@(s => string.IsNullOrWhiteSpace(_softwareSearch) || s.Name.Contains(_softwareSearch, StringComparison.OrdinalIgnoreCase) || (s.Publisher?.Contains(_softwareSearch, StringComparison.OrdinalIgnoreCase) ?? false))">
             <Columns>
-                <PropertyColumn Property="s => s.Name" Title="Name" />
-                <PropertyColumn Property="s => s.Version" Title="Version" />
-                <PropertyColumn Property="s => s.Publisher" Title="Hersteller" />
-                <PropertyColumn Property="s => s.InstallDate" Title="Installiert" />
-                <TemplateColumn Title="Art" Sortable="false">
-                    <CellTemplate>@(context.Item.Is64Bit ? "64 Bit" : "32 Bit")@(context.Item.PerUser ? ", pro Benutzer" : "")</CellTemplate>
+                <PropertyColumn Property="s => s.Name" Title="@L["Name"]" />
+                <PropertyColumn Property="s => s.Version" Title="@L["Version"]" />
+                <PropertyColumn Property="s => s.Publisher" Title="@L["Publisher"]" />
+                <PropertyColumn Property="s => s.InstallDate" Title="@L["Installed"]" />
+                <TemplateColumn Title="@L["Type"]" Sortable="false">
+                    <CellTemplate>@(context.Item.Is64Bit ? "64 Bit" : "32 Bit")@(context.Item.PerUser ? ", " + L["per user"] : "")</CellTemplate>
                 </TemplateColumn>
             </Columns>
             <PagerContent>
-                <MudDataGridPager T="ComputerSoftware" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+                <MudDataGridPager T="ComputerSoftware" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
             </PagerContent>
         </MudDataGrid>
     </MudTabPanel>
@@ -129,20 +127,20 @@ else if (_computer.ReverseDnsMismatch)
         <MudDataGrid T="ComputerHotfix" Items="_computer.Hotfixes" Dense="true" Hover="true" SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="h => h.HotfixId" Title="KB" />
-                <PropertyColumn Property="h => h.Description" Title="Beschreibung" />
-                <PropertyColumn Property="h => h.InstalledOn" Title="Installiert am" />
+                <PropertyColumn Property="h => h.Description" Title="@L["Description"]" />
+                <PropertyColumn Property="h => h.InstalledOn" Title="@L["Installed on"]" />
             </Columns>
         </MudDataGrid>
     </MudTabPanel>
 
-    <MudTabPanel Text="Datenträger">
+    <MudTabPanel Text="@L["Disks"]">
         <MudDataGrid T="ComputerDisk" Items="_computer.Disks" Dense="true" Hover="true" SortMode="SortMode.None">
             <Columns>
-                <PropertyColumn Property="d => d.Drive" Title="Laufwerk" />
-                <PropertyColumn Property="d => d.Label" Title="Bezeichnung" />
-                <PropertyColumn Property="d => d.FileSystem" Title="Dateisystem" />
-                <TemplateColumn Title="Größe"><CellTemplate>@Display.Bytes(context.Item.SizeBytes)</CellTemplate></TemplateColumn>
-                <TemplateColumn Title="Frei">
+                <PropertyColumn Property="d => d.Drive" Title="@L["Drive"]" />
+                <PropertyColumn Property="d => d.Label" Title="@L["Label"]" />
+                <PropertyColumn Property="d => d.FileSystem" Title="@L["File system"]" />
+                <TemplateColumn Title="@L["Size"]"><CellTemplate>@Display.Bytes(context.Item.SizeBytes)</CellTemplate></TemplateColumn>
+                <TemplateColumn Title="@L["Free"]">
                     <CellTemplate>
                         @Display.Bytes(context.Item.FreeBytes)
                         @if (context.Item.SizeBytes > 0)
@@ -155,81 +153,81 @@ else if (_computer.ReverseDnsMismatch)
         </MudDataGrid>
     </MudTabPanel>
 
-    <MudTabPanel Text="Netzwerk">
+    <MudTabPanel Text="@L["Network"]">
         <MudDataGrid T="ComputerNetworkAdapter" Items="_computer.NetworkAdapters" Dense="true" Hover="true" SortMode="SortMode.None">
             <Columns>
-                <PropertyColumn Property="n => n.Name" Title="Adapter" />
-                <PropertyColumn Property="n => n.MacAddress" Title="MAC-Adresse" />
-                <PropertyColumn Property="n => n.IpAddresses" Title="IP-Adressen" />
+                <PropertyColumn Property="n => n.Name" Title="@L["Adapter"]" />
+                <PropertyColumn Property="n => n.MacAddress" Title="@L["MAC address"]" />
+                <PropertyColumn Property="n => n.IpAddresses" Title="@L["IP addresses"]" />
                 <PropertyColumn Property="n => n.Gateways" Title="Gateway" />
-                <PropertyColumn Property="n => n.DnsServers" Title="DNS-Server" />
-                <TemplateColumn Title="DHCP"><CellTemplate>@(context.Item.DhcpEnabled ? "ja" : "nein")</CellTemplate></TemplateColumn>
+                <PropertyColumn Property="n => n.DnsServers" Title="@L["DNS servers"]" />
+                <TemplateColumn Title="DHCP"><CellTemplate>@Display.YesNo(context.Item.DhcpEnabled)</CellTemplate></TemplateColumn>
             </Columns>
         </MudDataGrid>
     </MudTabPanel>
 
-    <MudTabPanel Text="@($"Dienste ({_computer.Services.Count})")">
+    <MudTabPanel Text="@($"{L["Services"]} ({_computer.Services.Count})")">
         <MudDataGrid T="ComputerWindowsService" Items="_computer.Services" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
             <Columns>
-                <PropertyColumn Property="s => s.Name" Title="Name" />
-                <PropertyColumn Property="s => s.DisplayName" Title="Anzeigename" />
-                <PropertyColumn Property="s => s.State" Title="Status" />
-                <PropertyColumn Property="s => s.StartMode" Title="Starttyp" />
-                <PropertyColumn Property="s => s.Account" Title="Konto" />
+                <PropertyColumn Property="s => s.Name" Title="@L["Name"]" />
+                <PropertyColumn Property="s => s.DisplayName" Title="@L["Display name"]" />
+                <PropertyColumn Property="s => s.State" Title="@L["State"]" />
+                <PropertyColumn Property="s => s.StartMode" Title="@L["Start type"]" />
+                <PropertyColumn Property="s => s.Account" Title="@L["Account"]" />
             </Columns>
             <PagerContent>
-                <MudDataGridPager T="ComputerWindowsService" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+                <MudDataGridPager T="ComputerWindowsService" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
             </PagerContent>
         </MudDataGrid>
     </MudTabPanel>
 
-    <MudTabPanel Text="Sicherheit">
+    <MudTabPanel Text="@L["Security"]">
         @if (_computer.FirewallDomain is null && _computer.DefenderEnabled is null && _computer.UpdateRebootRequired is null)
         {
-            <MudText Color="Color.Secondary">Noch nicht erfasst. Firewall, Virenschutz und Windows Update werden beim nächsten Scan gelesen.</MudText>
+            <MudText Color="Color.Secondary">@L["Not captured yet. Firewall, antivirus and Windows Update are read with the next scan."]</MudText>
         }
         else
         {
             <MudGrid>
                 <MudItem xs="12" md="4">
                     <MudPaper Class="pa-4" Outlined="true">
-                        <MudText Typo="Typo.h6" Class="mb-2">Windows-Firewall</MudText>
-                        @StatusRow("Domänennetz", _computer.FirewallDomain)
-                        @StatusRow("Privates Netz", _computer.FirewallPrivate)
-                        @StatusRow("Öffentliches Netz", _computer.FirewallPublic)
+                        <MudText Typo="Typo.h6" Class="mb-2">@L["Windows Firewall"]</MudText>
+                        @StatusRow(L["Domain network"], _computer.FirewallDomain)
+                        @StatusRow(L["Private network"], _computer.FirewallPrivate)
+                        @StatusRow(L["Public network"], _computer.FirewallPublic)
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="12" md="4">
                     <MudPaper Class="pa-4" Outlined="true">
-                        <MudText Typo="Typo.h6" Class="mb-2">Virenschutz</MudText>
+                        <MudText Typo="Typo.h6" Class="mb-2">@L["Antivirus"]</MudText>
                         @StatusRow("Microsoft Defender", _computer.DefenderEnabled)
-                        @StatusRow("Echtzeitschutz", _computer.DefenderRealTime)
-                        @StatusRow("Manipulationsschutz", _computer.DefenderTamperProtected)
-                        <MudText Typo="Typo.body2" Class="mt-2">Signatur: @(_computer.DefenderSignatureVersion ?? "–") vom @Display.LocalTime(_computer.DefenderSignatureUpdatedUtc)</MudText>
-                        <MudText Typo="Typo.body2">Registriert: @(string.IsNullOrEmpty(_computer.AntivirusProducts) ? "–" : _computer.AntivirusProducts)</MudText>
+                        @StatusRow(L["Real-time protection"], _computer.DefenderRealTime)
+                        @StatusRow(L["Tamper protection"], _computer.DefenderTamperProtected)
+                        <MudText Typo="Typo.body2" Class="mt-2">@L["Signature: {0} from {1}", _computer.DefenderSignatureVersion ?? "–", Display.LocalTime(_computer.DefenderSignatureUpdatedUtc)]</MudText>
+                        <MudText Typo="Typo.body2">@L["Registered: {0}", string.IsNullOrEmpty(_computer.AntivirusProducts) ? "–" : _computer.AntivirusProducts]</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="12" md="4">
                     <MudPaper Class="pa-4" Outlined="true">
                         <MudText Typo="Typo.h6" Class="mb-2">Windows Update</MudText>
                         <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
-                            <MudText Typo="Typo.body2" Style="flex: 1">Neustart ausstehend</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="@(_computer.UpdateRebootRequired == true ? Color.Warning : Color.Success)">@(_computer.UpdateRebootRequired switch { true => "ja", false => "nein", null => "unbekannt" })</MudChip>
+                            <MudText Typo="Typo.body2" Style="flex: 1">@L["Reboot pending"]</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_computer.UpdateRebootRequired == true ? Color.Warning : Color.Success)">@(_computer.UpdateRebootRequired switch { true => L["yes"], false => L["no"], null => L["unknown"] })</MudChip>
                         </MudStack>
                         <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
-                            <MudText Typo="Typo.body2" Style="flex: 1">Ausstehende Updates</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="@(_computer.UpdatePendingCount > 0 ? Color.Warning : _computer.UpdatePendingCount == 0 ? Color.Success : Color.Default)">@(_computer.UpdatePendingCount?.ToString() ?? "unbekannt")</MudChip>
+                            <MudText Typo="Typo.body2" Style="flex: 1">@L["Pending updates"]</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_computer.UpdatePendingCount > 0 ? Color.Warning : _computer.UpdatePendingCount == 0 ? Color.Success : Color.Default)">@(_computer.UpdatePendingCount?.ToString() ?? L["unknown"])</MudChip>
                         </MudStack>
-                        <MudText Typo="Typo.body2" Class="mt-2">Letzte Installation: @Display.LocalTime(_computer.UpdateLastInstallUtc)</MudText>
-                        <MudText Typo="Typo.body2">Letzte Suche: @Display.LocalTime(_computer.UpdateLastSearchUtc)</MudText>
-                        <MudText Typo="Typo.body2">Quelle: @(string.IsNullOrEmpty(_computer.UpdateServer) ? "Microsoft Update" : _computer.UpdateServer)</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-2">@L["Last installation: {0}", Display.LocalTime(_computer.UpdateLastInstallUtc)]</MudText>
+                        <MudText Typo="Typo.body2">@L["Last search: {0}", Display.LocalTime(_computer.UpdateLastSearchUtc)]</MudText>
+                        <MudText Typo="Typo.body2">@L["Source: {0}", string.IsNullOrEmpty(_computer.UpdateServer) ? "Microsoft Update" : _computer.UpdateServer]</MudText>
                     </MudPaper>
                 </MudItem>
                 @if (_computer.UpdatePendingCount > 0)
                 {
                     <MudItem xs="12">
-                        <MudText Typo="Typo.subtitle1" Class="mb-1">Ausstehende Updates</MudText>
-                        <MudText Typo="Typo.caption">Stand der letzten Suche des Rechners (@Display.LocalTime(_computer.UpdateLastSearchUtc)); der Scan löst keine neue Suche aus.</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="mb-1">@L["Pending updates"]</MudText>
+                        <MudText Typo="Typo.caption">@L["As of the computer's last search ({0}); the scan does not trigger a new search.", Display.LocalTime(_computer.UpdateLastSearchUtc)]</MudText>
                         <MudList T="string" Dense="true">
                             @foreach (var title in (_computer.UpdatePending ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries))
                             {
@@ -242,38 +240,38 @@ else if (_computer.ReverseDnsMismatch)
         }
     </MudTabPanel>
 
-    <MudTabPanel Text="@($"Benutzer ({_computer.LocalUsers.Count})")">
+    <MudTabPanel Text="@($"{L["Users"]} ({_computer.LocalUsers.Count})")">
         <MudGrid>
             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.subtitle1" Class="mb-2">Lokale Administratoren</MudText>
+                <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Local administrators"]</MudText>
                 <MudDataGrid T="ComputerLocalAdmin" Items="_computer.LocalAdmins" Dense="true" Hover="true" SortMode="SortMode.None">
                     <Columns>
-                        <PropertyColumn Property="a => a.Name" Title="Mitglied" />
-                        <TemplateColumn Title="Art"><CellTemplate>@(context.Item.IsGroup ? "Gruppe" : "Benutzer")</CellTemplate></TemplateColumn>
+                        <PropertyColumn Property="a => a.Name" Title="@L["Member"]" />
+                        <TemplateColumn Title="@L["Type"]"><CellTemplate>@(context.Item.IsGroup ? L["Group"] : L["User"])</CellTemplate></TemplateColumn>
                     </Columns>
                 </MudDataGrid>
             </MudItem>
             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.subtitle1" Class="mb-2">Lokale Benutzerkonten</MudText>
+                <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Local user accounts"]</MudText>
                 <MudDataGrid T="ComputerLocalUser" Items="_computer.LocalUsers" Dense="true" Hover="true" SortMode="SortMode.None">
                     <Columns>
-                        <PropertyColumn Property="u => u.Name" Title="Name" />
-                        <TemplateColumn Title="Status">
+                        <PropertyColumn Property="u => u.Name" Title="@L["Name"]" />
+                        <TemplateColumn Title="@L["State"]">
                             <CellTemplate>
-                                <MudChip T="string" Size="Size.Small" Color="@(context.Item.Disabled ? Color.Default : Color.Success)">@(context.Item.Disabled ? "deaktiviert" : "aktiv")</MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="@(context.Item.Disabled ? Color.Default : Color.Success)">@(context.Item.Disabled ? L["disabled"] : L["active"])</MudChip>
                             </CellTemplate>
                         </TemplateColumn>
-                        <TemplateColumn Title="Beschreibung"><CellTemplate>@(context.Item.FullName ?? context.Item.Description)</CellTemplate></TemplateColumn>
+                        <TemplateColumn Title="@L["Description"]"><CellTemplate>@(context.Item.FullName ?? context.Item.Description)</CellTemplate></TemplateColumn>
                     </Columns>
                 </MudDataGrid>
             </MudItem>
         </MudGrid>
     </MudTabPanel>
 
-    <MudTabPanel Text="@($"Verlauf ({_changes.Count})")">
+    <MudTabPanel Text="@($"{L["History"]} ({_changes.Count})")">
         @if (_changes.Count == 0)
         {
-            <MudText Color="Color.Secondary">Noch keine Änderungen. Der erste Scan ist die Ausgangslage; ab dem zweiten wird festgehalten, was sich geändert hat.</MudText>
+            <MudText Color="Color.Secondary">@L["No changes yet. The first scan is the baseline; from the second on, what changed is recorded."]</MudText>
         }
         else
         {
@@ -316,9 +314,9 @@ else if (_computer.ReverseDnsMismatch)
         _scanning = true;
         try
         {
-            await Audit.LogAsync("Inventar-Scan gestartet", _computer!.Name);
+            await Audit.LogAsync(L["Inventory scan started"], _computer!.Name);
             var outcome = await ScanService.ScanAsync(Id);
-            Snackbar.Add(outcome.Success ? "Scan abgeschlossen." : $"Scan fehlgeschlagen: {outcome.Error}", outcome.Success ? Severity.Success : Severity.Error);
+            Snackbar.Add(outcome.Success ? L["Scan completed."] : L["Scan failed: {0}", outcome.Error], outcome.Success ? Severity.Success : Severity.Error);
             _computer = await ComputerService.GetDetailAsync(Id);
             _changes = await Store.ChangesAsync(Id);
         }
@@ -334,8 +332,8 @@ else if (_computer.ReverseDnsMismatch)
         {
             var old = _computer!.Name;
             var name = await ComputerService.RenameToReportedAsync(Id);
-            await Audit.LogAsync("Rechner umbenannt", $"{old} → {name}");
-            Snackbar.Add($"Eintrag heißt jetzt {name}.", Severity.Success);
+            await Audit.LogAsync(L["Computer renamed"], $"{old} → {name}");
+            Snackbar.Add(L["Entry is now called {0}.", name], Severity.Success);
             _computer = await ComputerService.GetDetailAsync(Id);
         }
         catch (InvalidOperationException ex)
@@ -344,7 +342,7 @@ else if (_computer.ReverseDnsMismatch)
         }
     }
 
-    private static RenderFragment StatusRow(string label, bool? value) => @<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+    private RenderFragment StatusRow(string label, bool? value) => @<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
         <MudText Typo="Typo.body2" Style="flex: 1">@label</MudText>
         <MudChip T="string" Size="Size.Small" Color="@Display.OnOffColor(value)">@Display.OnOff(value)</MudChip>
     </MudStack>;

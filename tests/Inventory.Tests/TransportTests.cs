@@ -116,8 +116,8 @@ public class TransportTests
     [Fact]
     public void WinRm_errors_are_made_readable()
     {
-        Assert.Contains("eingeschränkten Sprachmodus", WinRmTransport.Explain("CONSTRAINED_LOCAL"));
-        Assert.Contains("Zielrechner", WinRmTransport.Explain("Fehler: CONSTRAINED_REMOTE"));
+        Assert.Contains("constrained language mode", WinRmTransport.Explain("CONSTRAINED_LOCAL"));
+        Assert.Contains("target computer", WinRmTransport.Explain("Fehler: CONSTRAINED_REMOTE"));
         Assert.Equal("Zugriff verweigert", WinRmTransport.Explain("Zugriff verweigert"));
         Assert.Equal("New-Object : Fehler &  mehr", WinRmTransport.ErrorText("#< CLIXML\n<Objs><S S=\"Error\">New-Object : Fehler &amp; _x000D__x000A_</S><S S=\"Error\">mehr</S></Objs>"));
         Assert.Equal("klartext", WinRmTransport.ErrorText(" klartext "));

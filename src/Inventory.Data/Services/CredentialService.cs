@@ -3,10 +3,15 @@ using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
-public sealed class CredentialService(IDbContextFactory<InventoryDbContext> dbFactory, ISecretProtector protector)
-{
+public sealed class CredentialService(IDbContextFactory<InventoryDbContext> dbFactory, ISecretProtector protector, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     public async Task<List<Credential>> ListAsync(CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
@@ -21,7 +26,7 @@ public sealed class CredentialService(IDbContextFactory<InventoryDbContext> dbFa
         if (id is null)
         {
             if (string.IsNullOrEmpty(password))
-                throw new ArgumentException("Für neue Zugangsdaten ist ein Passwort erforderlich.", nameof(password));
+                throw new ArgumentException(L["A password is required for new credentials."], nameof(password));
             credential = new Credential
             {
                 Name = name.Trim(),
@@ -34,7 +39,7 @@ public sealed class CredentialService(IDbContextFactory<InventoryDbContext> dbFa
         }
         else
         {
-            credential = await db.Credentials.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException($"Zugangsdaten {id} nicht gefunden");
+            credential = await db.Credentials.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException(L["Credentials {0} not found", id]);
             credential.Name = name.Trim();
             credential.Username = username.Trim();
             if (!string.IsNullOrEmpty(password))

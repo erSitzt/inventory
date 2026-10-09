@@ -18,15 +18,15 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
             var step = job.Steps[i];
             if (aborted)
             {
-                result.Steps.Add(new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Nicht ausgeführt: Ein vorheriger Schritt ist fehlgeschlagen" });
+                result.Steps.Add(new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Not executed: a previous step failed" });
                 continue;
             }
 
             progress?.Report(new ProgressEvent { Kind = ProgressKind.StepStarted, Step = i, Text = step.Name });
             var lines = new[]
             {
-                $"[Simulation] {target.Host} über {kind} als {target.Credential?.UserName ?? "Dienstkonto"}",
-                $"[Simulation] {step.Type}{(step.RunAs == StepRunAs.LoggedOnUser ? " als angemeldeter Benutzer" : "")}: {Describe(step)}",
+                $"[Simulation] {target.Host} via {kind} as {target.Credential?.UserName ?? "service account"}",
+                $"[Simulation] {step.Type}{(step.RunAs == StepRunAs.LoggedOnUser ? " as logged-on user" : "")}: {Describe(step)}",
             };
             foreach (var line in lines)
             {

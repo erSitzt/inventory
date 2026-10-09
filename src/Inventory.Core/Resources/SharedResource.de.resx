@@ -1,0 +1,2402 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- Deutsche Übersetzung. Schlüssel = englischer Text aus dem Quelltext; Platzhalter {0}, {1} … müssen erhalten bleiben. -->
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name='"{0}" is not a valid exit code.' xml:space="preserve">
+    <value>„{0}“ ist kein gültiger Exitcode.</value>
+  </data>
+  <data name="#{0} {1} on {2}" xml:space="preserve">
+    <value>#{0} {1} auf {2}</value>
+  </data>
+  <data name="(API, not signed in)" xml:space="preserve">
+    <value>(API ohne Anmeldung)</value>
+  </data>
+  <data name="(automatic)" xml:space="preserve">
+    <value>(automatisch)</value>
+  </data>
+  <data name="(domain)" xml:space="preserve">
+    <value>(Domäne)</value>
+  </data>
+  <data name="(not signed in)" xml:space="preserve">
+    <value>(ohne Anmeldung)</value>
+  </data>
+  <data name='1 open item – details under "Needs attention".' xml:space="preserve">
+    <value>1 offener Punkt – Einzelheiten unter „Handlungsbedarf“.</value>
+  </data>
+  <data name="1 year" xml:space="preserve">
+    <value>1 Jahr</value>
+  </data>
+  <data name='A collection named "{0}" already exists.' xml:space="preserve">
+    <value>Es gibt bereits eine Sammlung mit dem Namen „{0}“.</value>
+  </data>
+  <data name="A computer belongs to it if" xml:space="preserve">
+    <value>Ein Rechner gehört dazu, wenn</value>
+  </data>
+  <data name="A computer must be missing continuously for this long before it is deleted" xml:space="preserve">
+    <value>So lange muss ein Rechner ununterbrochen fehlen, bevor er gelöscht wird</value>
+  </data>
+  <data name="A different computer responds at this name's address; the listed one is therefore unreachable." xml:space="preserve">
+    <value>Unter der Adresse dieses Namens antwortet ein anderer Rechner; der eingetragene ist damit nicht erreichbar.</value>
+  </data>
+  <data name='A package named "{0}" already exists.' xml:space="preserve">
+    <value>Es gibt bereits ein Paket mit dem Namen „{0}“.</value>
+  </data>
+  <data name="A password is required for new credentials." xml:space="preserve">
+    <value>Für neue Zugangsdaten ist ein Passwort erforderlich.</value>
+  </data>
+  <data name='A schedule scans regularly or deploys a package to a collection, e.g. "Chrome" to "Chrome outdated".' xml:space="preserve">
+    <value>Ein Zeitplan scannt regelmäßig oder stellt ein Paket auf einer Sammlung bereit, etwa „Chrome“ auf „Chrome veraltet“.</value>
+  </data>
+  <data name="Access denied – the account needs local administrator rights on the target computer (for local accounts additionally LocalAccountTokenFilterPolicy)" xml:space="preserve">
+    <value>Zugriff verweigert – das Konto braucht lokale Administratorrechte auf dem Zielrechner (bei lokalen Konten zusätzlich LocalAccountTokenFilterPolicy)</value>
+  </data>
+  <data name="According to reverse DNS the address {0} belongs to {1}, listed is {2}. The computer has not reported its own name yet; a scan shows who really responds." xml:space="preserve">
+    <value>Die Adresse {0} gehört laut Reverse-DNS zu {1}, eingetragen ist {2}. Der Rechner selbst hat seinen Namen noch nicht genannt; ein Scan zeigt, wer wirklich antwortet.</value>
+  </data>
+  <data name="According to reverse DNS the address {0} belongs to {1}. The computer has not reported its own name yet – a scan will tell." xml:space="preserve">
+    <value>Die Adresse {0} gehört laut Reverse-DNS zu {1}. Der Rechner selbst hat seinen Namen noch nicht genannt – ein Scan schafft Klarheit.</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>Konto</value>
+  </data>
+  <data name="Account of the server service" xml:space="preserve">
+    <value>Konto des Server-Dienstes</value>
+  </data>
+  <data name="Action" xml:space="preserve">
+    <value>Aktion</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Aktionen</value>
+  </data>
+  <data name="active" xml:space="preserve">
+    <value>aktiv</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>Aktiv</value>
+  </data>
+  <data name="AD synchronization: {0}, server {1}, every {2} h, disabled accounts {3}, missing computers: {4}" xml:space="preserve">
+    <value>AD-Synchronisation: {0}, Server {1}, alle {2} h, deaktivierte Konten {3}, fehlende Rechner: {4}</value>
+  </data>
+  <data name="Adapter" xml:space="preserve">
+    <value>Adapter</value>
+  </data>
+  <data name="Add" xml:space="preserve">
+    <value>Hinzufügen</value>
+  </data>
+  <data name="Add computers" xml:space="preserve">
+    <value>Rechner hinzufügen</value>
+  </data>
+  <data name="Add credentials" xml:space="preserve">
+    <value>Zugangsdaten hinzufügen</value>
+  </data>
+  <data name="Add rule" xml:space="preserve">
+    <value>Regel hinzufügen</value>
+  </data>
+  <data name="Add step" xml:space="preserve">
+    <value>Schritt hinzufügen</value>
+  </data>
+  <data name='Add to "{0}"' xml:space="preserve">
+    <value>Zu „{0}“ hinzufügen</value>
+  </data>
+  <data name="Address of this server as seen by the agents" xml:space="preserve">
+    <value>Adresse dieses Servers aus Sicht der Agenten</value>
+  </data>
+  <data name="Adopt new versions automatically" xml:space="preserve">
+    <value>Neue Versionen automatisch übernehmen</value>
+  </data>
+  <data name="after {0} seconds" xml:space="preserve">
+    <value>nach {0} Sekunden</value>
+  </data>
+  <data name="Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="Agent disconnected" xml:space="preserve">
+    <value>Agent getrennt</value>
+  </data>
+  <data name="Agent installation started" xml:space="preserve">
+    <value>Agent-Installation gestartet</value>
+  </data>
+  <data name='Agent installed on {0} computers. They show as "Agent" as soon as the service reports in.' xml:space="preserve">
+    <value>Agent auf {0} Rechnern installiert. Sie erscheinen als „Agent“, sobald sich der Dienst meldet.</value>
+  </data>
+  <data name="Agent {0}, last contact {1}" xml:space="preserve">
+    <value>Agent {0}, letzter Kontakt {1}</value>
+  </data>
+  <data name="Agents" xml:space="preserve">
+    <value>Agenten</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>Alle</value>
+  </data>
+  <data name="All computers" xml:space="preserve">
+    <value>Alle Rechner</value>
+  </data>
+  <data name="All files of the package are copied to the target computer with every deployment. Large files can also be placed directly on the server:" xml:space="preserve">
+    <value>Alle Dateien des Pakets werden bei jeder Bereitstellung auf den Zielrechner kopiert. Große Dateien lassen sich auch direkt auf dem Server ablegen:</value>
+  </data>
+  <data name="All good – no open items." xml:space="preserve">
+    <value>Alles in Ordnung – keine offenen Punkte.</value>
+  </data>
+  <data name="All installations (CSV)" xml:space="preserve">
+    <value>Alle Installationen (CSV)</value>
+  </data>
+  <data name="all rules" xml:space="preserve">
+    <value>alle Regeln</value>
+  </data>
+  <data name="all users" xml:space="preserve">
+    <value>alle Benutzer</value>
+  </data>
+  <data name="Along with the computer, its inventory data and history are deleted. Narrowing the search roots makes all computers outside them count as missing. If conspicuously many computers were to be deleted at once, the run deletes nothing and reports it." xml:space="preserve">
+    <value>Mit dem Rechner werden seine Inventardaten und sein Verlauf gelöscht. Wer die Suchwurzeln einschränkt, lässt alle Rechner außerhalb davon als fehlend gelten. Wären auf einmal auffällig viele Rechner zu löschen, löscht der Lauf nichts und meldet das.</value>
+  </data>
+  <data name="already running" xml:space="preserve">
+    <value>läuft bereits</value>
+  </data>
+  <data name="An unexpected error occurred." xml:space="preserve">
+    <value>Ein unerwarteter Fehler ist aufgetreten.</value>
+  </data>
+  <data name="An update is already running." xml:space="preserve">
+    <value>Eine Aktualisierung läuft bereits.</value>
+  </data>
+  <data name="AND" xml:space="preserve">
+    <value>UND</value>
+  </data>
+  <data name="Antivirus" xml:space="preserve">
+    <value>Virenschutz</value>
+  </data>
+  <data name="Antivirus product" xml:space="preserve">
+    <value>Virenschutz</value>
+  </data>
+  <data name="any" xml:space="preserve">
+    <value>beliebig</value>
+  </data>
+  <data name="API token created" xml:space="preserve">
+    <value>API-Token angelegt</value>
+  </data>
+  <data name="API token revoked" xml:space="preserve">
+    <value>API-Token widerrufen</value>
+  </data>
+  <data name="API tokens" xml:space="preserve">
+    <value>API-Tokens</value>
+  </data>
+  <data name="Applies to all computers without a transport of their own." xml:space="preserve">
+    <value>Gilt für alle Rechner, bei denen kein eigener Transport eingestellt ist.</value>
+  </data>
+  <data name="applies." xml:space="preserve">
+    <value>zutrifft.</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>Übernehmen</value>
+  </data>
+  <data name="apply." xml:space="preserve">
+    <value>zutreffen.</value>
+  </data>
+  <data name="Architecture" xml:space="preserve">
+    <value>Architektur</value>
+  </data>
+  <data name="Area" xml:space="preserve">
+    <value>Bereich</value>
+  </data>
+  <data name="as logged-on user" xml:space="preserve">
+    <value>als angemeldeter Benutzer</value>
+  </data>
+  <data name="As of the computer's last search ({0}); the scan does not trigger a new search." xml:space="preserve">
+    <value>Stand der letzten Suche des Rechners ({0}); der Scan löst keine neue Suche aus.</value>
+  </data>
+  <data name="as of {0}" xml:space="preserve">
+    <value>Stand {0}</value>
+  </data>
+  <data name="At fixed intervals" xml:space="preserve">
+    <value>In festen Abständen</value>
+  </data>
+  <data name="At least one firewall profile is off" xml:space="preserve">
+    <value>Mindestens ein Firewall-Profil ist abgeschaltet</value>
+  </data>
+  <data name="at least one rule" xml:space="preserve">
+    <value>mindestens eine Regel</value>
+  </data>
+  <data name="Audit log" xml:space="preserve">
+    <value>Protokoll</value>
+  </data>
+  <data name="Automatic update: {0}" xml:space="preserve">
+    <value>Automatische Aktualisierung: {0}</value>
+  </data>
+  <data name="Back to the list" xml:space="preserve">
+    <value>Zur Übersicht</value>
+  </data>
+  <data name="Back to the overview" xml:space="preserve">
+    <value>Zur Übersicht</value>
+  </data>
+  <data name="by {0}" xml:space="preserve">
+    <value>von {0}</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="cancelled" xml:space="preserve">
+    <value>abgebrochen</value>
+  </data>
+  <data name="changed" xml:space="preserve">
+    <value>geändert</value>
+  </data>
+  <data name="Changes" xml:space="preserve">
+    <value>Änderungen</value>
+  </data>
+  <data name="Changes and download" xml:space="preserve">
+    <value>Änderungen und Download</value>
+  </data>
+  <data name="Check now" xml:space="preserve">
+    <value>Jetzt prüfen</value>
+  </data>
+  <data name="Check reachability of all" xml:space="preserve">
+    <value>Erreichbarkeit aller prüfen</value>
+  </data>
+  <data name="Check reachability of selection" xml:space="preserve">
+    <value>Erreichbarkeit der Auswahl prüfen</value>
+  </data>
+  <data name="Check reachability regularly" xml:space="preserve">
+    <value>Erreichbarkeit regelmäßig prüfen</value>
+  </data>
+  <data name="Checking {0} new computers …" xml:space="preserve">
+    <value>Prüfe {0} neue Rechner …</value>
+  </data>
+  <data name="Checks the reachability of all computers at fixed intervals so the online status in the computer list and on the overview stays current. Computers with name anomalies – a different computer responds under the name, or reverse DNS names another – are skipped until the discrepancy is resolved." xml:space="preserve">
+    <value>Prüft in festen Abständen die Erreichbarkeit aller Rechner, damit der Online-Status in der Rechnerliste und auf der Übersicht aktuell bleibt. Rechner mit Namensauffälligkeiten – ein anderer Rechner antwortet unter dem Namen oder Reverse-DNS nennt einen anderen – werden übersprungen, bis die Abweichung geklärt ist.</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="Collection" xml:space="preserve">
+    <value>Sammlung</value>
+  </data>
+  <data name="Collection deleted." xml:space="preserve">
+    <value>Sammlung gelöscht.</value>
+  </data>
+  <data name="Collection {0} not found" xml:space="preserve">
+    <value>Sammlung {0} nicht gefunden</value>
+  </data>
+  <data name="Collections" xml:space="preserve">
+    <value>Sammlungen</value>
+  </data>
+  <data name="Combination" xml:space="preserve">
+    <value>Verknüpfung</value>
+  </data>
+  <data name="Comma-separated; empty = default" xml:space="preserve">
+    <value>Durch Komma getrennt; leer = Standard</value>
+  </data>
+  <data name="Command" xml:space="preserve">
+    <value>Befehl</value>
+  </data>
+  <data name="Command (cmd)" xml:space="preserve">
+    <value>Befehl (cmd)</value>
+  </data>
+  <data name="Command copied." xml:space="preserve">
+    <value>Befehl kopiert.</value>
+  </data>
+  <data name="Command prompt (cmd)" xml:space="preserve">
+    <value>Eingabeaufforderung (cmd)</value>
+  </data>
+  <data name="Commands and deployments only run if the reached computer has the listed name. This prevents a stale DNS entry from steering an installation to a foreign computer. Scans are exempt: they still run and thus show which computer actually responds. The captured data then belongs to that computer, and the entry does not count as online." xml:space="preserve">
+    <value>Befehle und Deployments laufen nur, wenn der erreichte Rechner so heißt wie eingetragen. Das verhindert, dass ein veralteter DNS-Eintrag eine Installation auf einen fremden Rechner lenkt. Scans sind davon ausgenommen: sie laufen trotzdem und zeigen so, welcher Rechner tatsächlich antwortet. Die erfassten Daten gehören dann zu diesem Rechner, und der Eintrag gilt nicht als online.</value>
+  </data>
+  <data name="Computer" xml:space="preserve">
+    <value>Rechner</value>
+  </data>
+  <data name="Computer name" xml:space="preserve">
+    <value>Rechnername</value>
+  </data>
+  <data name="Computer names" xml:space="preserve">
+    <value>Rechnernamen</value>
+  </data>
+  <data name="Computer or share ADMIN$ unreachable (check name, firewall, file and printer sharing)" xml:space="preserve">
+    <value>Rechner oder Freigabe ADMIN$ nicht erreichbar (Name, Firewall, Datei- und Druckerfreigabe prüfen)</value>
+  </data>
+  <data name="Computer renamed" xml:space="preserve">
+    <value>Rechner umbenannt</value>
+  </data>
+  <data name="Computer unreachable – will be retried as soon as it is online" xml:space="preserve">
+    <value>Rechner nicht erreichbar – wird nachgeholt, sobald er online ist</value>
+  </data>
+  <data name="Computer was unreachable until the deadline expired" xml:space="preserve">
+    <value>Rechner war bis zum Ablauf der Frist nicht erreichbar</value>
+  </data>
+  <data name="Computer {0} not found" xml:space="preserve">
+    <value>Rechner {0} nicht gefunden</value>
+  </data>
+  <data name="Computer, program, user …" xml:space="preserve">
+    <value>Rechner, Programm, Benutzer …</value>
+  </data>
+  <data name="Computers" xml:space="preserve">
+    <value>Rechner</value>
+  </data>
+  <data name="Computers (CSV)" xml:space="preserve">
+    <value>Rechner (CSV)</value>
+  </data>
+  <data name="Computers added" xml:space="preserve">
+    <value>Rechner hinzugefügt</value>
+  </data>
+  <data name="Computers deleted" xml:space="preserve">
+    <value>Rechner gelöscht</value>
+  </data>
+  <data name="Computers deleted (no longer in AD)" xml:space="preserve">
+    <value>Rechner gelöscht (nicht mehr im AD)</value>
+  </data>
+  <data name="Computers no longer found in the directory" xml:space="preserve">
+    <value>Rechner, die im Verzeichnis nicht mehr gefunden werden</value>
+  </data>
+  <data name="Computers with {0} older than the library version" xml:space="preserve">
+    <value>Rechner mit {0} älter als die Bibliotheksversion</value>
+  </data>
+  <data name="Condition" xml:space="preserve">
+    <value>Bedingung</value>
+  </data>
+  <data name="Conditions (active)" xml:space="preserve">
+    <value>Bedingungen (aktiv)</value>
+  </data>
+  <data name="Conditions (none)" xml:space="preserve">
+    <value>Bedingungen (keine)</value>
+  </data>
+  <data name="contains" xml:space="preserve">
+    <value>enthält</value>
+  </data>
+  <data name="continue on error" xml:space="preserve">
+    <value>bei Fehler fortfahren</value>
+  </data>
+  <data name="Continue with the next step on error" xml:space="preserve">
+    <value>Bei Fehler mit dem nächsten Schritt fortfahren</value>
+  </data>
+  <data name="Copy files" xml:space="preserve">
+    <value>Dateien kopieren</value>
+  </data>
+  <data name="Copy {0}" xml:space="preserve">
+    <value>{0} kopieren</value>
+  </data>
+  <data name="Copying only works over HTTPS – please select the command and copy it with Ctrl+C." xml:space="preserve">
+    <value>Kopieren ist nur über HTTPS möglich – bitte den Befehl markieren und mit Strg+C kopieren.</value>
+  </data>
+  <data name="Copying to \\{0}\ADMIN$ failed: {1}" xml:space="preserve">
+    <value>Kopieren nach \\{0}\ADMIN$ fehlgeschlagen: {1}</value>
+  </data>
+  <data name="Cores / threads" xml:space="preserve">
+    <value>Kerne / Threads</value>
+  </data>
+  <data name="Create" xml:space="preserve">
+    <value>Anlegen</value>
+  </data>
+  <data name='Create dynamic collection "{0} outdated" (computers with an older version)' xml:space="preserve">
+    <value>Dynamische Sammlung „{0} veraltet“ anlegen (Rechner mit älterer Version)</value>
+  </data>
+  <data name="Created" xml:space="preserve">
+    <value>Angelegt</value>
+  </data>
+  <data name="Created by" xml:space="preserve">
+    <value>Angelegt von</value>
+  </data>
+  <data name="Creates computers from the directory's computer accounts and marks computers whose account is no longer found there. Manually added computers the directory never knew remain untouched." xml:space="preserve">
+    <value>Legt Computerkonten aus dem Verzeichnis als Rechner an und kennzeichnet Rechner, deren Konto dort nicht mehr gefunden wird. Von Hand angelegte Rechner, die das Verzeichnis nie gekannt hat, bleiben unberührt.</value>
+  </data>
+  <data name="Credentials" xml:space="preserve">
+    <value>Zugangsdaten</value>
+  </data>
+  <data name="Credentials changed" xml:space="preserve">
+    <value>Zugangsdaten geändert</value>
+  </data>
+  <data name="Credentials created" xml:space="preserve">
+    <value>Zugangsdaten angelegt</value>
+  </data>
+  <data name="Credentials deleted" xml:space="preserve">
+    <value>Zugangsdaten gelöscht</value>
+  </data>
+  <data name="Credentials deleted." xml:space="preserve">
+    <value>Zugangsdaten gelöscht.</value>
+  </data>
+  <data name='Credentials named "{0}" already exist.' xml:space="preserve">
+    <value>Es gibt bereits Zugangsdaten mit dem Namen „{0}“.</value>
+  </data>
+  <data name="Credentials {0} not found" xml:space="preserve">
+    <value>Zugangsdaten {0} nicht gefunden</value>
+  </data>
+  <data name="current" xml:space="preserve">
+    <value>aktuell</value>
+  </data>
+  <data name="Daily" xml:space="preserve">
+    <value>Täglich</value>
+  </data>
+  <data name="daily at {0}" xml:space="preserve">
+    <value>täglich um {0}</value>
+  </data>
+  <data name="Daily inventory scan" xml:space="preserve">
+    <value>Täglicher Inventar-Scan</value>
+  </data>
+  <data name="Data directory" xml:space="preserve">
+    <value>Datenverzeichnis</value>
+  </data>
+  <data name="Database, keys, package files and daily backups (subfolder backups, 14 copies). Configurable via Inventory:DataDirectory." xml:space="preserve">
+    <value>Datenbank, Schlüssel, Paketdateien und tägliche Sicherungen (Unterordner backups, 14 Stück). Änderbar über Inventory:DataDirectory.</value>
+  </data>
+  <data name="Date" xml:space="preserve">
+    <value>Datum</value>
+  </data>
+  <data name="Days since last update installation" xml:space="preserve">
+    <value>Tage seit letzter Update-Installation</value>
+  </data>
+  <data name="Default" xml:space="preserve">
+    <value>Standard</value>
+  </data>
+  <data name="Default credentials changed" xml:space="preserve">
+    <value>Standard-Zugangsdaten geändert</value>
+  </data>
+  <data name="Default transport" xml:space="preserve">
+    <value>Standard-Transport</value>
+  </data>
+  <data name="Defender real-time protection" xml:space="preserve">
+    <value>Defender-Echtzeitschutz</value>
+  </data>
+  <data name="Defender signature (UTC)" xml:space="preserve">
+    <value>Defender-Signatur (UTC)</value>
+  </data>
+  <data name="Defender tamper protection" xml:space="preserve">
+    <value>Defender-Manipulationsschutz</value>
+  </data>
+  <data name="Delay (seconds)" xml:space="preserve">
+    <value>Verzögerung (Sekunden)</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Löschen</value>
+  </data>
+  <data name="delete after {0} days" xml:space="preserve">
+    <value>nach {0} Tagen löschen</value>
+  </data>
+  <data name="Delete collection" xml:space="preserve">
+    <value>Sammlung löschen</value>
+  </data>
+  <data name="Delete computers" xml:space="preserve">
+    <value>Rechner löschen</value>
+  </data>
+  <data name="Delete credentials" xml:space="preserve">
+    <value>Zugangsdaten löschen</value>
+  </data>
+  <data name="Delete file" xml:space="preserve">
+    <value>Datei löschen</value>
+  </data>
+  <data name="Delete package" xml:space="preserve">
+    <value>Paket löschen</value>
+  </data>
+  <data name="Delete schedule" xml:space="preserve">
+    <value>Zeitplan löschen</value>
+  </data>
+  <data name="Deploy" xml:space="preserve">
+    <value>Bereitstellen</value>
+  </data>
+  <data name='Deploy "{0}"' xml:space="preserve">
+    <value>„{0}“ bereitstellen</value>
+  </data>
+  <data name="Deploy package" xml:space="preserve">
+    <value>Paket bereitstellen</value>
+  </data>
+  <data name="Deploy to {0} computers" xml:space="preserve">
+    <value>Auf {0} Rechner bereitstellen</value>
+  </data>
+  <data name="Deployment" xml:space="preserve">
+    <value>Deployment</value>
+  </data>
+  <data name="Deployment #{0} started on {1} computers" xml:space="preserve">
+    <value>Deployment #{0} auf {1} Rechner gestartet</value>
+  </data>
+  <data name="Deployment cancelled" xml:space="preserve">
+    <value>Deployment abgebrochen</value>
+  </data>
+  <data name="Deployment retried" xml:space="preserve">
+    <value>Deployment wiederholt</value>
+  </data>
+  <data name="Deployment started" xml:space="preserve">
+    <value>Deployment gestartet</value>
+  </data>
+  <data name="Deployment started via API" xml:space="preserve">
+    <value>Deployment über API gestartet</value>
+  </data>
+  <data name="Deployments" xml:space="preserve">
+    <value>Deployments</value>
+  </data>
+  <data name="Deployments are still running. Please wait until they have finished." xml:space="preserve">
+    <value>Es laufen noch Deployments. Bitte warten, bis sie beendet sind.</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>Beschreibung</value>
+  </data>
+  <data name="Destination on the computer" xml:space="preserve">
+    <value>Ziel auf dem Rechner</value>
+  </data>
+  <data name="Detection in inventory" xml:space="preserve">
+    <value>Erkennung im Inventar</value>
+  </data>
+  <data name="disabled" xml:space="preserve">
+    <value>deaktiviert</value>
+  </data>
+  <data name="Disabled accounts are not created; if an existing computer is disabled in the directory, it counts as no longer found." xml:space="preserve">
+    <value>Deaktivierte Konten werden nicht angelegt; ist ein bereits vorhandener Rechner im Verzeichnis deaktiviert, gilt er als nicht mehr gefunden.</value>
+  </data>
+  <data name="disabled in AD" xml:space="preserve">
+    <value>im AD deaktiviert</value>
+  </data>
+  <data name="Disk" xml:space="preserve">
+    <value>Datenträger</value>
+  </data>
+  <data name="Disks" xml:space="preserve">
+    <value>Datenträger</value>
+  </data>
+  <data name="Display name" xml:space="preserve">
+    <value>Anzeigename</value>
+  </data>
+  <data name="DNS servers" xml:space="preserve">
+    <value>DNS-Server</value>
+  </data>
+  <data name="does not contain" xml:space="preserve">
+    <value>enthält nicht</value>
+  </data>
+  <data name="does not equal" xml:space="preserve">
+    <value>ist ungleich</value>
+  </data>
+  <data name="Domain" xml:space="preserve">
+    <value>Domäne</value>
+  </data>
+  <data name="Domain controller or domain" xml:space="preserve">
+    <value>Domänencontroller oder Domäne</value>
+  </data>
+  <data name="Domain network" xml:space="preserve">
+    <value>Domänennetz</value>
+  </data>
+  <data name="DOMAIN\user, user@domain or .\user for local accounts" xml:space="preserve">
+    <value>DOMÄNE\benutzer, benutzer@domäne oder .\benutzer für lokale Konten</value>
+  </data>
+  <data name="Download InventoryLauncher.exe" xml:space="preserve">
+    <value>InventoryLauncher.exe herunterladen</value>
+  </data>
+  <data name="Downloading {0} {1} from the vendor …" xml:space="preserve">
+    <value>Lade {0} {1} vom Hersteller …</value>
+  </data>
+  <data name="Drive" xml:space="preserve">
+    <value>Laufwerk</value>
+  </data>
+  <data name="dynamic" xml:space="preserve">
+    <value>dynamisch</value>
+  </data>
+  <data name="Dynamic collection" xml:space="preserve">
+    <value>Dynamische Sammlung</value>
+  </data>
+  <data name="Dynamic collections are re-evaluated on every run." xml:space="preserve">
+    <value>Dynamische Sammlungen werden bei jedem Lauf neu ausgewertet.</value>
+  </data>
+  <data name="E.g. %ProgramData%\Company\ – a trailing \ means folder. Existing files are overwritten." xml:space="preserve">
+    <value>Z. B. %ProgramData%\Firma\ – ein abschließender \ bedeutet Ordner. Vorhandene Dateien werden überschrieben.</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Bearbeiten</value>
+  </data>
+  <data name="Empty = the domain this server belongs to" xml:space="preserve">
+    <value>Leer = Domäne, der dieser Server angehört</value>
+  </data>
+  <data name="Empty result from {0}" xml:space="preserve">
+    <value>Leeres Ergebnis von {0}</value>
+  </data>
+  <data name="Enrollment secret" xml:space="preserve">
+    <value>Anmeldegeheimnis</value>
+  </data>
+  <data name="Enrollment secret for agents renewed" xml:space="preserve">
+    <value>Anmeldegeheimnis für Agenten erneuert</value>
+  </data>
+  <data name="Entry from the winget search, not from the base selection: test the silent parameters on a single computer before deploying." xml:space="preserve">
+    <value>Eintrag aus der winget-Suche, nicht aus der Grundauswahl: die Silent-Parameter vor dem Verteilen an einem einzelnen Rechner testen.</value>
+  </data>
+  <data name="Entry is now called {0}." xml:space="preserve">
+    <value>Eintrag heißt jetzt {0}.</value>
+  </data>
+  <data name="equals" xml:space="preserve">
+    <value>ist gleich</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Fehler</value>
+  </data>
+  <data name="every {0} hours" xml:space="preserve">
+    <value>alle {0} Stunden</value>
+  </data>
+  <data name="every {0} minutes" xml:space="preserve">
+    <value>alle {0} Minuten</value>
+  </data>
+  <data name="Example: " xml:space="preserve">
+    <value>Beispiel: </value>
+  </data>
+  <data name="Exclude disabled computer accounts" xml:space="preserve">
+    <value>Deaktivierte Computerkonten ausschließen</value>
+  </data>
+  <data name="excluded" xml:space="preserve">
+    <value>ausgeschlossen</value>
+  </data>
+  <data name="Executed with cmd.exe /c. The files of this package are in the working directory under p{0}\." xml:space="preserve">
+    <value>Wird mit cmd.exe /c ausgeführt. Die Dateien dieses Pakets liegen im Arbeitsverzeichnis unter p{0}\.</value>
+  </data>
+  <data name="Exit code {0}" xml:space="preserve">
+    <value>Exitcode {0}</value>
+  </data>
+  <data name="expired" xml:space="preserve">
+    <value>abgelaufen</value>
+  </data>
+  <data name="failed" xml:space="preserve">
+    <value>fehlgeschlagen</value>
+  </data>
+  <data name="fallback attempt via {0}: {1}" xml:space="preserve">
+    <value>Ausweichversuch über {0}: {1}</value>
+  </data>
+  <data name="Fallback transport" xml:space="preserve">
+    <value>Ausweich-Transport</value>
+  </data>
+  <data name="Feature update" xml:space="preserve">
+    <value>Funktionsupdate</value>
+  </data>
+  <data name="Feature update (e.g. 24H2)" xml:space="preserve">
+    <value>Funktionsupdate (z. B. 24H2)</value>
+  </data>
+  <data name="Field" xml:space="preserve">
+    <value>Feld</value>
+  </data>
+  <data name="File or folder from the package's files" xml:space="preserve">
+    <value>Datei oder Ordner aus den Dateien des Pakets</value>
+  </data>
+  <data name="File system" xml:space="preserve">
+    <value>Dateisystem</value>
+  </data>
+  <data name="File/folder exists" xml:space="preserve">
+    <value>Datei/Ordner vorhanden</value>
+  </data>
+  <data name="File/folder missing" xml:space="preserve">
+    <value>Datei/Ordner fehlt</value>
+  </data>
+  <data name="Files" xml:space="preserve">
+    <value>Dateien</value>
+  </data>
+  <data name="finished" xml:space="preserve">
+    <value>beendet</value>
+  </data>
+  <data name="finished {0}" xml:space="preserve">
+    <value>beendet {0}</value>
+  </data>
+  <data name="Firewall (domain)" xml:space="preserve">
+    <value>Firewall (Domäne)</value>
+  </data>
+  <data name="Firewall (partly) off" xml:space="preserve">
+    <value>Firewall (teilweise) aus</value>
+  </data>
+  <data name="Firewall (private)" xml:space="preserve">
+    <value>Firewall (Privat)</value>
+  </data>
+  <data name="Firewall (public)" xml:space="preserve">
+    <value>Firewall (Öffentlich)</value>
+  </data>
+  <data name="Firewall domain" xml:space="preserve">
+    <value>Firewall Domäne</value>
+  </data>
+  <data name="Firewall off" xml:space="preserve">
+    <value>Firewall aus</value>
+  </data>
+  <data name="Firewall on, antivirus active, no updates pending" xml:space="preserve">
+    <value>Firewall an, Virenschutz aktiv, keine Updates ausstehend</value>
+  </data>
+  <data name="Firewall private" xml:space="preserve">
+    <value>Firewall Privat</value>
+  </data>
+  <data name="Firewall public" xml:space="preserve">
+    <value>Firewall Öffentlich</value>
+  </data>
+  <data name='Fixed version: a separate package "{0}" is created that is never updated automatically. Vendors sometimes remove older setups from their servers; then the download fails. Older versions usually also contain known security vulnerabilities.' xml:space="preserve">
+    <value>Feste Version: Es entsteht ein eigenständiges Paket „{0}“, das nicht automatisch aktualisiert wird. Ältere Setups nehmen Hersteller manchmal vom Server; dann schlägt der Download fehl. Ältere Versionen enthalten außerdem meist bekannte Sicherheitslücken.</value>
+  </data>
+  <data name="For scripts and other programs that use the REST API without a browser login. A token has full access to the API – like a signed-in user. Example call:" xml:space="preserve">
+    <value>Für Skripte und andere Programme, die die REST-API ohne Browser-Anmeldung nutzen. Ein Token hat vollen Zugriff auf die API – wie ein angemeldeter Benutzer. Aufruf z. B.:</value>
+  </data>
+  <data name="For {0} computers a different computer responds than listed – see the marker in the list." xml:space="preserve">
+    <value>Bei {0} Rechnern antwortet ein anderer Rechner als eingetragen – siehe Markierung in der Liste.</value>
+  </data>
+  <data name="Free" xml:space="preserve">
+    <value>Frei</value>
+  </data>
+  <data name="from winget search" xml:space="preserve">
+    <value>aus der winget-Suche</value>
+  </data>
+  <data name="Full rights on the computer, but no access to a user's profile and settings." xml:space="preserve">
+    <value>Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.</value>
+  </data>
+  <data name="Grace period (days)" xml:space="preserve">
+    <value>Frist (Tage)</value>
+  </data>
+  <data name="greater or equal" xml:space="preserve">
+    <value>größer oder gleich</value>
+  </data>
+  <data name="Group" xml:space="preserve">
+    <value>Gruppe</value>
+  </data>
+  <data name='Group policy "Configure Offer Remote Assistance" (Computer Configuration → Administrative Templates → System → Remote Assistance) with your account or group as helper; firewall rule group "Remote Assistance". The user has to consent.' xml:space="preserve">
+    <value>Gruppenrichtlinie „Remoteunterstützung anbieten konfigurieren“ (Computerkonfiguration → Administrative Vorlagen → System → Remoteunterstützung) mit deinem Konto oder deiner Gruppe als Helfer; Firewall-Regelgruppe „Remoteunterstützung“. Der Benutzer muss zustimmen.</value>
+  </data>
+  <data name='Group policy "Set rules for remote control of Remote Desktop Services user sessions" (… Windows Components → Remote Desktop Services → Remote Desktop Session Host → Connections); firewall rules "Remote Desktop – Shadow" and "File and Printer Sharing (SMB-In)".' xml:space="preserve">
+    <value>Gruppenrichtlinie „Regeln für Remotesteuerung von Remotedesktopdienste-Benutzersitzungen festlegen“ (… Windows-Komponenten → Remotedesktopdienste → Remotedesktopsitzungs-Host → Verbindungen); Firewall-Regeln „Remotedesktop – Schatten“ und „Datei- und Druckerfreigabe (SMB eingehend)“.</value>
+  </data>
+  <data name="History" xml:space="preserve">
+    <value>Verlauf</value>
+  </data>
+  <data name="Hotfix" xml:space="preserve">
+    <value>Hotfix</value>
+  </data>
+  <data name="HTTPS recommended: over this connection the agent receives commands that it runs as Local System." xml:space="preserve">
+    <value>HTTPS empfohlen: Über diese Verbindung erhält der Agent Befehle, die er als Lokales System ausführt.</value>
+  </data>
+  <data name="immediately" xml:space="preserve">
+    <value>sofort</value>
+  </data>
+  <data name="Import" xml:space="preserve">
+    <value>Importieren</value>
+  </data>
+  <data name="Import an older version as a separate package" xml:space="preserve">
+    <value>Eine ältere Version als eigenes Paket importieren</value>
+  </data>
+  <data name="Import older version" xml:space="preserve">
+    <value>Ältere Version importieren</value>
+  </data>
+  <data name="Import {0}" xml:space="preserve">
+    <value>{0} importieren</value>
+  </data>
+  <data name="Imported from the" xml:space="preserve">
+    <value>Importiert aus der</value>
+  </data>
+  <data name="imported {0} – newer available" xml:space="preserve">
+    <value>importiert {0} – neuer verfügbar</value>
+  </data>
+  <data name="imported, up to date" xml:space="preserve">
+    <value>importiert, aktuell</value>
+  </data>
+  <data name="inactive" xml:space="preserve">
+    <value>inaktiv</value>
+  </data>
+  <data name="included" xml:space="preserve">
+    <value>einbezogen</value>
+  </data>
+  <data name="Install agent" xml:space="preserve">
+    <value>Agent installieren</value>
+  </data>
+  <data name="Install remote access launcher" xml:space="preserve">
+    <value>Starter für Fernzugriff installieren</value>
+  </data>
+  <data name="Install {0}" xml:space="preserve">
+    <value>{0} installieren</value>
+  </data>
+  <data name="Installation" xml:space="preserve">
+    <value>Installation</value>
+  </data>
+  <data name="Installation:" xml:space="preserve">
+    <value>Installation:</value>
+  </data>
+  <data name="Installed" xml:space="preserve">
+    <value>Installiert</value>
+  </data>
+  <data name="Installed on" xml:space="preserve">
+    <value>Installiert am</value>
+  </data>
+  <data name="Installed version:" xml:space="preserve">
+    <value>Installierte Version:</value>
+  </data>
+  <data name="Installer file" xml:space="preserve">
+    <value>Installationsdatei</value>
+  </data>
+  <data name="Installing agent on {0} computers …" xml:space="preserve">
+    <value>Installiere Agent auf {0} Rechnern …</value>
+  </data>
+  <data name="Installing the launcher on {0} computers …" xml:space="preserve">
+    <value>Installiere den Starter auf {0} Rechnern …</value>
+  </data>
+  <data name="Installing …" xml:space="preserve">
+    <value>Wird installiert …</value>
+  </data>
+  <data name="Interval (hours)" xml:space="preserve">
+    <value>Intervall (Stunden)</value>
+  </data>
+  <data name="Interval (minutes)" xml:space="preserve">
+    <value>Intervall (Minuten)</value>
+  </data>
+  <data name="Inventory is up to date (checked {0}, source: github.com/{1})." xml:space="preserve">
+    <value>Inventory ist aktuell (geprüft {0}, Quelle: github.com/{1}).</value>
+  </data>
+  <data name="Inventory scan" xml:space="preserve">
+    <value>Inventar-Scan</value>
+  </data>
+  <data name="Inventory scan started" xml:space="preserve">
+    <value>Inventar-Scan gestartet</value>
+  </data>
+  <data name="IP address" xml:space="preserve">
+    <value>IP-Adresse</value>
+  </data>
+  <data name="IP addresses" xml:space="preserve">
+    <value>IP-Adressen</value>
+  </data>
+  <data name="is {0}" xml:space="preserve">
+    <value>ist {0}</value>
+  </data>
+  <data name="It is shown only this once and cannot be retrieved later." xml:space="preserve">
+    <value>Es wird nur dieses eine Mal angezeigt und lässt sich später nicht mehr abrufen.</value>
+  </data>
+  <data name="Item" xml:space="preserve">
+    <value>Eintrag</value>
+  </data>
+  <data name="keep" xml:space="preserve">
+    <value>behalten</value>
+  </data>
+  <data name='Keep and mark as "not in AD"' xml:space="preserve">
+    <value>Behalten und als „nicht im AD“ kennzeichnen</value>
+  </data>
+  <data name="Keep up to date automatically" xml:space="preserve">
+    <value>Automatisch aktuell halten</value>
+  </data>
+  <data name="Label" xml:space="preserve">
+    <value>Bezeichnung</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Sprache</value>
+  </data>
+  <data name="last 24 hours" xml:space="preserve">
+    <value>letzte 24 Stunden</value>
+  </data>
+  <data name="Last boot" xml:space="preserve">
+    <value>Letzter Start</value>
+  </data>
+  <data name="Last boot (UTC)" xml:space="preserve">
+    <value>Letzter Start (UTC)</value>
+  </data>
+  <data name="Last installation: {0}" xml:space="preserve">
+    <value>Letzte Installation: {0}</value>
+  </data>
+  <data name="last present {0}" xml:space="preserve">
+    <value>zuletzt vorhanden {0}</value>
+  </data>
+  <data name="Last run" xml:space="preserve">
+    <value>Letzter Lauf</value>
+  </data>
+  <data name="Last run {0}: {1}" xml:space="preserve">
+    <value>Letzter Lauf {0}: {1}</value>
+  </data>
+  <data name="Last scan" xml:space="preserve">
+    <value>Letzter Scan</value>
+  </data>
+  <data name="Last scan (UTC)" xml:space="preserve">
+    <value>Letzter Scan (UTC)</value>
+  </data>
+  <data name="Last scan failed: {0}" xml:space="preserve">
+    <value>Letzter Scan fehlgeschlagen: {0}</value>
+  </data>
+  <data name="Last search: {0}" xml:space="preserve">
+    <value>Letzte Suche: {0}</value>
+  </data>
+  <data name="Last seen" xml:space="preserve">
+    <value>Zuletzt gesehen</value>
+  </data>
+  <data name="Last update installation (UTC)" xml:space="preserve">
+    <value>Letzte Update-Installation (UTC)</value>
+  </data>
+  <data name="Last used" xml:space="preserve">
+    <value>Zuletzt verwendet</value>
+  </data>
+  <data name="Launcher for direct start" xml:space="preserve">
+    <value>Starter für den Direktstart</value>
+  </data>
+  <data name="Launcher set up on {0} computers. Remote access now opens there with one click." xml:space="preserve">
+    <value>Starter auf {0} Rechnern eingerichtet. Fernzugriffe öffnen sich dort jetzt per Klick.</value>
+  </data>
+  <data name="Leave empty to keep the stored password" xml:space="preserve">
+    <value>Leer lassen, um das gespeicherte Passwort zu behalten</value>
+  </data>
+  <data name="less than" xml:space="preserve">
+    <value>kleiner als</value>
+  </data>
+  <data name="License" xml:space="preserve">
+    <value>Lizenz</value>
+  </data>
+  <data name="License: {0}" xml:space="preserve">
+    <value>Lizenz: {0}</value>
+  </data>
+  <data name="Loading versions …" xml:space="preserve">
+    <value>Versionen werden geladen …</value>
+  </data>
+  <data name="Local administrator" xml:space="preserve">
+    <value>Lokaler Administrator</value>
+  </data>
+  <data name="Local administrators" xml:space="preserve">
+    <value>Lokale Administratoren</value>
+  </data>
+  <data name="Local System" xml:space="preserve">
+    <value>Lokales System</value>
+  </data>
+  <data name="Local user" xml:space="preserve">
+    <value>Lokaler Benutzer</value>
+  </data>
+  <data name="Local user accounts" xml:space="preserve">
+    <value>Lokale Benutzerkonten</value>
+  </data>
+  <data name="Locally built development version – no update check." xml:space="preserve">
+    <value>Lokal gebauter Entwicklungsstand – es wird nicht nach Updates gesucht.</value>
+  </data>
+  <data name="Logged-on user" xml:space="preserve">
+    <value>Angemeldeter Benutzer</value>
+  </data>
+  <data name="logged-on user only" xml:space="preserve">
+    <value>nur angemeldeter Benutzer</value>
+  </data>
+  <data name="Logon as {0} not possible: {1}" xml:space="preserve">
+    <value>Anmeldung als {0} nicht möglich: {1}</value>
+  </data>
+  <data name="Logon failed – user name or password wrong, account locked or disabled" xml:space="preserve">
+    <value>Anmeldung fehlgeschlagen – Benutzername oder Passwort falsch, Konto gesperrt oder deaktiviert</value>
+  </data>
+  <data name="MAC address" xml:space="preserve">
+    <value>MAC-Adresse</value>
+  </data>
+  <data name="Make default" xml:space="preserve">
+    <value>Als Standard</value>
+  </data>
+  <data name="Manufacturer" xml:space="preserve">
+    <value>Hersteller</value>
+  </data>
+  <data name="Mark and delete after a grace period" xml:space="preserve">
+    <value>Kennzeichnen und nach einer Frist löschen</value>
+  </data>
+  <data name='Marked computers appear in the computer list under the filter "Not (anymore) in AD" and can be used in dynamic collections via the rule field "Not (anymore) in Active Directory", e.g. to exclude them from schedules.' xml:space="preserve">
+    <value>Gekennzeichnete Rechner stehen in der Rechnerliste unter dem Filter „Nicht (mehr) im AD“ und lassen sich über das Regelfeld „Nicht (mehr) im Active Directory“ in dynamischen Sammlungen verwenden, etwa um sie von Zeitplänen auszunehmen.</value>
+  </data>
+  <data name="Member" xml:space="preserve">
+    <value>Mitglied</value>
+  </data>
+  <data name="Memory" xml:space="preserve">
+    <value>Arbeitsspeicher</value>
+  </data>
+  <data name="Memory (GB)" xml:space="preserve">
+    <value>Arbeitsspeicher (GB)</value>
+  </data>
+  <data name="Message for logged-on users" xml:space="preserve">
+    <value>Hinweis für angemeldete Benutzer</value>
+  </data>
+  <data name="Minimum Windows" xml:space="preserve">
+    <value>Mindestens Windows</value>
+  </data>
+  <data name="Model" xml:space="preserve">
+    <value>Modell</value>
+  </data>
+  <data name="Modified" xml:space="preserve">
+    <value>Geändert</value>
+  </data>
+  <data name="More results from winget" xml:space="preserve">
+    <value>Weitere Treffer aus winget</value>
+  </data>
+  <data name="Move down" xml:space="preserve">
+    <value>Nach unten</value>
+  </data>
+  <data name="Move up" xml:space="preserve">
+    <value>Nach oben</value>
+  </data>
+  <data name="msi, msp, msu, exe, cmd/bat or ps1 from the package's files" xml:space="preserve">
+    <value>msi, msp, msu, exe, cmd/bat oder ps1 aus den Dateien des Pakets</value>
+  </data>
+  <data name="MSI, silently via /qn /norestart" xml:space="preserve">
+    <value>MSI, still über /qn /norestart</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Name is missing" xml:space="preserve">
+    <value>Name fehlt</value>
+  </data>
+  <data name="Needs attention" xml:space="preserve">
+    <value>Handlungsbedarf</value>
+  </data>
+  <data name="Network" xml:space="preserve">
+    <value>Netzwerk</value>
+  </data>
+  <data name="Network adapter" xml:space="preserve">
+    <value>Netzwerkadapter</value>
+  </data>
+  <data name="new" xml:space="preserve">
+    <value>neu</value>
+  </data>
+  <data name="New API token" xml:space="preserve">
+    <value>Neues API-Token</value>
+  </data>
+  <data name="New package" xml:space="preserve">
+    <value>Neues Paket</value>
+  </data>
+  <data name="New schedule" xml:space="preserve">
+    <value>Neuer Zeitplan</value>
+  </data>
+  <data name="New step: {0}" xml:space="preserve">
+    <value>Neuer Schritt: {0}</value>
+  </data>
+  <data name="New token" xml:space="preserve">
+    <value>Neues Token</value>
+  </data>
+  <data name="New versions are adopted automatically" xml:space="preserve">
+    <value>Neue Versionen werden automatisch übernommen</value>
+  </data>
+  <data name="New versions are not adopted automatically" xml:space="preserve">
+    <value>Neue Versionen werden nicht automatisch übernommen</value>
+  </data>
+  <data name="Next run" xml:space="preserve">
+    <value>Nächster Lauf</value>
+  </data>
+  <data name="no" xml:space="preserve">
+    <value>nein</value>
+  </data>
+  <data name="No access" xml:space="preserve">
+    <value>Kein Zugriff</value>
+  </data>
+  <data name="No changes recorded yet. The first scan of a computer is the baseline; the history starts with the second." xml:space="preserve">
+    <value>Noch keine Änderungen erfasst. Der erste Scan eines Rechners ist die Ausgangslage; ab dem zweiten entsteht der Verlauf.</value>
+  </data>
+  <data name="No changes recorded yet; the history starts with the second scan of a computer." xml:space="preserve">
+    <value>Noch keine Änderungen erfasst; ab dem zweiten Scan eines Rechners entsteht der Verlauf.</value>
+  </data>
+  <data name="No changes yet. The first scan is the baseline; from the second on, what changed is recorded." xml:space="preserve">
+    <value>Noch keine Änderungen. Der erste Scan ist die Ausgangslage; ab dem zweiten wird festgehalten, was sich geändert hat.</value>
+  </data>
+  <data name="No checksum for {0} in the release's list." xml:space="preserve">
+    <value>Für {0} steht keine Prüfsumme in der Liste des Releases.</value>
+  </data>
+  <data name="No collections yet." xml:space="preserve">
+    <value>Noch keine Sammlungen vorhanden.</value>
+  </data>
+  <data name="No computers in the collection" xml:space="preserve">
+    <value>Keine Rechner in der Sammlung</value>
+  </data>
+  <data name='No computers yet. Under "Computers" you can add names or import them from Active Directory.' xml:space="preserve">
+    <value>Noch keine Rechner. Unter „Rechner“ lassen sich Namen anlegen oder aus dem Active Directory übernehmen.</value>
+  </data>
+  <data name='No computers yet. Use "Add" to enter names one by one or as a list.' xml:space="preserve">
+    <value>Noch keine Rechner vorhanden. Über „Hinzufügen“ lassen sich Namen einzeln oder als Liste anlegen.</value>
+  </data>
+  <data name="No credentials stored yet." xml:space="preserve">
+    <value>Noch keine Zugangsdaten hinterlegt.</value>
+  </data>
+  <data name="No deployments yet." xml:space="preserve">
+    <value>Noch keine Deployments.</value>
+  </data>
+  <data name="No deployments yet. A package can be deployed here or directly from the package or computer list." xml:space="preserve">
+    <value>Noch keine Deployments. Ein Paket lässt sich hier oder direkt aus der Paket- bzw. Rechnerliste bereitstellen.</value>
+  </data>
+  <data name="No entries yet." xml:space="preserve">
+    <value>Noch keine Einträge.</value>
+  </data>
+  <data name="No entries yet. Commands, deployments, scans and changes to credentials, packages, schedules and settings are logged." xml:space="preserve">
+    <value>Noch keine Einträge. Protokolliert werden Befehle, Deployments, Scans sowie Änderungen an Zugangsdaten, Paketen, Zeitplänen und Einstellungen.</value>
+  </data>
+  <data name="No files." xml:space="preserve">
+    <value>Keine Dateien.</value>
+  </data>
+  <data name="No further match." xml:space="preserve">
+    <value>Kein weiterer Treffer.</value>
+  </data>
+  <data name='No inventory data yet. A scan can be started under "Computers".' xml:space="preserve">
+    <value>Noch keine Inventardaten. Unter „Rechner“ lässt sich ein Scan starten.</value>
+  </data>
+  <data name="no longer present" xml:space="preserve">
+    <value>nicht mehr vorhanden</value>
+  </data>
+  <data name="No match in the base selection." xml:space="preserve">
+    <value>Kein Treffer in der Grundauswahl.</value>
+  </data>
+  <data name="No new computers – all names already existed or were invalid." xml:space="preserve">
+    <value>Keine neuen Rechner – alle Namen waren bereits vorhanden oder ungültig.</value>
+  </data>
+  <data name="No open items." xml:space="preserve">
+    <value>Keine offenen Punkte.</value>
+  </data>
+  <data name="No package selected" xml:space="preserve">
+    <value>Kein Paket gewählt</value>
+  </data>
+  <data name="No packages yet. A package consists of one or more steps, e.g. installation, command and reboot." xml:space="preserve">
+    <value>Noch keine Pakete vorhanden. Ein Paket besteht aus einem oder mehreren Schritten, z. B. Installation, Befehl und Neustart.</value>
+  </data>
+  <data name="No real-time antivirus" xml:space="preserve">
+    <value>Kein Echtzeit-Virenschutz</value>
+  </data>
+  <data name="No real-time antivirus active" xml:space="preserve">
+    <value>Kein Echtzeit-Virenschutz aktiv</value>
+  </data>
+  <data name='No schedules yet. A schedule scans regularly or deploys a package to a collection – e.g. to the dynamic collection "Chrome outdated".' xml:space="preserve">
+    <value>Noch keine Zeitpläne. Ein Zeitplan scannt regelmäßig oder stellt ein Paket auf einer Sammlung bereit – z. B. auf der dynamischen Sammlung „Chrome veraltet“.</value>
+  </data>
+  <data name="no setup log available" xml:space="preserve">
+    <value>kein Setup-Protokoll vorhanden</value>
+  </data>
+  <data name="No software recorded yet. The overview fills with the first inventory scan." xml:space="preserve">
+    <value>Noch keine Software erfasst. Die Übersicht füllt sich mit dem ersten Inventar-Scan.</value>
+  </data>
+  <data name="No step was executed." xml:space="preserve">
+    <value>Es wurde kein Schritt ausgeführt.</value>
+  </data>
+  <data name="No steps yet. Steps run on the target computer one after another as Local System." xml:space="preserve">
+    <value>Noch keine Schritte. Die Schritte laufen auf dem Zielrechner der Reihe nach als Lokales System.</value>
+  </data>
+  <data name="No target computers selected." xml:space="preserve">
+    <value>Keine Zielrechner ausgewählt.</value>
+  </data>
+  <data name="No tokens yet." xml:space="preserve">
+    <value>Noch keine Tokens vorhanden.</value>
+  </data>
+  <data name="none" xml:space="preserve">
+    <value>keine</value>
+  </data>
+  <data name="Not (anymore) in Active Directory" xml:space="preserve">
+    <value>Nicht (mehr) im Active Directory</value>
+  </data>
+  <data name="Not (anymore) in AD" xml:space="preserve">
+    <value>Nicht (mehr) im AD</value>
+  </data>
+  <data name="Not captured yet. Firewall, antivirus and Windows Update are read with the next scan." xml:space="preserve">
+    <value>Noch nicht erfasst. Firewall, Virenschutz und Windows Update werden beim nächsten Scan gelesen.</value>
+  </data>
+  <data name="Not found" xml:space="preserve">
+    <value>Nicht gefunden</value>
+  </data>
+  <data name="not in AD" xml:space="preserve">
+    <value>nicht im AD</value>
+  </data>
+  <data name="not installed" xml:space="preserve">
+    <value>nicht installiert</value>
+  </data>
+  <data name="Not scanned" xml:space="preserve">
+    <value>Nicht gescannt</value>
+  </data>
+  <data name="Not scanned yet" xml:space="preserve">
+    <value>Noch nicht gescannt</value>
+  </data>
+  <data name="Nothing happens? Set up the launcher / show commands …" xml:space="preserve">
+    <value>Passiert nichts? Starter einrichten / Befehle anzeigen …</value>
+  </data>
+  <data name="of {0}" xml:space="preserve">
+    <value>von {0}</value>
+  </data>
+  <data name="off" xml:space="preserve">
+    <value>aus</value>
+  </data>
+  <data name="Offer Remote Assistance" xml:space="preserve">
+    <value>Remoteunterstützung anbieten</value>
+  </data>
+  <data name="offline" xml:space="preserve">
+    <value>offline</value>
+  </data>
+  <data name="Offline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Offline computers are retried until {0}" xml:space="preserve">
+    <value>Offline-Rechner werden bis {0} nachgeholt</value>
+  </data>
+  <data name="older version" xml:space="preserve">
+    <value>ältere Version</value>
+  </data>
+  <data name="Older versions could not be retrieved." xml:space="preserve">
+    <value>Ältere Versionen ließen sich nicht abrufen.</value>
+  </data>
+  <data name="on" xml:space="preserve">
+    <value>an</value>
+  </data>
+  <data name="on, every {0} min" xml:space="preserve">
+    <value>an, alle {0} min</value>
+  </data>
+  <data name="on, from {0}" xml:space="preserve">
+    <value>an, ab {0} Uhr</value>
+  </data>
+  <data name="Once" xml:space="preserve">
+    <value>Einmalig</value>
+  </data>
+  <data name="once on {0}" xml:space="preserve">
+    <value>einmalig am {0}</value>
+  </data>
+  <data name="One name per line; comma, semicolon or space work too. Names that already exist are skipped." xml:space="preserve">
+    <value>Ein Name je Zeile; Komma, Semikolon oder Leerzeichen gehen auch. Bereits vorhandene Namen werden übersprungen.</value>
+  </data>
+  <data name="One per line; empty = whole domain" xml:space="preserve">
+    <value>Eine je Zeile; leer = gesamte Domäne</value>
+  </data>
+  <data name="Online" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="online" xml:space="preserve">
+    <value>online</value>
+  </data>
+  <data name="only if nobody is logged on" xml:space="preserve">
+    <value>nur wenn niemand angemeldet ist</value>
+  </data>
+  <data name="only if someone is logged on" xml:space="preserve">
+    <value>nur wenn jemand angemeldet ist</value>
+  </data>
+  <data name="Only the first {0} matches – refine the search to see more." xml:space="preserve">
+    <value>Nur die ersten {0} Treffer – Suche verfeinern, um weitere zu sehen.</value>
+  </data>
+  <data name="Open package" xml:space="preserve">
+    <value>Paket öffnen</value>
+  </data>
+  <data name="Operating system" xml:space="preserve">
+    <value>Betriebssystem</value>
+  </data>
+  <data name="Operating system version" xml:space="preserve">
+    <value>Betriebssystem-Version</value>
+  </data>
+  <data name="Operating systems" xml:space="preserve">
+    <value>Betriebssysteme</value>
+  </data>
+  <data name='Optional: a permanently installed agent fetches jobs over an outbound connection – useful for computers the server cannot reach directly (notebooks on the road, other networks). It is installed via "Computers → Actions → Install agent". After a server update the agents update themselves on their next request.' xml:space="preserve">
+    <value>Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“. Nach einem Update des Servers aktualisieren sich die Agenten bei ihrer nächsten Anfrage selbst.</value>
+  </data>
+  <data name="OR" xml:space="preserve">
+    <value>ODER</value>
+  </data>
+  <data name="Overview" xml:space="preserve">
+    <value>Übersicht</value>
+  </data>
+  <data name="Package" xml:space="preserve">
+    <value>Paket</value>
+  </data>
+  <data name='Package "{0}"' xml:space="preserve">
+    <value>Paket „{0}“</value>
+  </data>
+  <data name="Package auto-update changed" xml:space="preserve">
+    <value>Paket-Automatik geändert</value>
+  </data>
+  <data name="Package deleted" xml:space="preserve">
+    <value>Paket gelöscht</value>
+  </data>
+  <data name="Package deleted." xml:space="preserve">
+    <value>Paket gelöscht.</value>
+  </data>
+  <data name="Package file deleted" xml:space="preserve">
+    <value>Paketdatei gelöscht</value>
+  </data>
+  <data name="Package file uploaded" xml:space="preserve">
+    <value>Paketdatei hochgeladen</value>
+  </data>
+  <data name="Package imported from library" xml:space="preserve">
+    <value>Paket aus Bibliothek importiert</value>
+  </data>
+  <data name="Package library" xml:space="preserve">
+    <value>Paketbibliothek</value>
+  </data>
+  <data name="package library" xml:space="preserve">
+    <value>Paketbibliothek</value>
+  </data>
+  <data name="Package step changed" xml:space="preserve">
+    <value>Paketschritt geändert</value>
+  </data>
+  <data name="Package step created" xml:space="preserve">
+    <value>Paketschritt angelegt</value>
+  </data>
+  <data name="Package step deleted" xml:space="preserve">
+    <value>Paketschritt gelöscht</value>
+  </data>
+  <data name="Package update failed" xml:space="preserve">
+    <value>Paket-Aktualisierung fehlgeschlagen</value>
+  </data>
+  <data name="Package updated from library" xml:space="preserve">
+    <value>Paket aus Bibliothek aktualisiert</value>
+  </data>
+  <data name="Package {0} not found" xml:space="preserve">
+    <value>Paket {0} nicht gefunden</value>
+  </data>
+  <data name="Packages" xml:space="preserve">
+    <value>Pakete</value>
+  </data>
+  <data name="Packages are nested too deeply or in a cycle." xml:space="preserve">
+    <value>Pakete sind zu tief oder im Kreis verschachtelt.</value>
+  </data>
+  <data name="Parameters" xml:space="preserve">
+    <value>Parameter</value>
+  </data>
+  <data name="Passed along at installation. Renewing only blocks new enrollments; existing agents stay connected." xml:space="preserve">
+    <value>Wird bei der Installation mitgegeben. Erneuern sperrt nur neue Anmeldungen, vorhandene Agenten bleiben verbunden.</value>
+  </data>
+  <data name="Passed to the installer. For recognized installers the silent parameters are already filled in." xml:space="preserve">
+    <value>Werden an den Installer übergeben. Bei erkannten Installern sind die Silent-Parameter bereits eingetragen.</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Passwort</value>
+  </data>
+  <data name="Password is missing" xml:space="preserve">
+    <value>Passwort fehlt</value>
+  </data>
+  <data name="password reset" xml:space="preserve">
+    <value>Passwort neu gesetzt</value>
+  </data>
+  <data name="Pending updates" xml:space="preserve">
+    <value>Ausstehende Updates</value>
+  </data>
+  <data name="Pending updates (count)" xml:space="preserve">
+    <value>Ausstehende Updates (Anzahl)</value>
+  </data>
+  <data name="per user" xml:space="preserve">
+    <value>pro Benutzer</value>
+  </data>
+  <data name="Per user" xml:space="preserve">
+    <value>Pro Benutzer</value>
+  </data>
+  <data name="Please choose how to sign in." xml:space="preserve">
+    <value>Bitte einen Anmeldeweg wählen.</value>
+  </data>
+  <data name="Please enter the server address for agents under Settings first." xml:space="preserve">
+    <value>Bitte zuerst unter Einstellungen die Server-Adresse für Agenten eintragen.</value>
+  </data>
+  <data name="Please observe the vendor's license terms; the library only refers to the vendor's download." xml:space="preserve">
+    <value>Bitte die Lizenzbedingungen des Herstellers beachten; die Bibliothek verweist nur auf dessen Download.</value>
+  </data>
+  <data name="PowerShell exited with code {0}" xml:space="preserve">
+    <value>PowerShell endete mit Code {0}</value>
+  </data>
+  <data name="PowerShell on the server runs in constrained language mode (AppLocker/WDAC policy). The WinRM transport needs full language mode for the server service's account." xml:space="preserve">
+    <value>Auf dem Server läuft PowerShell im eingeschränkten Sprachmodus (AppLocker/WDAC-Richtlinie). Der WinRM-Transport braucht den vollen Sprachmodus für das Konto des Server-Dienstes.</value>
+  </data>
+  <data name="PowerShell on the target computer runs in constrained language mode for this account (AppLocker/WDAC policy). The WinRM transport cannot be used there; please use SMB + service." xml:space="preserve">
+    <value>Auf dem Zielrechner läuft PowerShell für dieses Konto im eingeschränkten Sprachmodus (AppLocker/WDAC-Richtlinie). Der WinRM-Transport ist dort nicht nutzbar; bitte SMB + Dienst verwenden.</value>
+  </data>
+  <data name="Prerequisites on the computers" xml:space="preserve">
+    <value>Voraussetzungen auf den Rechnern</value>
+  </data>
+  <data name="Preview" xml:space="preserve">
+    <value>Vorschau</value>
+  </data>
+  <data name="Private network" xml:space="preserve">
+    <value>Privates Netz</value>
+  </data>
+  <data name="Processor" xml:space="preserve">
+    <value>Prozessor</value>
+  </data>
+  <data name="Program" xml:space="preserve">
+    <value>Programm</value>
+  </data>
+  <data name="Program name" xml:space="preserve">
+    <value>Programmname</value>
+  </data>
+  <data name='Program name contains "{0}"' xml:space="preserve">
+    <value>Programmname enthält „{0}“</value>
+  </data>
+  <data name="Properties" xml:space="preserve">
+    <value>Eigenschaften</value>
+  </data>
+  <data name="Public network" xml:space="preserve">
+    <value>Öffentliches Netz</value>
+  </data>
+  <data name="published {0}" xml:space="preserve">
+    <value>veröffentlicht {0}</value>
+  </data>
+  <data name="Publisher" xml:space="preserve">
+    <value>Hersteller</value>
+  </data>
+  <data name="queued" xml:space="preserve">
+    <value>wartet</value>
+  </data>
+  <data name="Re-captures the computer's hardware and software, e.g. after an installation." xml:space="preserve">
+    <value>Erfasst Hard- und Software des Rechners neu, z. B. nach einer Installation.</value>
+  </data>
+  <data name="Ready-made packages of common programs with verified download address and silent parameters. On import the server downloads the setup directly from the vendor and checks it against the checksum from the catalog. The catalog is generated daily from the manifests of the winget repository" xml:space="preserve">
+    <value>Fertige Pakete gängiger Programme mit geprüfter Download-Adresse und Silent-Parametern. Beim Import lädt der Server das Setup direkt vom Hersteller und prüft es gegen die Prüfsumme aus dem Katalog. Der Katalog wird täglich aus den Manifesten des winget-Repositories erzeugt</value>
+  </data>
+  <data name="Real-time protection" xml:space="preserve">
+    <value>Echtzeitschutz</value>
+  </data>
+  <data name='Really delete "{0}" including its files? Packages that embed it lose the corresponding step. Past deployments remain in the history.' xml:space="preserve">
+    <value>„{0}“ samt Dateien wirklich löschen? Pakete, die es einbetten, verlieren den entsprechenden Schritt. Bisherige Deployments bleiben in der Historie.</value>
+  </data>
+  <data name='Really delete "{0}"?' xml:space="preserve">
+    <value>„{0}“ wirklich löschen?</value>
+  </data>
+  <data name='Really delete "{0}"? Computers using these credentials fall back to the default.' xml:space="preserve">
+    <value>„{0}“ wirklich löschen? Rechner, die diese Zugangsdaten nutzen, fallen auf den Standard zurück.</value>
+  </data>
+  <data name='Really delete "{0}"? The computers themselves are kept.' xml:space="preserve">
+    <value>„{0}“ wirklich löschen? Die Rechner selbst bleiben erhalten.</value>
+  </data>
+  <data name="Really delete {0} computers including their inventory data? This cannot be undone." xml:space="preserve">
+    <value>{0} Rechner samt Inventardaten wirklich löschen? Das lässt sich nicht rückgängig machen.</value>
+  </data>
+  <data name='Really revoke "{0}"? Scripts using it lose access immediately.' xml:space="preserve">
+    <value>„{0}“ wirklich widerrufen? Skripte, die es verwenden, verlieren sofort den Zugriff.</value>
+  </data>
+  <data name="Reboot" xml:space="preserve">
+    <value>Neustart</value>
+  </data>
+  <data name="Reboot pending" xml:space="preserve">
+    <value>Neustart ausstehend</value>
+  </data>
+  <data name="Recent changes" xml:space="preserve">
+    <value>Letzte Änderungen</value>
+  </data>
+  <data name="Recent deployments" xml:space="preserve">
+    <value>Letzte Deployments</value>
+  </data>
+  <data name="Recognized by its signature." xml:space="preserve">
+    <value>An der Signatur erkannt.</value>
+  </data>
+  <data name="Recommended silent parameters:" xml:space="preserve">
+    <value>Empfohlene Silent-Parameter:</value>
+  </data>
+  <data name="Registered: {0}" xml:space="preserve">
+    <value>Registriert: {0}</value>
+  </data>
+  <data name="Registry key exists" xml:space="preserve">
+    <value>Registry-Schlüssel vorhanden</value>
+  </data>
+  <data name="Registry key missing" xml:space="preserve">
+    <value>Registry-Schlüssel fehlt</value>
+  </data>
+  <data name="Release notes" xml:space="preserve">
+    <value>Versionshinweise</value>
+  </data>
+  <data name="Released" xml:space="preserve">
+    <value>Veröffentlicht</value>
+  </data>
+  <data name="Reload" xml:space="preserve">
+    <value>Neu laden</value>
+  </data>
+  <data name="Remote access" xml:space="preserve">
+    <value>Fernzugriff</value>
+  </data>
+  <data name="Remote access launcher installed" xml:space="preserve">
+    <value>Starter für Fernzugriff installiert</value>
+  </data>
+  <data name="Remote access to {0}" xml:space="preserve">
+    <value>Fernzugriff auf {0}</value>
+  </data>
+  <data name="Remote access: AnyDesk" xml:space="preserve">
+    <value>Fernzugriff: AnyDesk</value>
+  </data>
+  <data name="Remote access: Remote Assistance" xml:space="preserve">
+    <value>Fernzugriff: Remoteunterstützung</value>
+  </data>
+  <data name="Remote access: Remote Desktop" xml:space="preserve">
+    <value>Fernzugriff: Remotedesktop</value>
+  </data>
+  <data name="Remote access: shadowing" xml:space="preserve">
+    <value>Fernzugriff: Spiegelung</value>
+  </data>
+  <data name="Remote access: TeamViewer" xml:space="preserve">
+    <value>Fernzugriff: TeamViewer</value>
+  </data>
+  <data name="Remote Assistance:" xml:space="preserve">
+    <value>Remoteunterstützung:</value>
+  </data>
+  <data name="Remote command" xml:space="preserve">
+    <value>Remote-Befehl</value>
+  </data>
+  <data name="Remote command ({0}, {1})" xml:space="preserve">
+    <value>Remote-Befehl ({0}, {1})</value>
+  </data>
+  <data name="Remote command via API ({0})" xml:space="preserve">
+    <value>Remote-Befehl über API ({0})</value>
+  </data>
+  <data name="Remote Desktop" xml:space="preserve">
+    <value>Remotedesktop</value>
+  </data>
+  <data name="Remote Desktop as .rdp file" xml:space="preserve">
+    <value>Remotedesktop als .rdp-Datei</value>
+  </data>
+  <data name='Remove from "{0}"' xml:space="preserve">
+    <value>Aus „{0}“ entfernen</value>
+  </data>
+  <data name="Remove rule" xml:space="preserve">
+    <value>Regel entfernen</value>
+  </data>
+  <data name="removed" xml:space="preserve">
+    <value>entfernt</value>
+  </data>
+  <data name="Rename entry to {0}" xml:space="preserve">
+    <value>Eintrag in {0} umbenennen</value>
+  </data>
+  <data name="Renew secret" xml:space="preserve">
+    <value>Geheimnis erneuern</value>
+  </data>
+  <data name="Reported name" xml:space="preserve">
+    <value>Gemeldeter Name</value>
+  </data>
+  <data name="Reported name differs" xml:space="preserve">
+    <value>Gemeldeter Name weicht ab</value>
+  </data>
+  <data name="Rescan inventory afterwards" xml:space="preserve">
+    <value>Danach Inventar neu scannen</value>
+  </data>
+  <data name="Restart" xml:space="preserve">
+    <value>Neu starten</value>
+  </data>
+  <data name="Result" xml:space="preserve">
+    <value>Ergebnis</value>
+  </data>
+  <data name="Retry offline computers (up to 3 days)" xml:space="preserve">
+    <value>Offline-Rechner nachholen (bis zu 3 Tage)</value>
+  </data>
+  <data name="Retry offline computers once they are reachable (up to 3 days)" xml:space="preserve">
+    <value>Offline-Rechner nachholen, sobald sie erreichbar sind (bis zu 3 Tage)</value>
+  </data>
+  <data name="Retry {0} failed" xml:space="preserve">
+    <value>{0} fehlgeschlagene wiederholen</value>
+  </data>
+  <data name="Reverse DNS" xml:space="preserve">
+    <value>Reverse-DNS</value>
+  </data>
+  <data name="Revoke" xml:space="preserve">
+    <value>Widerrufen</value>
+  </data>
+  <data name="Revoke token" xml:space="preserve">
+    <value>Token widerrufen</value>
+  </data>
+  <data name="Rhythm" xml:space="preserve">
+    <value>Rhythmus</value>
+  </data>
+  <data name="Rows per page" xml:space="preserve">
+    <value>Zeilen pro Seite</value>
+  </data>
+  <data name="RPC server unreachable – the target computer's Service Control Manager does not respond (check firewall)" xml:space="preserve">
+    <value>RPC-Server nicht erreichbar – der Dienststeuerungs-Manager des Zielrechners antwortet nicht (Firewall prüfen)</value>
+  </data>
+  <data name="Rules / description" xml:space="preserve">
+    <value>Regeln / Beschreibung</value>
+  </data>
+  <data name="Run" xml:space="preserve">
+    <value>Ausführen</value>
+  </data>
+  <data name="Run another package" xml:space="preserve">
+    <value>Anderes Paket ausführen</value>
+  </data>
+  <data name="Run as" xml:space="preserve">
+    <value>Ausführen als</value>
+  </data>
+  <data name="Run command" xml:space="preserve">
+    <value>Befehl ausführen</value>
+  </data>
+  <data name="Run now" xml:space="preserve">
+    <value>Jetzt ausführen</value>
+  </data>
+  <data name="Run on your PC (Windows key + R, paste, Enter):" xml:space="preserve">
+    <value>Auf deinem PC ausführen (Windows-Taste + R, einfügen, Eingabe):</value>
+  </data>
+  <data name="Run package" xml:space="preserve">
+    <value>Paket ausführen</value>
+  </data>
+  <data name="running" xml:space="preserve">
+    <value>läuft</value>
+  </data>
+  <data name="running now" xml:space="preserve">
+    <value>laufen gerade</value>
+  </data>
+  <data name="Runs in the logged-on user's session with their rights (HKCU, profile, network drives). If nobody is logged on, the step is skipped. Only via SMB + service or agent." xml:space="preserve">
+    <value>Läuft in der Sitzung des angemeldeten Benutzers mit dessen Rechten (HKCU, Profil, Netzlaufwerke). Ist niemand angemeldet, wird der Schritt übersprungen. Nur über SMB + Dienst oder Agent.</value>
+  </data>
+  <data name="Runs in the session of the logged-on user; nothing runs without a logged-on user." xml:space="preserve">
+    <value>Läuft in der Sitzung des angemeldeten Benutzers; ohne Anmeldung wird nichts ausgeführt.</value>
+  </data>
+  <data name="Runs on the target computer as Local System." xml:space="preserve">
+    <value>Läuft auf dem Zielrechner als Lokales System.</value>
+  </data>
+  <data name="Runs silently with /qn /norestart automatically." xml:space="preserve">
+    <value>Läuft automatisch still mit /qn /norestart.</value>
+  </data>
+  <data name="Runs silently with /qn /norestart automatically. Additional properties such as ALLUSERS=1 or TRANSFORMS=file.mst can be given as parameters." xml:space="preserve">
+    <value>Läuft automatisch still mit /qn /norestart. Zusätzliche Eigenschaften wie ALLUSERS=1 oder TRANSFORMS=datei.mst können als Parameter angegeben werden.</value>
+  </data>
+  <data name="Runs silently with /quiet /norestart automatically." xml:space="preserve">
+    <value>Läuft automatisch still mit /quiet /norestart.</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="Saved." xml:space="preserve">
+    <value>Gespeichert.</value>
+  </data>
+  <data name="Scan ({0})" xml:space="preserve">
+    <value>Scannen ({0})</value>
+  </data>
+  <data name="Scan all" xml:space="preserve">
+    <value>Alle scannen</value>
+  </data>
+  <data name="Scan completed." xml:space="preserve">
+    <value>Scan abgeschlossen.</value>
+  </data>
+  <data name="Scan every 4 hours" xml:space="preserve">
+    <value>Scan alle 4 Stunden</value>
+  </data>
+  <data name="Scan failed" xml:space="preserve">
+    <value>Scan fehlgeschlagen</value>
+  </data>
+  <data name="Scan failed: {0}" xml:space="preserve">
+    <value>Scan fehlgeschlagen: {0}</value>
+  </data>
+  <data name="Scan now" xml:space="preserve">
+    <value>Jetzt scannen</value>
+  </data>
+  <data name="Scan on weekdays after hours" xml:space="preserve">
+    <value>Scan werktags nach Feierabend</value>
+  </data>
+  <data name="Scan on weekends" xml:space="preserve">
+    <value>Scan am Wochenende</value>
+  </data>
+  <data name="Scanned" xml:space="preserve">
+    <value>Gescannt</value>
+  </data>
+  <data name="Scanning {0} computers …" xml:space="preserve">
+    <value>Scanne {0} Rechner …</value>
+  </data>
+  <data name="Scanning …" xml:space="preserve">
+    <value>Scan läuft …</value>
+  </data>
+  <data name="Scanning … {0} of {1} done" xml:space="preserve">
+    <value>Scanne … {0} von {1} fertig</value>
+  </data>
+  <data name="Schedule changed" xml:space="preserve">
+    <value>Zeitplan geändert</value>
+  </data>
+  <data name="Schedule created" xml:space="preserve">
+    <value>Zeitplan angelegt</value>
+  </data>
+  <data name="Schedule deleted" xml:space="preserve">
+    <value>Zeitplan gelöscht</value>
+  </data>
+  <data name="Schedule started manually" xml:space="preserve">
+    <value>Zeitplan manuell gestartet</value>
+  </data>
+  <data name="Schedules" xml:space="preserve">
+    <value>Zeitpläne</value>
+  </data>
+  <data name="Script" xml:space="preserve">
+    <value>Skript</value>
+  </data>
+  <data name="Scripts run without a window; parameters are passed unchanged." xml:space="preserve">
+    <value>Skripte laufen ohne Fenster; Parameter werden unverändert übergeben.</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>Suchen</value>
+  </data>
+  <data name="Search index: {0} programs with an unattended installer" xml:space="preserve">
+    <value>Suchindex: {0} Programme mit unbeaufsichtigt installierbarem Setup</value>
+  </data>
+  <data name="Search program or publisher" xml:space="preserve">
+    <value>Programm oder Hersteller suchen</value>
+  </data>
+  <data name="Search program, publisher or tag" xml:space="preserve">
+    <value>Programm, Hersteller oder Schlagwort suchen</value>
+  </data>
+  <data name="Search roots (OUs)" xml:space="preserve">
+    <value>Suchwurzeln (OUs)</value>
+  </data>
+  <data name="Search software" xml:space="preserve">
+    <value>Software suchen</value>
+  </data>
+  <data name="Searching …" xml:space="preserve">
+    <value>Suche …</value>
+  </data>
+  <data name="Security" xml:space="preserve">
+    <value>Sicherheit</value>
+  </data>
+  <data name="Select all" xml:space="preserve">
+    <value>Alle auswählen</value>
+  </data>
+  <data name="Selects all computers of the collection (as of now)." xml:space="preserve">
+    <value>Wählt alle Rechner der Sammlung aus (Stand jetzt).</value>
+  </data>
+  <data name="Self-update is only available on Windows." xml:space="preserve">
+    <value>Die Selbstaktualisierung gibt es nur unter Windows.</value>
+  </data>
+  <data name="Serial number" xml:space="preserve">
+    <value>Seriennummer</value>
+  </data>
+  <data name="Server address for agents: {0}" xml:space="preserve">
+    <value>Server-Adresse für Agenten: {0}</value>
+  </data>
+  <data name="Service" xml:space="preserve">
+    <value>Dienst</value>
+  </data>
+  <data name="Service control on {0} denies access. {0} is this server itself: local access always runs with the account of the server process, not with the stored credentials. Run the server as a service or with administrator rights, or choose another computer as target." xml:space="preserve">
+    <value>Dienststeuerung auf {0} verweigert den Zugriff. {0} ist dieser Server selbst: lokale Zugriffe laufen immer mit dem Konto des Server-Prozesses, nicht mit den hinterlegten Zugangsdaten. Den Server als Dienst bzw. mit Administratorrechten starten oder einen anderen Rechner als Ziel wählen.</value>
+  </data>
+  <data name="Service control on {0} unreachable: {1}" xml:space="preserve">
+    <value>Dienststeuerung auf {0} nicht erreichbar: {1}</value>
+  </data>
+  <data name="Service name" xml:space="preserve">
+    <value>Dienstname</value>
+  </data>
+  <data name="Service on {0} could not be created: {1}" xml:space="preserve">
+    <value>Dienst auf {0} konnte nicht angelegt werden: {1}</value>
+  </data>
+  <data name="Service on {0} could not be started: {1}" xml:space="preserve">
+    <value>Dienst auf {0} konnte nicht gestartet werden: {1}</value>
+  </data>
+  <data name="Services" xml:space="preserve">
+    <value>Dienste</value>
+  </data>
+  <data name="session {0}" xml:space="preserve">
+    <value>Sitzung {0}</value>
+  </data>
+  <data name="Setting changed" xml:space="preserve">
+    <value>Einstellung geändert</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="Setup" xml:space="preserve">
+    <value>Setup</value>
+  </data>
+  <data name="Shadow session" xml:space="preserve">
+    <value>Sitzung spiegeln</value>
+  </data>
+  <data name="Shadow session (session 1 assumed)" xml:space="preserve">
+    <value>Sitzung spiegeln (Sitzung 1 angenommen)</value>
+  </data>
+  <data name="Shadow session (session {0} according to the scan of {1})" xml:space="preserve">
+    <value>Sitzung spiegeln (Sitzung {0} laut Scan vom {1})</value>
+  </data>
+  <data name="Shadowing:" xml:space="preserve">
+    <value>Spiegelung:</value>
+  </data>
+  <data name="Short name of the service, e.g. Spooler" xml:space="preserve">
+    <value>Kurzname des Dienstes, z. B. Spooler</value>
+  </data>
+  <data name="Show the computer's sessions" xml:space="preserve">
+    <value>Sitzungen des Rechners anzeigen</value>
+  </data>
+  <data name="Sign in" xml:space="preserve">
+    <value>Anmelden</value>
+  </data>
+  <data name="Sign in again" xml:space="preserve">
+    <value>Erneut anmelden</value>
+  </data>
+  <data name="Sign in with another account" xml:space="preserve">
+    <value>Mit anderem Konto anmelden</value>
+  </data>
+  <data name="Sign out" xml:space="preserve">
+    <value>Abmelden</value>
+  </data>
+  <data name="Sign-in is disabled: anyone who can reach this address can run commands on the target computers with the stored credentials." xml:space="preserve">
+    <value>Die Anmeldung ist abgeschaltet: Jeder, der diese Adresse erreicht, kann mit den hinterlegten Zugangsdaten Befehle auf den Zielrechnern ausführen.</value>
+  </data>
+  <data name="Sign-in:" xml:space="preserve">
+    <value>Anmeldung:</value>
+  </data>
+  <data name="Signature: {0} from {1}" xml:space="preserve">
+    <value>Signatur: {0} vom {1}</value>
+  </data>
+  <data name="Signed out" xml:space="preserve">
+    <value>Abgemeldet</value>
+  </data>
+  <data name="Silent parameters" xml:space="preserve">
+    <value>Silent-Parameter</value>
+  </data>
+  <data name="Simulation mode: no real access to target computers takes place." xml:space="preserve">
+    <value>Simulationsmodus: Es finden keine echten Zugriffe auf Zielrechner statt.</value>
+  </data>
+  <data name="since {0}" xml:space="preserve">
+    <value>seit {0}</value>
+  </data>
+  <data name="Size" xml:space="preserve">
+    <value>Größe</value>
+  </data>
+  <data name="skipped" xml:space="preserve">
+    <value>übersprungen</value>
+  </data>
+  <data name="SMB + service" xml:space="preserve">
+    <value>SMB + Dienst</value>
+  </data>
+  <data name="SMB + service needs the ADMIN$ share and the Service Control Manager (port 445); the job runs as Local System. WinRM needs PowerShell remoting enabled (port 5985); the job runs with the stored account." xml:space="preserve">
+    <value>SMB + Dienst braucht die Freigabe ADMIN$ und den Dienststeuerungs-Manager (Port 445), der Job läuft als Lokales System. WinRM braucht aktiviertes PowerShell-Remoting (Port 5985), der Job läuft mit dem hinterlegten Konto.</value>
+  </data>
+  <data name="So that Remote Assistance, shadowing and Remote Desktop open with one click, your PC needs the launcher once: download it, put it in a fixed place (e.g. C:\Tools) and double-click it once. It registers itself for your user account as the handler for inventory:// links; admin rights are not needed. On the first click the browser asks whether it may open the launcher." xml:space="preserve">
+    <value>Damit sich Remoteunterstützung, Spiegelung und Remotedesktop per Klick öffnen, braucht dein PC einmalig den Starter: herunterladen, an einem festen Ort ablegen (z. B. C:\Tools) und einmal doppelklicken. Er trägt sich für dein Benutzerkonto als Ziel für inventory://-Links ein; Adminrechte sind dafür nicht nötig. Beim ersten Klick fragt der Browser, ob er den Starter öffnen darf.</value>
+  </data>
+  <data name="Software" xml:space="preserve">
+    <value>Software</value>
+  </data>
+  <data name="Source" xml:space="preserve">
+    <value>Quelle</value>
+  </data>
+  <data name="Source: {0}" xml:space="preserve">
+    <value>Quelle: {0}</value>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>Starten</value>
+  </data>
+  <data name="Start of the maintenance window (2 hours)" xml:space="preserve">
+    <value>Beginn des Wartungsfensters (2 Stunden)</value>
+  </data>
+  <data name="Start type" xml:space="preserve">
+    <value>Starttyp</value>
+  </data>
+  <data name="Started" xml:space="preserve">
+    <value>Gestartet</value>
+  </data>
+  <data name="Started {0}" xml:space="preserve">
+    <value>Gestartet {0}</value>
+  </data>
+  <data name="starts with" xml:space="preserve">
+    <value>beginnt mit</value>
+  </data>
+  <data name="State" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="static" xml:space="preserve">
+    <value>statisch</value>
+  </data>
+  <data name="Static collection" xml:space="preserve">
+    <value>Statische Sammlung</value>
+  </data>
+  <data name="Static collections contain explicitly assigned computers (assigned from the computer list). Dynamic collections fill themselves through rules on the inventory data and are up to date after every scan." xml:space="preserve">
+    <value>Statische Sammlungen enthalten fest zugeordnete Rechner (Zuordnung über die Rechnerliste). Dynamische Sammlungen füllen sich über Regeln aus den Inventardaten und sind nach jedem Scan aktuell.</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Step name" xml:space="preserve">
+    <value>Name des Schritts</value>
+  </data>
+  <data name="Steps" xml:space="preserve">
+    <value>Schritte</value>
+  </data>
+  <data name="Steps after a reboot are not executed. The reboot should be the last step." xml:space="preserve">
+    <value>Schritte nach einem Neustart werden nicht mehr ausgeführt. Der Neustart sollte der letzte Schritt sein.</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>Beenden</value>
+  </data>
+  <data name="succeeded" xml:space="preserve">
+    <value>erfolgreich</value>
+  </data>
+  <data name="Success codes" xml:space="preserve">
+    <value>Erfolgscodes</value>
+  </data>
+  <data name="Success exit codes" xml:space="preserve">
+    <value>Erfolgs-Exitcodes</value>
+  </data>
+  <data name="Synchronize now" xml:space="preserve">
+    <value>Jetzt synchronisieren</value>
+  </data>
+  <data name="Synchronize regularly" xml:space="preserve">
+    <value>Regelmäßig synchronisieren</value>
+  </data>
+  <data name="System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Take over collection" xml:space="preserve">
+    <value>Sammlung übernehmen</value>
+  </data>
+  <data name="Tamper protection" xml:space="preserve">
+    <value>Manipulationsschutz</value>
+  </data>
+  <data name="Target" xml:space="preserve">
+    <value>Ziel</value>
+  </data>
+  <data name="Target computers" xml:space="preserve">
+    <value>Zielrechner</value>
+  </data>
+  <data name="The agent on {0} did not pick up the job – the computer is off or the agent is not running." xml:space="preserve">
+    <value>Der Agent auf {0} hat den Job nicht abgeholt – der Rechner ist aus oder der Agent läuft nicht.</value>
+  </data>
+  <data name="The agent on {0} returned no result (connection lost during the job?)." xml:space="preserve">
+    <value>Der Agent auf {0} hat kein Ergebnis geliefert (Verbindung während des Jobs verloren?).</value>
+  </data>
+  <data name="The check is lightweight (port 445, a few packets per computer); 5 minutes is a good value" xml:space="preserve">
+    <value>Die Prüfung ist leichtgewichtig (Port 445, wenige Pakete je Rechner); 5 Minuten sind ein guter Wert</value>
+  </data>
+  <data name="The checksum of the setup for {0} does not match the library. The vendor has probably already replaced the file with a newer one; try again after the next catalog run." xml:space="preserve">
+    <value>Die Prüfsumme des Setups von {0} stimmt nicht mit der Bibliothek überein. Vermutlich hat der Hersteller die Datei bereits durch eine neuere ersetzt; nach dem nächsten Katalog-Lauf erneut versuchen.</value>
+  </data>
+  <data name="The checksum of {0} does not match the release; the file was discarded." xml:space="preserve">
+    <value>Die Prüfsumme von {0} stimmt nicht mit dem Release überein; die Datei wurde verworfen.</value>
+  </data>
+  <data name="The computer account is disabled in Active Directory" xml:space="preserve">
+    <value>Das Computerkonto ist im Active Directory deaktiviert</value>
+  </data>
+  <data name="The computer account is disabled in Active Directory, since {0}." xml:space="preserve">
+    <value>Das Computerkonto ist im Active Directory deaktiviert, seit {0}.</value>
+  </data>
+  <data name="The computer account is missing in Active Directory, since {0}." xml:space="preserve">
+    <value>Das Computerkonto fehlt im Active Directory, seit {0}.</value>
+  </data>
+  <data name="The computer account was no longer found in Active Directory" xml:space="preserve">
+    <value>Das Computerkonto wurde im Active Directory nicht mehr gefunden</value>
+  </data>
+  <data name="The computer has not reported a name yet." xml:space="preserve">
+    <value>Der Rechner hat noch keinen Namen gemeldet.</value>
+  </data>
+  <data name="The computer was deleted" xml:space="preserve">
+    <value>Der Rechner wurde gelöscht</value>
+  </data>
+  <data name="The database is backed up before every update; running deployments are awaited. The interface is briefly unavailable meanwhile; agents update themselves afterwards. Note: this path brings new program code onto the server and, via the agents, onto all computers. As long as releases are unsigned, the checksum only secures the transfer, not the origin – which is why automatic updates are off by default." xml:space="preserve">
+    <value>Vor jeder Aktualisierung wird die Datenbank gesichert; laufende Deployments werden abgewartet. Die Oberfläche ist währenddessen kurz nicht erreichbar, Agenten aktualisieren sich danach selbst. Hinweis: Über diesen Weg gelangt neuer Programmcode auf den Server und über die Agenten auf alle Rechner. Solange Releases unsigniert sind, sichert die Prüfsumme nur die Übertragung, nicht die Herkunft – die Automatik ist deshalb standardmäßig aus.</value>
+  </data>
+  <data name='The examples are disabled; use "Edit" to adjust and enable them, or simply delete them.' xml:space="preserve">
+    <value>Die Beispiele sind deaktiviert; über „Bearbeiten“ lassen sie sich anpassen und einschalten oder einfach löschen.</value>
+  </data>
+  <data name="the installation step is then replaced with the new setup, own steps and files are kept." xml:space="preserve">
+    <value>dabei wird der Installationsschritt mit dem Setup ersetzt, eigene Schritte und Dateien bleiben erhalten.</value>
+  </data>
+  <data name="The installer technology was not recognized. Common silent parameters are /S, /silent, /quiet or /qn – when in doubt, check the vendor's documentation." xml:space="preserve">
+    <value>Die Installer-Technik wurde nicht erkannt. Häufige Silent-Parameter sind /S, /silent, /quiet oder /qn – im Zweifel die Dokumentation des Herstellers prüfen.</value>
+  </data>
+  <data name="The launcher is not bundled with the server." xml:space="preserve">
+    <value>Der Starter liegt dem Server nicht bei.</value>
+  </data>
+  <data name='The launcher only ever opens msra.exe and mstsc.exe with a validated computer name. For several admin PCs it can also be rolled out via "Computers → Actions → Install remote access launcher".' xml:space="preserve">
+    <value>Der Starter öffnet ausschließlich msra.exe und mstsc.exe mit geprüftem Rechnernamen. Auf mehreren Admin-PCs lässt er sich auch über „Rechner → Aktionen → Starter für Fernzugriff installieren“ verteilen.</value>
+  </data>
+  <data name="The library is empty or unreachable. Source: {0}" xml:space="preserve">
+    <value>Die Bibliothek ist leer oder nicht erreichbar. Quelle: {0}</value>
+  </data>
+  <data name="The list shows a base selection of common programs; the search additionally finds all other programs from winget." xml:space="preserve">
+    <value>Die Liste zeigt eine Grundauswahl gängiger Programme; die Suche findet zusätzlich alle weiteren Programme aus winget.</value>
+  </data>
+  <data name="The next run deletes {0}{1}." xml:space="preserve">
+    <value>Der nächste Lauf löscht {0}{1}.</value>
+  </data>
+  <data name="The output appears here as soon as a command runs." xml:space="preserve">
+    <value>Die Ausgabe erscheint hier, sobald ein Befehl läuft.</value>
+  </data>
+  <data name="The package contains no steps." xml:space="preserve">
+    <value>Das Paket enthält keine Schritte.</value>
+  </data>
+  <data name='The package has no files yet. Please upload under "Files" first.' xml:space="preserve">
+    <value>Das Paket enthält noch keine Dateien. Bitte zuerst unter „Dateien“ hochladen.</value>
+  </data>
+  <data name="The package was deleted" xml:space="preserve">
+    <value>Das Paket wurde gelöscht</value>
+  </data>
+  <data name="The release contains no checksums; nothing is installed without them." xml:space="preserve">
+    <value>Das Release enthält keine Prüfsummen; ohne sie wird nichts installiert.</value>
+  </data>
+  <data name="The runner on {0} exited without delivering a result (exit code {1}). Possible causes: .NET Framework 4.8 is missing, or antivirus or AppLocker blocks execution." xml:space="preserve">
+    <value>Der Runner auf {0} wurde beendet, ohne ein Ergebnis zu liefern (Exitcode {1}). Mögliche Ursachen: .NET Framework 4.8 fehlt, Virenscanner oder AppLocker blockiert die Ausführung.</value>
+  </data>
+  <data name="The scan returned no data" xml:space="preserve">
+    <value>Der Scan lieferte keine Daten</value>
+  </data>
+  <data name="The server uses these accounts to access the target computers. They need local administrator rights there. Passwords are stored encrypted and never shown again." xml:space="preserve">
+    <value>Mit diesen Konten greift der Server auf die Zielrechner zu. Sie brauchen dort lokale Administratorrechte. Passwörter werden verschlüsselt gespeichert und nie wieder angezeigt.</value>
+  </data>
+  <data name="The server was stopped during execution" xml:space="preserve">
+    <value>Der Server wurde während der Ausführung beendet</value>
+  </data>
+  <data name="The step only runs if all filled-in conditions apply. Otherwise it is skipped without counting as an error." xml:space="preserve">
+    <value>Der Schritt läuft nur, wenn alle ausgefüllten Bedingungen zutreffen. Sonst wird er übersprungen, ohne als Fehler zu zählen.</value>
+  </data>
+  <data name="The steps of the selected package run at this point; its files are copied along." xml:space="preserve">
+    <value>Die Schritte des gewählten Pakets laufen an dieser Stelle; seine Dateien werden mitkopiert.</value>
+  </data>
+  <data name="The transport {0} is not available on this server" xml:space="preserve">
+    <value>Der Transport {0} steht auf diesem Server nicht zur Verfügung</value>
+  </data>
+  <data name="The update check is disabled in the configuration (Inventory:Update:Enabled)." xml:space="preserve">
+    <value>Die Update-Prüfung ist in der Konfiguration abgeschaltet (Inventory:Update:Enabled).</value>
+  </data>
+  <data name="The update to {0} failed; {1} keeps running. Setup log: {2}" xml:space="preserve">
+    <value>Die Aktualisierung auf {0} ist fehlgeschlagen; es läuft weiter {1}. Setup-Protokoll: {2}</value>
+  </data>
+  <data name="The update to {0} is running. The service restarts shortly; reload this page afterwards." xml:space="preserve">
+    <value>Die Aktualisierung auf {0} läuft. Der Dienst startet gleich neu; diese Seite danach neu laden.</value>
+  </data>
+  <data name="The winget repository only lists the current version." xml:space="preserve">
+    <value>Im winget-Repository ist nur die aktuelle Version geführt.</value>
+  </data>
+  <data name="There is no newer version with a setup." xml:space="preserve">
+    <value>Es liegt keine neuere Version mit Setup vor.</value>
+  </data>
+  <data name="These entries are not part of the base selection and come unchanged from the winget manifests. The checksum secures the download, but only a test shows whether the silent parameters are right – try it on a single computer before deploying." xml:space="preserve">
+    <value>Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download, aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.</value>
+  </data>
+  <data name="This collection contains no computers." xml:space="preserve">
+    <value>Diese Sammlung enthält keine Rechner.</value>
+  </data>
+  <data name="This computer does not exist (anymore)." xml:space="preserve">
+    <value>Dieser Rechner existiert nicht (mehr).</value>
+  </data>
+  <data name="This computer has not been scanned yet." xml:space="preserve">
+    <value>Dieser Rechner wurde noch nicht gescannt.</value>
+  </data>
+  <data name="This deployment does not exist." xml:space="preserve">
+    <value>Dieses Deployment existiert nicht.</value>
+  </data>
+  <data name="This entry is not (anymore) in the library." xml:space="preserve">
+    <value>Dieser Eintrag ist nicht (mehr) in der Bibliothek.</value>
+  </data>
+  <data name="This instance was not installed with the setup and therefore cannot update itself." xml:space="preserve">
+    <value>Diese Instanz wurde nicht mit dem Setup installiert und kann sich deshalb nicht selbst aktualisieren.</value>
+  </data>
+  <data name="This package does not exist (anymore)." xml:space="preserve">
+    <value>Dieses Paket existiert nicht (mehr).</value>
+  </data>
+  <data name="This package would then contain itself." xml:space="preserve">
+    <value>Dieses Paket würde sich damit selbst enthalten.</value>
+  </data>
+  <data name="This page does not exist." xml:space="preserve">
+    <value>Diese Seite gibt es nicht.</value>
+  </data>
+  <data name="This setup installs into the user profile only. The step therefore runs in the context of the logged-on user and needs a logged-on session on the target computer." xml:space="preserve">
+    <value>Dieses Setup installiert nur ins Benutzerprofil. Der Schritt läuft deshalb im Kontext des angemeldeten Benutzers und braucht eine angemeldete Sitzung am Zielrechner.</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>Zeit</value>
+  </data>
+  <data name="Time of day" xml:space="preserve">
+    <value>Uhrzeit</value>
+  </data>
+  <data name="Timeout (seconds)" xml:space="preserve">
+    <value>Zeitlimit (Sekunden)</value>
+  </data>
+  <data name='Tip: On import, a dynamic collection "… outdated" with all computers running an older version can be created. A schedule that regularly deploys the package to this collection keeps the program up to date everywhere.' xml:space="preserve">
+    <value>Tipp: Beim Import entsteht auf Wunsch eine dynamische Sammlung „… veraltet“ mit allen Rechnern, auf denen eine ältere Version installiert ist. Ein Zeitplan, der das Paket regelmäßig auf diese Sammlung bereitstellt, hält das Programm überall aktuell.</value>
+  </data>
+  <data name="Token created – copy it now." xml:space="preserve">
+    <value>Token angelegt – jetzt kopieren.</value>
+  </data>
+  <data name="Token revoked." xml:space="preserve">
+    <value>Token widerrufen.</value>
+  </data>
+  <data name="Transport" xml:space="preserve">
+    <value>Transport</value>
+  </data>
+  <data name="Try the other transport on delivery errors" xml:space="preserve">
+    <value>Bei Zustellfehlern den anderen Transport versuchen</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Art</value>
+  </data>
+  <data name="unchecked" xml:space="preserve">
+    <value>ungeprüft</value>
+  </data>
+  <data name='Under "{0}" the computer {1} responds – probably a stale DNS entry or alias.' xml:space="preserve">
+    <value>Unter „{0}“ antwortet der Rechner {1} – vermutlich ein veralteter DNS-Eintrag oder Alias.</value>
+  </data>
+  <data name='Under "{0}" {1} responds, which is already listed as "{2}".' xml:space="preserve">
+    <value>Unter „{0}“ antwortet {1}, der bereits als „{2}“ eingetragen ist.</value>
+  </data>
+  <data name="Under the name {0} the computer {1} responds (address {2}). Probably a stale DNS entry or an alias (CNAME) points to this computer; existing inventory data belongs to {1}. Commands and deployments are not executed on this entry while the names differ. Scans still run – but they capture {1}, not {0}." xml:space="preserve">
+    <value>Unter dem Namen {0} antwortet der Rechner {1} (Adresse {2}). Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias (CNAME) auf diesen Rechner; vorhandene Inventardaten gehören zu {1}. Befehle und Deployments werden auf diesem Eintrag nicht ausgeführt, solange die Namen abweichen. Scans laufen weiterhin – sie erfassen dann aber {1}, nicht {0}.</value>
+  </data>
+  <data name="Under the name {0} the computer {1} responds. A connection would go to the wrong computer." xml:space="preserve">
+    <value>Unter dem Namen {0} antwortet der Rechner {1}. Eine Verbindung ginge an den falschen Rechner.</value>
+  </data>
+  <data name="Under this name the computer {0} responded (stale DNS entry or alias?)" xml:space="preserve">
+    <value>Unter diesem Namen hat sich der Rechner {0} gemeldet (veralteter DNS-Eintrag oder Alias?)</value>
+  </data>
+  <data name="Under this name {0} responds" xml:space="preserve">
+    <value>Unter diesem Namen antwortet {0}</value>
+  </data>
+  <data name="unknown" xml:space="preserve">
+    <value>unbekannt</value>
+  </data>
+  <data name="Unknown installer" xml:space="preserve">
+    <value>Unbekannter Installer</value>
+  </data>
+  <data name="unknown publisher" xml:space="preserve">
+    <value>unbekanntem Hersteller</value>
+  </data>
+  <data name="unlimited" xml:space="preserve">
+    <value>unbegrenzt</value>
+  </data>
+  <data name="unreachable" xml:space="preserve">
+    <value>nicht erreichbar</value>
+  </data>
+  <data name="Update" xml:space="preserve">
+    <value>Aktualisieren</value>
+  </data>
+  <data name="Update automatically in the maintenance window" xml:space="preserve">
+    <value>Automatisch im Wartungsfenster aktualisieren</value>
+  </data>
+  <data name="Update completed" xml:space="preserve">
+    <value>Aktualisierung abgeschlossen</value>
+  </data>
+  <data name="Update failed" xml:space="preserve">
+    <value>Aktualisierung fehlgeschlagen</value>
+  </data>
+  <data name="Update now" xml:space="preserve">
+    <value>Jetzt aktualisieren</value>
+  </data>
+  <data name="Update started" xml:space="preserve">
+    <value>Aktualisierung gestartet</value>
+  </data>
+  <data name="updated" xml:space="preserve">
+    <value>aktualisiert</value>
+  </data>
+  <data name="Updates" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="Updates pending" xml:space="preserve">
+    <value>Updates ausstehend</value>
+  </data>
+  <data name="Upload" xml:space="preserve">
+    <value>Hochladen</value>
+  </data>
+  <data name="Upload failed: {0}" xml:space="preserve">
+    <value>Upload fehlgeschlagen: {0}</value>
+  </data>
+  <data name="Uploading {0} of {1} …" xml:space="preserve">
+    <value>Lade {0} von {1} …</value>
+  </data>
+  <data name="User" xml:space="preserve">
+    <value>Benutzer</value>
+  </data>
+  <data name="User is missing" xml:space="preserve">
+    <value>Benutzer fehlt</value>
+  </data>
+  <data name="User logged on" xml:space="preserve">
+    <value>Benutzeranmeldung</value>
+  </data>
+  <data name="Users" xml:space="preserve">
+    <value>Benutzer</value>
+  </data>
+  <data name="Valid until" xml:space="preserve">
+    <value>Gültig bis</value>
+  </data>
+  <data name="valid without limit" xml:space="preserve">
+    <value>gültig unbegrenzt</value>
+  </data>
+  <data name="valid {0} days" xml:space="preserve">
+    <value>gültig {0} Tage</value>
+  </data>
+  <data name="Validity" xml:space="preserve">
+    <value>Gültigkeit</value>
+  </data>
+  <data name="Value" xml:space="preserve">
+    <value>Wert</value>
+  </data>
+  <data name="vendor-specific" xml:space="preserve">
+    <value>herstellereigen</value>
+  </data>
+  <data name="Verify computer name before execution" xml:space="preserve">
+    <value>Rechnernamen vor der Ausführung prüfen</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Version less than (optional)" xml:space="preserve">
+    <value>Version kleiner als (optional)</value>
+  </data>
+  <data name="Version {0} available" xml:space="preserve">
+    <value>Version {0} verfügbar</value>
+  </data>
+  <data name="Version {0} is available" xml:space="preserve">
+    <value>Version {0} ist verfügbar</value>
+  </data>
+  <data name="Version {0}, last contact {1}" xml:space="preserve">
+    <value>Version {0}, letzter Kontakt {1}</value>
+  </data>
+  <data name="View" xml:space="preserve">
+    <value>Ansicht</value>
+  </data>
+  <data name="Wait" xml:space="preserve">
+    <value>Warten</value>
+  </data>
+  <data name="Wait time (seconds)" xml:space="preserve">
+    <value>Wartezeit (Sekunden)</value>
+  </data>
+  <data name="Waiting for a free slot." xml:space="preserve">
+    <value>Wartet auf einen freien Platz.</value>
+  </data>
+  <data name="waiting for computer" xml:space="preserve">
+    <value>wartet auf Rechner</value>
+  </data>
+  <data name="waiting for offline computers" xml:space="preserve">
+    <value>wartet auf Offline-Rechner</value>
+  </data>
+  <data name="Website" xml:space="preserve">
+    <value>Webseite</value>
+  </data>
+  <data name="Weekly" xml:space="preserve">
+    <value>Wöchentlich</value>
+  </data>
+  <data name="What changed from scan to scan: software, hotfixes, hardware, services, local users and administrators. The last {0} entries are shown; the history is kept for two years. The list refreshes itself." xml:space="preserve">
+    <value>Was sich von Scan zu Scan geändert hat: Software, Hotfixes, Hardware, Dienste, lokale Benutzer und Administratoren. Angezeigt werden die letzten {0} Einträge; der Verlauf wird zwei Jahre aufbewahrt. Die Liste aktualisiert sich von selbst.</value>
+  </data>
+  <data name='What happens to such computers is set under "Active Directory" in the settings.' xml:space="preserve">
+    <value>Was mit solchen Rechnern geschieht, legen die Einstellungen unter „Active Directory“ fest.</value>
+  </data>
+  <data name='What the token is for, e.g. "Monitoring" or "Package upload"' xml:space="preserve">
+    <value>Wofür das Token gedacht ist, z. B. „Monitoring“ oder „Paket-Upload“</value>
+  </data>
+  <data name="Windows below version" xml:space="preserve">
+    <value>Windows unter Version</value>
+  </data>
+  <data name="Windows Firewall" xml:space="preserve">
+    <value>Windows-Firewall</value>
+  </data>
+  <data name="Windows from version" xml:space="preserve">
+    <value>Windows ab Version</value>
+  </data>
+  <data name="Windows Installer (MSI)" xml:space="preserve">
+    <value>Windows Installer (MSI)</value>
+  </data>
+  <data name="Windows Installer patch (MSP)" xml:space="preserve">
+    <value>Windows-Installer-Patch (MSP)</value>
+  </data>
+  <data name="Windows PowerShell 5.1, 64 bit. The script's exit code (exit N) decides about success." xml:space="preserve">
+    <value>Windows PowerShell 5.1, 64 Bit. Der Exitcode des Skripts (exit N) entscheidet über Erfolg.</value>
+  </data>
+  <data name="Windows sign-in" xml:space="preserve">
+    <value>Windows-Anmeldung</value>
+  </data>
+  <data name="Windows sign-in, allowed for {0}." xml:space="preserve">
+    <value>Windows-Anmeldung, erlaubt für {0}.</value>
+  </data>
+  <data name="Windows Update (MSU)" xml:space="preserve">
+    <value>Windows-Update (MSU)</value>
+  </data>
+  <data name="Windows version" xml:space="preserve">
+    <value>Windows-Version</value>
+  </data>
+  <data name="winget ID" xml:space="preserve">
+    <value>winget-Kennung</value>
+  </data>
+  <data name="WinRM access to {0} failed: {1}" xml:space="preserve">
+    <value>WinRM-Zugriff auf {0} fehlgeschlagen: {1}</value>
+  </data>
+  <data name="With agent" xml:space="preserve">
+    <value>Mit Agent</value>
+  </data>
+  <data name="with condition" xml:space="preserve">
+    <value>mit Bedingung</value>
+  </data>
+  <data name="Without launcher: commands to copy" xml:space="preserve">
+    <value>Ohne Starter: Befehle zum Kopieren</value>
+  </data>
+  <data name="Wrong computer responds" xml:space="preserve">
+    <value>Falscher Rechner antwortet</value>
+  </data>
+  <data name="yes" xml:space="preserve">
+    <value>ja</value>
+  </data>
+  <data name="You are signed out." xml:space="preserve">
+    <value>Du bist abgemeldet.</value>
+  </data>
+  <data name="Your account is not a member of any group that may use Inventory." xml:space="preserve">
+    <value>Dein Konto gehört zu keiner Gruppe, die Inventory nutzen darf.</value>
+  </data>
+  <data name="{0} ({1}), allowed for {2}." xml:space="preserve">
+    <value>{0} ({1}), erlaubt für {2}.</value>
+  </data>
+  <data name="{0} active schedules" xml:space="preserve">
+    <value>{0} aktive Zeitpläne</value>
+  </data>
+  <data name="{0} at {1}" xml:space="preserve">
+    <value>{0} um {1}</value>
+  </data>
+  <data name="{0} computer accounts found ({1} disabled). To be created: {2}{3}. Not in AD: {4}{5}." xml:space="preserve">
+    <value>{0} Computerkonten gefunden ({1} deaktiviert). Neu anzulegen: {2}{3}. Nicht im AD: {4}{5}.</value>
+  </data>
+  <data name="{0} computer accounts found, {1} newly created" xml:space="preserve">
+    <value>{0} Computerkonten gefunden, {1} neu angelegt</value>
+  </data>
+  <data name="{0} computers" xml:space="preserve">
+    <value>{0} Rechner</value>
+  </data>
+  <data name='{0} computers added to "{1}".' xml:space="preserve">
+    <value>{0} Rechner zu „{1}“ hinzugefügt.</value>
+  </data>
+  <data name="{0} computers added, {1} of them reachable." xml:space="preserve">
+    <value>{0} Rechner hinzugefügt, {1} davon erreichbar.</value>
+  </data>
+  <data name="{0} computers checked, {1} online" xml:space="preserve">
+    <value>{0} Rechner geprüft, {1} online</value>
+  </data>
+  <data name="{0} computers deleted." xml:space="preserve">
+    <value>{0} Rechner gelöscht.</value>
+  </data>
+  <data name='{0} computers removed from "{1}".' xml:space="preserve">
+    <value>{0} Rechner aus „{1}“ entfernt.</value>
+  </data>
+  <data name="{0} computers reported a different name than listed – see the marker in the list." xml:space="preserve">
+    <value>{0} Rechner haben sich mit einem anderen Namen gemeldet als eingetragen – siehe Markierung in der Liste.</value>
+  </data>
+  <data name="{0} computers scanned" xml:space="preserve">
+    <value>{0} Rechner gescannt</value>
+  </data>
+  <data name="{0} computers scanned." xml:space="preserve">
+    <value>{0} Rechner gescannt.</value>
+  </data>
+  <data name="{0} computers selected" xml:space="preserve">
+    <value>{0} Rechner ausgewählt</value>
+  </data>
+  <data name="{0} computers would be deleted; that is conspicuously many at once, so nothing was deleted (check the search roots or delete manually)" xml:space="preserve">
+    <value>{0} Rechner wären zu löschen; das sind auffällig viele auf einmal, deshalb wurde nichts gelöscht (Suchwurzeln prüfen oder von Hand löschen)</value>
+  </data>
+  <data name="{0} days" xml:space="preserve">
+    <value>{0} Tage</value>
+  </data>
+  <data name="{0} deleted" xml:space="preserve">
+    <value>{0} gelöscht</value>
+  </data>
+  <data name="{0} disabled" xml:space="preserve">
+    <value>{0} deaktiviert</value>
+  </data>
+  <data name="{0} failed" xml:space="preserve">
+    <value>{0} fehlgeschlagen</value>
+  </data>
+  <data name="{0} is already imported." xml:space="preserve">
+    <value>{0} ist bereits importiert.</value>
+  </data>
+  <data name="{0} is already listed as a computer of its own. This entry is a duplicate and can be deleted." xml:space="preserve">
+    <value>{0} ist bereits als eigener Rechner eingetragen. Dieser Eintrag ist ein Duplikat und kann gelöscht werden.</value>
+  </data>
+  <data name="{0} is too large for the browser upload – please place it directly in the repository folder." xml:space="preserve">
+    <value>{0} ist zu groß für den Upload im Browser – bitte direkt im Repository-Ordner ablegen.</value>
+  </data>
+  <data name="{0} not in AD" xml:space="preserve">
+    <value>{0} nicht im AD</value>
+  </data>
+  <data name="{0} of {1} computers reachable." xml:space="preserve">
+    <value>{0} von {1} Rechnern erreichbar.</value>
+  </data>
+  <data name="{0} of {1} failed – {2}" xml:space="preserve">
+    <value>{0} von {1} fehlgeschlagen – {2}</value>
+  </data>
+  <data name="{0} of {1} succeeded" xml:space="preserve">
+    <value>{0} von {1} erfolgreich</value>
+  </data>
+  <data name="{0} older than {1} days" xml:space="preserve">
+    <value>{0} älter als {1} Tage</value>
+  </data>
+  <data name='{0} open items – details under "Needs attention".' xml:space="preserve">
+    <value>{0} offene Punkte – Einzelheiten unter „Handlungsbedarf“.</value>
+  </data>
+  <data name="{0} outdated" xml:space="preserve">
+    <value>{0} veraltet</value>
+  </data>
+  <data name="{0} scanned, {1} failed" xml:space="preserve">
+    <value>{0} gescannt, {1} fehlgeschlagen</value>
+  </data>
+  <data name="{0} scanned, {1} failed." xml:space="preserve">
+    <value>{0} gescannt, {1} fehlgeschlagen.</value>
+  </data>
+  <data name="{0} seconds" xml:space="preserve">
+    <value>{0} Sekunden</value>
+  </data>
+  <data name="{0} skipped due to name anomaly" xml:space="preserve">
+    <value>{0} wegen Namensauffälligkeit übersprungen</value>
+  </data>
+  <data name="{0} updated to {1}." xml:space="preserve">
+    <value>{0} auf {1} aktualisiert.</value>
+  </data>
+  <data name="{0} updates pending" xml:space="preserve">
+    <value>{0} Updates ausstehend</value>
+  </data>
+  <data name="{0} waiting for computers" xml:space="preserve">
+    <value>{0} warten auf Rechner</value>
+  </data>
+  <data name="{0} would be deleted – conspicuously many at once, so the run would delete nothing." xml:space="preserve">
+    <value>Zu löschen wären {0} – auffällig viele auf einmal, der Lauf würde deshalb nichts löschen.</value>
+  </data>
+  <data name="{0} {1} imported." xml:space="preserve">
+    <value>{0} {1} importiert.</value>
+  </data>
+  <data name="{0} {1} is not (anymore) listed in the winget repository." xml:space="preserve">
+    <value>{0} {1} wird im winget-Repository nicht (mehr) geführt.</value>
+  </data>
+  <data name="… and {0} more" xml:space="preserve">
+    <value>… und {0} weitere</value>
+  </data>
+</root>

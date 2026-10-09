@@ -26,7 +26,7 @@ public sealed class GitHubReleaseSource(HttpClient http) : IReleaseSource
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException && !ct.IsCancellationRequested)
         {
-            throw new RemoteException($"Update-Prüfung bei GitHub fehlgeschlagen: {ex.Message}", ex);
+            throw new RemoteException($"Update check at GitHub failed: {ex.Message}", ex);
         }
     }
 

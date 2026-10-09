@@ -2,35 +2,36 @@
 @inject CollectionService CollectionService
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
 
-<PageTitle>Sammlungen – Inventory</PageTitle>
+<PageTitle>@L["Collections"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h5">Sammlungen</MudText>
+    <MudText Typo="Typo.h5">@L["Collections"]</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Folder" OnClick="@(() => EditAsync(null, false))">Statische Sammlung</MudButton>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" OnClick="@(() => EditAsync(null, true))">Dynamische Sammlung</MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Folder" OnClick="@(() => EditAsync(null, false))">@L["Static collection"]</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" OnClick="@(() => EditAsync(null, true))">@L["Dynamic collection"]</MudButton>
 </MudStack>
 
 <MudText Typo="Typo.body2" Class="mb-4">
-    Statische Sammlungen enthalten fest zugeordnete Rechner (Zuordnung über die Rechnerliste).
-    Dynamische Sammlungen füllen sich über Regeln aus den Inventardaten und sind nach jedem Scan aktuell.
+    @L["Static collections contain explicitly assigned computers (assigned from the computer list). Dynamic collections fill themselves through rules on the inventory data and are up to date after every scan."]
 </MudText>
 
 <MudDataGrid T="CollectionSummary" Items="_collections" Dense="true" Hover="true" SortMode="SortMode.None">
     <Columns>
-        <TemplateColumn Title="Name">
+        <TemplateColumn Title="@L["Name"]">
             <CellTemplate><MudLink Href="@($"computers?collection={context.Item.Collection.Id}")">@context.Item.Collection.Name</MudLink></CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Art">
+        <TemplateColumn Title="@L["Type"]">
             <CellTemplate>
                 <MudChip T="string" Size="Size.Small" Color="@(context.Item.Collection.IsDynamic ? Color.Info : Color.Default)">
-                    @(context.Item.Collection.IsDynamic ? "dynamisch" : "statisch")
+                    @(context.Item.Collection.IsDynamic ? L["dynamic"] : L["static"])
                 </MudChip>
             </CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="c => c.Count" Title="Rechner" />
-        <TemplateColumn Title="Regeln / Beschreibung">
+        <PropertyColumn Property="c => c.Count" Title="@L["Computers"]" />
+        <TemplateColumn Title="@L["Rules / description"]">
             <CellTemplate>
                 @if (context.Item.Collection.IsDynamic)
                 {
@@ -44,13 +45,13 @@
         </TemplateColumn>
         <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Bearbeiten" OnClick="@(() => EditAsync(context.Item.Collection, context.Item.Collection.IsDynamic))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Löschen" OnClick="@(() => DeleteAsync(context.Item.Collection))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item.Collection, context.Item.Collection.IsDynamic))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item.Collection))" />
             </CellTemplate>
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
-        <MudText Class="pa-4">Noch keine Sammlungen vorhanden.</MudText>
+        <MudText Class="pa-4">@L["No collections yet."]</MudText>
     </NoRecordsContent>
 </MudDataGrid>
 
@@ -59,8 +60,8 @@
 
     protected override async Task OnInitializedAsync() => _collections = await CollectionService.ListAsync();
 
-    private static string Describe(Collection collection) =>
-        string.Join(collection.MatchAll ? " UND " : " ODER ", collection.Rules.Select(r =>
+    private string Describe(Collection collection) =>
+        string.Join(collection.MatchAll ? $" {L["AND"]} " : $" {L["OR"]} ", collection.Rules.Select(r =>
             $"{Display.Field(r.Field)} {Display.Operator(r.Operator)} „{r.Value}“" + (string.IsNullOrWhiteSpace(r.Value2) ? "" : $" (Version < {r.Value2})")));
 
     private async Task EditAsync(Collection? collection, bool isDynamic)
@@ -70,7 +71,7 @@
             { d => d.Collection, collection },
             { d => d.IsDynamic, isDynamic },
         };
-        var title = collection?.Name ?? (isDynamic ? "Dynamische Sammlung" : "Statische Sammlung");
+        var title = collection?.Name ?? (isDynamic ? L["Dynamic collection"] : L["Static collection"]);
         var dialog = await Dialogs.ShowAsync<EditCollectionDialog>(title, parameters, new DialogOptions { FullWidth = true, MaxWidth = isDynamic ? MaxWidth.Medium : MaxWidth.Small });
         if (await dialog.Result is { Canceled: false })
             _collections = await CollectionService.ListAsync();
@@ -78,12 +79,12 @@
 
     private async Task DeleteAsync(Collection collection)
     {
-        var confirmed = await Dialogs.ShowMessageBoxAsync("Sammlung löschen",
-            $"„{collection.Name}“ wirklich löschen? Die Rechner selbst bleiben erhalten.", yesText: "Löschen", cancelText: "Abbrechen");
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete collection"],
+            L["Really delete \"{0}\"? The computers themselves are kept.", collection.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;
         await CollectionService.DeleteAsync(collection.Id);
-        Snackbar.Add("Sammlung gelöscht.", Severity.Success);
+        Snackbar.Add(L["Collection deleted."], Severity.Success);
         _collections = await CollectionService.ListAsync();
     }
 }

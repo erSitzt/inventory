@@ -77,7 +77,7 @@ internal static class SimulatedInventory
         data.Services.Add(new ServiceItem { Name = "wuauserv", DisplayName = "Windows Update", State = "Stopped", StartMode = "Manual", Account = "LocalSystem" });
         data.Services.Add(new ServiceItem { Name = "WinRM", DisplayName = "Windows-Remoteverwaltung", State = random.Next(2) == 0 ? "Running" : "Stopped", StartMode = "Manual", Account = "NT AUTHORITY\\NetworkService" });
         var pending = random.Next(4) == 0
-            ? new List<string> { "2026-10 Kumulatives Update für Windows 11 (KB5066835)", "Update für Microsoft Defender Antivirus-Antischadsoftwareplattform" }
+            ? new List<string> { "2026-10 Cumulative Update for Windows 11 (KB5066835)", "Update for Microsoft Defender Antivirus antimalware platform" }
             : new List<string>();
         data.Security = new SecurityStatus
         {
@@ -97,7 +97,7 @@ internal static class SimulatedInventory
         data.LocalUsers.Add(new LocalUserItem { Name = "Administrator", Disabled = true, Description = "Vordefiniertes Konto" });
         data.LocalUsers.Add(new LocalUserItem { Name = "Gast", Disabled = true });
         data.LocalAdmins.Add(new LocalAdminItem { Name = $"{data.ComputerName}\\Administrator" });
-        data.LocalAdmins.Add(new LocalAdminItem { Name = "CORP\\Domänen-Admins", IsGroup = true });
+        data.LocalAdmins.Add(new LocalAdminItem { Name = "CORP\\Domain Admins", IsGroup = true });
         if (random.Next(3) == 0)
         {
             data.LocalUsers.Add(new LocalUserItem { Name = "support", Description = "Lokales Supportkonto" });

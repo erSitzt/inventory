@@ -1,5 +1,7 @@
 @inherits LayoutComponentBase
 @inject UpdateService Updates
+@inject IStringLocalizer<SharedResource> L
+@inject NavigationManager Navigation
 
 <MudThemeProvider Theme="Theme" />
 <MudPopoverProvider />
@@ -15,7 +17,16 @@
         @if (Updates.UpdateAvailable)
         {
             <MudButton Href="settings#updates" Color="Color.Inherit" Variant="Variant.Outlined" Size="Size.Small" Class="mr-4"
-                       StartIcon="@Icons.Material.Filled.SystemUpdateAlt">Version @Updates.Latest!.Version verfügbar</MudButton>
+                       StartIcon="@Icons.Material.Filled.SystemUpdateAlt">@L["Version {0} available", Updates.Latest!.Version]</MudButton>
+        }
+        @if (AvailableLanguages.Count > 1)
+        {
+            <MudMenu Icon="@Icons.Material.Filled.Translate" Color="Color.Inherit" AriaLabel="@L["Language"]" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                @foreach (var (code, name) in AvailableLanguages)
+                {
+                    <MudMenuItem Disabled="@(code == System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName)" OnClick="@(() => Navigation.NavigateTo($"language/{code}", forceLoad: true))">@name</MudMenuItem>
+                }
+            </MudMenu>
         }
         <AuthorizeView>
             <Authorized>
@@ -23,7 +34,7 @@
                 @if (context.User.HasClaim(c => c.Type == AccessControl.AccessClaim))
                 {
                     @* Nur bei Sitzungs-Anmeldung; die reine Windows-Anmeldung kennt kein Abmelden. *@
-                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Href="logout" aria-label="Abmelden" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Href="logout" aria-label="@L["Sign out"]" />
                 }
             </Authorized>
         </AuthorizeView>
@@ -39,13 +50,15 @@
 </MudLayout>
 
 <div id="blazor-error-ui" data-nosnippet>
-    Ein unerwarteter Fehler ist aufgetreten.
-    <a href="." class="reload">Neu laden</a>
+    @L["An unexpected error occurred."]
+    <a href="." class="reload">@L["Reload"]</a>
     <span class="dismiss">🗙</span>
 </div>
 
 @code {
     private bool _drawerOpen = true;
+
+    private static readonly IReadOnlyList<(string Code, string Name)> AvailableLanguages = Languages.Available();
 
     /// <summary>Etwas wärmere Farben und rundere Kanten als der MudBlazor-Standard; alle Seiten erben das.</summary>
     private static readonly MudTheme Theme = new()

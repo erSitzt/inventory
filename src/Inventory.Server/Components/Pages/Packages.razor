@@ -4,38 +4,40 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
 
-<PageTitle>Pakete – Inventory</PageTitle>
+<PageTitle>@L["Packages"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h5">Pakete</MudText>
+    <MudText Typo="Typo.h5">@L["Packages"]</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">Neues Paket</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">@L["New package"]</MudButton>
 </MudStack>
 
 <MudDataGrid T="Package" Items="_packages" Dense="true" Hover="true" SortMode="SortMode.Single">
     <Columns>
-        <TemplateColumn Title="Name" SortBy="p => p.Name">
+        <TemplateColumn Title="@L["Name"]" SortBy="p => p.Name">
             <CellTemplate><MudLink Href="@($"packages/{context.Item.Id}")">@context.Item.Name</MudLink></CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="p => p.Version" Title="Version" />
-        <TemplateColumn Title="Schritte" SortBy="p => p.Steps.Count">
+        <PropertyColumn Property="p => p.Version" Title="@L["Version"]" />
+        <TemplateColumn Title="@L["Steps"]" SortBy="p => p.Steps.Count">
             <CellTemplate>@context.Item.Steps.Count</CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="p => p.Description" Title="Beschreibung" />
-        <TemplateColumn Title="Geändert" SortBy="p => p.ModifiedUtc">
+        <PropertyColumn Property="p => p.Description" Title="@L["Description"]" />
+        <TemplateColumn Title="@L["Modified"]" SortBy="p => p.ModifiedUtc">
             <CellTemplate>@Display.LocalTime(context.Item.ModifiedUtc)</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
                 <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(context.Item.Steps.Count == 0)"
-                           OnClick="@(() => DeployAsync(context.Item))">Bereitstellen</MudButton>
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Löschen" OnClick="@(() => DeleteAsync(context.Item))" />
+                           OnClick="@(() => DeployAsync(context.Item))">@L["Deploy"]</MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item))" />
             </CellTemplate>
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
-        <MudText Class="pa-4">Noch keine Pakete vorhanden. Ein Paket besteht aus einem oder mehreren Schritten, z. B. Installation, Befehl und Neustart.</MudText>
+        <MudText Class="pa-4">@L["No packages yet. A package consists of one or more steps, e.g. installation, command and reboot."]</MudText>
     </NoRecordsContent>
 </MudDataGrid>
 
@@ -46,7 +48,7 @@
 
     private async Task CreateAsync()
     {
-        var dialog = await Dialogs.ShowAsync<NameDialog>("Neues Paket", new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
+        var dialog = await Dialogs.ShowAsync<NameDialog>(L["New package"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
         if (await dialog.Result is not { Canceled: false, Data: string name })
             return;
         try
@@ -56,26 +58,26 @@
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)
         {
-            Snackbar.Add($"Es gibt bereits ein Paket mit dem Namen „{name.Trim()}“.", Severity.Error);
+            Snackbar.Add(L["A package named \"{0}\" already exists.", name.Trim()], Severity.Error);
         }
     }
 
     private async Task DeployAsync(Package package)
     {
         var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id } };
-        await Dialogs.ShowAsync<DeployDialog>($"„{package.Name}“ bereitstellen", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        await Dialogs.ShowAsync<DeployDialog>(L["Deploy \"{0}\"", package.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
     }
 
     private async Task DeleteAsync(Package package)
     {
-        var confirmed = await Dialogs.ShowMessageBoxAsync("Paket löschen",
-            $"„{package.Name}“ samt Dateien wirklich löschen? Pakete, die es einbetten, verlieren den entsprechenden Schritt. Bisherige Deployments bleiben in der Historie.",
-            yesText: "Löschen", cancelText: "Abbrechen");
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete package"],
+            L["Really delete \"{0}\" including its files? Packages that embed it lose the corresponding step. Past deployments remain in the history.", package.Name],
+            yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;
         await PackageService.DeleteAsync(package.Id);
-        await Audit.LogAsync("Paket gelöscht", package.Name);
-        Snackbar.Add("Paket gelöscht.", Severity.Success);
+        await Audit.LogAsync(L["Package deleted"], package.Name);
+        Snackbar.Add(L["Package deleted."], Severity.Success);
         _packages = await PackageService.ListAsync();
     }
 }

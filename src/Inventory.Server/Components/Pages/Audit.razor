@@ -1,12 +1,14 @@
 @page "/audit"
 @inject AuditService AuditService
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Protokoll – Inventory</PageTitle>
+<PageTitle>@L["Audit log"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h5">Protokoll</MudText>
+    <MudText Typo="Typo.h5">@L["Audit log"]</MudText>
     <MudSpacer />
-    <MudTextField @bind-Value="_search" Placeholder="Suchen" Adornment="Adornment.Start" Immediate="true"
+    <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" Immediate="true"
                   AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 280px" />
 </MudStack>
 
@@ -15,18 +17,18 @@
 <MudDataGrid T="AuditEntry" Items="_entries" Dense="true" Hover="true" SortMode="SortMode.None" RowsPerPage="50"
              QuickFilter="@(e => string.IsNullOrWhiteSpace(_search) || $"{e.User} {e.Action} {e.Details}".Contains(_search, StringComparison.OrdinalIgnoreCase))">
     <Columns>
-        <TemplateColumn Title="Zeit" CellStyle="white-space: nowrap">
+        <TemplateColumn Title="@L["Time"]" CellStyle="white-space: nowrap">
             <CellTemplate>@Display.LocalTime(context.Item.TimeUtc)</CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="e => e.User" Title="Benutzer" />
-        <PropertyColumn Property="e => e.Action" Title="Aktion" />
+        <PropertyColumn Property="e => e.User" Title="@L["User"]" />
+        <PropertyColumn Property="e => e.Action" Title="@L["Action"]" />
         <PropertyColumn Property="e => e.Details" Title="Details" CellStyle="word-break: break-word" />
     </Columns>
     <NoRecordsContent>
-        <MudText Class="pa-4">Noch keine Einträge. Protokolliert werden Befehle, Deployments, Scans sowie Änderungen an Zugangsdaten, Paketen, Zeitplänen und Einstellungen.</MudText>
+        <MudText Class="pa-4">@L["No entries yet. Commands, deployments, scans and changes to credentials, packages, schedules and settings are logged."]</MudText>
     </NoRecordsContent>
     <PagerContent>
-        <MudDataGridPager T="AuditEntry" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+        <MudDataGridPager T="AuditEntry" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
     </PagerContent>
 </MudDataGrid>
 

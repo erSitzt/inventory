@@ -7,6 +7,9 @@ using Inventory.Contracts;
 using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Remoting.WinRm;
 
 /// <summary>
@@ -15,8 +18,10 @@ namespace Inventory.Remoting.WinRm;
 /// Konsolenmodus mit dem angegebenen Konto (nicht als Lokales System).
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class WinRmTransport(RunnerPackage runner) : IRemoteTransport
-{
+public sealed class WinRmTransport(RunnerPackage runner, IStringLocalizer<SharedResource>? localizer = null) : IRemoteTransport
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private static readonly Lazy<string> EncodedScript = new(() =>
     {
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Inventory.Remoting.WinRm.RemoteJob.ps1")
@@ -90,21 +95,23 @@ public sealed class WinRmTransport(RunnerPackage runner) : IRemoteTransport
 
         if (result is not null)
             return result;
-        var details = Explain(error) ?? ErrorText(await stderr);
-        throw new RemoteException($"WinRM-Zugriff auf {target.Host} fehlgeschlagen: {(details.Length > 0 ? details : $"PowerShell endete mit Code {process.ExitCode}")}");
+        var details = Explain(error, L) ?? ErrorText(await stderr);
+        throw new RemoteException(L["WinRM access to {0} failed: {1}", target.Host, details.Length > 0 ? details : L["PowerShell exited with code {0}", process.ExitCode].Value]);
     }
 
-    internal static string? Explain(string? error) => error switch
+    internal static string? Explain(string? error, IStringLocalizer<SharedResource>? localizer = null)
     {
-        null => null,
-        _ when error.Contains("CONSTRAINED_LOCAL") =>
-            "Auf dem Server läuft PowerShell im eingeschränkten Sprachmodus (AppLocker/WDAC-Richtlinie). " +
-            "Der WinRM-Transport braucht den vollen Sprachmodus für das Konto des Server-Dienstes.",
-        _ when error.Contains("CONSTRAINED_REMOTE") =>
-            "Auf dem Zielrechner läuft PowerShell für dieses Konto im eingeschränkten Sprachmodus (AppLocker/WDAC-Richtlinie). " +
-            "Der WinRM-Transport ist dort nicht nutzbar; bitte SMB + Dienst verwenden.",
-        _ => error,
-    };
+        var L = localizer ?? PassthroughLocalizer.Instance;
+        return error switch
+        {
+            null => null,
+            _ when error.Contains("CONSTRAINED_LOCAL") =>
+                L["PowerShell on the server runs in constrained language mode (AppLocker/WDAC policy). The WinRM transport needs full language mode for the server service's account."],
+            _ when error.Contains("CONSTRAINED_REMOTE") =>
+                L["PowerShell on the target computer runs in constrained language mode for this account (AppLocker/WDAC policy). The WinRM transport cannot be used there; please use SMB + service."],
+            _ => error,
+        };
+    }
 
     /// <summary>Nicht interaktiv gestartet liefert PowerShell Fehler als CLIXML; daraus nur den lesbaren Text holen.</summary>
     internal static string ErrorText(string stderr)

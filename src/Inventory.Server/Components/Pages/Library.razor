@@ -3,24 +3,24 @@
 @inject Auditor Audit
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Paketbibliothek – Inventory</PageTitle>
+<PageTitle>@L["Package library"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
-    <MudText Typo="Typo.h5">Paketbibliothek</MudText>
+    <MudText Typo="Typo.h5">@L["Package library"]</MudText>
     <MudSpacer />
-    <MudTextField T="string" Value="_search" ValueChanged="SearchAsync" Placeholder="Programm, Hersteller oder Schlagwort suchen" Adornment="Adornment.Start" Immediate="true"
+    <MudTextField T="string" Value="_search" ValueChanged="SearchAsync" Placeholder="@L["Search program, publisher or tag"]" Adornment="Adornment.Start" Immediate="true"
                   DebounceInterval="350" Clearable="true" AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 360px" />
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="_busy" OnClick="@(() => ReloadAsync(force: true))">Neu laden</MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="_busy" OnClick="@(() => ReloadAsync(force: true))">@L["Reload"]</MudButton>
 </MudStack>
 
 <MudText Typo="Typo.body2" Class="mb-4">
-    Fertige Pakete gängiger Programme mit geprüfter Download-Adresse und Silent-Parametern. Beim Import lädt der Server das Setup
-    direkt vom Hersteller und prüft es gegen die Prüfsumme aus dem Katalog. Der Katalog wird täglich aus den Manifesten des
-    winget-Repositories erzeugt@(Catalog.Current?.Generated is { } generated ? $" (Stand {Display.LocalTime(generated)})" : "").
+    @L["Ready-made packages of common programs with verified download address and silent parameters. On import the server downloads the setup directly from the vendor and checks it against the checksum from the catalog. The catalog is generated daily from the manifests of the winget repository"]@(Catalog.Current?.Generated is { } generated ? $" ({L["as of {0}", Display.LocalTime(generated)]})" : "").
     @if (Catalog.IndexAvailable)
     {
-        <span> Die Liste zeigt eine Grundauswahl gängiger Programme; die Suche findet zusätzlich alle weiteren Programme aus winget.</span>
+        <span> @L["The list shows a base selection of common programs; the search additionally finds all other programs from winget."]</span>
     }
 </MudText>
 
@@ -37,22 +37,22 @@
              QuickFilter="@(i => string.IsNullOrWhiteSpace(_search) || i.Entry.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (i.Entry.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) || i.Entry.Tags.Any(t => t.Contains(_search, StringComparison.OrdinalIgnoreCase)))">
     <Columns>
         <HierarchyColumn T="CatalogItem" />
-        <TemplateColumn Title="Programm" SortBy="i => i.Entry.Name" CellStyle="min-width: 300px">
+        <TemplateColumn Title="@L["Program"]" SortBy="i => i.Entry.Name" CellStyle="min-width: 300px">
             <CellTemplate>
                 <MudText Typo="Typo.body2">
                     <b>@context.Item.Entry.Name</b>
                     @if (!context.Item.Curated)
                     {
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">aus der winget-Suche</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">@L["from winget search"]</MudChip>
                     }
                 </MudText>
                 <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@context.Item.Entry.Description</MudText>
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Hersteller" SortBy="i => i.Entry.Publisher">
+        <TemplateColumn Title="@L["Publisher"]" SortBy="i => i.Entry.Publisher">
             <CellTemplate>@context.Item.Entry.Publisher</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Version" Sortable="false">
+        <TemplateColumn Title="@L["Version"]" Sortable="false">
             <CellTemplate>@context.Item.Entry.Version</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="Setup" SortBy="i => Display.InstallerFormat(i.Entry.InstallerType) + i.Entry.InstallerType" CellStyle="white-space: nowrap">
@@ -60,7 +60,7 @@
                 <CatalogSetupCell Entry="context.Item.Entry" />
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Status" SortBy="i => i.Package == null ? 2 : i.UpdateAvailable ? 0 : 1">
+        <TemplateColumn Title="@L["Status"]" SortBy="i => i.Package == null ? 2 : i.UpdateAvailable ? 0 : 1">
             <CellTemplate>
                 @if (context.Item.Package is null)
                 {
@@ -68,15 +68,15 @@
                 }
                 else if (context.Item.UpdateAvailable)
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">importiert @context.Item.Package.Version – neuer verfügbar</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["imported {0} – newer available", context.Item.Package.Version]</MudChip>
                 }
                 else
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Success">importiert, aktuell</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">@L["imported, up to date"]</MudChip>
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Automatisch aktuell halten" Sortable="false">
+        <TemplateColumn Title="@L["Keep up to date automatically"]" Sortable="false">
             <CellTemplate>
                 @if (context.Item.Package is not null)
                 {
@@ -88,21 +88,21 @@
             <CellTemplate>
                 @if (context.Item.Package is null)
                 {
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Disabled="_busy" OnClick="@(() => ImportAsync(context.Item))">Importieren</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Disabled="_busy" OnClick="@(() => ImportAsync(context.Item))">@L["Import"]</MudButton>
                 }
                 else
                 {
                     @if (context.Item.UpdateAvailable)
                     {
-                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="@(() => UpdateAsync(context.Item))">Aktualisieren</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="@(() => UpdateAsync(context.Item))">@L["Update"]</MudButton>
                     }
                     @if (Catalog.VersionsAvailable)
                     {
-                        <MudTooltip Text="Eine ältere Version als eigenes Paket importieren">
-                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.History" Disabled="_busy" aria-label="Ältere Version importieren" OnClick="@(() => ImportAsync(context.Item))" />
+                        <MudTooltip Text="@L["Import an older version as a separate package"]">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.History" Disabled="_busy" aria-label="@L["Import older version"]" OnClick="@(() => ImportAsync(context.Item))" />
                         </MudTooltip>
                     }
-                    <MudButton Size="Size.Small" Href="@($"packages/{context.Item.Package.Id}")">Paket öffnen</MudButton>
+                    <MudButton Size="Size.Small" Href="@($"packages/{context.Item.Package.Id}")">@L["Open package"]</MudButton>
                 }
             </CellTemplate>
         </TemplateColumn>
@@ -111,19 +111,18 @@
         <CatalogEntryDetails Entry="context.Item.Entry" />
     </ChildRowContent>
     <NoRecordsContent>
-        <MudText Class="pa-4">@(string.IsNullOrWhiteSpace(_search) ? $"Die Bibliothek ist leer oder nicht erreichbar. Quelle: {Catalog.Location}" : "Kein Treffer in der Grundauswahl.")</MudText>
+        <MudText Class="pa-4">@(string.IsNullOrWhiteSpace(_search) ? L["The library is empty or unreachable. Source: {0}", Catalog.Location] : L["No match in the base selection."])</MudText>
     </NoRecordsContent>
     <PagerContent>
-        <MudDataGridPager T="CatalogItem" PageSizeOptions="@(new[] { 50, 100 })" RowsPerPageString="Zeilen pro Seite" />
+        <MudDataGridPager T="CatalogItem" PageSizeOptions="@(new[] { 50, 100 })" RowsPerPageString="@L["Rows per page"]" />
     </PagerContent>
 </MudDataGrid>
 
 @if (Catalog.IndexAvailable && _search.Trim().Length >= 2)
 {
-    <MudText Typo="Typo.h6" Class="mt-6 mb-1">Weitere Treffer aus winget</MudText>
+    <MudText Typo="Typo.h6" Class="mt-6 mb-1">@L["More results from winget"]</MudText>
     <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
-        Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download,
-        aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.
+        @L["These entries are not part of the base selection and come unchanged from the winget manifests. The checksum secures the download, but only a test shows whether the silent parameters are right – try it on a single computer before deploying."]
     </MudAlert>
     @if (Catalog.IndexError is not null)
     {
@@ -132,16 +131,16 @@
     <MudDataGrid T="CatalogItem" Items="_found" Dense="true" Hover="true" SortMode="SortMode.None" Loading="_searching">
         <Columns>
             <HierarchyColumn T="CatalogItem" />
-            <TemplateColumn Title="Programm" CellStyle="min-width: 300px">
+            <TemplateColumn Title="@L["Program"]" CellStyle="min-width: 300px">
                 <CellTemplate>
                     <MudText Typo="Typo.body2"><b>@context.Item.Entry.Name</b></MudText>
                     <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@context.Item.Entry.Description</MudText>
                 </CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Hersteller">
+            <TemplateColumn Title="@L["Publisher"]">
                 <CellTemplate>@context.Item.Entry.Publisher</CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Version">
+            <TemplateColumn Title="@L["Version"]">
                 <CellTemplate>@context.Item.Entry.Version</CellTemplate>
             </TemplateColumn>
             <TemplateColumn Title="Setup" CellStyle="white-space: nowrap">
@@ -151,7 +150,7 @@
             </TemplateColumn>
             <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
                 <CellTemplate>
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Disabled="_busy" OnClick="@(() => ImportAsync(context.Item))">Importieren</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Disabled="_busy" OnClick="@(() => ImportAsync(context.Item))">@L["Import"]</MudButton>
                 </CellTemplate>
             </TemplateColumn>
         </Columns>
@@ -159,22 +158,21 @@
             <CatalogEntryDetails Entry="context.Item.Entry" />
         </ChildRowContent>
         <NoRecordsContent>
-            <MudText Class="pa-4">@(_searching ? "Suche …" : "Kein weiterer Treffer.")</MudText>
+            <MudText Class="pa-4">@(_searching ? L["Searching …"] : L["No further match."])</MudText>
         </NoRecordsContent>
     </MudDataGrid>
     @if (_found.Count == SearchLimit)
     {
-        <MudText Typo="Typo.caption" Class="mt-1" Style="display: block">Nur die ersten @SearchLimit Treffer – Suche verfeinern, um weitere zu sehen.</MudText>
+        <MudText Typo="Typo.caption" Class="mt-1" Style="display: block">@L["Only the first {0} matches – refine the search to see more.", SearchLimit]</MudText>
     }
     @if (Catalog.Index is { } index)
     {
-        <MudText Typo="Typo.caption" Class="mt-1" Style="display: block">Suchindex: @index.Packages.Count.ToString("N0") Programme mit unbeaufsichtigt installierbarem Setup@(index.Generated is { } indexDate ? $", Stand {Display.LocalTime(indexDate)}" : "").</MudText>
+        <MudText Typo="Typo.caption" Class="mt-1" Style="display: block">@L["Search index: {0} programs with an unattended installer", index.Packages.Count.ToString("N0")]@(index.Generated is { } indexDate ? $", {L["as of {0}", Display.LocalTime(indexDate)]}" : "").</MudText>
     }
 }
 
 <MudText Typo="Typo.caption" Class="mt-4" Style="display: block">
-    Tipp: Beim Import entsteht auf Wunsch eine dynamische Sammlung „… veraltet“ mit allen Rechnern, auf denen eine ältere Version installiert ist.
-    Ein Zeitplan, der das Paket regelmäßig auf diese Sammlung bereitstellt, hält das Programm überall aktuell.
+    @L["Tip: On import, a dynamic collection \"… outdated\" with all computers running an older version can be created. A schedule that regularly deploys the package to this collection keeps the program up to date everywhere."]
 </MudText>
 
 @code {
@@ -231,27 +229,27 @@
     private async Task ImportAsync(CatalogItem item)
     {
         var parameters = new DialogParameters<ImportPackageDialog> { { d => d.Entry, item.Entry }, { d => d.Curated, item.Curated }, { d => d.OlderOnly, item.Package is not null } };
-        var dialog = await Dialogs.ShowAsync<ImportPackageDialog>($"{item.Entry.Name} importieren", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        var dialog = await Dialogs.ShowAsync<ImportPackageDialog>(L["Import {0}", item.Entry.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is not { Canceled: false, Data: ImportPackageDialog.Choice choice })
             return;
         var version = choice.Version ?? item.Entry.Version;
-        await RunAsync($"Lade {item.Entry.Name} {version} vom Hersteller …", async () =>
+        await RunAsync(L["Downloading {0} {1} from the vendor …", item.Entry.Name, version], async () =>
         {
             await Catalog.ImportAsync(item.Entry.Id, choice.AutoUpdate, choice.CreateCollection, await Audit.UserNameAsync(), choice.Version);
-            Snackbar.Add($"{item.Entry.Name} {version} importiert.", Severity.Success);
+            Snackbar.Add(L["{0} {1} imported.", item.Entry.Name, version], Severity.Success);
         });
     }
 
-    private Task UpdateAsync(CatalogItem item) => RunAsync($"Lade {item.Entry.Name} {item.Entry.Version} vom Hersteller …", async () =>
+    private Task UpdateAsync(CatalogItem item) => RunAsync(L["Downloading {0} {1} from the vendor …", item.Entry.Name, item.Entry.Version], async () =>
     {
         await Catalog.UpdateAsync(item.Package!.Id, await Audit.UserNameAsync());
-        Snackbar.Add($"{item.Package.Name} auf {item.Entry.Version} aktualisiert.", Severity.Success);
+        Snackbar.Add(L["{0} updated to {1}.", item.Package.Name, item.Entry.Version], Severity.Success);
     });
 
     private async Task SetAutoAsync(CatalogItem item, bool enabled)
     {
         await Catalog.SetAutoUpdateAsync(item.Package!.Id, enabled);
-        await Audit.LogAsync("Paket-Automatik geändert", $"{item.Package.Name}: {(enabled ? "an" : "aus")}");
+        await Audit.LogAsync(L["Package auto-update changed"], $"{item.Package.Name}: {Display.OnOff(enabled)}");
         _items = await Catalog.ListAsync();
     }
 

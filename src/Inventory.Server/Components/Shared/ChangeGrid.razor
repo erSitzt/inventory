@@ -1,31 +1,33 @@
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 <MudDataGrid T="(InventoryChange Change, string Computer)" Items="Changes" Dense="true" Hover="true" SortMode="SortMode.None" RowsPerPage="50" QuickFilter="Matches">
     <Columns>
-        <TemplateColumn Title="Zeit" CellStyle="white-space: nowrap">
+        <TemplateColumn Title="@L["Time"]" CellStyle="white-space: nowrap">
             <CellTemplate>@Display.LocalTime(context.Item.Change.TimeUtc)</CellTemplate>
         </TemplateColumn>
         @if (ShowComputer)
         {
-            <TemplateColumn Title="Rechner">
+            <TemplateColumn Title="@L["Computer"]">
                 <CellTemplate><MudLink Href="@($"computers/{context.Item.Change.ComputerId}")">@context.Item.Computer</MudLink></CellTemplate>
             </TemplateColumn>
         }
-        <TemplateColumn Title="Bereich">
-            <CellTemplate>@context.Item.Change.Category</CellTemplate>
+        <TemplateColumn Title="@L["Area"]">
+            <CellTemplate>@L[context.Item.Change.Category]</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Art">
+        <TemplateColumn Title="@L["Type"]">
             <CellTemplate>
                 <MudChip T="string" Size="Size.Small" Color="@Display.ChangeColor(context.Item.Change)">@Display.Change(context.Item.Change)</MudChip>
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Eintrag">
-            <CellTemplate>@context.Item.Change.Item</CellTemplate>
+        <TemplateColumn Title="@L["Item"]">
+            <CellTemplate>@L[context.Item.Change.Item]</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Wert">
-            <CellTemplate>@Display.ChangeValues(context.Item.Change)</CellTemplate>
+        <TemplateColumn Title="@L["Value"]">
+            <CellTemplate>@Display.ChangeValues(context.Item.Change, v => L[v])</CellTemplate>
         </TemplateColumn>
     </Columns>
     <PagerContent>
-        <MudDataGridPager T="(InventoryChange Change, string Computer)" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="Zeilen pro Seite" />
+        <MudDataGridPager T="(InventoryChange Change, string Computer)" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
     </PagerContent>
 </MudDataGrid>
 

@@ -1,20 +1,22 @@
+@inject IStringLocalizer<SharedResource> L
+
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined" AutoFocus="true" Immediate="true"
-                          HelperText="Wofür das Token gedacht ist, z. B. „Monitoring“ oder „Paket-Upload“" />
-            <MudSelect T="int?" @bind-Value="_days" Label="Gültigkeit" Variant="Variant.Outlined">
-                <MudSelectItem T="int?" Value="30">30 Tage</MudSelectItem>
-                <MudSelectItem T="int?" Value="90">90 Tage</MudSelectItem>
-                <MudSelectItem T="int?" Value="365">1 Jahr</MudSelectItem>
-                <MudSelectItem T="int?" Value="@((int?)null)">unbegrenzt</MudSelectItem>
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" AutoFocus="true" Immediate="true"
+                          HelperText="@L["What the token is for, e.g. \"Monitoring\" or \"Package upload\""]" />
+            <MudSelect T="int?" @bind-Value="_days" Label="@L["Validity"]" Variant="Variant.Outlined">
+                <MudSelectItem T="int?" Value="30">@L["{0} days", 30]</MudSelectItem>
+                <MudSelectItem T="int?" Value="90">@L["{0} days", 90]</MudSelectItem>
+                <MudSelectItem T="int?" Value="365">@L["1 year"]</MudSelectItem>
+                <MudSelectItem T="int?" Value="@((int?)null)">@L["unlimited"]</MudSelectItem>
             </MudSelect>
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@string.IsNullOrWhiteSpace(_name)"
-                   OnClick="@(() => MudDialog.Close(DialogResult.Ok(new Request(_name.Trim(), _days))))">Anlegen</MudButton>
+                   OnClick="@(() => MudDialog.Close(DialogResult.Ok(new Request(_name.Trim(), _days))))">@L["Create"]</MudButton>
     </DialogActions>
 </MudDialog>
 

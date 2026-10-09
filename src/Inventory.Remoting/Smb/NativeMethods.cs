@@ -61,13 +61,13 @@ internal static class NativeMethods
         public uint dwWaitHint;
     }
 
-    /// <summary>Übersetzt die häufigsten Win32-Fehler beim Fernzugriff in verständliche Meldungen.</summary>
+    /// <summary>Übersetzt die häufigsten Win32-Fehler beim Fernzugriff in verständliche Meldungen (englische Schlüssel; der Aufrufer lokalisiert).</summary>
     public static string Describe(int error) => error switch
     {
-        5 => "Zugriff verweigert – das Konto braucht lokale Administratorrechte auf dem Zielrechner (bei lokalen Konten zusätzlich LocalAccountTokenFilterPolicy)",
-        53 or 51 or 67 => "Rechner oder Freigabe ADMIN$ nicht erreichbar (Name, Firewall, Datei- und Druckerfreigabe prüfen)",
-        86 or 1326 or 1327 or 1331 or 1909 => "Anmeldung fehlgeschlagen – Benutzername oder Passwort falsch, Konto gesperrt oder deaktiviert",
-        1722 or 1753 => "RPC-Server nicht erreichbar – der Dienststeuerungs-Manager des Zielrechners antwortet nicht (Firewall prüfen)",
+        5 => "Access denied – the account needs local administrator rights on the target computer (for local accounts additionally LocalAccountTokenFilterPolicy)",
+        53 or 51 or 67 => "Computer or share ADMIN$ unreachable (check name, firewall, file and printer sharing)",
+        86 or 1326 or 1327 or 1331 or 1909 => "Logon failed – user name or password wrong, account locked or disabled",
+        1722 or 1753 => "RPC server unreachable – the target computer's Service Control Manager does not respond (check firewall)",
         _ => new Win32Exception(error).Message,
     };
 }

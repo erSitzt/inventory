@@ -1,5 +1,7 @@
 @inject IJSRuntime Js
 @inject ISnackbar Snackbar
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
 <MudDialog>
     <DialogContent>
@@ -7,44 +9,39 @@
             @if (Computer.NameMismatch)
             {
                 <MudAlert Severity="Severity.Warning" Dense="true">
-                    Unter dem Namen @Computer.Name antwortet der Rechner @Computer.ReportedName. Eine Verbindung ginge an den falschen Rechner.
+                    @L["Under the name {0} the computer {1} responds. A connection would go to the wrong computer.", Computer.Name, Computer.ReportedName]
                 </MudAlert>
             }
 
-            <MudText Typo="Typo.subtitle1">Starter für den Direktstart</MudText>
+            <MudText Typo="Typo.subtitle1">@L["Launcher for direct start"]</MudText>
             <MudText Typo="Typo.body2">
-                Damit sich Remoteunterstützung, Spiegelung und Remotedesktop per Klick öffnen, braucht dein PC einmalig den Starter:
-                herunterladen, an einem festen Ort ablegen (z. B. <code>C:\Tools</code>) und einmal doppelklicken. Er trägt sich für dein Benutzerkonto
-                als Ziel für <code>inventory://</code>-Links ein; Adminrechte sind dafür nicht nötig. Beim ersten Klick fragt der Browser, ob er den Starter öffnen darf.
+                @L["So that Remote Assistance, shadowing and Remote Desktop open with one click, your PC needs the launcher once: download it, put it in a fixed place (e.g. C:\\Tools) and double-click it once. It registers itself for your user account as the handler for inventory:// links; admin rights are not needed. On the first click the browser asks whether it may open the launcher."]
             </MudText>
             <div>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" Href="download/launcher" Target="_blank">InventoryLauncher.exe herunterladen</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" Href="download/launcher" Target="_blank">@L["Download InventoryLauncher.exe"]</MudButton>
             </div>
             <MudText Typo="Typo.caption">
-                Der Starter öffnet ausschließlich msra.exe und mstsc.exe mit geprüftem Rechnernamen. Auf mehreren Admin-PCs lässt er sich auch über
-                „Rechner → Aktionen → Starter für Fernzugriff installieren“ verteilen.
+                @L["The launcher only ever opens msra.exe and mstsc.exe with a validated computer name. For several admin PCs it can also be rolled out via \"Computers → Actions → Install remote access launcher\"."]
             </MudText>
 
             <MudDivider />
-            <MudText Typo="Typo.subtitle1">Ohne Starter: Befehle zum Kopieren</MudText>
-            <MudText Typo="Typo.body2">Auf deinem PC ausführen (Windows-Taste + R, einfügen, Eingabe):</MudText>
-            @CommandField("Remoteunterstützung anbieten", RemoteAccessLinks.OfferAssistance(Computer.Name))
-            @CommandField(Computer.SessionId is null ? "Sitzung spiegeln (Sitzung 1 angenommen)" : $"Sitzung spiegeln (Sitzung {Computer.SessionId} laut Scan vom {Display.LocalTime(Computer.LastScanUtc)})",
+            <MudText Typo="Typo.subtitle1">@L["Without launcher: commands to copy"]</MudText>
+            <MudText Typo="Typo.body2">@L["Run on your PC (Windows key + R, paste, Enter):"]</MudText>
+            @CommandField(L["Offer Remote Assistance"], RemoteAccessLinks.OfferAssistance(Computer.Name))
+            @CommandField(Computer.SessionId is null ? L["Shadow session (session 1 assumed)"] : L["Shadow session (session {0} according to the scan of {1})", Computer.SessionId, Display.LocalTime(Computer.LastScanUtc)],
                 RemoteAccessLinks.Shadow(Computer.Name, Computer.SessionId ?? 1))
-            @CommandField("Sitzungen des Rechners anzeigen", RemoteAccessLinks.ListSessions(Computer.Name))
+            @CommandField(L["Show the computer's sessions"], RemoteAccessLinks.ListSessions(Computer.Name))
             <div>
-                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DesktopWindows" Href="@($"api/computers/{Computer.Id}/rdp")" Target="_blank">Remotedesktop als .rdp-Datei</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DesktopWindows" Href="@($"api/computers/{Computer.Id}/rdp")" Target="_blank">@L["Remote Desktop as .rdp file"]</MudButton>
             </div>
 
             <MudDivider />
-            <MudText Typo="Typo.subtitle1">Voraussetzungen auf den Rechnern</MudText>
+            <MudText Typo="Typo.subtitle1">@L["Prerequisites on the computers"]</MudText>
             <MudText Typo="Typo.caption">
-                <b>Remoteunterstützung:</b> Gruppenrichtlinie „Remoteunterstützung anbieten konfigurieren“ (Computerkonfiguration → Administrative Vorlagen → System →
-                Remoteunterstützung) mit deinem Konto oder deiner Gruppe als Helfer; Firewall-Regelgruppe „Remoteunterstützung“. Der Benutzer muss zustimmen.
+                <b>@L["Remote Assistance:"]</b> @L["Group policy \"Configure Offer Remote Assistance\" (Computer Configuration → Administrative Templates → System → Remote Assistance) with your account or group as helper; firewall rule group \"Remote Assistance\". The user has to consent."]
             </MudText>
             <MudText Typo="Typo.caption">
-                <b>Spiegelung:</b> Gruppenrichtlinie „Regeln für Remotesteuerung von Remotedesktopdienste-Benutzersitzungen festlegen“ (… Windows-Komponenten →
-                Remotedesktopdienste → Remotedesktopsitzungs-Host → Verbindungen); Firewall-Regeln „Remotedesktop – Schatten“ und „Datei- und Druckerfreigabe (SMB eingehend)“.
+                <b>@L["Shadowing:"]</b> @L["Group policy \"Set rules for remote control of Remote Desktop Services user sessions\" (… Windows Components → Remote Desktop Services → Remote Desktop Session Host → Connections); firewall rules \"Remote Desktop – Shadow\" and \"File and Printer Sharing (SMB-In)\"."]
             </MudText>
         </MudStack>
     </DialogContent>
@@ -54,7 +51,7 @@
     [Parameter, EditorRequired] public Computer Computer { get; set; } = default!;
 
     private RenderFragment CommandField(string label, string command) => @<MudTextField T="string" Value="@command" Label="@label" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense"
-        Style="font-family: monospace" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentCopy" AdornmentAriaLabel="@($"{label} kopieren")"
+        Style="font-family: monospace" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentCopy" AdornmentAriaLabel="@L["Copy {0}", label]"
         OnAdornmentClick="@(() => CopyAsync(command))" />;
 
     private async Task CopyAsync(string command)
@@ -62,12 +59,12 @@
         try
         {
             await Js.InvokeVoidAsync("navigator.clipboard.writeText", command);
-            Snackbar.Add("Befehl kopiert.", Severity.Success);
+            Snackbar.Add(L["Command copied."], Severity.Success);
         }
         catch (JSException)
         {
             // Die Zwischenablage steht Webseiten nur über HTTPS oder localhost zur Verfügung.
-            Snackbar.Add("Kopieren ist nur über HTTPS möglich – bitte den Befehl markieren und mit Strg+C kopieren.", Severity.Info);
+            Snackbar.Add(L["Copying only works over HTTPS – please select the command and copy it with Ctrl+C."], Severity.Info);
         }
     }
 }

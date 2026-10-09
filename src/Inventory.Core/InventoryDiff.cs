@@ -47,17 +47,17 @@ public static partial class InventoryDiff
         }
 
         // Nur wenn schon ein Scan den Namen geliefert hat: sonst stammt der bisherige Wert aus der Erreichbarkeitsprüfung.
-        Value("Gemeldeter Name", previous.ReportedName, current.ComputerName);
-        Value("Domäne", previous.Domain, current.Domain);
-        Value("Betriebssystem", previous.OsName, current.OsName);
-        Value("Windows-Version", previous.OsVersion, current.OsVersion);
-        Value("Funktionsupdate", previous.OsRelease, current.OsRelease);
-        Value("Hersteller", previous.Manufacturer, current.Manufacturer);
-        Value("Modell", previous.Model, current.Model);
-        Value("Seriennummer", previous.SerialNumber, current.SerialNumber);
+        Value("Reported name", previous.ReportedName, current.ComputerName);
+        Value("Domain", previous.Domain, current.Domain);
+        Value("Operating system", previous.OsName, current.OsName);
+        Value("Windows version", previous.OsVersion, current.OsVersion);
+        Value("Feature update", previous.OsRelease, current.OsRelease);
+        Value("Manufacturer", previous.Manufacturer, current.Manufacturer);
+        Value("Model", previous.Model, current.Model);
+        Value("Serial number", previous.SerialNumber, current.SerialNumber);
         Value("BIOS", previous.BiosVersion, current.BiosVersion);
-        Value("Prozessor", previous.CpuName, current.CpuName);
-        Value("Arbeitsspeicher", Gigabytes(previous.MemoryBytes), Gigabytes(current.MemoryBytes));
+        Value("Processor", previous.CpuName, current.CpuName);
+        Value("Memory", Gigabytes(previous.MemoryBytes), Gigabytes(current.MemoryBytes));
 
         if (current.Security is { } security)
         {
@@ -65,29 +65,29 @@ public static partial class InventoryDiff
             {
                 // Erst vergleichen, wenn beide Seiten bekannt sind: der erste Scan mit Sicherheitsstatus ist die Ausgangslage.
                 if (oldValue is not null && newValue is not null && oldValue != newValue)
-                    Add("Sicherheit", ChangeKind.Changed, item, oldValue.Value ? on : off, newValue.Value ? on : off);
+                    Add("Security", ChangeKind.Changed, item, oldValue.Value ? on : off, newValue.Value ? on : off);
             }
-            Security("Firewall (Domäne)", previous.FirewallDomain, security.FirewallDomain, "an", "aus");
-            Security("Firewall (Privat)", previous.FirewallPrivate, security.FirewallPrivate, "an", "aus");
-            Security("Firewall (Öffentlich)", previous.FirewallPublic, security.FirewallPublic, "an", "aus");
-            Security("Defender", previous.DefenderEnabled, security.DefenderEnabled, "aktiv", "inaktiv");
-            Security("Defender-Echtzeitschutz", previous.DefenderRealTime, security.DefenderRealTime, "an", "aus");
-            Security("Defender-Manipulationsschutz", previous.DefenderTamperProtected, security.DefenderTamperProtected, "an", "aus");
+            Security("Firewall (domain)", previous.FirewallDomain, security.FirewallDomain, "on", "off");
+            Security("Firewall (private)", previous.FirewallPrivate, security.FirewallPrivate, "on", "off");
+            Security("Firewall (public)", previous.FirewallPublic, security.FirewallPublic, "on", "off");
+            Security("Defender", previous.DefenderEnabled, security.DefenderEnabled, "active", "inactive");
+            Security("Defender real-time protection", previous.DefenderRealTime, security.DefenderRealTime, "on", "off");
+            Security("Defender tamper protection", previous.DefenderTamperProtected, security.DefenderTamperProtected, "on", "off");
             if (previous.AntivirusProducts is not null)
-                Set("Virenschutz", Split(previous.AntivirusProducts).Select(p => (p, (string?)null)), security.AntivirusProducts.Select(p => (p, (string?)null)));
+                Set("Antivirus", Split(previous.AntivirusProducts).Select(p => (p, (string?)null)), security.AntivirusProducts.Select(p => (p, (string?)null)));
         }
 
         Set("Software", previous.Software.Select(s => (s.Name, s.Version)), current.Software.Select(s => (s.Name, s.Version)));
         Set("Hotfix", previous.Hotfixes.Select(h => (h.HotfixId, h.Description)), current.Hotfixes.Select(h => (h.Id, h.Description)));
-        Set("Datenträger", previous.Disks.Select(d => (d.Drive, Gigabytes(d.SizeBytes))), current.Disks.Select(d => (d.Drive, Gigabytes(d.SizeBytes))));
-        Set("Netzwerkadapter", previous.NetworkAdapters.Select(n => (n.Name, n.MacAddress)), current.NetworkAdapters.Select(n => (n.Name, n.MacAddress)));
-        Set("Dienst",
+        Set("Disk", previous.Disks.Select(d => (d.Drive, Gigabytes(d.SizeBytes))), current.Disks.Select(d => (d.Drive, Gigabytes(d.SizeBytes))));
+        Set("Network adapter", previous.NetworkAdapters.Select(n => (n.Name, n.MacAddress)), current.NetworkAdapters.Select(n => (n.Name, n.MacAddress)));
+        Set("Service",
             previous.Services.Where(s => !PerSessionService().IsMatch(s.Name)).Select(s => (s.Name, s.StartMode)),
             current.Services.Where(s => !PerSessionService().IsMatch(s.Name)).Select(s => (s.Name, s.StartMode)));
-        Set("Lokaler Benutzer",
-            previous.LocalUsers.Select(u => (u.Name, (string?)(u.Disabled ? "deaktiviert" : "aktiv"))),
-            current.LocalUsers.Select(u => (u.Name, (string?)(u.Disabled ? "deaktiviert" : "aktiv"))));
-        Set("Lokaler Administrator",
+        Set("Local user",
+            previous.LocalUsers.Select(u => (u.Name, (string?)(u.Disabled ? "disabled" : "active"))),
+            current.LocalUsers.Select(u => (u.Name, (string?)(u.Disabled ? "disabled" : "active"))));
+        Set("Local administrator",
             previous.LocalAdmins.Select(a => (a.Name, (string?)null)),
             current.LocalAdmins.Select(a => (a.Name, (string?)null)));
         return MergeUpdates(changes);

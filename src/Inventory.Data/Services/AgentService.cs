@@ -5,11 +5,16 @@ using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 /// <summary>Anmeldung und Erkennung von Agenten sowie der Job, der einen Agenten agentenlos installiert.</summary>
-public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory, SettingsService settings, TimeProvider time)
-{
+public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory, SettingsService settings, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private const string InstallFolder = "agent";
     /// <summary>So oft wird "zuletzt gesehen" höchstens gespeichert; der Agent fragt alle paar Sekunden an.</summary>
     private static readonly TimeSpan SeenInterval = TimeSpan.FromMinutes(1);
@@ -100,7 +105,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
     {
         var serverUrl = await GetServerUrlAsync(ct);
         if (string.IsNullOrWhiteSpace(serverUrl))
-            throw new InvalidOperationException("Bitte zuerst unter Einstellungen die Server-Adresse für Agenten eintragen.");
+            throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
 
         var config = JobJson.Serialize(new AgentConfig { ServerUrl = serverUrl, EnrollmentToken = await GetEnrollmentTokenAsync(ct) });
         var script = $$"""
@@ -145,7 +150,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         const string target = @"%ProgramFiles%\Inventory Launcher";
         var files = Directory.GetFiles(launcherDirectory).Select(f => new JobFile(f, $@"{folder}\{Path.GetFileName(f)}")).ToList();
         if (files.Count == 0)
-            throw new InvalidOperationException("Der Starter liegt dem Server nicht bei.");
+            throw new InvalidOperationException("The launcher is not bundled with the server.");
         var manifest = new JobManifest
         {
             Steps =

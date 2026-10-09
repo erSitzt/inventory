@@ -1,69 +1,67 @@
 @inject CatalogService Catalog
+@inject IStringLocalizer<SharedResource> L
 
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="2">
             <MudText Typo="Typo.body2">
-                <b>@Entry.Name</b> von @(Entry.Publisher ?? "unbekanntem Hersteller")
+                <b>@Entry.Name</b> @L["by {0}", Entry.Publisher ?? L["unknown publisher"]]
                 @if (!string.IsNullOrWhiteSpace(Entry.License))
                 {
-                    <span> · Lizenz: @Entry.License</span>
+                    <span> · @L["License: {0}", Entry.License]</span>
                 }
             </MudText>
             @if (Catalog.VersionsAvailable)
             {
-                <MudSelect T="string" Label="Version" Value="_selected.Version" ValueChanged="Select" Variant="Variant.Outlined" Margin="Margin.Dense"
-                           Disabled="_loading" HelperText="@(_loading ? "Versionen werden geladen …" : _versionError)">
+                <MudSelect T="string" Label="@L["Version"]" Value="_selected.Version" ValueChanged="Select" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Disabled="_loading" HelperText="@(_loading ? L["Loading versions …"].Value : _versionError)">
                     @foreach (var version in _versions)
                     {
                         <MudSelectItem Value="version.Version" Disabled="@(OlderOnly && version.Version == Entry.Version)">
-                            @version.Version@(version.Version == Entry.Version ? " (aktuell)" : "")@(version.ReleaseDate is null ? "" : $" – {version.ReleaseDate}")
+                            @version.Version@(version.Version == Entry.Version ? $" ({L["current"]})" : "")@(version.ReleaseDate is null ? "" : $" – {version.ReleaseDate}")
                         </MudSelectItem>
                     }
                 </MudSelect>
             }
             else
             {
-                <MudText Typo="Typo.body2">Version @Entry.Version</MudText>
+                <MudText Typo="Typo.body2">@L["Version"] @Entry.Version</MudText>
             }
             <MudText Typo="Typo.caption" Style="word-break: break-all">Download: @_selected.Url</MudText>
-            <MudText Typo="Typo.caption">Installation: @(_selected.InstallerType is "wix" or "msi" ? "MSI, still über /qn /norestart" : "Setup") @_selected.Arguments</MudText>
+            <MudText Typo="Typo.caption">@L["Installation:"] @(_selected.InstallerType is "wix" or "msi" ? L["MSI, silently via /qn /norestart"] : L["Setup"]) @_selected.Arguments</MudText>
             @if (Pinned)
             {
                 <MudAlert Severity="Severity.Info" Dense="true">
-                    Feste Version: Es entsteht ein eigenständiges Paket „@_selected.Name @_selected.Version“, das nicht automatisch aktualisiert wird.
-                    Ältere Setups nehmen Hersteller manchmal vom Server; dann schlägt der Download fehl. Ältere Versionen enthalten
-                    außerdem meist bekannte Sicherheitslücken.
+                    @L["Fixed version: a separate package \"{0}\" is created that is never updated automatically. Vendors sometimes remove older setups from their servers; then the download fails. Older versions usually also contain known security vulnerabilities.", $"{_selected.Name} {_selected.Version}"]
                 </MudAlert>
             }
             @if (_selected.Scope == "user")
             {
                 <MudAlert Severity="Severity.Info" Dense="true">
-                    Dieses Setup installiert nur ins Benutzerprofil. Der Schritt läuft deshalb im Kontext des angemeldeten Benutzers
-                    und braucht eine angemeldete Sitzung am Zielrechner.
+                    @L["This setup installs into the user profile only. The step therefore runs in the context of the logged-on user and needs a logged-on session on the target computer."]
                 </MudAlert>
             }
             @if (!Curated)
             {
                 <MudAlert Severity="Severity.Warning" Dense="true">
-                    Eintrag aus der winget-Suche, nicht aus der Grundauswahl: die Silent-Parameter vor dem Verteilen an einem einzelnen Rechner testen.
+                    @L["Entry from the winget search, not from the base selection: test the silent parameters on a single computer before deploying."]
                 </MudAlert>
             }
             @if (!Pinned)
             {
-                <MudCheckBox T="bool" @bind-Value="_autoUpdate" Dense="true" Label="Neue Versionen automatisch übernehmen" />
+                <MudCheckBox T="bool" @bind-Value="_autoUpdate" Dense="true" Label="@L["Adopt new versions automatically"]" />
             }
             <MudCheckBox T="bool" @bind-Value="_createCollection" Dense="true"
-                         Label="@($"Dynamische Sammlung „{PackageName} veraltet“ anlegen (Rechner mit älterer Version)")" />
+                         Label="@L["Create dynamic collection \"{0} outdated\" (computers with an older version)", PackageName]" />
             <MudText Typo="Typo.caption">
-                Bitte die Lizenzbedingungen des Herstellers beachten; die Bibliothek verweist nur auf dessen Download.
+                @L["Please observe the vendor's license terms; the library only refers to the vendor's download."]
             </MudText>
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(OlderOnly && !Pinned)"
-                   OnClick="@(() => MudDialog.Close(DialogResult.Ok(new Choice(!Pinned && _autoUpdate, _createCollection, Pinned ? _selected.Version : null))))">Importieren</MudButton>
+                   OnClick="@(() => MudDialog.Close(DialogResult.Ok(new Choice(!Pinned && _autoUpdate, _createCollection, Pinned ? _selected.Version : null))))">@L["Import"]</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -100,11 +98,11 @@
         {
             _versions = await Catalog.VersionsAsync(Entry.Id);
             if (_versions.Count == 1)
-                _versionError = "Im winget-Repository ist nur die aktuelle Version geführt.";
+                _versionError = L["The winget repository only lists the current version."];
         }
         catch (Exception ex) when (ex is Inventory.Core.Abstractions.RemoteException or InvalidOperationException)
         {
-            _versionError = "Ältere Versionen ließen sich nicht abrufen.";
+            _versionError = L["Older versions could not be retrieved."];
         }
         finally
         {

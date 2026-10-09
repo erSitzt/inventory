@@ -3,12 +3,17 @@ using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 public sealed record BuiltJob(JobManifest Manifest, List<JobFile> Files);
 
-public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFactory, PackageRepository repository)
-{
+public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFactory, PackageRepository repository, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     /// <summary>So tief dürfen Pakete ineinander verschachtelt sein; fängt zugleich Zyklen ab.</summary>
     private const int MaxNestingDepth = 5;
 
@@ -39,7 +44,7 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         }
         else
         {
-            package = await db.Packages.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException($"Paket {id} nicht gefunden");
+            package = await db.Packages.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException(L["Package {0} not found", id]);
             package.Name = name.Trim();
         }
         package.Version = string.IsNullOrWhiteSpace(version) ? null : version.Trim();
@@ -61,7 +66,7 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (nestedPackageId is not null && await ContainsAsync(db, nestedPackageId.Value, packageId, MaxNestingDepth, ct))
-            throw new InvalidOperationException("Dieses Paket würde sich damit selbst enthalten.");
+            throw new InvalidOperationException(L["This package would then contain itself."]);
 
         PackageStep step;
         if (stepId is null)
@@ -115,16 +120,16 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         var files = new List<JobFile>();
         await AppendAsync(db, packageId, prefix: "", manifest, files, included: [], MaxNestingDepth, ct);
         if (manifest.Steps.Count == 0)
-            throw new InvalidOperationException("Das Paket enthält keine Schritte.");
+            throw new InvalidOperationException(L["The package contains no steps."]);
         return new BuiltJob(manifest, files);
     }
 
     private async Task AppendAsync(InventoryDbContext db, int packageId, string prefix, JobManifest manifest, List<JobFile> files, HashSet<int> included, int depth, CancellationToken ct)
     {
         if (depth < 0)
-            throw new InvalidOperationException("Pakete sind zu tief oder im Kreis verschachtelt.");
+            throw new InvalidOperationException(L["Packages are nested too deeply or in a cycle."]);
         var package = await db.Packages.AsNoTracking().Include(p => p.Steps.OrderBy(s => s.Order)).FirstOrDefaultAsync(p => p.Id == packageId, ct)
-                      ?? throw new KeyNotFoundException($"Paket {packageId} nicht gefunden");
+                      ?? throw new KeyNotFoundException(L["Package {0} not found", packageId]);
 
         var folder = $"p{packageId}";
         if (included.Add(packageId))

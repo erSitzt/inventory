@@ -1,13 +1,18 @@
 using Inventory.Contracts;
 
+using Inventory.Core;
+using Microsoft.Extensions.Localization;
+
 namespace Inventory.Data.Services;
 
 /// <param name="ReportedName">Gesetzt, wenn der Rechner sich mit einem anderen Namen gemeldet hat als eingetragen.</param>
 public sealed record ScanOutcome(int ComputerId, bool Success, string? Error, string? MismatchedName = null);
 
 /// <summary>Führt Inventar-Scans aus und speichert die Ergebnisse.</summary>
-public sealed class ScanService(RemoteJobService jobs, InventoryStore store)
-{
+public sealed class ScanService(RemoteJobService jobs, InventoryStore store, IStringLocalizer<SharedResource>? localizer = null)
+{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+
+
     private const int MaxParallelScans = 16;
 
     public async Task<ScanOutcome> ScanAsync(int computerId, CancellationToken ct = default)
@@ -21,7 +26,7 @@ public sealed class ScanService(RemoteJobService jobs, InventoryStore store)
             return new ScanOutcome(computerId, true, null, mismatch ? result.Inventory.ComputerName : null);
         }
 
-        var error = result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error ?? "Der Scan lieferte keine Daten";
+        var error = result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error ?? L["The scan returned no data"];
         await store.SaveErrorAsync(computerId, error, CancellationToken.None);
         return new ScanOutcome(computerId, false, error);
     }

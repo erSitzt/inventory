@@ -1,10 +1,12 @@
 @inject ComputerService ComputerService
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
 
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_description" Label="Beschreibung" Variant="Variant.Outlined" />
-            <MudSelect T="TransportKind?" @bind-Value="_transport" Label="Transport" Variant="Variant.Outlined" Clearable="true" Placeholder="Standard">
+            <MudTextField @bind-Value="_description" Label="@L["Description"]" Variant="Variant.Outlined" />
+            <MudSelect T="TransportKind?" @bind-Value="_transport" Label="@L["Transport"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["Default"]">
                 <MudSelectItem T="TransportKind?" Value="@(TransportKind.SmbService)">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
                 <MudSelectItem T="TransportKind?" Value="@(TransportKind.WinRm)">@Display.Transport(TransportKind.WinRm)</MudSelectItem>
                 @if (Computer.AgentKeyHash is not null)
@@ -12,7 +14,7 @@
                     <MudSelectItem T="TransportKind?" Value="@(TransportKind.Agent)">@Display.Transport(TransportKind.Agent)</MudSelectItem>
                 }
             </MudSelect>
-            <MudSelect T="int?" @bind-Value="_credentialId" Label="Zugangsdaten" Variant="Variant.Outlined" Clearable="true" Placeholder="Standard">
+            <MudSelect T="int?" @bind-Value="_credentialId" Label="@L["Credentials"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["Default"]">
                 @foreach (var credential in Credentials)
                 {
                     <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
@@ -21,8 +23,8 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => MudDialog.Cancel())">Abbrechen</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync">Speichern</MudButton>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync">@L["Save"]</MudButton>
     </DialogActions>
 </MudDialog>
 
