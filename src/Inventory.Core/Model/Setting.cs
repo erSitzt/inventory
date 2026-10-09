@@ -13,6 +13,8 @@ public static class SettingKeys
     public const string SkipTargetNameCheck = "SkipTargetNameCheck";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
+    /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>
+    public const string ExampleSchedulesCreated = "Examples.SchedulesCreated";
     public const string HeartbeatEnabled = "Heartbeat.Enabled";
     public const string HeartbeatIntervalMinutes = "Heartbeat.IntervalMinutes";
     public const string HeartbeatLastRunUtc = "Heartbeat.LastRunUtc";

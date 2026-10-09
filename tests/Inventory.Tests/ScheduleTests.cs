@@ -214,6 +214,34 @@ public class ScheduleTests
     }
 
     [Fact]
+    public async Task Example_schedules_are_created_once_disabled_and_not_recreated_after_deletion()
+    {
+        using var db = new TestDb();
+        var settings = new SettingsService(db);
+        var examples = new ExampleData(db, settings);
+        var schedules = new ScheduleService(db, new CollectionService(db), null!, null!, TimeProvider.System);
+
+        Assert.Equal(4, await examples.SeedSchedulesAsync());
+        var list = await schedules.ListAsync();
+        Assert.All(list, s => Assert.False(s.Enabled));
+        Assert.All(list, s => Assert.Null(s.NextRunUtc));
+        Assert.All(list, s => Assert.StartsWith(ExampleData.Prefix, s.Name));
+        // Jedes Beispiel ergibt einen gültigen nächsten Termin, sobald es eingeschaltet wird.
+        foreach (var schedule in list)
+        {
+            schedule.Enabled = true;
+            await schedules.SaveAsync(schedule);
+        }
+        Assert.All(await schedules.ListAsync(), s => Assert.NotNull(s.NextRunUtc));
+
+        Assert.Equal(0, await examples.SeedSchedulesAsync());
+        foreach (var schedule in list)
+            await schedules.DeleteAsync(schedule.Id);
+        Assert.Equal(0, await examples.SeedSchedulesAsync());
+        Assert.Empty(await schedules.ListAsync());
+    }
+
+    [Fact]
     public void Csv_rows_are_escaped_and_formulas_neutralised()
     {
         var csv = new StringBuilder();

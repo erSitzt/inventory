@@ -12,6 +12,14 @@
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditAsync(null))">Neuer Zeitplan</MudButton>
 </MudStack>
 
+<MudText Typo="Typo.body2" Class="mb-4">
+    Ein Zeitplan scannt regelmäßig oder stellt ein Paket auf einer Sammlung bereit, etwa „Chrome“ auf „Chrome veraltet“.
+    @if (_schedules.Any(s => s.Name.StartsWith(ExampleData.Prefix)))
+    {
+        <span>Die Beispiele sind deaktiviert; über „Bearbeiten“ lassen sie sich anpassen und einschalten oder einfach löschen.</span>
+    }
+</MudText>
+
 <MudDataGrid T="Schedule" Items="_schedules" Dense="true" Hover="true" SortMode="SortMode.None">
     <Columns>
         <PropertyColumn Property="s => s.Name" Title="Name" />

@@ -115,6 +115,7 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddSingleton<ComputerService>();
 builder.Services.AddSingleton<CredentialService>();
 builder.Services.AddSingleton<SettingsService>();
+builder.Services.AddSingleton<ExampleData>();
 
 // Enums in der REST-API als Namen statt Zahlen.
 builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
@@ -127,6 +128,7 @@ var app = builder.Build();
 
 await using (var db = await app.Services.GetRequiredService<IDbContextFactory<InventoryDbContext>>().CreateDbContextAsync())
     await db.Database.MigrateAsync();
+await app.Services.GetRequiredService<ExampleData>().SeedSchedulesAsync();
 await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();
 await app.Services.GetRequiredService<UpdateService>().ReportPreviousAsync(startup: true);
 
