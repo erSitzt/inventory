@@ -13,6 +13,7 @@ using Inventory.Server.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
+using Scalar.AspNetCore;
 
 // Diagnose: prüft die Signatur einer Datei so, wie es die Selbstaktualisierung tut.
 if (args is ["--verify-signature", var signedFile, var publisher] && OperatingSystem.IsWindows())
@@ -120,6 +121,23 @@ builder.Services.AddSingleton<ExampleData>();
 // Enums in der REST-API als Namen statt Zahlen.
 builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
+builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
+{
+    document.Info.Title = "Inventory API";
+    document.Info.Version = AppVersion.Current;
+    document.Info.Description = "REST-Schnittstelle von Inventory. Anmeldung mit einem API-Token (Authorization: Bearer inv_…), " +
+                                "das in der Oberfläche unter „API-Tokens“ angelegt wird; bei aktiver Windows-Anmeldung alternativ per Negotiate. " +
+                                "Jeder Aufruf, der etwas ausführt (Scan, Befehl, Deployment), steht im Protokoll.";
+    document.Components ??= new();
+    document.Components.SecuritySchemes ??= new Dictionary<string, Microsoft.OpenApi.IOpenApiSecurityScheme>();
+    document.Components.SecuritySchemes["ApiToken"] = new Microsoft.OpenApi.OpenApiSecurityScheme
+    {
+        Type = Microsoft.OpenApi.SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "inv_…",
+        Description = "API-Token aus der Oberfläche (API-Tokens).",
+    };
+    document.Security = [new Microsoft.OpenApi.OpenApiSecurityRequirement { [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("ApiToken", document)] = [] }];
+    return Task.CompletedTask;
+}));
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddMudServices(config => config.SnackbarConfiguration.PositionClass = MudBlazor.Defaults.Classes.Position.BottomRight);
@@ -161,6 +179,9 @@ app.MapComputerEndpoints();
 app.MapPackageEndpoints();
 app.MapReportEndpoints();
 app.MapAgentEndpoints();
+// Dokumentation unter /api/docs, Beschreibung unter /api/openapi.json; gleiche Anmeldung wie die übrige API.
+app.MapOpenApi("/api/openapi.json");
+app.MapScalarApiReference("/api/docs", o => o.WithTitle("Inventory API").WithDefaultFonts(false).WithOpenApiRoutePattern("/api/openapi.json").WithDefaultHttpClient(ScalarTarget.Shell, ScalarClient.Curl));
 app.MapInventoryLogin(options);
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

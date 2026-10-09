@@ -17,7 +17,8 @@ public static class AgentEndpoints
 
     public static IEndpointRouteBuilder MapAgentEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/agent").AllowAnonymous();
+        // Nicht in der API-Dokumentation: internes Protokoll zwischen Agent und Server (siehe Inventory.Contracts/AgentProtocol.cs).
+        var group = app.MapGroup("/api/agent").AllowAnonymous().ExcludeFromDescription();
 
         group.MapPost("enroll", async (HttpContext http, AgentService agents, AuditService audit, CancellationToken ct) =>
         {

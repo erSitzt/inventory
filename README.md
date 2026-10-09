@@ -270,6 +270,21 @@ curl -H "Authorization: Bearer inv_…" https://<server>:<port>/api/computers
 
 Mit aktiver Windows-Anmeldung geht weiterhin auch `curl --negotiate -u : …`.
 
+### API
+
+Die REST-Schnittstelle ist unter `/api/docs` dokumentiert (interaktiv, mit Beispielaufrufen für curl und andere
+Clients); die OpenAPI-Beschreibung liegt unter `/api/openapi.json` und lässt sich in Postman, PowerShell oder
+Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die übrige API.
+
+| Bereich | Endpunkte |
+|---|---|
+| Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, Inventar-Scan, installierte Software, RDP-Datei, Befehl oder PowerShell-Skript ausführen |
+| Pakete | auflisten, Dateien hochladen (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`) |
+| Deployments | starten, Fortschritt je Rechner abfragen |
+| Berichte | Rechner und Software als CSV oder JSON |
+
+Das Protokoll zwischen Agent und Server (`/api/agent/…`) ist nicht Teil der dokumentierten API.
+
 Für eine vollständige Sicherung gehören neben `backups` auch die Ordner `keys` (ohne sie sind die gespeicherten
 Passwörter nicht mehr lesbar) und `repository` dazu.
 
