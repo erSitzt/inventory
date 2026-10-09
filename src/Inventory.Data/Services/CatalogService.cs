@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Inventory.Data.Services;
 
 /// <param name="Package">Das importierte Paket; null, wenn der Eintrag noch nicht importiert ist.</param>
-public sealed record CatalogItem(CatalogEntry Entry, Package? Package)
+/// <param name="Curated">false bei Einträgen, die nicht zur Grundauswahl gehören, sondern aus dem Suchindex über ganz winget stammen.</param>
+public sealed record CatalogItem(CatalogEntry Entry, Package? Package, bool Curated = true)
 {
     public bool UpdateAvailable => Package is not null && VersionComparer.Compare(Package.Version, Entry.Version) < 0;
 }
@@ -17,15 +18,23 @@ public sealed record CatalogItem(CatalogEntry Entry, Package? Package)
 /// vom Hersteller, prüft die Prüfsumme aus dem Katalog und legt ein gewöhnliches Paket an, das sich aktuell halten lässt.
 /// </summary>
 public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFactory, ICatalogSource source, PackageService packages,
-    CollectionService collections, AuditService audit, TimeProvider time, string catalogLocation)
+    CollectionService collections, AuditService audit, TimeProvider time, string catalogLocation, string? indexLocation = null)
 {
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromHours(6);
+    private static readonly TimeSpan IndexRefreshInterval = TimeSpan.FromHours(24);
+    private readonly SemaphoreSlim _indexLock = new(1, 1);
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     public string Location => catalogLocation;
     public Catalog? Current { get; private set; }
     public DateTime? LoadedUtc { get; private set; }
     public string? LastError { get; private set; }
+
+    /// <summary>Suchindex über das gesamte winget-Repository; wird erst geladen, wenn jemand sucht oder ein Paket daraus stammt.</summary>
+    public Catalog? Index { get; private set; }
+    public DateTime? IndexLoadedUtc { get; private set; }
+    public string? IndexError { get; private set; }
+    public bool IndexAvailable => !string.IsNullOrWhiteSpace(indexLocation);
 
     /// <summary>Lädt den Katalog; ohne <paramref name="force"/> höchstens alle paar Stunden neu.</summary>
     public async Task RefreshAsync(bool force = false, CancellationToken ct = default)
@@ -45,16 +54,89 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         }
     }
 
+    /// <summary>Lädt den Suchindex; ohne <paramref name="force"/> höchstens einmal am Tag neu.</summary>
+    public async Task RefreshIndexAsync(bool force = false, CancellationToken ct = default)
+    {
+        if (!IndexAvailable)
+            return;
+        await _indexLock.WaitAsync(ct);
+        try
+        {
+            var now = time.GetUtcNow().UtcDateTime;
+            if (!force && IndexLoadedUtc is { } loaded && now - loaded < IndexRefreshInterval)
+                return;
+            IndexLoadedUtc = now;
+            try
+            {
+                Index = await source.LoadAsync(indexLocation!, ct);
+                IndexError = null;
+            }
+            catch (RemoteException ex)
+            {
+                IndexError = ex.Message;
+            }
+        }
+        finally
+        {
+            _indexLock.Release();
+        }
+    }
+
+    /// <summary>Die Grundauswahl, dazu alle bereits importierten Pakete aus dem Suchindex.</summary>
     public async Task<List<CatalogItem>> ListAsync(CancellationToken ct = default)
     {
         await RefreshAsync(false, ct);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var imported = await db.Packages.AsNoTracking().Where(p => p.CatalogId != null).ToListAsync(ct);
-        return (Current?.Packages ?? [])
-            .Select(e => new CatalogItem(e, imported.FirstOrDefault(p => p.CatalogId == e.Id)))
-            .OrderBy(i => i.Entry.Name, StringComparer.CurrentCultureIgnoreCase)
+        var curated = Current?.Packages ?? [];
+        var items = curated.Select(e => new CatalogItem(e, imported.FirstOrDefault(p => p.CatalogId == e.Id))).ToList();
+
+        var others = imported.Where(p => curated.All(e => e.Id != p.CatalogId)).ToList();
+        if (others.Count > 0)
+        {
+            await RefreshIndexAsync(false, ct);
+            foreach (var package in others)
+            {
+                if (Index?.Packages.FirstOrDefault(e => e.Id == package.CatalogId) is { } entry)
+                    items.Add(new CatalogItem(entry, package, Curated: false));
+            }
+        }
+        return items.OrderBy(i => i.Entry.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    /// <summary>Sucht im Index über ganz winget nach Programmen, die nicht zur Grundauswahl gehören und noch nicht importiert sind.</summary>
+    public async Task<List<CatalogItem>> SearchAsync(string text, int limit = 50, CancellationToken ct = default)
+    {
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (words.Sum(w => w.Length) < 2)
+            return [];
+        await RefreshAsync(false, ct);
+        await RefreshIndexAsync(false, ct);
+        var known = (Current?.Packages ?? []).Select(e => e.Id).ToHashSet();
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+            known.UnionWith(await db.Packages.Where(p => p.CatalogId != null).Select(p => p.CatalogId!).ToListAsync(ct));
+
+        return (Index?.Packages ?? [])
+            .Where(e => !known.Contains(e.Id) && words.All(w => Matches(e, w)))
+            // Treffer im Namen zuerst, kurze Namen vor langen: "Firefox" soll vor den vielen Sprachfassungen stehen.
+            .OrderBy(e => words.All(w => e.Name.Contains(w, StringComparison.OrdinalIgnoreCase)) ? 0 : 1)
+            .ThenBy(e => e.Name.Length)
+            .ThenBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Take(limit)
+            .Select(e => new CatalogItem(e, null, Curated: false))
             .ToList();
     }
+
+    private static bool Matches(CatalogEntry entry, string word) =>
+        entry.Name.Contains(word, StringComparison.OrdinalIgnoreCase)
+        || entry.Id.Contains(word, StringComparison.OrdinalIgnoreCase)
+        || (entry.Publisher?.Contains(word, StringComparison.OrdinalIgnoreCase) ?? false)
+        || (entry.Moniker?.Contains(word, StringComparison.OrdinalIgnoreCase) ?? false)
+        || entry.Tags.Any(t => t.Contains(word, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Die Grundauswahl hat Vorrang vor dem Suchindex.</summary>
+    private CatalogEntry? Find(string? catalogId) =>
+        catalogId is null ? null : Current?.Packages.FirstOrDefault(e => e.Id == catalogId) ?? Index?.Packages.FirstOrDefault(e => e.Id == catalogId);
 
     /// <summary>Legt aus einem Katalogeintrag ein Paket an (Setup laden, prüfen, Installationsschritt erzeugen).</summary>
     /// <exception cref="RemoteException">Download fehlgeschlagen oder Prüfsumme falsch.</exception>
@@ -64,7 +146,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         await _lock.WaitAsync(ct);
         try
         {
-            var entry = Current?.Packages.FirstOrDefault(e => e.Id == catalogId) ?? throw new InvalidOperationException("Dieser Eintrag ist nicht (mehr) in der Bibliothek.");
+            var entry = Find(catalogId) ?? throw new InvalidOperationException("Dieser Eintrag ist nicht (mehr) in der Bibliothek.");
             string name;
             await using (var db = await dbFactory.CreateDbContextAsync(ct))
             {
@@ -77,7 +159,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
             var package = await packages.SaveAsync(null, name, entry.Version, Describe(entry), ct);
             try
             {
-                await DownloadVerifiedAsync(package.Id, entry, ct);
+                await DownloadCuratedAsync(package.Id, entry, ct);
             }
             catch
             {
@@ -119,13 +201,13 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         try
         {
             var package = await packages.GetAsync(packageId, ct);
-            var entry = Current?.Packages.FirstOrDefault(e => e.Id == package?.CatalogId);
+            var entry = Find(package?.CatalogId);
             if (package is null || entry is null || VersionComparer.Compare(package.Version, entry.Version) >= 0)
                 return false;
 
             var previous = package.Version;
             var oldFiles = packages.Repository.List(packageId).Select(f => f.RelativePath).ToList();
-            await DownloadVerifiedAsync(packageId, entry, ct);
+            await DownloadCuratedAsync(packageId, entry, ct);
 
             // Den Schritt anpassen, der bisher das alte Setup installiert hat; eigene Zusatzschritte bleiben erhalten.
             var step = package.Steps.FirstOrDefault(s => s.NestedPackageId is null && s.Definition.Type == StepType.Install && oldFiles.Contains(s.Definition.File ?? ""));
@@ -182,7 +264,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
     /// <summary>Setups aus der Bibliothek heißen immer "ID-Version.Endung"; nur solche werden beim Aktualisieren ersetzt.</summary>
     private static bool IsCatalogFile(string fileName, string catalogId) => fileName.StartsWith(catalogId + "-", StringComparison.OrdinalIgnoreCase);
 
-    private async Task DownloadVerifiedAsync(int packageId, CatalogEntry entry, CancellationToken ct)
+    private async Task DownloadCuratedAsync(int packageId, CatalogEntry entry, CancellationToken ct)
     {
         // Nur der Dateiname: ein präparierter Katalogeintrag darf nicht aus dem Paketordner herausführen.
         var fileName = Path.GetFileName(entry.FileName);
@@ -215,6 +297,8 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         Arguments = entry.Arguments,
         SuccessCodes = entry.SuccessCodes,
         TimeoutSeconds = 3600,
+        // Ein Setup, das sich nur ins Benutzerprofil installiert, wäre als SYSTEM wirkungslos.
+        RunAs = entry.Scope == "user" ? StepRunAs.LoggedOnUser : StepRunAs.System,
     };
 
     private static CollectionRule OutdatedRule(CatalogEntry entry) =>

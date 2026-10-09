@@ -21,7 +21,7 @@ public sealed class CatalogTests : IDisposable
     {
         _packages = new PackageService(_db, new PackageRepository(_repoDir));
         _collections = new CollectionService(_db);
-        _catalog = new CatalogService(_db, _source, _packages, _collections, new AuditService(_db), TimeProvider.System, "test");
+        _catalog = new CatalogService(_db, _source, _packages, _collections, new AuditService(_db), TimeProvider.System, "test", "index");
     }
 
     public void Dispose()
@@ -128,6 +128,47 @@ public sealed class CatalogTests : IDisposable
         Assert.Equal("7-Zip (Bibliothek)", imported.Name);
     }
 
+    [Fact]
+    public async Task Search_finds_programs_outside_the_base_selection_and_imports_them()
+    {
+        _source.PublishIndex("7zip.7zip", "7-Zip", "24.08");
+        _source.Publish("7zip.7zip", "7-Zip", "24.08", "");
+        _source.PublishIndex("Vendor.ZipTool", "Zip Tool Pro", "2.0", tags: ["archive"]);
+        _source.PublishIndex("Vendor.Chat", "Chat", "1.0", scope: "user");
+        await _catalog.RefreshAsync();
+
+        // Was schon in der Grundauswahl steht, taucht in der Suche nicht noch einmal auf.
+        Assert.Equal(["Vendor.ZipTool"], (await _catalog.SearchAsync("zip")).Select(i => i.Entry.Id));
+        Assert.Equal(["Vendor.ZipTool"], (await _catalog.SearchAsync("ARCHIVE")).Select(i => i.Entry.Id));
+        Assert.Equal(["Vendor.ZipTool"], (await _catalog.SearchAsync("tool vendor")).Select(i => i.Entry.Id));
+        Assert.Empty(await _catalog.SearchAsync("z"));
+        Assert.False((await _catalog.SearchAsync("chat")).Single().Curated);
+
+        var package = await _catalog.ImportAsync("Vendor.Chat", autoUpdate: true, createCollection: false, "anna");
+        // Ein Setup nur fürs Benutzerprofil läuft im Kontext des angemeldeten Benutzers.
+        Assert.Equal(StepRunAs.LoggedOnUser, Assert.Single(package.Steps).Definition.RunAs);
+        Assert.Empty(await _catalog.SearchAsync("chat"));
+        var listed = (await _catalog.ListAsync()).Single(i => i.Entry.Id == "Vendor.Chat");
+        Assert.Equal((false, false), (listed.Curated, listed.UpdateAvailable));
+
+        _source.PublishIndex("Vendor.Chat", "Chat", "1.1", scope: "user");
+        await _catalog.RefreshIndexAsync(force: true);
+        Assert.Equal(1, await _catalog.UpdateDueAsync());
+        Assert.Equal("1.1", (await _packages.GetAsync(package.Id))!.Version);
+    }
+
+    [Fact]
+    public async Task Search_reports_an_unreachable_index_without_breaking_the_list()
+    {
+        _source.Publish("7zip.7zip", "7-Zip", "24.08", "");
+        await _catalog.RefreshAsync();
+        _source.FailIndex = "nicht erreichbar";
+
+        Assert.Empty(await _catalog.SearchAsync("zip"));
+        Assert.Equal("nicht erreichbar", _catalog.IndexError);
+        Assert.Single(await _catalog.ListAsync());
+    }
+
     private sealed class FakeCatalog : ICatalogSource
     {
         private readonly Dictionary<string, CatalogEntry> _entries = [];
@@ -143,7 +184,20 @@ public sealed class CatalogTests : IDisposable
             FileName = $"{id}-{version}.msi", Arguments = arguments, SuccessCodes = [0, 1641, 3010], Match = name,
         };
 
+        private readonly Dictionary<string, CatalogEntry> _index = [];
+        public string? FailIndex { get; set; }
+
+        public void PublishIndex(string id, string name, string version, string? scope = "machine", string[]? tags = null)
+        {
+            Publish(id, name, version, "");
+            _index[id] = _entries[id];
+            _index[id].Scope = scope;
+            _index[id].Tags = [.. tags ?? []];
+            _entries.Remove(id);
+        }
+
         public Task<Catalog> LoadAsync(string location, CancellationToken ct = default) =>
+            location == "index" ? FailIndex is null ? Task.FromResult(new Catalog { Packages = [.. _index.Values] }) : throw new RemoteException(FailIndex) :
             Fail is null ? Task.FromResult(new Catalog { Generated = DateTime.UtcNow, Packages = [.. _entries.Values] }) : throw new RemoteException(Fail);
 
         public Task DownloadAsync(string url, string path, CancellationToken ct = default)

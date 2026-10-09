@@ -1,0 +1,17 @@
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(Format == "MSI" ? Color.Info : Color.Default)">@Format</MudChip>
+    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@Summary</MudText>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public Inventory.Core.Abstractions.CatalogEntry Entry { get; set; } = default!;
+
+    private string Format => Display.InstallerFormat(Entry.InstallerType);
+
+    private string Summary => string.Join(" · ", new[]
+    {
+        Format == "MSI" ? null : Display.InstallerTechnology(Entry.InstallerType),
+        Entry.Architecture,
+        Entry.Scope == "user" ? "Benutzer" : null,
+    }.Where(p => !string.IsNullOrEmpty(p)));
+}

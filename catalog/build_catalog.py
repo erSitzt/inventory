@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Erzeugt catalog.json für die Paketbibliothek aus den Manifesten des winget-Repositories.
 
-Aufruf:  python3 catalog/build_catalog.py <ausgabe.json> [arbeitsordner]
+Aufruf:  python3 catalog/build_catalog.py <ausgabe.json> [arbeitsordner] [--index <winget.json>]
 
 Lädt nur die Manifest-Ordner der gewünschten Pakete (partieller Git-Klon), wählt je Paket die höchste Version
 und daraus ein unbeaufsichtigt installierbares Setup (64 Bit bevorzugt). Braucht git und PyYAML.
+
+Mit --index entsteht zusätzlich der Suchindex über das gesamte winget-Repository: alle Pakete mit unbeaufsichtigt
+installierbarem Setup, ungeprüft und in gekürzter Form. Dafür wird das Repository vollständig (ohne Historie) geholt.
 """
 import datetime
 import json
@@ -38,9 +41,12 @@ def version_key(version):
     return [(0, int(part), "") if part.isdigit() else (1, 0, part) for part in re.split(r"[.\-_+]", version) if part]
 
 
+YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
+
 def load(path):
     with open(path, encoding="utf-8-sig") as handle:
-        return yaml.safe_load(handle)
+        return yaml.load(handle, Loader=YAML_LOADER)
 
 
 def latest_version(root, package_id):
@@ -92,11 +98,19 @@ def shorten(text, limit=600):
     return (text[:limit].rsplit(" ", 1)[0] + " …") if len(text) > limit else (text or None)
 
 
-def build_entry(root, package_id):
-    version = latest_version(root, package_id)
-    if version is None:
-        return None, "kein Manifest gefunden"
-    directory = os.path.join(root, manifest_dir(package_id), version)
+def exit_code(value):
+    """Manifeste nennen Rückgabewerte teils vorzeichenlos (0xC0000000 und höher); Windows-Prozesse liefern 32 Bit mit Vorzeichen."""
+    value = int(value)
+    return value - (1 << 32) if value >= 1 << 31 else value
+
+
+def build_entry(root, package_id, directory=None):
+    if directory is None:
+        version = latest_version(root, package_id)
+        if version is None:
+            return None, "kein Manifest gefunden"
+        directory = os.path.join(root, manifest_dir(package_id), version)
+    version = os.path.basename(directory)
     manifest = load(os.path.join(directory, package_id + ".installer.yaml"))
     installer, kind = pick_installer(manifest)
     if installer is None:
@@ -112,7 +126,7 @@ def build_entry(root, package_id):
     name = locale.get("PackageName") or package_id
     extension = "msi" if kind in ("wix", "msi") else "exe"
     release_date = installer.get("ReleaseDate") or manifest.get("ReleaseDate")
-    codes = sorted({0, 3010, 1641, *(installer.get("InstallerSuccessCodes") or manifest.get("InstallerSuccessCodes") or [])})
+    codes = sorted({0, 3010, 1641, *map(exit_code, installer.get("InstallerSuccessCodes") or manifest.get("InstallerSuccessCodes") or [])})
     return {
         "id": package_id,
         "name": name,
@@ -144,17 +158,72 @@ def build_entry(root, package_id):
     }, None
 
 
+def all_packages(root):
+    """Alle Pakete des Repositories: ID -> Ordner der höchsten Version."""
+    suffix = ".installer.yaml"
+    found = {}
+    for directory, _, files in os.walk(os.path.join(root, "manifests")):
+        for name in files:
+            if name.endswith(suffix):
+                found.setdefault(name[:-len(suffix)], []).append(directory)
+    return {package_id: max(directories, key=lambda d: version_key(os.path.basename(d))) for package_id, directories in found.items()}
+
+
+def build_index(root):
+    """Suchindex über alle Pakete; gekürzt, weil er mehrere tausend Einträge enthält."""
+    entries = []
+    for package_id, directory in sorted(all_packages(root).items()):
+        try:
+            entry, _ = build_entry(root, package_id, directory)
+        except Exception:  # ein einzelnes fehlerhaftes Manifest soll den Index nicht verhindern
+            entry = None
+        # Ohne http(s)-Adresse und Prüfsumme lässt sich nichts sicher laden.
+        if not entry or not re.match(r"https?://", str(entry["url"]), re.I) or not re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]):
+            continue
+        entry["details"] = None
+        entry["tags"] = entry["tags"][:6]
+        entry["description"] = shorten(entry["description"], 200)
+        entries.append({key: value for key, value in entry.items() if value not in (None, [])})
+    return entries
+
+
+def write_json(path, packages, indent=1):
+    # YAML liest Angaben wie "1.10" oder "2024" als Zahl; der Server erwartet überall Text.
+    for package in packages:
+        for key, value in package.items():
+            if key not in ("tags", "successCodes") and value is not None and not isinstance(value, str):
+                package[key] = str(value)
+    catalog = {
+        "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "source": WINGET_REPO,
+        "packages": packages,
+    }
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(catalog, handle, ensure_ascii=False, indent=indent)
+
+
 def main():
-    output = sys.argv[1]
-    work = sys.argv[2] if len(sys.argv) > 2 else "winget-pkgs"
+    arguments = sys.argv[1:]
+    index_output = None
+    if "--index" in arguments:
+        position = arguments.index("--index")
+        index_output = arguments[position + 1]
+        del arguments[position:position + 2]
+    output = arguments[0]
+    work = arguments[1] if len(arguments) > 1 else "winget-pkgs"
     here = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(here, "apps.txt"), encoding="utf-8") as handle:
         ids = [line.strip() for line in handle if line.strip() and not line.startswith("#")]
 
-    if not os.path.isdir(os.path.join(work, ".git")):
-        # tree:0 holt Verzeichnisse und Dateien erst bei Bedarf: wenige MB statt des gesamten Repositories.
-        run("git", "clone", "--quiet", "--filter=tree:0", "--sparse", "--depth", "1", WINGET_REPO, work)
-    run("git", "sparse-checkout", "set", "--no-cone", *["/" + manifest_dir(i) + "/" for i in ids], cwd=work)
+    if index_output:
+        if not os.path.isdir(os.path.join(work, ".git")):
+            run("git", "clone", "--quiet", "--depth", "1", WINGET_REPO, work)
+    else:
+        if not os.path.isdir(os.path.join(work, ".git")):
+            # tree:0 holt Verzeichnisse und Dateien erst bei Bedarf: wenige MB statt des gesamten Repositories.
+            run("git", "clone", "--quiet", "--filter=tree:0", "--sparse", "--depth", "1", WINGET_REPO, work)
+        run("git", "sparse-checkout", "set", "--no-cone", *["/" + manifest_dir(i) + "/" for i in ids], cwd=work)
 
     packages, skipped = [], []
     for package_id in ids:
@@ -170,17 +239,19 @@ def main():
             print(f"  übersprungen: {package_id} – {reason}")
 
     packages.sort(key=lambda p: p["name"].lower())
-    catalog = {
-        "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source": WINGET_REPO,
-        "packages": packages,
-    }
-    os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
-    with open(output, "w", encoding="utf-8") as handle:
-        json.dump(catalog, handle, ensure_ascii=False, indent=1)
+    write_json(output, packages)
     print(f"{len(packages)} Pakete geschrieben, {len(skipped)} übersprungen.")
     # Ein fast leerer Katalog deutet auf ein Problem beim Abruf hin; dann lieber den alten Stand behalten.
-    return 0 if len(packages) >= len(ids) // 2 else 1
+    if len(packages) < len(ids) // 2:
+        return 1
+
+    if index_output:
+        index = build_index(work)
+        write_json(index_output, index, indent=None)
+        print(f"Suchindex: {len(index)} Pakete.")
+        if len(index) < 1000:
+            return 1
+    return 0
 
 
 if __name__ == "__main__":

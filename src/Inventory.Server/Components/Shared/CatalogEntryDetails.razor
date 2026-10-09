@@ -1,0 +1,52 @@
+@* Alles, was der Katalog über ein Programm weiß; Fehlendes wird weggelassen. *@
+<MudStack Spacing="2" Class="pa-3">
+    @if ((Entry.Details ?? Entry.Description) is { } text)
+    {
+        <MudText Typo="Typo.body2">@text</MudText>
+    }
+    <MudSimpleTable Dense="true" Elevation="0" Style="max-width: 900px">
+        <tbody>
+            <tr><td style="width: 200px">Setup</td><td>@Display.InstallerFormat(Entry.InstallerType) – @Display.InstallerTechnology(Entry.InstallerType)@(Entry.Architecture is null ? "" : $", {Entry.Architecture}")@(Display.InstallerScope(Entry.Scope) is { Length: > 0 } scope ? $", {scope}" : "")</td></tr>
+            <tr><td>Silent-Parameter</td><td><code>@(Display.InstallerFormat(Entry.InstallerType) == "MSI" ? $"/qn /norestart {Entry.Arguments}".Trim() : Entry.Arguments)</code></td></tr>
+            <tr><td>Erfolgscodes</td><td>@string.Join(", ", Entry.SuccessCodes)</td></tr>
+            <tr><td>Download</td><td style="word-break: break-all">@Entry.Url</td></tr>
+            <tr><td>SHA-256</td><td style="word-break: break-all"><code>@Entry.Sha256</code></td></tr>
+            @if (Entry.ReleaseDate is not null)
+            {
+                <tr><td>Veröffentlicht</td><td>@Entry.ReleaseDate</td></tr>
+            }
+            @if (Entry.MinimumOsVersion is not null)
+            {
+                <tr><td>Mindestens Windows</td><td>@Entry.MinimumOsVersion</td></tr>
+            }
+            @if (Entry.License is not null)
+            {
+                <tr><td>Lizenz</td><td>@if (Display.WebLink(Entry.LicenseUrl) is { } licenseUrl) { <MudLink Href="@licenseUrl" Target="_blank" rel="noopener noreferrer">@Entry.License</MudLink> } else { @Entry.License }</td></tr>
+            }
+            <tr><td>Erkennung im Inventar</td><td>Programmname enthält „@Entry.Match“</td></tr>
+            <tr><td>winget-Kennung</td><td>@Entry.Id@(Entry.Moniker is null ? "" : $" ({Entry.Moniker})")</td></tr>
+        </tbody>
+    </MudSimpleTable>
+    <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+        @if (Display.WebLink(Entry.Homepage) is { } homepage)
+        {
+            <MudLink Href="@homepage" Target="_blank" rel="noopener noreferrer">Webseite</MudLink>
+        }
+        @if (Display.WebLink(Entry.ReleaseNotesUrl) is { } notes)
+        {
+            <MudLink Href="@notes" Target="_blank" rel="noopener noreferrer">Versionshinweise</MudLink>
+        }
+        @if (Display.WebLink(Entry.SupportUrl) is { } support)
+        {
+            <MudLink Href="@support" Target="_blank" rel="noopener noreferrer">Support</MudLink>
+        }
+        @foreach (var tag in Entry.Tags)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public Inventory.Core.Abstractions.CatalogEntry Entry { get; set; } = default!;
+}

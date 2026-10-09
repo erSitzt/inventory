@@ -174,4 +174,7 @@ public sealed class CatalogOptions
 {
     /// <summary>Web-Adresse oder lokaler Pfad der catalog.json; z. B. ein eigener, intern gepflegter Katalog.</summary>
     public string Url { get; set; } = "https://raw.githubusercontent.com/erSitzt/inventory/catalog/catalog.json";
+
+    /// <summary>Suchindex über das gesamte winget-Repository (ungeprüfte Einträge); leer = Suche abschalten.</summary>
+    public string? IndexUrl { get; set; } = "https://raw.githubusercontent.com/erSitzt/inventory/catalog/winget.json";
 }

@@ -102,9 +102,9 @@ builder.Services.AddSingleton(new UpdateOptions
         : setup => OperatingSystem.IsWindows() ? SelfUpdate.VerifySignature(setup, options.Update.RequiredPublisher) : "Signaturprüfung gibt es nur unter Windows.",
 });
 builder.Services.AddSingleton<UpdateService>();
-builder.Services.AddSingleton<ICatalogSource>(new HttpCatalogSource(new HttpClient { Timeout = TimeSpan.FromMinutes(30) }));
+builder.Services.AddSingleton<ICatalogSource>(new HttpCatalogSource(new HttpClient(new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All }) { Timeout = TimeSpan.FromMinutes(30) }));
 builder.Services.AddSingleton(sp => new CatalogService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), sp.GetRequiredService<ICatalogSource>(),
-    sp.GetRequiredService<PackageService>(), sp.GetRequiredService<CollectionService>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, options.Catalog.Url));
+    sp.GetRequiredService<PackageService>(), sp.GetRequiredService<CollectionService>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, options.Catalog.Url, options.Catalog.IndexUrl));
 builder.Services.AddHostedService<SchedulerWorker>();
 
 var windowsAuthentication = options.ResolveWindowsAuthentication();

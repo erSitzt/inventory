@@ -9,8 +9,8 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
     <MudText Typo="Typo.h5">Paketbibliothek</MudText>
     <MudSpacer />
-    <MudTextField @bind-Value="_search" Placeholder="Programm oder Hersteller suchen" Adornment="Adornment.Start" Immediate="true"
-                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />
+    <MudTextField T="string" Value="_search" ValueChanged="SearchAsync" Placeholder="Programm, Hersteller oder Schlagwort suchen" Adornment="Adornment.Start" Immediate="true"
+                  DebounceInterval="350" Clearable="true" AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 360px" />
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="_busy" OnClick="@(() => ReloadAsync(force: true))">Neu laden</MudButton>
 </MudStack>
 
@@ -18,6 +18,10 @@
     Fertige Pakete gängiger Programme mit geprüfter Download-Adresse und Silent-Parametern. Beim Import lädt der Server das Setup
     direkt vom Hersteller und prüft es gegen die Prüfsumme aus dem Katalog. Der Katalog wird täglich aus den Manifesten des
     winget-Repositories erzeugt@(Catalog.Current?.Generated is { } generated ? $" (Stand {Display.LocalTime(generated)})" : "").
+    @if (Catalog.IndexAvailable)
+    {
+        <span> Die Liste zeigt eine Grundauswahl gängiger Programme; die Suche findet zusätzlich alle weiteren Programme aus winget.</span>
+    }
 </MudText>
 
 @if (Catalog.LastError is not null)
@@ -35,7 +39,13 @@
         <HierarchyColumn T="CatalogItem" />
         <TemplateColumn Title="Programm" SortBy="i => i.Entry.Name" CellStyle="min-width: 300px">
             <CellTemplate>
-                <MudText Typo="Typo.body2"><b>@context.Item.Entry.Name</b></MudText>
+                <MudText Typo="Typo.body2">
+                    <b>@context.Item.Entry.Name</b>
+                    @if (!context.Item.Curated)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">aus der winget-Suche</MudChip>
+                    }
+                </MudText>
                 <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@context.Item.Entry.Description</MudText>
             </CellTemplate>
         </TemplateColumn>
@@ -47,10 +57,7 @@
         </TemplateColumn>
         <TemplateColumn Title="Setup" SortBy="i => Display.InstallerFormat(i.Entry.InstallerType) + i.Entry.InstallerType" CellStyle="white-space: nowrap">
             <CellTemplate>
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(Display.InstallerFormat(context.Item.Entry.InstallerType) == "MSI" ? Color.Info : Color.Default)">@Display.InstallerFormat(context.Item.Entry.InstallerType)</MudChip>
-                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@SetupSummary(context.Item.Entry)</MudText>
-                </MudStack>
+                <CatalogSetupCell Entry="context.Item.Entry" />
             </CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="Status" SortBy="i => i.Package == null ? 2 : i.UpdateAvailable ? 0 : 1">
@@ -95,62 +102,69 @@
         </TemplateColumn>
     </Columns>
     <ChildRowContent>
-        @{ var e = context.Item.Entry; }
-        <MudStack Spacing="2" Class="pa-3">
-            @if ((e.Details ?? e.Description) is { } text)
-            {
-                <MudText Typo="Typo.body2">@text</MudText>
-            }
-            <MudSimpleTable Dense="true" Elevation="0" Style="max-width: 900px">
-                <tbody>
-                    <tr><td style="width: 200px">Setup</td><td>@Display.InstallerFormat(e.InstallerType) – @Display.InstallerTechnology(e.InstallerType)@(e.Architecture is null ? "" : $", {e.Architecture}")@(Display.InstallerScope(e.Scope) is { Length: > 0 } scope ? $", {scope}" : "")</td></tr>
-                    <tr><td>Silent-Parameter</td><td><code>@(Display.InstallerFormat(e.InstallerType) == "MSI" ? $"/qn /norestart {e.Arguments}".Trim() : e.Arguments)</code></td></tr>
-                    <tr><td>Erfolgscodes</td><td>@string.Join(", ", e.SuccessCodes)</td></tr>
-                    <tr><td>Download</td><td style="word-break: break-all">@e.Url</td></tr>
-                    <tr><td>SHA-256</td><td style="word-break: break-all"><code>@e.Sha256</code></td></tr>
-                    @if (e.ReleaseDate is not null)
-                    {
-                        <tr><td>Veröffentlicht</td><td>@e.ReleaseDate</td></tr>
-                    }
-                    @if (e.MinimumOsVersion is not null)
-                    {
-                        <tr><td>Mindestens Windows</td><td>@e.MinimumOsVersion</td></tr>
-                    }
-                    @if (e.License is not null)
-                    {
-                        <tr><td>Lizenz</td><td>@if (Display.WebLink(e.LicenseUrl) is { } licenseUrl) { <MudLink Href="@licenseUrl" Target="_blank" rel="noopener noreferrer">@e.License</MudLink> } else { @e.License }</td></tr>
-                    }
-                    <tr><td>Erkennung im Inventar</td><td>Programmname enthält „@e.Match“</td></tr>
-                    <tr><td>winget-Kennung</td><td>@e.Id@(e.Moniker is null ? "" : $" ({e.Moniker})")</td></tr>
-                </tbody>
-            </MudSimpleTable>
-            <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
-                @if (Display.WebLink(e.Homepage) is { } homepage)
-                {
-                    <MudLink Href="@homepage" Target="_blank" rel="noopener noreferrer">Webseite</MudLink>
-                }
-                @if (Display.WebLink(e.ReleaseNotesUrl) is { } notes)
-                {
-                    <MudLink Href="@notes" Target="_blank" rel="noopener noreferrer">Versionshinweise</MudLink>
-                }
-                @if (Display.WebLink(e.SupportUrl) is { } support)
-                {
-                    <MudLink Href="@support" Target="_blank" rel="noopener noreferrer">Support</MudLink>
-                }
-                @foreach (var tag in e.Tags)
-                {
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
-                }
-            </MudStack>
-        </MudStack>
+        <CatalogEntryDetails Entry="context.Item.Entry" />
     </ChildRowContent>
     <NoRecordsContent>
-        <MudText Class="pa-4">Die Bibliothek ist leer oder nicht erreichbar. Quelle: @Catalog.Location</MudText>
+        <MudText Class="pa-4">@(string.IsNullOrWhiteSpace(_search) ? $"Die Bibliothek ist leer oder nicht erreichbar. Quelle: {Catalog.Location}" : "Kein Treffer in der Grundauswahl.")</MudText>
     </NoRecordsContent>
     <PagerContent>
         <MudDataGridPager T="CatalogItem" PageSizeOptions="@(new[] { 50, 100 })" RowsPerPageString="Zeilen pro Seite" />
     </PagerContent>
 </MudDataGrid>
+
+@if (Catalog.IndexAvailable && _search.Trim().Length >= 2)
+{
+    <MudText Typo="Typo.h6" Class="mt-6 mb-1">Weitere Treffer aus winget</MudText>
+    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+        Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download,
+        aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.
+    </MudAlert>
+    @if (Catalog.IndexError is not null)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-2">@Catalog.IndexError</MudAlert>
+    }
+    <MudDataGrid T="CatalogItem" Items="_found" Dense="true" Hover="true" SortMode="SortMode.None" Loading="_searching">
+        <Columns>
+            <HierarchyColumn T="CatalogItem" />
+            <TemplateColumn Title="Programm" CellStyle="min-width: 300px">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2"><b>@context.Item.Entry.Name</b></MudText>
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@context.Item.Entry.Description</MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Hersteller">
+                <CellTemplate>@context.Item.Entry.Publisher</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Version">
+                <CellTemplate>@context.Item.Entry.Version</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Setup" CellStyle="white-space: nowrap">
+                <CellTemplate>
+                    <CatalogSetupCell Entry="context.Item.Entry" />
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
+                <CellTemplate>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Disabled="_busy" OnClick="@(() => ImportAsync(context.Item))">Importieren</MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <ChildRowContent>
+            <CatalogEntryDetails Entry="context.Item.Entry" />
+        </ChildRowContent>
+        <NoRecordsContent>
+            <MudText Class="pa-4">@(_searching ? "Suche …" : "Kein weiterer Treffer.")</MudText>
+        </NoRecordsContent>
+    </MudDataGrid>
+    @if (_found.Count == SearchLimit)
+    {
+        <MudText Typo="Typo.caption" Class="mt-1" Style="display: block">Nur die ersten @SearchLimit Treffer – Suche verfeinern, um weitere zu sehen.</MudText>
+    }
+    @if (Catalog.Index is { } index)
+    {
+        <MudText Typo="Typo.caption" Class="mt-1" Style="display: block">Suchindex: @index.Packages.Count.ToString("N0") Programme mit unbeaufsichtigt installierbarem Setup@(index.Generated is { } indexDate ? $", Stand {Display.LocalTime(indexDate)}" : "").</MudText>
+    }
+}
 
 <MudText Typo="Typo.caption" Class="mt-4" Style="display: block">
     Tipp: Beim Import entsteht auf Wunsch eine dynamische Sammlung „… veraltet“ mit allen Rechnern, auf denen eine ältere Version installiert ist.
@@ -158,15 +172,35 @@
 </MudText>
 
 @code {
+    private const int SearchLimit = 50;
     private List<CatalogItem> _items = [];
+    private List<CatalogItem> _found = [];
+    private bool _searching;
     private string _search = "";
     private bool _busy;
     private string? _busyText;
 
-    private static string SetupSummary(Inventory.Core.Abstractions.CatalogEntry e) =>
-        string.Join(" · ", new[] { Display.InstallerFormat(e.InstallerType) == "MSI" ? null : Display.InstallerTechnology(e.InstallerType), e.Architecture }.Where(p => !string.IsNullOrEmpty(p)));
-
     protected override Task OnInitializedAsync() => ReloadAsync(force: false);
+
+    private async Task SearchAsync(string? text)
+    {
+        _search = text ?? "";
+        await FindAsync();
+    }
+
+    private async Task FindAsync()
+    {
+        var text = _search;
+        _searching = true;
+        StateHasChanged();
+        var found = await Catalog.SearchAsync(text, SearchLimit);
+        // Inzwischen weitergetippt: das Ergebnis der neueren Suche nicht überschreiben.
+        if (text == _search)
+        {
+            _found = found;
+            _searching = false;
+        }
+    }
 
     private async Task ReloadAsync(bool force)
     {
@@ -174,8 +208,13 @@
         try
         {
             if (force)
+            {
                 await Catalog.RefreshAsync(force: true);
+                if (Catalog.Index is not null)
+                    await Catalog.RefreshIndexAsync(force: true);
+            }
             _items = await Catalog.ListAsync();
+            await FindAsync();
         }
         finally
         {
@@ -185,7 +224,7 @@
 
     private async Task ImportAsync(CatalogItem item)
     {
-        var parameters = new DialogParameters<ImportPackageDialog> { { d => d.Entry, item.Entry } };
+        var parameters = new DialogParameters<ImportPackageDialog> { { d => d.Entry, item.Entry }, { d => d.Curated, item.Curated } };
         var dialog = await Dialogs.ShowAsync<ImportPackageDialog>($"{item.Entry.Name} importieren", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is not { Canceled: false, Data: ImportPackageDialog.Choice choice })
             return;
@@ -226,6 +265,7 @@
             _busy = false;
             _busyText = null;
             _items = await Catalog.ListAsync();
+            await FindAsync();
         }
     }
 }

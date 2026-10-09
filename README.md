@@ -85,7 +85,14 @@ aus dem [winget-Repository](https://github.com/microsoft/winget-pkgs) und schrei
 lädt diese Datei (`Inventory:Catalog:Url`), zeigt sie unter *Paketbibliothek* an und lädt beim Import das Setup direkt
 vom Hersteller; stimmt die Prüfsumme nicht, wird nichts übernommen.
 
-- Weitere Programme: winget-ID in `catalog/apps.txt` ergänzen.
+`catalog/apps.txt` ist die Grundauswahl gängiger Programme, die für alle Benutzer installieren. Daneben erzeugt die Action
+`winget.json`, einen Suchindex über das gesamte winget-Repository mit allen Programmen, die ein unbeaufsichtigt
+installierbares MSI- oder EXE-Setup haben (`Inventory:Catalog:IndexUrl`). Die Suche der Paketbibliothek zeigt Treffer daraus
+unter „Weitere Treffer aus winget“; sie lassen sich genauso importieren und aktuell halten. Diese Einträge sind unverändert
+aus den Manifesten übernommen – vor dem Verteilen an einem einzelnen Rechner testen. Setups, die nur ins Benutzerprofil
+installieren, erhalten beim Import den Kontext „angemeldeter Benutzer“.
+
+- Weitere Programme in die Grundauswahl: winget-ID in `catalog/apps.txt` ergänzen.
 - Eigener Katalog: `Inventory:Catalog:Url` auf eine eigene Datei oder Adresse zeigen lassen (gleiches Format).
 - Programme automatisch aktuell halten: beim Import die Sammlung „… veraltet“ anlegen lassen und einen Zeitplan
   einrichten, der das Paket regelmäßig auf diese Sammlung bereitstellt.
@@ -187,6 +194,7 @@ markiert und von der Update-Prüfung ignoriert. Liegen die Secrets `SIGNING_CERT
 | `Inventory:Oidc:AllowedGroups` | Objekt-IDs der erlaubten Gruppen oder Namen von App-Rollen; ohne Eintrag startet der Server nicht |
 | `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher` | Update-Prüfung, Quelle der Releases, erwarteter Herausgeber der Signatur |
 | `Inventory:Catalog:Url` | Adresse oder Pfad der `catalog.json` der Paketbibliothek |
+| `Inventory:Catalog:IndexUrl` | Adresse oder Pfad des Suchindex `winget.json`; leer = Suche in ganz winget abschalten |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 
 ### Anmeldung

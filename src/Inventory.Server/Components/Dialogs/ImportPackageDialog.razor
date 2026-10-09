@@ -10,6 +10,19 @@
             </MudText>
             <MudText Typo="Typo.caption" Style="word-break: break-all">Download: @Entry.Url</MudText>
             <MudText Typo="Typo.caption">Installation: @(Entry.InstallerType is "wix" or "msi" ? "MSI, still über /qn /norestart" : "Setup") @Entry.Arguments</MudText>
+            @if (Entry.Scope == "user")
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Dieses Setup installiert nur ins Benutzerprofil. Der Schritt läuft deshalb im Kontext des angemeldeten Benutzers
+                    und braucht eine angemeldete Sitzung am Zielrechner.
+                </MudAlert>
+            }
+            @if (!Curated)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Eintrag aus der winget-Suche, nicht aus der Grundauswahl: die Silent-Parameter vor dem Verteilen an einem einzelnen Rechner testen.
+                </MudAlert>
+            }
             <MudCheckBox T="bool" @bind-Value="_autoUpdate" Dense="true" Label="Neue Versionen automatisch übernehmen" />
             <MudCheckBox T="bool" @bind-Value="_createCollection" Dense="true"
                          Label="@($"Dynamische Sammlung „{Entry.Name} veraltet“ anlegen (Rechner mit älterer Version)")" />
@@ -29,6 +42,8 @@
 
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter, EditorRequired] public Inventory.Core.Abstractions.CatalogEntry Entry { get; set; } = default!;
+
+    [Parameter] public bool Curated { get; set; } = true;
 
     private bool _autoUpdate = true;
     private bool _createCollection = true;
