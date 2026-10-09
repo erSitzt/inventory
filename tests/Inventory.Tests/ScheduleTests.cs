@@ -182,6 +182,38 @@ public class ScheduleTests
     }
 
     [Fact]
+    public async Task Heartbeat_probes_only_computers_without_name_issues_and_respects_the_interval()
+    {
+        using var db = new TestDb();
+        var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
+        var probed = new List<string>();
+        // "alt" ist ein veralteter DNS-Eintrag: unter dem Namen antwortet PC-02.
+        var computers = new ComputerService(db, new FixedProbe(host => { probed.Add(host); return new ProbeResult(true, "10.1.1.1", MachineName: host == "alt" ? "PC-02" : host.ToUpperInvariant()); }));
+        var heartbeat = new HeartbeatService(computers, new SettingsService(db), clock);
+        await computers.ImportAsync("pc-01 alt pc-03");
+
+        // Standard: aus.
+        Assert.False(await heartbeat.RunIfDueAsync());
+        Assert.Empty(probed);
+
+        await heartbeat.SaveSettingsAsync(true, 5);
+        Assert.True(await heartbeat.RunIfDueAsync());
+        // Beim ersten Lauf ist noch keine Auffälligkeit bekannt; sie wird dabei entdeckt.
+        Assert.Equal(["alt", "pc-01", "pc-03"], probed.Order());
+        Assert.Equal("3 Rechner geprüft, 2 online", (await heartbeat.GetSettingsAsync()).LastResult);
+        Assert.False((await computers.ListAsync()).Single(c => c.Name == "alt").IsOnline);
+
+        // Innerhalb des Intervalls passiert nichts; danach wird der auffällige Rechner übersprungen.
+        probed.Clear();
+        clock.Advance(TimeSpan.FromMinutes(4));
+        Assert.False(await heartbeat.RunIfDueAsync());
+        clock.Advance(TimeSpan.FromMinutes(2));
+        Assert.True(await heartbeat.RunIfDueAsync());
+        Assert.Equal(["pc-01", "pc-03"], probed.Order());
+        Assert.Equal("2 Rechner geprüft, 2 online, 1 wegen Namensauffälligkeit übersprungen", (await heartbeat.GetSettingsAsync()).LastResult);
+    }
+
+    [Fact]
     public void Csv_rows_are_escaped_and_formulas_neutralised()
     {
         var csv = new StringBuilder();

@@ -84,6 +84,7 @@ builder.Services.AddSingleton<PackageService>();
 builder.Services.AddSingleton<DeploymentService>();
 builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddSingleton<AdSyncService>();
+builder.Services.AddSingleton<HeartbeatService>();
 builder.Services.AddSingleton<ReportService>();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System));

@@ -11,7 +11,7 @@ Zugangsdaten.
 
 ## Funktionen
 
-- **Rechner** anlegen, aus dem Active Directory importieren, Erreichbarkeit prüfen
+- **Rechner** anlegen, aus dem Active Directory importieren, Erreichbarkeit prüfen – auf Wunsch regelmäßig per Heartbeat (Rechner mit Namensauffälligkeiten ausgenommen)
 - **Inventar-Scan**: System, Betriebssystem, Prozessor, Software, Hotfixes, Datenträger, Netzwerk, Dienste
 - **Sammlungen**: statisch oder dynamisch über Regeln (z. B. „Chrome installiert mit Version unter 141“)
 - **Remote-Befehl** (cmd/PowerShell) mit Live-Ausgabe

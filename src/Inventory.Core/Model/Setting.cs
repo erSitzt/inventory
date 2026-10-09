@@ -13,6 +13,10 @@ public static class SettingKeys
     public const string SkipTargetNameCheck = "SkipTargetNameCheck";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
+    public const string HeartbeatEnabled = "Heartbeat.Enabled";
+    public const string HeartbeatIntervalMinutes = "Heartbeat.IntervalMinutes";
+    public const string HeartbeatLastRunUtc = "Heartbeat.LastRunUtc";
+    public const string HeartbeatLastResult = "Heartbeat.LastResult";
     public const string AdSyncEnabled = "AdSync.Enabled";
     public const string AdSyncServer = "AdSync.Server";
     public const string AdSyncBaseDns = "AdSync.BaseDns";

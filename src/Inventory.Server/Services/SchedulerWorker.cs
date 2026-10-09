@@ -2,8 +2,8 @@ using Inventory.Data.Services;
 
 namespace Inventory.Server.Services;
 
-/// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, AD-Synchronisation, Datensicherung.</summary>
-public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, BackupService backups, InventoryStore inventory, UpdateService updates, CatalogService catalog, ILogger<SchedulerWorker> logger) : BackgroundService
+/// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, Heartbeat, AD-Synchronisation, Datensicherung.</summary>
+public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, UpdateService updates, CatalogService catalog, ILogger<SchedulerWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(5);
@@ -23,6 +23,7 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                     lastRetry = DateTime.UtcNow;
                     await deployments.RetryWaitingAsync(stoppingToken);
                 }
+                await heartbeat.RunIfDueAsync(stoppingToken);
                 await adSync.SyncIfDueAsync(stoppingToken);
                 await updates.CheckAsync(force: false, stoppingToken);
                 await updates.ReportPreviousAsync(startup: false, stoppingToken);

@@ -2,6 +2,7 @@
 @using Microsoft.Extensions.Options
 @inject SettingsService SettingsService
 @inject AdSyncService AdSync
+@inject HeartbeatService Heartbeat
 @inject AgentService Agents
 @inject UpdateService Updates
 @inject CredentialService CredentialService
@@ -58,6 +59,32 @@
         @if (Options.Value.ResolveSimulate())
         {
             <MudAlert Severity="Severity.Warning">Simulationsmodus: Es finden keine echten Zugriffe auf Zielrechner statt.</MudAlert>
+        }
+    </MudStack>
+</MudPaper>
+
+<MudPaper Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">Heartbeat</MudText>
+        <MudText Typo="Typo.body2">
+            Prüft in festen Abständen die Erreichbarkeit aller Rechner, damit der Online-Status in der Rechnerliste und auf der
+            Übersicht aktuell bleibt. Rechner mit Namensauffälligkeiten – ein anderer Rechner antwortet unter dem Namen oder
+            Reverse-DNS nennt einen anderen – werden übersprungen, bis die Abweichung geklärt ist.
+        </MudText>
+        <MudSwitch T="bool" @bind-Value="_hbEnabled" Color="Color.Primary" Label="Erreichbarkeit regelmäßig prüfen" />
+        <MudNumericField T="int" @bind-Value="_hbIntervalMinutes" Label="Intervall (Minuten)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="1440"
+                         HelperText="Die Prüfung ist leichtgewichtig (Port 445, wenige Pakete je Rechner); 5 Minuten sind ein guter Wert" />
+        <MudStack Row="true" Wrap="Wrap.Wrap">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveHeartbeatAsync">Speichern</MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_hbBusy" OnClick="RunHeartbeatAsync">Jetzt prüfen</MudButton>
+        </MudStack>
+        @if (_hbMessage is not null)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true">@_hbMessage</MudAlert>
+        }
+        @if (_hbLastResult is not null)
+        {
+            <MudText Typo="Typo.caption">Letzter Lauf @Display.LocalTime(_hbLastRunUtc): @_hbLastResult</MudText>
         }
     </MudStack>
 </MudPaper>
@@ -288,6 +315,43 @@
     private bool _adBusy;
     private List<Credential> _credentials = [];
 
+    private bool _hbEnabled;
+    private int _hbIntervalMinutes = HeartbeatService.DefaultIntervalMinutes;
+    private DateTime? _hbLastRunUtc;
+    private string? _hbLastResult;
+    private string? _hbMessage;
+    private bool _hbBusy;
+
+    private async Task LoadHeartbeatAsync()
+    {
+        var hb = await Heartbeat.GetSettingsAsync();
+        (_hbEnabled, _hbIntervalMinutes, _hbLastRunUtc, _hbLastResult) = (hb.Enabled, hb.IntervalMinutes, hb.LastRunUtc, hb.LastResult);
+    }
+
+    private async Task SaveHeartbeatAsync()
+    {
+        await Heartbeat.SaveSettingsAsync(_hbEnabled, _hbIntervalMinutes);
+        await Audit.LogAsync("Einstellung geändert", $"Heartbeat: {(_hbEnabled ? $"an, alle {_hbIntervalMinutes} min" : "aus")}");
+        Snackbar.Add("Gespeichert.", Severity.Success);
+    }
+
+    private async Task RunHeartbeatAsync()
+    {
+        _hbBusy = true;
+        _hbMessage = null;
+        try
+        {
+            await Heartbeat.SaveSettingsAsync(_hbEnabled, _hbIntervalMinutes);
+            _hbMessage = await Heartbeat.RunAsync();
+        }
+        finally
+        {
+            _hbBusy = false;
+            var hb = await Heartbeat.GetSettingsAsync();
+            (_hbLastRunUtc, _hbLastResult) = (hb.LastRunUtc, hb.LastResult);
+        }
+    }
+
     private async Task LoadAdAsync()
     {
         _credentials = await CredentialService.ListAsync();
@@ -366,6 +430,7 @@
         _fallback = await SettingsService.GetTransportFallbackAsync();
         _verifyName = await SettingsService.GetVerifyTargetNameAsync();
         await LoadAdAsync();
+        await LoadHeartbeatAsync();
         await LoadUpdateAsync();
         _agentUrl = await Agents.GetServerUrlAsync();
         _agentToken = await Agents.GetEnrollmentTokenAsync();
