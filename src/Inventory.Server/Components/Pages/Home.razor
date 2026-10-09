@@ -1,5 +1,9 @@
 @page "/"
 @inject ReportService Reports
+@inject ComputerService Computers
+@inject PackageService Packages
+@inject CollectionService Collections
+@inject ScheduleService Schedules
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
 
@@ -168,7 +172,7 @@
             {
                 <div class="feed-row">
                     <span class="time">@Display.LocalTime(entry.TimeUtc)</span>
-                    <span class="text"><b>@entry.Action</b>@(string.IsNullOrEmpty(entry.Details) ? "" : $" – {entry.Details}") <span style="color: var(--mud-palette-text-secondary)">(@entry.User)</span></span>
+                    <span class="text"><b>@entry.Action</b>@if (!string.IsNullOrEmpty(entry.Details)) { <span> – <AuditDetails Text="@entry.Details" Action="@entry.Action" Map="_links" /></span> } <span style="color: var(--mud-palette-text-secondary)">(@entry.User)</span></span>
                 </div>
             }
         </div>
@@ -178,9 +182,19 @@
 @code {
     private DashboardStats? _stats;
 
-    protected override async Task OnInitializedAsync() => _stats = await Reports.DashboardAsync();
+    private AuditLinkMap? _links;
 
-    private async Task RefreshAsync() => _stats = await Reports.DashboardAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _stats = await Reports.DashboardAsync();
+        _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
+    }
+
+    private async Task RefreshAsync()
+    {
+        _stats = await Reports.DashboardAsync();
+        _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
+    }
 
     /// <summary>Kreisdiagramm im Kopfbereich: Anteil als Ring, Zahl in der Mitte.</summary>
     private RenderFragment Ring(string label, int value, int total, string color)

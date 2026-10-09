@@ -1,0 +1,18 @@
+@* Protokolltext mit Verweisen auf Rechner, Pakete, Sammlungen, Zeitpläne und Deployments. *@
+@foreach (var segment in Map?.Segments(Text, Action) ?? [new AuditLinkMap.Segment(Text ?? "", null)])
+{
+    @if (segment.Href is null)
+    {
+        @segment.Text
+    }
+    else
+    {
+        <MudLink Href="@segment.Href">@segment.Text</MudLink>
+    }
+}
+
+@code {
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string Action { get; set; } = "";
+    [Parameter] public AuditLinkMap? Map { get; set; }
+}

@@ -200,7 +200,7 @@ app.MapReportEndpoints();
 app.MapAgentEndpoints();
 // Dokumentation unter /api/docs, Beschreibung unter /api/openapi.json; gleiche Anmeldung wie die übrige API.
 app.MapOpenApi("/api/openapi.json");
-app.MapScalarApiReference("/api/docs", o => o.WithTitle("Inventory API").WithDefaultFonts(false).WithOpenApiRoutePattern("/api/openapi.json").WithDefaultHttpClient(ScalarTarget.Shell, ScalarClient.Curl));
+app.MapScalarApiReference("/api/docs", o => o.WithTitle("Inventory API").DisableDefaultFonts().WithOpenApiRoutePattern("/api/openapi.json").WithDefaultHttpClient(ScalarTarget.Shell, ScalarClient.Curl));
 app.MapInventoryLogin(options);
 // Sprachumschalter: Cookie setzen und zurück zur Seite, von der der Klick kam.
 app.MapGet("/language/{code}", (string code, HttpContext http) =>

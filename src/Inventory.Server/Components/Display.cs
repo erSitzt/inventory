@@ -12,7 +12,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
 {
     private string T(string text) => localizer[text];
 
-    private string T(string text, params object?[] args) => localizer[text, args];
+    private string T(string text, params object[] args) => localizer[text, args];
 
     public string Transport(TransportKind kind) => kind switch
     {

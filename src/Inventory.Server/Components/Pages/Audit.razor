@@ -1,5 +1,9 @@
 @page "/audit"
 @inject AuditService AuditService
+@inject ComputerService Computers
+@inject PackageService Packages
+@inject CollectionService Collections
+@inject ScheduleService Schedules
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
 
@@ -22,7 +26,9 @@
         </TemplateColumn>
         <PropertyColumn Property="e => e.User" Title="@L["User"]" />
         <PropertyColumn Property="e => e.Action" Title="@L["Action"]" />
-        <PropertyColumn Property="e => e.Details" Title="Details" CellStyle="word-break: break-word" />
+        <TemplateColumn Title="Details" CellStyle="word-break: break-word">
+            <CellTemplate><AuditDetails Text="@context.Item.Details" Action="@context.Item.Action" Map="_links" /></CellTemplate>
+        </TemplateColumn>
     </Columns>
     <NoRecordsContent>
         <MudText Class="pa-4">@L["No entries yet. Commands, deployments, scans and changes to credentials, packages, schedules and settings are logged."]</MudText>
@@ -37,11 +43,13 @@
     private string _search = "";
 
     private long _latest;
+    private AuditLinkMap? _links;
 
     protected override async Task OnInitializedAsync()
     {
         _latest = await AuditService.LatestIdAsync();
         _entries = await AuditService.ListAsync();
+        _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
     }
 
     private async Task RefreshAsync()
@@ -51,5 +59,6 @@
             return;
         _latest = latest;
         _entries = await AuditService.ListAsync();
+        _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
     }
 }
