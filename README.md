@@ -9,6 +9,8 @@
 Inventarisierung und Softwareverteilung für Windows-Rechner in einer Anwendung – agentenlos über hinterlegte
 Zugangsdaten.
 
+![Übersicht](docs/screenshots/uebersicht.png)
+
 ## Funktionen
 
 - **Rechner** anlegen, aus dem Active Directory importieren, Erreichbarkeit prüfen – auf Wunsch regelmäßig per Heartbeat (Rechner mit Namensauffälligkeiten ausgenommen)
@@ -23,6 +25,16 @@ Zugangsdaten.
 - **Fernzugriff** je Rechner: Remoteunterstützung anbieten, Sitzung spiegeln, Remotedesktop, TeamViewer/AnyDesk
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
 - **Zeitpläne**, Software-Übersicht, CSV-Export, Protokoll, tägliche Datensicherung
+
+## Screenshots
+
+| | |
+|---|---|
+| **Rechnerliste** mit Status, Sicherheitsampel und Filtern ![Rechner](docs/screenshots/rechner.png) | **Rechner im Detail** – Inventar, Software, Hotfixes, Dienste, Sicherheit, Verlauf ![Rechner-Detail](docs/screenshots/rechner-detail.png) |
+| **Paketbibliothek** – fertige Pakete aus winget, Setup-Art auf einen Blick ![Paketbibliothek](docs/screenshots/bibliothek.png) | **Deployment** – Fortschritt je Rechner, Offline-Rechner werden nachgeholt ![Deployment](docs/screenshots/deployment.png) |
+| **Dynamische Sammlungen** – z. B. alle Rechner mit veralteter Version ![Sammlungen](docs/screenshots/sammlungen.png) | **Zeitpläne** für Scans und Verteilungen ![Zeitpläne](docs/screenshots/zeitplaene.png) |
+
+Die Bilder stammen aus dem Simulationsmodus (`Inventory:Simulate`), der ohne echte Rechner eine Beispielumgebung zeigt.
 
 ## So funktioniert der Zugriff
 
