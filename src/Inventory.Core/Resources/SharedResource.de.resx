@@ -77,6 +77,9 @@
   <data name="Active" xml:space="preserve">
     <value>Aktiv</value>
   </data>
+  <data name="Active: {0}" xml:space="preserve">
+    <value>Aktiv: {0}</value>
+  </data>
   <data name="AD synchronization: {0}, server {1}, every {2} h, disabled accounts {3}, missing computers: {4}" xml:space="preserve">
     <value>AD-Synchronisation: {0}, Server {1}, alle {2} h, deaktivierte Konten {3}, fehlende Rechner: {4}</value>
   </data>
@@ -452,6 +455,9 @@
   <data name="Default transport" xml:space="preserve">
     <value>Standard-Transport</value>
   </data>
+  <data name="Defender mode" xml:space="preserve">
+    <value>Defender-Betriebsart</value>
+  </data>
   <data name="Defender real-time protection" xml:space="preserve">
     <value>Defender-Echtzeitschutz</value>
   </data>
@@ -595,6 +601,9 @@
   </data>
   <data name="Edit" xml:space="preserve">
     <value>Bearbeiten</value>
+  </data>
+  <data name="EDR block mode" xml:space="preserve">
+    <value>EDR-Blockmodus</value>
   </data>
   <data name="Empty = the domain this server belongs to" xml:space="preserve">
     <value>Leer = Domäne, der dieser Server angehört</value>
@@ -878,6 +887,9 @@
   <data name="last present {0}" xml:space="preserve">
     <value>zuletzt vorhanden {0}</value>
   </data>
+  <data name="Last quick scan: {0}" xml:space="preserve">
+    <value>Letzter Schnellscan: {0}</value>
+  </data>
   <data name="Last run" xml:space="preserve">
     <value>Letzter Lauf</value>
   </data>
@@ -985,6 +997,9 @@
   </data>
   <data name="Minimum Windows" xml:space="preserve">
     <value>Mindestens Windows</value>
+  </data>
+  <data name="Mode" xml:space="preserve">
+    <value>Betriebsart</value>
   </data>
   <data name="Model" xml:space="preserve">
     <value>Modell</value>
@@ -1151,6 +1166,9 @@
   <data name="none" xml:space="preserve">
     <value>keine</value>
   </data>
+  <data name="normal" xml:space="preserve">
+    <value>normal</value>
+  </data>
   <data name="Not (anymore) in Active Directory" xml:space="preserve">
     <value>Nicht (mehr) im Active Directory</value>
   </data>
@@ -1168,6 +1186,9 @@
   </data>
   <data name="not installed" xml:space="preserve">
     <value>nicht installiert</value>
+  </data>
+  <data name="not running" xml:space="preserve">
+    <value>läuft nicht</value>
   </data>
   <data name="Not scanned" xml:space="preserve">
     <value>Nicht gescannt</value>
@@ -1322,6 +1343,12 @@
   <data name="Passed to the installer. For recognized installers the silent parameters are already filled in." xml:space="preserve">
     <value>Werden an den Installer übergeben. Bei erkannten Installern sind die Silent-Parameter bereits eingetragen.</value>
   </data>
+  <data name="passive (side by side)" xml:space="preserve">
+    <value>passiv (nebeneinander)</value>
+  </data>
+  <data name="passive – another antivirus is active" xml:space="preserve">
+    <value>passiv – ein anderer Virenschutz ist aktiv</value>
+  </data>
   <data name="Password" xml:space="preserve">
     <value>Passwort</value>
   </data>
@@ -1441,6 +1468,9 @@
   </data>
   <data name="Recommended silent parameters:" xml:space="preserve">
     <value>Empfohlene Silent-Parameter:</value>
+  </data>
+  <data name="Registered but off: {0}" xml:space="preserve">
+    <value>Registriert, aber aus: {0}</value>
   </data>
   <data name="Registered: {0}" xml:space="preserve">
     <value>Registriert: {0}</value>
@@ -2188,6 +2218,9 @@
   </data>
   <data name="View" xml:space="preserve">
     <value>Ansicht</value>
+  </data>
+  <data name="Virus definitions are out of date." xml:space="preserve">
+    <value>Die Virendefinitionen sind veraltet.</value>
   </data>
   <data name="Wait" xml:space="preserve">
     <value>Warten</value>

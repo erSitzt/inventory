@@ -144,7 +144,13 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("AgentVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("AntivirusDefinitionsOutdated")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("AntivirusProducts")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AntivirusProductsInactive")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("AnyDeskId")
@@ -170,6 +176,12 @@ namespace Inventory.Data.Migrations
 
                     b.Property<bool?>("DefenderEnabled")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("DefenderLastQuickScanUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefenderMode")
+                        .HasColumnType("TEXT");
 
                     b.Property<bool?>("DefenderRealTime")
                         .HasColumnType("INTEGER");

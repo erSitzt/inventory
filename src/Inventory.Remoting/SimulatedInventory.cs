@@ -84,7 +84,7 @@ internal static class SimulatedInventory
             FirewallDomain = random.Next(6) != 0, FirewallPrivate = true, FirewallPublic = true,
             DefenderEnabled = true, DefenderRealTime = random.Next(8) != 0, DefenderTamperProtected = true,
             DefenderSignatureVersion = $"1.459.{random.Next(100, 900)}.0", DefenderSignatureUpdatedUtc = DateTime.UtcNow.AddHours(-random.Next(2, 90)),
-            AntivirusProducts = ["Windows Defender"],
+            AntivirusProducts = ["Windows Defender"], AntivirusProductDetails = [new AntivirusProductItem { Name = "Windows Defender", Enabled = true, UpToDate = true }], DefenderMode = "Normal",
             UpdateLastSearchUtc = DateTime.UtcNow.AddHours(-random.Next(1, 30)), UpdateLastInstallUtc = DateTime.UtcNow.AddDays(-random.Next(1, 60)),
             UpdateRebootRequired = pending.Count > 0 && random.Next(2) == 0, UpdatePending = pending, UpdateServer = "http://wsus.corp.example:8530",
         };

@@ -73,6 +73,8 @@ public static partial class InventoryDiff
             Security("Defender", previous.DefenderEnabled, security.DefenderEnabled, "active", "inactive");
             Security("Defender real-time protection", previous.DefenderRealTime, security.DefenderRealTime, "on", "off");
             Security("Defender tamper protection", previous.DefenderTamperProtected, security.DefenderTamperProtected, "on", "off");
+            if (previous.DefenderMode is not null && security.DefenderMode is not null && previous.DefenderMode != security.DefenderMode)
+                Add("Security", ChangeKind.Changed, "Defender mode", previous.DefenderMode, security.DefenderMode);
             if (previous.AntivirusProducts is not null)
                 Set("Antivirus", Split(previous.AntivirusProducts).Select(p => (p, (string?)null)), security.AntivirusProducts.Select(p => (p, (string?)null)));
         }

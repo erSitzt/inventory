@@ -361,6 +361,9 @@ namespace Inventory.Runner
                 status.DefenderTamperProtected = Flag(o, "IsTamperProtected");
                 status.DefenderSignatureVersion = Text(o, "AntivirusSignatureVersion");
                 status.DefenderSignatureUpdatedUtc = Date(o, "AntivirusSignatureLastUpdated");
+                // "Passive Mode": ein anderer Virenschutz ist der aktive Echtzeitschutz; Defender scannt dann nur noch auf Anforderung.
+                status.DefenderMode = Text(o, "AMRunningMode");
+                status.DefenderLastQuickScanUtc = Date(o, "QuickScanEndTime");
             }
         }
 
@@ -368,11 +371,20 @@ namespace Inventory.Runner
         {
             try
             {
-                foreach (var o in Query(@"root\SecurityCenter2", "SELECT displayName FROM AntiVirusProduct"))
+                foreach (var o in Query(@"root\SecurityCenter2", "SELECT displayName, productState FROM AntiVirusProduct"))
                 {
                     var name = Text(o, "displayName");
-                    if (name != null && !status.AntivirusProducts.Contains(name))
-                        status.AntivirusProducts.Add(name);
+                    if (name == null || status.AntivirusProducts.Contains(name))
+                        continue;
+                    status.AntivirusProducts.Add(name);
+                    // productState: Bits 12–15 = 1, wenn der Schutz eingeschaltet ist; Bits 4–7 = 1, wenn die Definitionen veraltet sind.
+                    var state = Convert.ToInt32(o["productState"] ?? 0);
+                    status.AntivirusProductDetails.Add(new AntivirusProductItem
+                    {
+                        Name = name,
+                        Enabled = ((state >> 12) & 0xF) == 1,
+                        UpToDate = ((state >> 4) & 0xF) == 0,
+                    });
                 }
             }
             catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace)
@@ -392,7 +404,9 @@ namespace Inventory.Runner
                 foreach (var path in new[]
                          {
                              @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired",
+                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\PostRebootReporting",
                              @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending",
+                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\PackagesPending",
                          })
                 {
                     using (var key = hklm.OpenSubKey(path))
@@ -409,6 +423,10 @@ namespace Inventory.Runner
                     dynamic auto = Activator.CreateInstance(Type.GetTypeFromProgID("Microsoft.Update.AutoUpdate", true));
                     status.UpdateLastSearchUtc = ComDate(auto.Results.LastSearchSuccessDate);
                     status.UpdateLastInstallUtc = ComDate(auto.Results.LastInstallationSuccessDate);
+                    // Der Update-Agent selbst weiß am verlässlichsten, ob ein Neustart aussteht; die Registry-Schlüssel oben ergänzen das.
+                    dynamic systemInfo = Activator.CreateInstance(Type.GetTypeFromProgID("Microsoft.Update.SystemInfo", true));
+                    if ((bool)systemInfo.RebootRequired)
+                        status.UpdateRebootRequired = true;
 
                     dynamic session = Activator.CreateInstance(Type.GetTypeFromProgID("Microsoft.Update.Session", true));
                     dynamic searcher = session.CreateUpdateSearcher();

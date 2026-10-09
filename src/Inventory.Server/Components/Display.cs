@@ -188,6 +188,17 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
 
     public string OnOff(bool? value) => value switch { true => T("on"), false => T("off"), null => T("unknown") };
 
+    /// <summary>Betriebsart von Defender, wie MSFT_MpComputerStatus.AMRunningMode sie meldet.</summary>
+    public string DefenderMode(string mode) => mode switch
+    {
+        "Normal" => T("normal"),
+        "Passive Mode" => T("passive – another antivirus is active"),
+        "SxS Passive Mode" => T("passive (side by side)"),
+        "EDR Block Mode" => T("EDR block mode"),
+        "Not running" => T("not running"),
+        _ => mode,
+    };
+
     public string YesNo(bool value) => value ? T("yes") : T("no");
 
     public Color OnOffColor(bool? value) => value switch { true => Color.Success, false => Color.Error, null => Color.Default };

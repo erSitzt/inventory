@@ -112,6 +112,15 @@ namespace Inventory.Contracts
     }
 
     /// <summary>Werte sind null, wenn sie sich auf dem Rechner nicht ermitteln ließen.</summary>
+    /// <param name="Enabled">Das Produkt ist laut Sicherheitscenter eingeschaltet (Echtzeitschutz aktiv).</param>
+    /// <param name="UpToDate">Die Definitionen sind laut Sicherheitscenter aktuell.</param>
+    public sealed class AntivirusProductItem
+    {
+        public string Name { get; set; } = "";
+        public bool Enabled { get; set; }
+        public bool UpToDate { get; set; }
+    }
+
     public sealed class SecurityStatus
     {
         // Windows-Firewall je Netzwerkprofil (Gruppenrichtlinie berücksichtigt)
@@ -125,8 +134,13 @@ namespace Inventory.Contracts
         public bool? DefenderTamperProtected { get; set; }
         public string? DefenderSignatureVersion { get; set; }
         public DateTime? DefenderSignatureUpdatedUtc { get; set; }
-        /// <summary>Beim Windows-Sicherheitscenter registrierte Virenschutzprogramme (nur Client-Betriebssysteme).</summary>
+        /// <summary>Betriebsart laut Defender: "Normal", "Passive Mode" (anderer Virenschutz aktiv), "EDR Block Mode", "SxS Passive Mode".</summary>
+        public string? DefenderMode { get; set; }
+        public DateTime? DefenderLastQuickScanUtc { get; set; }
+        /// <summary>Beim Windows-Sicherheitscenter registrierte Virenschutzprogramme (nur Client-Betriebssysteme), Namen aller Produkte.</summary>
         public List<string> AntivirusProducts { get; set; } = new List<string>();
+        /// <summary>Dieselben Produkte mit dem Zustand aus dem Sicherheitscenter.</summary>
+        public List<AntivirusProductItem> AntivirusProductDetails { get; set; } = new List<AntivirusProductItem>();
 
         // Windows Update
         public DateTime? UpdateLastSearchUtc { get; set; }

@@ -80,8 +80,15 @@ public class Computer
     public bool? DefenderTamperProtected { get; set; }
     public string? DefenderSignatureVersion { get; set; }
     public DateTime? DefenderSignatureUpdatedUtc { get; set; }
-    /// <summary>Beim Sicherheitscenter registrierte Virenschutzprogramme, durch Komma getrennt.</summary>
+    /// <summary>Betriebsart laut Defender ("Normal", "Passive Mode", …); null = nicht ermittelt.</summary>
+    public string? DefenderMode { get; set; }
+    public DateTime? DefenderLastQuickScanUtc { get; set; }
+    /// <summary>Beim Sicherheitscenter registrierte und eingeschaltete Virenschutzprogramme, durch Komma getrennt.</summary>
     public string? AntivirusProducts { get; set; }
+    /// <summary>Registrierte, aber ausgeschaltete Virenschutzprogramme, durch Komma getrennt.</summary>
+    public string? AntivirusProductsInactive { get; set; }
+    /// <summary>Ein aktives Virenschutzprogramm meldet veraltete Definitionen (Sicherheitscenter) bzw. die Defender-Signatur ist älter als eine Woche.</summary>
+    public bool? AntivirusDefinitionsOutdated { get; set; }
     public DateTime? UpdateLastSearchUtc { get; set; }
     public DateTime? UpdateLastInstallUtc { get; set; }
     public bool? UpdateRebootRequired { get; set; }
@@ -99,7 +106,7 @@ public class Computer
     /// <summary>true, wenn mindestens ein Firewall-Profil abgeschaltet ist.</summary>
     public bool FirewallOff => FirewallDomain == false || FirewallPrivate == false || FirewallPublic == false;
 
-    /// <summary>true, wenn kein Echtzeitschutz läuft: weder Defender noch ein anderes registriertes Virenschutzprogramm.</summary>
+    /// <summary>true, wenn kein Echtzeitschutz läuft: weder Defender noch ein anderes registriertes und eingeschaltetes Virenschutzprogramm.</summary>
     public bool AntivirusProblem =>
         LastScanUtc is not null && DefenderEnabled is not null && DefenderRealTime != true && !HasThirdPartyAntivirus;
 

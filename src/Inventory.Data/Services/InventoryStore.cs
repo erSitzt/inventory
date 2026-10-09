@@ -88,7 +88,16 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.DefenderTamperProtected = security.DefenderTamperProtected;
             computer.DefenderSignatureVersion = security.DefenderSignatureVersion;
             computer.DefenderSignatureUpdatedUtc = security.DefenderSignatureUpdatedUtc;
-            computer.AntivirusProducts = string.Join(", ", security.AntivirusProducts);
+            computer.DefenderMode = security.DefenderMode;
+        computer.DefenderLastQuickScanUtc = security.DefenderLastQuickScanUtc;
+        // Ohne Zustandsangaben (ältere Runner, Server-Betriebssysteme) gelten alle registrierten Produkte als eingeschaltet.
+        var details = security.AntivirusProductDetails;
+        computer.AntivirusProducts = string.Join(", ", details.Count > 0 ? details.Where(p => p.Enabled).Select(p => p.Name) : security.AntivirusProducts);
+        computer.AntivirusProductsInactive = details.Count > 0 ? string.Join(", ", details.Where(p => !p.Enabled).Select(p => p.Name)) : null;
+        var signatureStale = security.DefenderRealTime == true && security.DefenderSignatureUpdatedUtc is { } signature && now - signature > TimeSpan.FromDays(7);
+        computer.AntivirusDefinitionsOutdated = details.Count > 0 || security.DefenderSignatureUpdatedUtc is not null
+            ? details.Any(p => p.Enabled && !p.UpToDate) || signatureStale
+            : null;
             computer.UpdateLastSearchUtc = security.UpdateLastSearchUtc;
             computer.UpdateLastInstallUtc = security.UpdateLastInstallUtc;
             computer.UpdateRebootRequired = security.UpdateRebootRequired;
