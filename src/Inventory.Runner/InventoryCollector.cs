@@ -295,11 +295,44 @@ namespace Inventory.Runner
 
         private static void ReadFirewall(SecurityStatus status)
         {
-            // Die Firewall-API liefert den wirksamen Zustand je Profil – so wie ihn Windows-Sicherheit und netsh anzeigen,
-            // einschließlich Richtlinien (Gruppenrichtlinie, MDM). Die Registry ist nur der Ausweg, falls die API fehlt.
-            status.FirewallDomain = FirewallEnabledByApi(1) ?? FirewallEnabled("DomainProfile");
-            status.FirewallPrivate = FirewallEnabledByApi(2) ?? FirewallEnabled("StandardProfile");
-            status.FirewallPublic = FirewallEnabledByApi(4) ?? FirewallEnabled("PublicProfile");
+            // Maßgeblich ist der "ActiveStore" (MSFT_NetFirewallProfile mit PolicyStore=ActiveStore): der wirksame Zustand
+            // einschließlich aller Richtlinien, den auch Windows-Sicherheit und Get-NetFirewallProfile -PolicyStore ActiveStore
+            // zeigen. Firewall-API und Registry sehen Richtlinien aus MDM/Intune nicht und sind nur der Ausweg.
+            var active = FirewallActiveStore();
+            status.FirewallDomain = Lookup(active, "Domain") ?? FirewallEnabledByApi(1) ?? FirewallEnabled("DomainProfile");
+            status.FirewallPrivate = Lookup(active, "Private") ?? FirewallEnabledByApi(2) ?? FirewallEnabled("StandardProfile");
+            status.FirewallPublic = Lookup(active, "Public") ?? FirewallEnabledByApi(4) ?? FirewallEnabled("PublicProfile");
+        }
+
+        private static bool? Lookup(Dictionary<string, bool?> values, string key) =>
+            values.TryGetValue(key, out var value) ? value : null;
+
+        private static Dictionary<string, bool?> FirewallActiveStore()
+        {
+            var result = new Dictionary<string, bool?>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var scope = new ManagementScope(@"\\.\root\StandardCimv2");
+                scope.Connect();
+                var options = new EnumerationOptions { Timeout = TimeSpan.FromSeconds(30) };
+                options.Context.Add("PolicyStore", "ActiveStore");
+                using (var searcher = new ManagementObjectSearcher(scope, new ObjectQuery("SELECT Name, Enabled FROM MSFT_NetFirewallProfile"), options))
+                {
+                    foreach (ManagementBaseObject o in searcher.Get())
+                    {
+                        var name = Text(o, "Name");
+                        // Enabled: 0 = False, 1 = True, 2 = NotConfigured (dann gilt der Standard "an").
+                        var enabled = o["Enabled"] == null ? (int?)null : Convert.ToInt32(o["Enabled"]);
+                        if (name != null && enabled != null)
+                            result[name] = enabled != 0;
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is ManagementException || ex is COMException || ex is UnauthorizedAccessException)
+            {
+                // Namespace oder Klasse fehlt (sehr alte Systeme): die Ausweichwege übernehmen.
+            }
+            return result;
         }
 
         /// <param name="profileType">NET_FW_PROFILE_TYPE2: 1 = Domäne, 2 = Privat, 4 = Öffentlich.</param>
