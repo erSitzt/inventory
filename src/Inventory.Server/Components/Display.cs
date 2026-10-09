@@ -211,6 +211,37 @@ public static class Display
         _ => $"{bytes} Bytes",
     };
 
+    /// <summary>Dateiart des Setups, wie sie im Paket landet.</summary>
+    public static string InstallerFormat(string? type) => (type ?? "").ToLowerInvariant() switch
+    {
+        "wix" or "msi" => "MSI",
+        "" => "?",
+        _ => "EXE",
+    };
+
+    /// <summary>Womit das Setup gebaut ist; daraus ergeben sich die Silent-Parameter.</summary>
+    public static string InstallerTechnology(string? type) => (type ?? "").ToLowerInvariant() switch
+    {
+        "wix" => "Windows Installer (WiX)",
+        "msi" => "Windows Installer",
+        "burn" => "WiX Burn",
+        "inno" => "Inno Setup",
+        "nullsoft" => "Nullsoft (NSIS)",
+        "exe" => "herstellereigen",
+        _ => type ?? "",
+    };
+
+    public static string InstallerScope(string? scope) => (scope ?? "").ToLowerInvariant() switch
+    {
+        "machine" => "alle Benutzer",
+        "user" => "nur angemeldeter Benutzer",
+        _ => "",
+    };
+
+    /// <summary>Adressen aus fremden Quellen nur als Link anbieten, wenn sie wirklich ins Web zeigen.</summary>
+    public static string? WebLink(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) ? uri.AbsoluteUri : null;
+
     private static readonly string[] DayNames = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
     /// <summary>Wochentage in deutscher Reihenfolge (Montag zuerst).</summary>

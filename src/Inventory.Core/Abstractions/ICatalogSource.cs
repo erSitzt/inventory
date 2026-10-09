@@ -10,7 +10,20 @@ public sealed class CatalogEntry
     public string? Description { get; set; }
     public string? Homepage { get; set; }
     public string? License { get; set; }
+    public string? LicenseUrl { get; set; }
+    /// <summary>Ausführliche Beschreibung; wie alle folgenden Angaben nur gefüllt, wenn das Manifest sie nennt.</summary>
+    public string? Details { get; set; }
+    public List<string> Tags { get; set; } = [];
+    public string? Moniker { get; set; }
+    public string? SupportUrl { get; set; }
+    public string? ReleaseNotesUrl { get; set; }
+    public string? ReleaseDate { get; set; }
+    /// <summary>Technik des Setups laut winget: wix, msi, burn, inno, nullsoft oder exe.</summary>
     public string InstallerType { get; set; } = "";
+    public string? Architecture { get; set; }
+    /// <summary>machine oder user; null, wenn das Manifest nichts festlegt.</summary>
+    public string? Scope { get; set; }
+    public string? MinimumOsVersion { get; set; }
     public string Url { get; set; } = "";
     public string Sha256 { get; set; } = "";
     public string FileName { get; set; } = "";

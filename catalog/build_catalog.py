@@ -87,6 +87,11 @@ def silent_arguments(manifest, installer, kind):
     return (silent + " " + custom).strip()
 
 
+def shorten(text, limit=600):
+    text = re.sub(r"\s+", " ", text or "").strip()
+    return (text[:limit].rsplit(" ", 1)[0] + " …") if len(text) > limit else (text or None)
+
+
 def build_entry(root, package_id):
     version = latest_version(root, package_id)
     if version is None:
@@ -106,6 +111,7 @@ def build_entry(root, package_id):
     entries = installer.get("AppsAndFeaturesEntries") or manifest.get("AppsAndFeaturesEntries") or []
     name = locale.get("PackageName") or package_id
     extension = "msi" if kind in ("wix", "msi") else "exe"
+    release_date = installer.get("ReleaseDate") or manifest.get("ReleaseDate")
     codes = sorted({0, 3010, 1641, *(installer.get("InstallerSuccessCodes") or manifest.get("InstallerSuccessCodes") or [])})
     return {
         "id": package_id,
@@ -115,7 +121,18 @@ def build_entry(root, package_id):
         "description": locale.get("ShortDescription"),
         "homepage": locale.get("PackageUrl"),
         "license": locale.get("License"),
+        "licenseUrl": locale.get("LicenseUrl"),
+        # Ausführliche Angaben nur, soweit das Manifest sie nennt; die Oberfläche lässt Fehlendes weg.
+        "details": shorten(locale.get("Description")),
+        "tags": [str(tag) for tag in (locale.get("Tags") or [])][:10],
+        "moniker": locale.get("Moniker"),
+        "supportUrl": locale.get("PublisherSupportUrl"),
+        "releaseNotesUrl": locale.get("ReleaseNotesUrl"),
+        "releaseDate": str(release_date) if release_date else None,
         "installerType": kind,
+        "architecture": (installer.get("Architecture") or "").lower() or None,
+        "scope": (installer.get("Scope") or manifest.get("Scope") or "").lower() or None,
+        "minimumOsVersion": installer.get("MinimumOSVersion") or manifest.get("MinimumOSVersion"),
         "url": installer["InstallerUrl"],
         "sha256": installer["InstallerSha256"].lower(),
         "fileName": re.sub(r"[^A-Za-z0-9.+_-]", "_", f"{package_id}-{version}") + "." + extension,

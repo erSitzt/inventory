@@ -30,9 +30,10 @@
 }
 
 <MudDataGrid T="CatalogItem" Items="_items" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50" Loading="_busy"
-             QuickFilter="@(i => string.IsNullOrWhiteSpace(_search) || i.Entry.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (i.Entry.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))">
+             QuickFilter="@(i => string.IsNullOrWhiteSpace(_search) || i.Entry.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (i.Entry.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) || i.Entry.Tags.Any(t => t.Contains(_search, StringComparison.OrdinalIgnoreCase)))">
     <Columns>
-        <TemplateColumn Title="Programm" SortBy="i => i.Entry.Name">
+        <HierarchyColumn T="CatalogItem" />
+        <TemplateColumn Title="Programm" SortBy="i => i.Entry.Name" CellStyle="min-width: 300px">
             <CellTemplate>
                 <MudText Typo="Typo.body2"><b>@context.Item.Entry.Name</b></MudText>
                 <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@context.Item.Entry.Description</MudText>
@@ -43,6 +44,14 @@
         </TemplateColumn>
         <TemplateColumn Title="Version" Sortable="false">
             <CellTemplate>@context.Item.Entry.Version</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Setup" SortBy="i => Display.InstallerFormat(i.Entry.InstallerType) + i.Entry.InstallerType" CellStyle="white-space: nowrap">
+            <CellTemplate>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(Display.InstallerFormat(context.Item.Entry.InstallerType) == "MSI" ? Color.Info : Color.Default)">@Display.InstallerFormat(context.Item.Entry.InstallerType)</MudChip>
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@SetupSummary(context.Item.Entry)</MudText>
+                </MudStack>
+            </CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="Status" SortBy="i => i.Package == null ? 2 : i.UpdateAvailable ? 0 : 1">
             <CellTemplate>
@@ -85,6 +94,56 @@
             </CellTemplate>
         </TemplateColumn>
     </Columns>
+    <ChildRowContent>
+        @{ var e = context.Item.Entry; }
+        <MudStack Spacing="2" Class="pa-3">
+            @if ((e.Details ?? e.Description) is { } text)
+            {
+                <MudText Typo="Typo.body2">@text</MudText>
+            }
+            <MudSimpleTable Dense="true" Elevation="0" Style="max-width: 900px">
+                <tbody>
+                    <tr><td style="width: 200px">Setup</td><td>@Display.InstallerFormat(e.InstallerType) – @Display.InstallerTechnology(e.InstallerType)@(e.Architecture is null ? "" : $", {e.Architecture}")@(Display.InstallerScope(e.Scope) is { Length: > 0 } scope ? $", {scope}" : "")</td></tr>
+                    <tr><td>Silent-Parameter</td><td><code>@(Display.InstallerFormat(e.InstallerType) == "MSI" ? $"/qn /norestart {e.Arguments}".Trim() : e.Arguments)</code></td></tr>
+                    <tr><td>Erfolgscodes</td><td>@string.Join(", ", e.SuccessCodes)</td></tr>
+                    <tr><td>Download</td><td style="word-break: break-all">@e.Url</td></tr>
+                    <tr><td>SHA-256</td><td style="word-break: break-all"><code>@e.Sha256</code></td></tr>
+                    @if (e.ReleaseDate is not null)
+                    {
+                        <tr><td>Veröffentlicht</td><td>@e.ReleaseDate</td></tr>
+                    }
+                    @if (e.MinimumOsVersion is not null)
+                    {
+                        <tr><td>Mindestens Windows</td><td>@e.MinimumOsVersion</td></tr>
+                    }
+                    @if (e.License is not null)
+                    {
+                        <tr><td>Lizenz</td><td>@if (Display.WebLink(e.LicenseUrl) is { } licenseUrl) { <MudLink Href="@licenseUrl" Target="_blank" rel="noopener noreferrer">@e.License</MudLink> } else { @e.License }</td></tr>
+                    }
+                    <tr><td>Erkennung im Inventar</td><td>Programmname enthält „@e.Match“</td></tr>
+                    <tr><td>winget-Kennung</td><td>@e.Id@(e.Moniker is null ? "" : $" ({e.Moniker})")</td></tr>
+                </tbody>
+            </MudSimpleTable>
+            <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+                @if (Display.WebLink(e.Homepage) is { } homepage)
+                {
+                    <MudLink Href="@homepage" Target="_blank" rel="noopener noreferrer">Webseite</MudLink>
+                }
+                @if (Display.WebLink(e.ReleaseNotesUrl) is { } notes)
+                {
+                    <MudLink Href="@notes" Target="_blank" rel="noopener noreferrer">Versionshinweise</MudLink>
+                }
+                @if (Display.WebLink(e.SupportUrl) is { } support)
+                {
+                    <MudLink Href="@support" Target="_blank" rel="noopener noreferrer">Support</MudLink>
+                }
+                @foreach (var tag in e.Tags)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+                }
+            </MudStack>
+        </MudStack>
+    </ChildRowContent>
     <NoRecordsContent>
         <MudText Class="pa-4">Die Bibliothek ist leer oder nicht erreichbar. Quelle: @Catalog.Location</MudText>
     </NoRecordsContent>
@@ -103,6 +162,9 @@
     private string _search = "";
     private bool _busy;
     private string? _busyText;
+
+    private static string SetupSummary(Inventory.Core.Abstractions.CatalogEntry e) =>
+        string.Join(" · ", new[] { Display.InstallerFormat(e.InstallerType) == "MSI" ? null : Display.InstallerTechnology(e.InstallerType), e.Architecture }.Where(p => !string.IsNullOrEmpty(p)));
 
     protected override Task OnInitializedAsync() => ReloadAsync(force: false);
 
