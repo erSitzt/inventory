@@ -92,6 +92,11 @@ unter „Weitere Treffer aus winget“; sie lassen sich genauso importieren und 
 aus den Manifesten übernommen – vor dem Verteilen an einem einzelnen Rechner testen. Setups, die nur ins Benutzerprofil
 installieren, erhalten beim Import den Kontext „angemeldeter Benutzer“.
 
+Ältere Versionen: Der Import-Dialog bietet alle Versionen an, die das winget-Repository noch führt (je Programm höchstens
+die 60 neuesten, `Inventory:Catalog:VersionsUrl`). Eine ältere Version wird als eigenständiges Paket „Name Version“
+angelegt, das nie automatisch aktualisiert wird und neben dem aktuellen Paket bestehen kann. Nimmt der Hersteller ein
+altes Setup vom Server, schlägt der Download fehl.
+
 - Weitere Programme in die Grundauswahl: winget-ID in `catalog/apps.txt` ergänzen.
 - Eigener Katalog: `Inventory:Catalog:Url` auf eine eigene Datei oder Adresse zeigen lassen (gleiches Format).
 - Programme automatisch aktuell halten: beim Import die Sammlung „… veraltet“ anlegen lassen und einen Zeitplan
@@ -194,6 +199,7 @@ markiert und von der Update-Prüfung ignoriert. Liegen die Secrets `SIGNING_CERT
 | `Inventory:Oidc:AllowedGroups` | Objekt-IDs der erlaubten Gruppen oder Namen von App-Rollen; ohne Eintrag startet der Server nicht |
 | `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher` | Update-Prüfung, Quelle der Releases, erwarteter Herausgeber der Signatur |
 | `Inventory:Catalog:Url` | Adresse oder Pfad der `catalog.json` der Paketbibliothek |
+| `Inventory:Catalog:VersionsUrl` | Ordner mit den Versionslisten (`<winget-ID>.json`); leer = nur die aktuelle Version anbieten |
 | `Inventory:Catalog:IndexUrl` | Adresse oder Pfad des Suchindex `winget.json`; leer = Suche in ganz winget abschalten |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 

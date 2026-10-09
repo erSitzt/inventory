@@ -96,6 +96,12 @@
                     {
                         <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="@(() => UpdateAsync(context.Item))">Aktualisieren</MudButton>
                     }
+                    @if (Catalog.VersionsAvailable)
+                    {
+                        <MudTooltip Text="Eine ältere Version als eigenes Paket importieren">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.History" Disabled="_busy" aria-label="Ältere Version importieren" OnClick="@(() => ImportAsync(context.Item))" />
+                        </MudTooltip>
+                    }
                     <MudButton Size="Size.Small" Href="@($"packages/{context.Item.Package.Id}")">Paket öffnen</MudButton>
                 }
             </CellTemplate>
@@ -224,14 +230,15 @@
 
     private async Task ImportAsync(CatalogItem item)
     {
-        var parameters = new DialogParameters<ImportPackageDialog> { { d => d.Entry, item.Entry }, { d => d.Curated, item.Curated } };
+        var parameters = new DialogParameters<ImportPackageDialog> { { d => d.Entry, item.Entry }, { d => d.Curated, item.Curated }, { d => d.OlderOnly, item.Package is not null } };
         var dialog = await Dialogs.ShowAsync<ImportPackageDialog>($"{item.Entry.Name} importieren", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is not { Canceled: false, Data: ImportPackageDialog.Choice choice })
             return;
-        await RunAsync($"Lade {item.Entry.Name} {item.Entry.Version} vom Hersteller …", async () =>
+        var version = choice.Version ?? item.Entry.Version;
+        await RunAsync($"Lade {item.Entry.Name} {version} vom Hersteller …", async () =>
         {
-            await Catalog.ImportAsync(item.Entry.Id, choice.AutoUpdate, choice.CreateCollection, await Audit.UserNameAsync());
-            Snackbar.Add($"{item.Entry.Name} {item.Entry.Version} importiert.", Severity.Success);
+            await Catalog.ImportAsync(item.Entry.Id, choice.AutoUpdate, choice.CreateCollection, await Audit.UserNameAsync(), choice.Version);
+            Snackbar.Add($"{item.Entry.Name} {version} importiert.", Severity.Success);
         });
     }
 

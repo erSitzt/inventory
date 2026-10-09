@@ -1,8 +1,9 @@
 name: Paketbibliothek
 
 # Baut täglich den Katalog der Paketbibliothek (catalog.json, Grundauswahl aus catalog/apps.txt) und den Suchindex über
-# das gesamte winget-Repository (winget.json) und legt beide im Branch "catalog" ab.
-# Die Server laden sie von dort (Inventory:Catalog:Url und Inventory:Catalog:IndexUrl).
+# das gesamte winget-Repository (winget.json, dazu versions/ mit den älteren Versionen je Programm) und legt alles im
+# Branch "catalog" ab.
+# Die Server laden es von dort (Inventory:Catalog:Url, IndexUrl und VersionsUrl).
 on:
   schedule:
     - cron: '17 4 * * *'
@@ -33,6 +34,6 @@ jobs:
         run: |
           # Ein einzelner, jeweils ersetzter Commit: der Katalog hat keine Historie, die das Repository aufblähen müsste.
           git init --quiet --initial-branch=catalog
-          git add catalog.json winget.json
+          git add catalog.json winget.json versions
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit --quiet -m "Katalog vom $(date -u +%Y-%m-%d)"
           git push --quiet --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" catalog

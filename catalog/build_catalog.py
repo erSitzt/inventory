@@ -7,7 +7,8 @@ Lädt nur die Manifest-Ordner der gewünschten Pakete (partieller Git-Klon), wä
 und daraus ein unbeaufsichtigt installierbares Setup (64 Bit bevorzugt). Braucht git und PyYAML.
 
 Mit --index entsteht zusätzlich der Suchindex über das gesamte winget-Repository: alle Pakete mit unbeaufsichtigt
-installierbarem Setup, ungeprüft und in gekürzter Form. Dafür wird das Repository vollständig (ohne Historie) geholt.
+installierbarem Setup, ungeprüft und in gekürzter Form. Daneben entsteht der Ordner versions/ mit einer Datei je Paket,
+die alle im Repository geführten Versionen nennt. Dafür wird das Repository vollständig (ohne Historie) geholt.
 """
 import datetime
 import json
@@ -104,7 +105,7 @@ def exit_code(value):
     return value - (1 << 32) if value >= 1 << 31 else value
 
 
-def build_entry(root, package_id, directory=None):
+def build_entry(root, package_id, directory=None, brief=False):
     if directory is None:
         version = latest_version(root, package_id)
         if version is None:
@@ -119,9 +120,11 @@ def build_entry(root, package_id, directory=None):
     if arguments is None:
         return None, "keine Silent-Parameter bekannt"
 
-    version_manifest = load(os.path.join(directory, package_id + ".yaml"))
-    locale_path = os.path.join(directory, f"{package_id}.locale.{version_manifest.get('DefaultLocale', 'en-US')}.yaml")
-    locale = load(locale_path) if os.path.isfile(locale_path) else {}
+    locale = {}
+    if not brief:
+        version_manifest = load(os.path.join(directory, package_id + ".yaml"))
+        locale_path = os.path.join(directory, f"{package_id}.locale.{version_manifest.get('DefaultLocale', 'en-US')}.yaml")
+        locale = load(locale_path) if os.path.isfile(locale_path) else {}
     entries = installer.get("AppsAndFeaturesEntries") or manifest.get("AppsAndFeaturesEntries") or []
     name = locale.get("PackageName") or package_id
     extension = "msi" if kind in ("wix", "msi") else "exe"
@@ -159,31 +162,57 @@ def build_entry(root, package_id, directory=None):
 
 
 def all_packages(root):
-    """Alle Pakete des Repositories: ID -> Ordner der höchsten Version."""
+    """Alle Pakete des Repositories: ID -> Ordner aller Versionen, die höchste zuerst."""
     suffix = ".installer.yaml"
     found = {}
     for directory, _, files in os.walk(os.path.join(root, "manifests")):
         for name in files:
             if name.endswith(suffix):
                 found.setdefault(name[:-len(suffix)], []).append(directory)
-    return {package_id: max(directories, key=lambda d: version_key(os.path.basename(d))) for package_id, directories in found.items()}
+    return {package_id: sorted(directories, key=lambda d: version_key(os.path.basename(d)), reverse=True) for package_id, directories in found.items()}
 
 
-def build_index(root):
-    """Suchindex über alle Pakete; gekürzt, weil er mehrere tausend Einträge enthält."""
-    entries = []
-    for package_id, directory in sorted(all_packages(root).items()):
+MAX_VERSIONS = 60
+VERSION_KEYS = ("id", "version", "releaseDate", "installerType", "architecture", "scope", "url", "sha256", "fileName", "arguments", "successCodes")
+
+
+def downloadable(entry):
+    """Ohne http(s)-Adresse und Prüfsumme lässt sich nichts sicher laden."""
+    return bool(entry) and re.match(r"https?://", str(entry["url"]), re.I) and re.fullmatch(r"[0-9a-f]{64}", entry["sha256"])
+
+
+def build_versions(root, package_id, directories):
+    """Alle Versionen eines Pakets, die neueste zuerst; nur die Angaben, die sich je Version unterscheiden."""
+    versions = []
+    # Wenige Pakete führen mehrere hundert Versionen; die neuesten genügen.
+    for directory in directories[:MAX_VERSIONS]:
         try:
-            entry, _ = build_entry(root, package_id, directory)
+            entry, _ = build_entry(root, package_id, directory, brief=True)
+        except Exception:
+            entry = None
+        if downloadable(entry):
+            versions.append({key: entry[key] for key in VERSION_KEYS if entry[key] is not None})
+    return versions
+
+
+def build_index(root, versions_dir):
+    """Suchindex über alle Pakete; gekürzt, weil er mehrere tausend Einträge enthält. Dazu je Paket eine Datei mit allen Versionen."""
+    entries = []
+    for package_id, directories in sorted(all_packages(root).items()):
+        # Die Kennung wird zum Dateinamen und zum Teil einer Adresse.
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.+_-]*", package_id):
+            continue
+        try:
+            entry, _ = build_entry(root, package_id, directories[0])
         except Exception:  # ein einzelnes fehlerhaftes Manifest soll den Index nicht verhindern
             entry = None
-        # Ohne http(s)-Adresse und Prüfsumme lässt sich nichts sicher laden.
-        if not entry or not re.match(r"https?://", str(entry["url"]), re.I) or not re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]):
+        if not downloadable(entry):
             continue
         entry["details"] = None
         entry["tags"] = entry["tags"][:6]
         entry["description"] = shorten(entry["description"], 200)
         entries.append({key: value for key, value in entry.items() if value not in (None, [])})
+        write_json(os.path.join(versions_dir, package_id + ".json"), build_versions(root, package_id, directories), indent=None)
     return entries
 
 
@@ -246,7 +275,7 @@ def main():
         return 1
 
     if index_output:
-        index = build_index(work)
+        index = build_index(work, os.path.join(os.path.dirname(os.path.abspath(index_output)), "versions"))
         write_json(index_output, index, indent=None)
         print(f"Suchindex: {len(index)} Pakete.")
         if len(index) < 1000:

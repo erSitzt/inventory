@@ -177,4 +177,7 @@ public sealed class CatalogOptions
 
     /// <summary>Suchindex über das gesamte winget-Repository (ungeprüfte Einträge); leer = Suche abschalten.</summary>
     public string? IndexUrl { get; set; } = "https://raw.githubusercontent.com/erSitzt/inventory/catalog/winget.json";
+
+    /// <summary>Ordner mit je einer Datei "&lt;winget-ID&gt;.json" für die älteren Versionen eines Programms; leer = nur die aktuelle Version anbieten.</summary>
+    public string? VersionsUrl { get; set; } = "https://raw.githubusercontent.com/erSitzt/inventory/catalog/versions";
 }

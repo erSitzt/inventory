@@ -104,7 +104,7 @@ builder.Services.AddSingleton(new UpdateOptions
 builder.Services.AddSingleton<UpdateService>();
 builder.Services.AddSingleton<ICatalogSource>(new HttpCatalogSource(new HttpClient(new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All }) { Timeout = TimeSpan.FromMinutes(30) }));
 builder.Services.AddSingleton(sp => new CatalogService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), sp.GetRequiredService<ICatalogSource>(),
-    sp.GetRequiredService<PackageService>(), sp.GetRequiredService<CollectionService>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, options.Catalog.Url, options.Catalog.IndexUrl));
+    sp.GetRequiredService<PackageService>(), sp.GetRequiredService<CollectionService>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, options.Catalog.Url, options.Catalog.IndexUrl, options.Catalog.VersionsUrl));
 builder.Services.AddHostedService<SchedulerWorker>();
 
 var windowsAuthentication = options.ResolveWindowsAuthentication();

@@ -18,7 +18,7 @@ public sealed record CatalogItem(CatalogEntry Entry, Package? Package, bool Cura
 /// vom Hersteller, prüft die Prüfsumme aus dem Katalog und legt ein gewöhnliches Paket an, das sich aktuell halten lässt.
 /// </summary>
 public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFactory, ICatalogSource source, PackageService packages,
-    CollectionService collections, AuditService audit, TimeProvider time, string catalogLocation, string? indexLocation = null)
+    CollectionService collections, AuditService audit, TimeProvider time, string catalogLocation, string? indexLocation = null, string? versionsLocation = null)
 {
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromHours(6);
     private static readonly TimeSpan IndexRefreshInterval = TimeSpan.FromHours(24);
@@ -134,6 +134,33 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         || (entry.Moniker?.Contains(word, StringComparison.OrdinalIgnoreCase) ?? false)
         || entry.Tags.Any(t => t.Contains(word, StringComparison.OrdinalIgnoreCase));
 
+    public bool VersionsAvailable => !string.IsNullOrWhiteSpace(versionsLocation);
+
+    /// <summary>
+    /// Alle Versionen eines Programms, die das winget-Repository führt, die neueste zuerst. Die Angaben zum Programm
+    /// (Name, Hersteller, Erkennung) stammen vom aktuellen Eintrag, Setup und Prüfsumme von der jeweiligen Version.
+    /// </summary>
+    /// <exception cref="RemoteException">Die Versionsliste ist nicht erreichbar.</exception>
+    public async Task<List<CatalogEntry>> VersionsAsync(string catalogId, CancellationToken ct = default)
+    {
+        var current = Find(catalogId) ?? throw new InvalidOperationException("Dieser Eintrag ist nicht (mehr) in der Bibliothek.");
+        // Die Kennung wird Teil einer Adresse bzw. eines Pfades.
+        if (!VersionsAvailable || !System.Text.RegularExpressions.Regex.IsMatch(catalogId, @"^[A-Za-z0-9][A-Za-z0-9.+_-]*$"))
+            return [current];
+        var folder = versionsLocation!.TrimEnd('/', '\\');
+        var location = folder.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? $"{folder}/{Uri.EscapeDataString(catalogId)}.json" : Path.Combine(folder, catalogId + ".json");
+        var versions = (await source.LoadAsync(location, ct)).Packages
+            .Where(v => v.Id == catalogId && v.Version != current.Version)
+            .Select(v => new CatalogEntry
+            {
+                Id = current.Id, Name = current.Name, Publisher = current.Publisher, Description = current.Description, Homepage = current.Homepage,
+                License = current.License, LicenseUrl = current.LicenseUrl, Match = current.Match,
+                Version = v.Version, ReleaseDate = v.ReleaseDate, InstallerType = v.InstallerType, Architecture = v.Architecture, Scope = v.Scope,
+                Url = v.Url, Sha256 = v.Sha256, FileName = v.FileName, Arguments = v.Arguments, SuccessCodes = v.SuccessCodes,
+            });
+        return [current, .. versions];
+    }
+
     /// <summary>Die Grundauswahl hat Vorrang vor dem Suchindex.</summary>
     private CatalogEntry? Find(string? catalogId) =>
         catalogId is null ? null : Current?.Packages.FirstOrDefault(e => e.Id == catalogId) ?? Index?.Packages.FirstOrDefault(e => e.Id == catalogId);
@@ -141,19 +168,36 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
     /// <summary>Legt aus einem Katalogeintrag ein Paket an (Setup laden, prüfen, Installationsschritt erzeugen).</summary>
     /// <exception cref="RemoteException">Download fehlgeschlagen oder Prüfsumme falsch.</exception>
     /// <exception cref="InvalidOperationException">Eintrag unbekannt oder bereits importiert.</exception>
-    public async Task<Package> ImportAsync(string catalogId, bool autoUpdate, bool createCollection, string user, CancellationToken ct = default)
+    /// <param name="version">
+    /// Eine bestimmte ältere Version; null = die aktuelle. Ein Paket mit fester Version ist von der Bibliothek gelöst:
+    /// es heißt "Name Version", wird nie automatisch aktualisiert und darf neben dem aktuellen Paket bestehen.
+    /// </param>
+    public async Task<Package> ImportAsync(string catalogId, bool autoUpdate, bool createCollection, string user, string? version = null, CancellationToken ct = default)
     {
         await _lock.WaitAsync(ct);
         try
         {
             var entry = Find(catalogId) ?? throw new InvalidOperationException("Dieser Eintrag ist nicht (mehr) in der Bibliothek.");
+            var pinned = version is not null && version != entry.Version;
+            if (pinned)
+                entry = (await VersionsAsync(catalogId, ct)).FirstOrDefault(v => v.Version == version)
+                        ?? throw new InvalidOperationException($"{entry.Name} {version} wird im winget-Repository nicht (mehr) geführt.");
             string name;
             await using (var db = await dbFactory.CreateDbContextAsync(ct))
             {
-                if (await db.Packages.AnyAsync(p => p.CatalogId == catalogId, ct))
-                    throw new InvalidOperationException($"{entry.Name} ist bereits importiert.");
-                // Ein selbst angelegtes Paket gleichen Namens bleibt unangetastet.
-                name = await db.Packages.AnyAsync(p => p.Name == entry.Name, ct) ? $"{entry.Name} (Bibliothek)" : entry.Name;
+                if (pinned)
+                {
+                    name = $"{entry.Name} {entry.Version}";
+                    if (await db.Packages.AnyAsync(p => p.Name == name, ct))
+                        throw new InvalidOperationException($"Ein Paket „{name}“ gibt es bereits.");
+                }
+                else
+                {
+                    if (await db.Packages.AnyAsync(p => p.CatalogId == catalogId, ct))
+                        throw new InvalidOperationException($"{entry.Name} ist bereits importiert.");
+                    // Ein selbst angelegtes Paket gleichen Namens bleibt unangetastet.
+                    name = await db.Packages.AnyAsync(p => p.Name == entry.Name, ct) ? $"{entry.Name} (Bibliothek)" : entry.Name;
+                }
             }
 
             var package = await packages.SaveAsync(null, name, entry.Version, Describe(entry), ct);
@@ -177,14 +221,15 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
                     collectionId = (await collections.SaveAsync(null, collectionName, $"Rechner mit {entry.Match} älter als die Bibliotheksversion", true, true, [OutdatedRule(entry)], ct)).Id;
             }
 
-            await using (var db = await dbFactory.CreateDbContextAsync(ct))
+            if (!pinned)
             {
+                await using var db = await dbFactory.CreateDbContextAsync(ct);
                 await db.Packages.Where(p => p.Id == package.Id).ExecuteUpdateAsync(s => s
                     .SetProperty(p => p.CatalogId, catalogId)
                     .SetProperty(p => p.CatalogAutoUpdate, autoUpdate)
                     .SetProperty(p => p.CatalogCollectionId, collectionId), ct);
             }
-            await audit.LogAsync(user, "Paket aus Bibliothek importiert", $"{name} {entry.Version}", ct);
+            await audit.LogAsync(user, "Paket aus Bibliothek importiert", pinned ? $"{name} (feste Version)" : $"{name} {entry.Version}", ct);
             return (await packages.GetAsync(package.Id, ct))!;
         }
         finally

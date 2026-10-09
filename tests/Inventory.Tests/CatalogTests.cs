@@ -21,7 +21,7 @@ public sealed class CatalogTests : IDisposable
     {
         _packages = new PackageService(_db, new PackageRepository(_repoDir));
         _collections = new CollectionService(_db);
-        _catalog = new CatalogService(_db, _source, _packages, _collections, new AuditService(_db), TimeProvider.System, "test", "index");
+        _catalog = new CatalogService(_db, _source, _packages, _collections, new AuditService(_db), TimeProvider.System, "test", "index", "versions");
     }
 
     public void Dispose()
@@ -158,6 +158,36 @@ public sealed class CatalogTests : IDisposable
     }
 
     [Fact]
+    public async Task An_older_version_becomes_a_separate_package_that_is_never_updated()
+    {
+        _source.Publish("7zip.7zip", "7-Zip", "24.08", "");
+        _source.PublishVersions("7zip.7zip", "24.08", "23.01", "22.01");
+        await _catalog.RefreshAsync();
+
+        var versions = await _catalog.VersionsAsync("7zip.7zip");
+        Assert.Equal(["24.08", "23.01", "22.01"], versions.Select(v => v.Version));
+        // Name und Erkennung stammen vom aktuellen Eintrag, das Setup von der Version.
+        Assert.Equal(("7-Zip", "7-Zip", "7zip.7zip-23.01.msi"), (versions[1].Name, versions[1].Match, versions[1].FileName));
+
+        var old = await _catalog.ImportAsync("7zip.7zip", autoUpdate: true, createCollection: true, "anna", version: "23.01");
+        Assert.Equal(("7-Zip 23.01", "23.01", null, false), (old.Name, old.Version, old.CatalogId, old.CatalogAutoUpdate));
+        Assert.Equal("7zip.7zip-23.01.msi", Assert.Single(_packages.Repository.List(old.Id)).RelativePath);
+        Assert.Contains(await _collections.ListAsync(), c => c.Collection.Name == "7-Zip 23.01 veraltet");
+
+        // Das aktuelle Paket lässt sich daneben importieren; die feste Version bleibt bei Aktualisierungen unberührt.
+        Assert.Null((await _catalog.ListAsync()).Single().Package);
+        var current = await _catalog.ImportAsync("7zip.7zip", autoUpdate: true, createCollection: false, "anna");
+        _source.Publish("7zip.7zip", "7-Zip", "25.01", "");
+        await _catalog.RefreshAsync(force: true);
+        Assert.Equal(1, await _catalog.UpdateDueAsync());
+        Assert.Equal("25.01", (await _packages.GetAsync(current.Id))!.Version);
+        Assert.Equal("23.01", (await _packages.GetAsync(old.Id))!.Version);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _catalog.ImportAsync("7zip.7zip", false, false, "anna", version: "23.01"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _catalog.ImportAsync("7zip.7zip", false, false, "anna", version: "1.0"));
+    }
+
+    [Fact]
     public async Task Search_reports_an_unreachable_index_without_breaking_the_list()
     {
         _source.Publish("7zip.7zip", "7-Zip", "24.08", "");
@@ -196,7 +226,16 @@ public sealed class CatalogTests : IDisposable
             _entries.Remove(id);
         }
 
+        private readonly Dictionary<string, List<CatalogEntry>> _versions = [];
+
+        public void PublishVersions(string id, params string[] versions) => _versions[id] = [.. versions.Select(version => new CatalogEntry
+        {
+            Id = id, Version = version, InstallerType = "wix", Url = version, Sha256 = Convert.ToHexString(SHA256.HashData(Content(version))).ToLowerInvariant(),
+            FileName = $"{id}-{version}.msi", SuccessCodes = [0, 1641, 3010],
+        })];
+
         public Task<Catalog> LoadAsync(string location, CancellationToken ct = default) =>
+            location.StartsWith("versions") ? Task.FromResult(new Catalog { Packages = _versions.GetValueOrDefault(Path.GetFileNameWithoutExtension(location), []) }) :
             location == "index" ? FailIndex is null ? Task.FromResult(new Catalog { Packages = [.. _index.Values] }) : throw new RemoteException(FailIndex) :
             Fail is null ? Task.FromResult(new Catalog { Generated = DateTime.UtcNow, Packages = [.. _entries.Values] }) : throw new RemoteException(Fail);
 
