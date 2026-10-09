@@ -29,6 +29,8 @@ public enum RuleField
     PendingUpdates = 105,
     /// <summary>Tage seit der letzten erfolgreichen Update-Installation.</summary>
     DaysSinceUpdate = 106,
+    /// <summary>Das Computerkonto fehlt im Active Directory oder ist dort deaktiviert.</summary>
+    MissingInDirectory = 107,
     Online = 1,
     Scanned,
     OsName,

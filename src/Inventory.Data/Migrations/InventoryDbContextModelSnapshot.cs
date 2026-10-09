@@ -186,6 +186,15 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("DirectoryDisabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("DirectoryMissingSinceUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DirectorySeenUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Domain")
                         .HasColumnType("TEXT");
 

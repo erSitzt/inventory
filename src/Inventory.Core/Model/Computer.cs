@@ -27,6 +27,15 @@ public class Computer
     public string? AgentVersion { get; set; }
     public DateTime? AgentLastSeenUtc { get; set; }
 
+    // Active Directory
+    /// <summary>Wann die Synchronisation das Computerkonto zuletzt gefunden hat; null = nie, der Eintrag ist von Hand gepflegt.</summary>
+    public DateTime? DirectorySeenUtc { get; set; }
+    /// <summary>Seit wann das Konto im Verzeichnis fehlt (oder deaktiviert ist und deaktivierte ausgeschlossen sind); null = vorhanden.</summary>
+    public DateTime? DirectoryMissingSinceUtc { get; set; }
+    /// <summary>Das Computerkonto ist im Verzeichnis deaktiviert.</summary>
+    public bool DirectoryDisabled { get; set; }
+    public bool MissingInDirectory => DirectoryMissingSinceUtc is not null;
+
     // Aus dem letzten Inventar-Scan
     /// <summary>Name, den der Rechner selbst meldet; kann vom Eintrag abweichen (veralteter DNS-Eintrag, CNAME, IP-Adresse).</summary>
     public string? ReportedName { get; set; }

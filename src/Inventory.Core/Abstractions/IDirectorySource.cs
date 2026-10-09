@@ -2,13 +2,14 @@ using System.Net;
 
 namespace Inventory.Core.Abstractions;
 
-public sealed record DirectoryComputer(string Name, string? DnsHostName, string? OperatingSystem, string? Description);
+/// <param name="Enabled">false, wenn das Computerkonto im Verzeichnis deaktiviert ist.</param>
+public sealed record DirectoryComputer(string Name, string? DnsHostName, string? OperatingSystem, string? Description, bool Enabled = true);
 
 /// <param name="Server">Domänencontroller oder DNS-Name der Domäne; leer = Domäne des Servers.</param>
 /// <param name="BaseDns">Suchwurzeln (OUs); leer = gesamte Domäne.</param>
 public sealed record DirectoryQuery(string? Server, IReadOnlyList<string> BaseDns, NetworkCredential? Credential);
 
-/// <summary>Liest aktivierte Computerkonten aus dem Active Directory.</summary>
+/// <summary>Liest die Computerkonten aus dem Active Directory, aktivierte wie deaktivierte.</summary>
 public interface IDirectorySource
 {
     /// <exception cref="RemoteException">Das Verzeichnis ist nicht erreichbar oder lehnt die Anfrage ab.</exception>

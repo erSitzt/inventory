@@ -72,6 +72,29 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         return name;
     }
 
+    /// <summary>Hält fest, was die Verzeichnis-Synchronisation über die Rechner herausgefunden hat.</summary>
+    /// <param name="states">Je Rechner: im Verzeichnis vorhanden (und nicht ausgeschlossen), Konto deaktiviert.</param>
+    public async Task SetDirectoryStateAsync(IReadOnlyDictionary<int, (bool Present, bool Disabled)> states, DateTime nowUtc, CancellationToken ct = default)
+    {
+        var ids = states.Keys.ToList();
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        foreach (var computer in await db.Computers.Where(c => ids.Contains(c.Id)).ToListAsync(ct))
+        {
+            var (present, disabled) = states[computer.Id];
+            computer.DirectoryDisabled = disabled;
+            if (present)
+            {
+                computer.DirectorySeenUtc = nowUtc;
+                computer.DirectoryMissingSinceUtc = null;
+            }
+            else
+            {
+                computer.DirectoryMissingSinceUtc ??= nowUtc;
+            }
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<int> DeleteAsync(IEnumerable<int> ids, CancellationToken ct = default)
     {
         var idList = ids.ToList();

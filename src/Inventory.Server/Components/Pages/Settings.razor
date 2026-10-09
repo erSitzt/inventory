@@ -26,7 +26,9 @@
                    Label="Rechnernamen vor der Ausführung prüfen" />
         <MudText Typo="Typo.body2">
             Befehle und Deployments laufen nur, wenn der erreichte Rechner so heißt wie eingetragen. Das verhindert, dass ein
-            veralteter DNS-Eintrag eine Installation auf einen fremden Rechner lenkt. Scans sind davon ausgenommen.
+            veralteter DNS-Eintrag eine Installation auf einen fremden Rechner lenkt. Scans sind davon ausgenommen: sie laufen
+            trotzdem und zeigen so, welcher Rechner tatsächlich antwortet. Die erfassten Daten gehören dann zu diesem Rechner,
+            und der Eintrag gilt nicht als online.
         </MudText>
         <MudText Typo="Typo.body2">
             SMB + Dienst braucht die Freigabe ADMIN$ und den Dienststeuerungs-Manager (Port 445), der Job läuft als Lokales System.
@@ -64,7 +66,8 @@
     <MudStack Spacing="3">
         <MudText Typo="Typo.h6">Active Directory</MudText>
         <MudText Typo="Typo.body2">
-            Legt aktivierte Computerkonten aus dem Verzeichnis als Rechner an. Bereits vorhandene bleiben unverändert, gelöscht wird nie automatisch.
+            Legt Computerkonten aus dem Verzeichnis als Rechner an und kennzeichnet Rechner, deren Konto dort nicht mehr gefunden wird.
+            Von Hand angelegte Rechner, die das Verzeichnis nie gekannt hat, bleiben unberührt.
         </MudText>
         <MudSwitch T="bool" @bind-Value="_adEnabled" Color="Color.Primary" Label="Regelmäßig synchronisieren" />
         <MudTextField @bind-Value="_adServer" Label="Domänencontroller oder Domäne" Variant="Variant.Outlined" Margin="Margin.Dense"
@@ -79,6 +82,27 @@
             }
         </MudSelect>
         <MudNumericField T="int" @bind-Value="_adIntervalHours" Label="Intervall (Stunden)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="720" />
+        <MudSwitch T="bool" @bind-Value="_adExcludeDisabled" Color="Color.Primary" Label="Deaktivierte Computerkonten ausschließen" />
+        <MudText Typo="Typo.caption">
+            Deaktivierte Konten werden nicht angelegt; ist ein bereits vorhandener Rechner im Verzeichnis deaktiviert, gilt er als nicht mehr gefunden.
+        </MudText>
+        <MudSelect T="AdMissingAction" @bind-Value="_adMissingAction" Label="Rechner, die im Verzeichnis nicht mehr gefunden werden" Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelectItem Value="AdMissingAction.Keep">Behalten und als „nicht im AD“ kennzeichnen</MudSelectItem>
+            <MudSelectItem Value="AdMissingAction.Delete">Kennzeichnen und nach einer Frist löschen</MudSelectItem>
+        </MudSelect>
+        @if (_adMissingAction == AdMissingAction.Delete)
+        {
+            <MudNumericField T="int" @bind-Value="_adMissingDays" Label="Frist (Tage)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="3650"
+                             HelperText="So lange muss ein Rechner ununterbrochen fehlen, bevor er gelöscht wird" />
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                Mit dem Rechner werden seine Inventardaten und sein Verlauf gelöscht. Wer die Suchwurzeln einschränkt, lässt alle Rechner
+                außerhalb davon als fehlend gelten. Wären auf einmal auffällig viele Rechner zu löschen, löscht der Lauf nichts und meldet das.
+            </MudAlert>
+        }
+        <MudText Typo="Typo.caption">
+            Gekennzeichnete Rechner stehen in der Rechnerliste unter dem Filter „Nicht (mehr) im AD“ und lassen sich über das Regelfeld
+            „Nicht (mehr) im Active Directory“ in dynamischen Sammlungen verwenden, etwa um sie von Zeitplänen auszunehmen.
+        </MudText>
         <MudStack Row="true" Wrap="Wrap.Wrap">
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAdAsync">Speichern</MudButton>
             <MudButton Variant="Variant.Outlined" Disabled="_adBusy" OnClick="PreviewAdAsync">Vorschau</MudButton>
@@ -254,6 +278,9 @@
     private string? _adBaseDns;
     private int? _adCredentialId;
     private int _adIntervalHours = 24;
+    private bool _adExcludeDisabled = true;
+    private AdMissingAction _adMissingAction;
+    private int _adMissingDays = 30;
     private DateTime? _adLastRunUtc;
     private string? _adLastResult;
     private string? _adMessage;
@@ -267,12 +294,14 @@
         var ad = await AdSync.GetSettingsAsync();
         (_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adLastRunUtc, _adLastResult) =
             (ad.Enabled, ad.Server, ad.BaseDns?.Replace(";", "\n"), ad.CredentialId, ad.IntervalHours, ad.LastRunUtc, ad.LastResult);
+        (_adExcludeDisabled, _adMissingAction, _adMissingDays) = (ad.ExcludeDisabled, ad.MissingAction, ad.MissingDays);
     }
 
     private async Task SaveAdAsync()
     {
-        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours);
-        await Audit.LogAsync("Einstellung geändert", $"AD-Synchronisation: {(_adEnabled ? "an" : "aus")}, Server {_adServer ?? "(Domäne)"}, alle {_adIntervalHours} h");
+        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays);
+        await Audit.LogAsync("Einstellung geändert", $"AD-Synchronisation: {(_adEnabled ? "an" : "aus")}, Server {_adServer ?? "(Domäne)"}, alle {_adIntervalHours} h, " +
+            $"deaktivierte Konten {(_adExcludeDisabled ? "ausgeschlossen" : "einbezogen")}, fehlende Rechner {(_adMissingAction == AdMissingAction.Delete ? $"nach {_adMissingDays} Tagen löschen" : "behalten")}");
         Snackbar.Add("Gespeichert.", Severity.Success);
     }
 
@@ -281,8 +310,14 @@
         await RunAdAsync(async () =>
         {
             var preview = await AdSync.PreviewAsync();
-            var names = string.Join(", ", preview.NewNames.Take(15)) + (preview.NewNames.Count > 15 ? " …" : "");
-            return $"{preview.Total} Computerkonten gefunden, davon {preview.NewNames.Count} neu" + (preview.NewNames.Count > 0 ? $": {names}" : ".");
+            static string Names(List<string> names) => names.Count == 0 ? "" : ": " + string.Join(", ", names.Take(15)) + (names.Count > 15 ? " …" : "");
+            var text = $"{preview.Total} Computerkonten gefunden ({preview.Disabled} deaktiviert). Neu anzulegen: {preview.NewNames.Count}{Names(preview.NewNames)}. " +
+                       $"Nicht im AD: {preview.MissingNames!.Count}{Names(preview.MissingNames)}.";
+            if (preview.DeleteNames!.Count > 0)
+                text += preview.DeleteBlocked
+                    ? $" Zu löschen wären {preview.DeleteNames.Count} – auffällig viele auf einmal, der Lauf würde deshalb nichts löschen."
+                    : $" Der nächste Lauf löscht {preview.DeleteNames.Count}{Names(preview.DeleteNames)}.";
+            return text;
         });
     }
 
@@ -295,7 +330,7 @@
         _adMessage = null;
         try
         {
-            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours);
+            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays);
             _adMessage = await action();
             _adSeverity = _adMessage.StartsWith("Fehler") ? Severity.Error : Severity.Success;
         }

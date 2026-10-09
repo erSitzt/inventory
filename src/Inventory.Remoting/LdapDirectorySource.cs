@@ -6,10 +6,11 @@ namespace Inventory.Remoting;
 
 public sealed class LdapDirectorySource : IDirectorySource
 {
-    // Aktivierte Computerkonten: Bit 2 (ACCOUNTDISABLE) in userAccountControl darf nicht gesetzt sein.
-    private const string Filter = "(&(objectCategory=computer)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))";
+    private const string Filter = "(objectCategory=computer)";
+    // Bit 2 in userAccountControl: das Konto ist deaktiviert.
+    private const int AccountDisabled = 2;
     private const int PageSize = 500;
-    private static readonly string[] Attributes = ["name", "dNSHostName", "operatingSystem", "description"];
+    private static readonly string[] Attributes = ["name", "dNSHostName", "operatingSystem", "description", "userAccountControl"];
 
     public Task<List<DirectoryComputer>> GetComputersAsync(DirectoryQuery query, CancellationToken ct = default) =>
         Task.Run(() => Search(query, ct), ct);
@@ -53,7 +54,8 @@ public sealed class LdapDirectorySource : IDirectorySource
                     foreach (SearchResultEntry entry in response.Entries)
                     {
                         if (Value(entry, "name") is { } name)
-                            result[name] = new DirectoryComputer(name, Value(entry, "dNSHostName"), Value(entry, "operatingSystem"), Value(entry, "description"));
+                            result[name] = new DirectoryComputer(name, Value(entry, "dNSHostName"), Value(entry, "operatingSystem"), Value(entry, "description"),
+                                Enabled: !int.TryParse(Value(entry, "userAccountControl"), out var control) || (control & AccountDisabled) == 0);
                     }
                     paging.Cookie = response.Controls.OfType<PageResultResponseControl>().FirstOrDefault()?.Cookie ?? [];
                 } while (paging.Cookie.Length > 0);

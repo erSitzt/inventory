@@ -36,6 +36,7 @@ public static class Display
     {
         RuleField.ComputerName => "Rechnername",
         RuleField.NameMismatch => "Gemeldeter Name weicht ab",
+        RuleField.MissingInDirectory => "Nicht (mehr) im Active Directory",
         RuleField.LocalAdmin => "Lokaler Administrator",
         RuleField.FirewallOff => "Firewall (teilweise) aus",
         RuleField.AntivirusProblem => "Kein Echtzeit-Virenschutz",
@@ -70,7 +71,7 @@ public static class Display
     /// <summary>Operatoren, die für ein Feld sinnvoll sind.</summary>
     public static IReadOnlyList<RuleOperator> OperatorsFor(RuleField field) => field switch
     {
-        RuleField.Online or RuleField.Scanned or RuleField.NameMismatch
+        RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
             or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired => [RuleOperator.Equals],
         RuleField.PendingUpdates or RuleField.DaysSinceUpdate => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
         RuleField.MemoryGb => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals],
@@ -172,7 +173,7 @@ public static class Display
     };
 
     /// <summary>Felder, die nur "ja" oder "nein" kennen.</summary>
-    public static bool IsFlag(RuleField field) => field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch
+    public static bool IsFlag(RuleField field) => field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
         or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired;
 
     public static string OnOff(bool? value) => value switch { true => "an", false => "aus", null => "unbekannt" };

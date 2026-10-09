@@ -77,6 +77,12 @@
                         <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">ist @context.Item.ReportedName</MudChip>
                     </MudTooltip>
                 }
+                @if (context.Item.MissingInDirectory)
+                {
+                    <MudTooltip Text="@($"Das Computerkonto {(context.Item.DirectoryDisabled ? "ist im Active Directory deaktiviert" : "fehlt im Active Directory")}, seit {Display.LocalTime(context.Item.DirectoryMissingSinceUtc)}.")">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Icon="@Icons.Material.Filled.PersonOff">@(context.Item.DirectoryDisabled ? "im AD deaktiviert" : "nicht im AD")</MudChip>
+                    </MudTooltip>
+                }
                 else if (context.Item.ReverseDnsMismatch)
                 {
                     <MudTooltip Text="@($"Die Adresse {context.Item.IpAddress} gehört laut Reverse-DNS zu {context.Item.ReverseDnsName}. Der Rechner selbst hat seinen Namen noch nicht genannt – ein Scan schafft Klarheit.")">
@@ -188,7 +194,7 @@
     private static readonly (string Key, string Label)[] BuiltInViews =
     [
         ("all", "Alle Rechner"), ("online", "Online"), ("offline", "Offline"), ("mismatch", "Falscher Rechner antwortet"),
-        ("unscanned", "Noch nicht gescannt"), ("scanerror", "Scan fehlgeschlagen"), ("agent", "Mit Agent"),
+        ("nodirectory", "Nicht (mehr) im AD"), ("unscanned", "Noch nicht gescannt"), ("scanerror", "Scan fehlgeschlagen"), ("agent", "Mit Agent"),
         ("firewall", "Firewall aus"), ("antivirus", "Kein Echtzeit-Virenschutz"), ("updates", "Updates ausstehend"), ("reboot", "Neustart ausstehend"),
     ];
 
@@ -201,6 +207,7 @@
         "offline" => !c.IsOnline,
         "mismatch" => c.NameMismatch,
         "unscanned" => c.LastScanUtc is null,
+        "nodirectory" => c.MissingInDirectory,
         "scanerror" => c.LastScanError is not null,
         "agent" => c.AgentKeyHash is not null,
         "firewall" => c.FirewallOff,

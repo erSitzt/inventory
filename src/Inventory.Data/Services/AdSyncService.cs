@@ -4,13 +4,39 @@ using Inventory.Core.Model;
 
 namespace Inventory.Data.Services;
 
-public sealed record AdSyncSettings(bool Enabled, string? Server, string? BaseDns, int? CredentialId, int IntervalHours, DateTime? LastRunUtc, string? LastResult);
-
-public sealed record AdSyncPreview(int Total, List<string> NewNames);
-
-/// <summary>Legt Rechner an, die im Active Directory stehen, aber hier noch fehlen. Gelöscht wird nie automatisch.</summary>
-public sealed class AdSyncService(IDirectorySource directory, SettingsService settings, CredentialService credentials, ComputerService computers, TimeProvider time)
+/// <summary>Was mit Rechnern geschieht, deren Computerkonto im Verzeichnis nicht mehr gefunden wird.</summary>
+public enum AdMissingAction
 {
+    /// <summary>Behalten und als „nicht im AD“ kennzeichnen.</summary>
+    Keep,
+    /// <summary>Kennzeichnen und nach der eingestellten Frist samt Inventardaten löschen.</summary>
+    Delete,
+}
+
+/// <param name="ExcludeDisabled">Deaktivierte Computerkonten nicht anlegen und wie fehlende behandeln.</param>
+/// <param name="MissingDays">Frist in Tagen, nach der fehlende Rechner gelöscht werden (nur bei <see cref="AdMissingAction.Delete"/>).</param>
+public sealed record AdSyncSettings(bool Enabled, string? Server, string? BaseDns, int? CredentialId, int IntervalHours, DateTime? LastRunUtc, string? LastResult,
+    bool ExcludeDisabled = true, AdMissingAction MissingAction = AdMissingAction.Keep, int MissingDays = 30);
+
+/// <param name="Total">Gefundene Computerkonten, deaktivierte eingeschlossen.</param>
+/// <param name="Disabled">Davon deaktiviert.</param>
+/// <param name="MissingNames">Rechner, die als „nicht im AD“ gekennzeichnet sind oder es mit diesem Lauf werden.</param>
+/// <param name="DeleteNames">Rechner, deren Frist abgelaufen ist und die dieser Lauf löscht.</param>
+/// <param name="DeleteBlocked">true, wenn auffällig viele Rechner auf einmal zu löschen wären; dann löscht der Lauf nichts.</param>
+public sealed record AdSyncPreview(int Total, List<string> NewNames, int Disabled = 0, List<string>? MissingNames = null, List<string>? DeleteNames = null, bool DeleteBlocked = false);
+
+/// <summary>
+/// Gleicht die Rechnerliste mit dem Active Directory ab: legt fehlende Rechner an, kennzeichnet Rechner, deren Konto
+/// verschwunden (oder deaktiviert) ist, und löscht sie auf Wunsch nach einer Frist. Von Hand angelegte Rechner, die
+/// das Verzeichnis nie gekannt hat, bleiben unberührt.
+/// </summary>
+public sealed class AdSyncService(IDirectorySource directory, SettingsService settings, CredentialService credentials, ComputerService computers, TimeProvider time,
+    AuditService? audit = null)
+{
+    /// <summary>Mehr als so viele Löschungen in einem Lauf gelten als Hinweis auf eine falsche Suchwurzel, wenn sie zugleich einen großen Teil ausmachen.</summary>
+    private const int MassDeleteCount = 5;
+    private const double MassDeleteShare = 0.25;
+
     public async Task<AdSyncSettings> GetSettingsAsync(CancellationToken ct = default) => new(
         await settings.GetAsync(SettingKeys.AdSyncEnabled, ct) == bool.TrueString,
         await settings.GetAsync(SettingKeys.AdSyncServer, ct),
@@ -18,25 +44,27 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         int.TryParse(await settings.GetAsync(SettingKeys.AdSyncCredentialId, ct), out var credentialId) ? credentialId : null,
         int.TryParse(await settings.GetAsync(SettingKeys.AdSyncIntervalHours, ct), out var hours) && hours > 0 ? hours : 24,
         DateTime.TryParse(await settings.GetAsync(SettingKeys.AdSyncLastRunUtc, ct), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var last) ? last : null,
-        await settings.GetAsync(SettingKeys.AdSyncLastResult, ct));
+        await settings.GetAsync(SettingKeys.AdSyncLastResult, ct),
+        await settings.GetAsync(SettingKeys.AdSyncExcludeDisabled, ct) != bool.FalseString,
+        Enum.TryParse<AdMissingAction>(await settings.GetAsync(SettingKeys.AdSyncMissingAction, ct), out var action) ? action : AdMissingAction.Keep,
+        int.TryParse(await settings.GetAsync(SettingKeys.AdSyncMissingDays, ct), out var days) && days > 0 ? days : 30);
 
-    public async Task SaveSettingsAsync(bool enabled, string? server, string? baseDns, int? credentialId, int intervalHours, CancellationToken ct = default)
+    public async Task SaveSettingsAsync(bool enabled, string? server, string? baseDns, int? credentialId, int intervalHours,
+        bool excludeDisabled = true, AdMissingAction missingAction = AdMissingAction.Keep, int missingDays = 30, CancellationToken ct = default)
     {
         await settings.SetAsync(SettingKeys.AdSyncEnabled, enabled.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncServer, string.IsNullOrWhiteSpace(server) ? null : server.Trim(), ct);
         await settings.SetAsync(SettingKeys.AdSyncBaseDns, string.IsNullOrWhiteSpace(baseDns) ? null : baseDns.Trim(), ct);
         await settings.SetAsync(SettingKeys.AdSyncCredentialId, credentialId?.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncIntervalHours, Math.Clamp(intervalHours, 1, 24 * 30).ToString(), ct);
+        await settings.SetAsync(SettingKeys.AdSyncExcludeDisabled, excludeDisabled.ToString(), ct);
+        await settings.SetAsync(SettingKeys.AdSyncMissingAction, missingAction.ToString(), ct);
+        await settings.SetAsync(SettingKeys.AdSyncMissingDays, Math.Clamp(missingDays, 1, 3650).ToString(), ct);
     }
 
     /// <summary>Fragt das Verzeichnis ab, ohne etwas zu ändern.</summary>
     /// <exception cref="RemoteException">Das Verzeichnis ist nicht erreichbar.</exception>
-    public async Task<AdSyncPreview> PreviewAsync(CancellationToken ct = default)
-    {
-        var found = await QueryAsync(await GetSettingsAsync(ct), ct);
-        var known = (await computers.ListAsync(ct)).Select(c => c.Name.Split('.')[0]).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return new AdSyncPreview(found.Count, found.Select(c => c.Name).Where(n => !known.Contains(n)).ToList());
-    }
+    public async Task<AdSyncPreview> PreviewAsync(CancellationToken ct = default) => (await PlanAsync(ct)).Preview;
 
     /// <summary>Synchronisiert sofort; das Ergebnis wird auch in den Einstellungen festgehalten.</summary>
     public async Task<string> SyncAsync(CancellationToken ct = default)
@@ -44,9 +72,29 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         string result;
         try
         {
-            var preview = await PreviewAsync(ct);
+            var plan = await PlanAsync(ct);
+            var preview = plan.Preview;
             var added = await computers.ImportAsync(string.Join('\n', preview.NewNames), ct);
+            foreach (var computer in added)
+                plan.States[computer.Id] = (true, false);
+            await computers.SetDirectoryStateAsync(plan.States, plan.NowUtc, ct);
+
             result = $"{preview.Total} Computerkonten gefunden, {added.Count} neu angelegt";
+            if (preview.Disabled > 0)
+                result += $", {preview.Disabled} deaktiviert";
+            if (preview.MissingNames!.Count > 0)
+                result += $", {preview.MissingNames.Count} nicht im AD";
+            if (preview.DeleteBlocked)
+            {
+                result += $" – {plan.DeleteIds.Count} Rechner wären zu löschen; das sind auffällig viele auf einmal, deshalb wurde nichts gelöscht (Suchwurzeln prüfen oder von Hand löschen)";
+            }
+            else if (plan.DeleteIds.Count > 0)
+            {
+                await computers.DeleteAsync(plan.DeleteIds, ct);
+                result += $", {plan.DeleteIds.Count} gelöscht";
+                if (audit is not null)
+                    await audit.LogAsync("(automatisch)", "Rechner gelöscht (nicht mehr im AD)", string.Join(", ", preview.DeleteNames!), ct);
+            }
         }
         catch (RemoteException ex)
         {
@@ -66,6 +114,55 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         await SyncAsync(ct);
         return true;
     }
+
+    private sealed record Plan(AdSyncPreview Preview, Dictionary<int, (bool Present, bool Disabled)> States, List<int> DeleteIds, DateTime NowUtc);
+
+    private async Task<Plan> PlanAsync(CancellationToken ct)
+    {
+        var current = await GetSettingsAsync(ct);
+        var now = time.GetUtcNow().UtcDateTime;
+        var found = (await QueryAsync(current, ct)).GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var disabled = found.Values.Count(c => !c.Enabled);
+        bool Counts(DirectoryComputer c) => c.Enabled || !current.ExcludeDisabled;
+
+        var existing = await computers.ListAsync(ct);
+        var known = existing.Select(c => ShortName(c.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var newNames = found.Values.Where(c => Counts(c) && !known.Contains(c.Name)).Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase).ToList();
+
+        var states = new Dictionary<int, (bool Present, bool Disabled)>();
+        var missing = new List<Computer>();
+        var delete = new List<Computer>();
+        // Ein leeres Ergebnis ist fast immer eine falsche Suchwurzel oder fehlende Leserechte, kein leeres Verzeichnis.
+        if (found.Count > 0)
+        {
+            foreach (var computer in existing)
+            {
+                var account = found.GetValueOrDefault(ShortName(computer.Name));
+                if (account is not null && Counts(account))
+                {
+                    states[computer.Id] = (true, !account.Enabled);
+                }
+                else if (account is not null || computer.DirectorySeenUtc is not null)
+                {
+                    // Nur Rechner, die das Verzeichnis kennt oder kannte; von Hand angelegte bleiben unberührt.
+                    states[computer.Id] = (false, account is { Enabled: false });
+                    missing.Add(computer);
+                    if (current.MissingAction == AdMissingAction.Delete && computer.DirectoryMissingSinceUtc is { } since && now - since >= TimeSpan.FromDays(current.MissingDays))
+                        delete.Add(computer);
+                }
+            }
+        }
+
+        var managed = existing.Count(c => c.DirectorySeenUtc is not null || found.ContainsKey(ShortName(c.Name)));
+        var blocked = delete.Count > MassDeleteCount && delete.Count > managed * MassDeleteShare;
+        foreach (var computer in blocked ? [] : delete)
+            states.Remove(computer.Id);
+
+        var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked);
+        return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now);
+    }
+
+    private static string ShortName(string name) => name.Split('.')[0];
 
     private async Task<List<DirectoryComputer>> QueryAsync(AdSyncSettings current, CancellationToken ct)
     {

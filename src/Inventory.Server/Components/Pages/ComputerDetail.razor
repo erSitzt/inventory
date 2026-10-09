@@ -34,6 +34,7 @@
         Unter dem Namen <b>@_computer.Name</b> antwortet der Rechner <b>@_computer.ReportedName</b> (Adresse @_computer.IpAddress).
         Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias (CNAME) auf diesen Rechner; vorhandene Inventardaten gehören zu @_computer.ReportedName.
         Befehle und Deployments werden auf diesem Eintrag nicht ausgeführt, solange die Namen abweichen.
+        Scans laufen weiterhin – sie erfassen dann aber @_computer.ReportedName, nicht @_computer.Name.
         <div class="mt-2">
             <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="RenameAsync">Eintrag in @_computer.ReportedName umbenennen</MudButton>
         </div>
@@ -44,6 +45,14 @@ else if (_computer.ReverseDnsMismatch)
     <MudAlert Severity="Severity.Info" Class="mb-4">
         Die Adresse @_computer.IpAddress gehört laut Reverse-DNS zu <b>@_computer.ReverseDnsName</b>, eingetragen ist <b>@_computer.Name</b>.
         Der Rechner selbst hat seinen Namen noch nicht genannt; ein Scan zeigt, wer wirklich antwortet.
+    </MudAlert>
+}
+@if (_computer.MissingInDirectory)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        Das Computerkonto @(_computer.DirectoryDisabled ? "ist im Active Directory deaktiviert" : "wurde im Active Directory nicht mehr gefunden")
+        (seit @Display.LocalTime(_computer.DirectoryMissingSinceUtc)@(_computer.DirectorySeenUtc is null ? "" : $", zuletzt vorhanden {Display.LocalTime(_computer.DirectorySeenUtc)}")).
+        Was mit solchen Rechnern geschieht, legen die Einstellungen unter „Active Directory“ fest.
     </MudAlert>
 }
 @if (_computer.LastScanError is not null)

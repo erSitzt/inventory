@@ -109,6 +109,79 @@ public class ScheduleTests
     }
 
     [Fact]
+    public async Task Ad_sync_marks_missing_and_disabled_computers_and_deletes_them_after_the_grace_period()
+    {
+        using var db = new TestDb();
+        var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var directory = new FakeDirectory { Computers = [new("PC-01", null, null, null), new("PC-02", null, null, null), new("PC-03", null, null, null, Enabled: false)] };
+        var sync = new AdSyncService(directory, new SettingsService(db), new CredentialService(db, new ReversingProtector()), computers, clock, new AuditService(db));
+        await computers.ImportAsync("handarbeit pc-03");
+        await sync.SaveSettingsAsync(true, null, null, null, 24, excludeDisabled: true, AdMissingAction.Delete, missingDays: 30);
+
+        // Deaktivierte Konten werden nicht angelegt; ein vorhandener Rechner mit deaktiviertem Konto gilt als fehlend.
+        Assert.Equal("3 Computerkonten gefunden, 2 neu angelegt, 1 deaktiviert, 1 nicht im AD", await sync.SyncAsync());
+        var list = await computers.ListAsync();
+        Assert.Equal(["handarbeit", "PC-01", "PC-02", "pc-03"], list.Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase));
+        Assert.Equal(["pc-03"], list.Where(c => c.MissingInDirectory).Select(c => c.Name));
+        Assert.True(list.Single(c => c.Name == "pc-03").DirectoryDisabled);
+        Assert.NotNull(list.Single(c => c.Name == "PC-01").DirectorySeenUtc);
+
+        // PC-02 verschwindet aus dem Verzeichnis: erst gekennzeichnet, nach der Frist gelöscht. Der von Hand angelegte Rechner bleibt.
+        directory.Computers = [new("PC-01", null, null, null), new("PC-03", null, null, null, Enabled: false)];
+        clock.Advance(TimeSpan.FromDays(10));
+        Assert.Equal(("PC-02,pc-03", ""), await Preview());
+        await sync.SyncAsync();
+        clock.Advance(TimeSpan.FromDays(25));
+        Assert.Equal(("PC-02,pc-03", "pc-03"), await Preview());
+        Assert.EndsWith("2 nicht im AD, 1 gelöscht", await sync.SyncAsync());
+        clock.Advance(TimeSpan.FromDays(10));
+        // Taucht das Konto wieder auf, verschwindet die Kennzeichnung und die Frist beginnt neu.
+        directory.Computers = [new("PC-01", null, null, null), new("PC-02", null, null, null)];
+        await sync.SyncAsync();
+        Assert.Equal(["handarbeit", "PC-01", "PC-02"], (await computers.ListAsync()).Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase));
+        Assert.DoesNotContain(await computers.ListAsync(), c => c.MissingInDirectory);
+
+        async Task<(string, string)> Preview()
+        {
+            var preview = await sync.PreviewAsync();
+            return (string.Join(",", preview.MissingNames!.Order(StringComparer.OrdinalIgnoreCase)), string.Join(",", preview.DeleteNames!));
+        }
+    }
+
+    [Fact]
+    public async Task Ad_sync_keeps_everything_when_the_directory_answers_empty_or_too_many_would_be_deleted()
+    {
+        using var db = new TestDb();
+        var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var all = Enumerable.Range(1, 10).Select(i => new DirectoryComputer($"PC-{i:D2}", null, null, null)).ToList();
+        var directory = new FakeDirectory { Computers = all };
+        var sync = new AdSyncService(directory, new SettingsService(db), new CredentialService(db, new ReversingProtector()), computers, clock);
+        await sync.SaveSettingsAsync(true, null, null, null, 24, excludeDisabled: false, AdMissingAction.Delete, missingDays: 1);
+        await sync.SyncAsync();
+
+        // Leere Antwort (falsche Suchwurzel, fehlende Rechte): nichts wird gekennzeichnet.
+        directory.Computers = [];
+        await sync.SyncAsync();
+        Assert.DoesNotContain(await computers.ListAsync(), c => c.MissingInDirectory);
+
+        // Fast alles fehlt auf einmal: gekennzeichnet, aber nicht gelöscht.
+        directory.Computers = [.. all.Take(2)];
+        await sync.SyncAsync();
+        clock.Advance(TimeSpan.FromDays(2));
+        Assert.Contains("auffällig viele", await sync.SyncAsync());
+        Assert.Equal(10, (await computers.ListAsync()).Count);
+        Assert.Equal(8, (await computers.ListAsync()).Count(c => c.MissingInDirectory));
+
+        // Deaktivierte Konten zählen als vorhanden, wenn sie nicht ausgeschlossen sind.
+        directory.Computers = [.. all.Select(c => c with { Enabled = false })];
+        await sync.SyncAsync();
+        Assert.DoesNotContain(await computers.ListAsync(), c => c.MissingInDirectory);
+        Assert.All(await computers.ListAsync(), c => Assert.True(c.DirectoryDisabled));
+    }
+
+    [Fact]
     public void Csv_rows_are_escaped_and_formulas_neutralised()
     {
         var csv = new StringBuilder();

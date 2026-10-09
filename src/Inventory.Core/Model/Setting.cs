@@ -18,6 +18,9 @@ public static class SettingKeys
     public const string AdSyncBaseDns = "AdSync.BaseDns";
     public const string AdSyncCredentialId = "AdSync.CredentialId";
     public const string AdSyncIntervalHours = "AdSync.IntervalHours";
+    public const string AdSyncExcludeDisabled = "AdSync.ExcludeDisabled";
+    public const string AdSyncMissingAction = "AdSync.MissingAction";
+    public const string AdSyncMissingDays = "AdSync.MissingDays";
     public const string AdSyncLastRunUtc = "AdSync.LastRunUtc";
     public const string AdSyncLastResult = "AdSync.LastResult";
 }
