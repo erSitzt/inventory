@@ -13,21 +13,67 @@
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="api/reports/computers.csv" Target="_blank">@L["Computers (CSV)"]</MudButton>
 </MudStack>
 
+<MudText Typo="Typo.body2" Class="mb-4">
+    @L["One row per program; different versions are grouped and listed when the row is expanded. Click a version to see the computers."]
+</MudText>
+
 <MudGrid>
     <MudItem xs="12" lg="@(_selected is null ? 12 : 8)">
-        <MudDataGrid T="SoftwareSummary" Items="_software" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50" RowClick="SelectAsync"
-                     QuickFilter="@(s => string.IsNullOrWhiteSpace(_search) || s.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (s.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))">
+        <MudDataGrid T="SoftwareGroup" Items="_groups" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50"
+                     QuickFilter="@(g => string.IsNullOrWhiteSpace(_search) || g.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (g.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) || g.Versions.Any(v => v.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)))">
             <Columns>
-                <PropertyColumn Property="s => s.Name" Title="@L["Program"]" />
-                <PropertyColumn Property="s => s.Version" Title="@L["Version"]" />
-                <PropertyColumn Property="s => s.Publisher" Title="@L["Publisher"]" />
-                <PropertyColumn Property="s => s.Computers" Title="@L["Computers"]" />
+                <HierarchyColumn T="SoftwareGroup" />
+                <TemplateColumn Title="@L["Program"]" SortBy="g => g.Name">
+                    <CellTemplate>
+                        <b>@context.Item.Name</b>
+                        @if (context.Item.Versions.Count == 1 && context.Item.Versions[0].Name != context.Item.Name)
+                        {
+                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@context.Item.Versions[0].Name</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["Publisher"]" SortBy="g => g.Publisher">
+                    <CellTemplate>@context.Item.Publisher</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["Versions"]" SortBy="g => g.Versions.Count">
+                    <CellTemplate>
+                        @if (context.Item.Versions.Count == 1)
+                        {
+                            <MudLink OnClick="@(() => SelectAsync(context.Item.Versions[0]))">@(context.Item.Versions[0].Version ?? L["unknown"])</MudLink>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">@L["{0} versions", context.Item.Versions.Count]</MudChip>
+                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["newest {0}", context.Item.Versions[0].Version]</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["Computers"]" SortBy="g => g.Computers">
+                    <CellTemplate>@context.Item.Computers</CellTemplate>
+                </TemplateColumn>
             </Columns>
+            <ChildRowContent>
+                <MudSimpleTable Dense="true" Elevation="0" Class="ma-2" Style="max-width: 800px">
+                    <thead>
+                        <tr><th>@L["Version"]</th><th>@L["Reported name"]</th><th style="text-align: right">@L["Computers"]</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var version in context.Item.Versions)
+                        {
+                            <tr>
+                                <td><MudLink OnClick="@(() => SelectAsync(version))">@(version.Version ?? L["unknown"])</MudLink></td>
+                                <td>@version.Name</td>
+                                <td style="text-align: right">@version.Computers</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </ChildRowContent>
             <NoRecordsContent>
                 <MudText Class="pa-4">@L["No software recorded yet. The overview fills with the first inventory scan."]</MudText>
             </NoRecordsContent>
             <PagerContent>
-                <MudDataGridPager T="SoftwareSummary" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
+                <MudDataGridPager T="SoftwareGroup" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
             </PagerContent>
         </MudDataGrid>
     </MudItem>
@@ -54,16 +100,16 @@
 </MudGrid>
 
 @code {
-    private List<SoftwareSummary> _software = [];
+    private List<SoftwareGroup> _groups = [];
     private SoftwareSummary? _selected;
     private List<Computer> _computers = [];
     private string _search = "";
 
-    protected override async Task OnInitializedAsync() => _software = await Reports.SoftwareAsync();
+    protected override async Task OnInitializedAsync() => _groups = await Reports.SoftwareGroupsAsync();
 
-    private async Task SelectAsync(DataGridRowClickEventArgs<SoftwareSummary> args)
+    private async Task SelectAsync(SoftwareSummary version)
     {
-        _selected = args.Item;
-        _computers = await Reports.ComputersWithSoftwareAsync(args.Item.Name, args.Item.Version);
+        _selected = version;
+        _computers = await Reports.ComputersWithSoftwareAsync(version.Name, version.Version);
     }
 }

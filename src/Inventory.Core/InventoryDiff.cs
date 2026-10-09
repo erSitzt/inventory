@@ -95,10 +95,6 @@ public static partial class InventoryDiff
         return MergeUpdates(changes);
     }
 
-    /// <summary>Versionsnummern im Programmnamen, z. B. "7-Zip 24.08 (x64)" oder "Python 3.12.1".</summary>
-    [GeneratedRegex(@"\bv?\d+(\.\d+)+\b", RegexOptions.IgnoreCase)]
-    private static partial Regex VersionInName();
-
     /// <summary>
     /// Viele Programme tragen die Version im Namen; ein Update erscheint dann als "entfernt" plus "neu". Solche Paare
     /// innerhalb eines Scans werden zu einer Änderung "alte Version → neue Version" zusammengefasst.
@@ -108,7 +104,7 @@ public static partial class InventoryDiff
         var result = new List<InventoryChange>(changes);
         var groups = changes
             .Where(c => c.Category == "Software" && c.Kind != ChangeKind.Changed)
-            .GroupBy(c => (c.ComputerId, c.TimeUtc, Key: NameWithoutVersion(c.Item, c.OldValue ?? c.NewValue)));
+            .GroupBy(c => (c.ComputerId, c.TimeUtc, Key: SoftwareNames.Key(c.Item, c.OldValue ?? c.NewValue)));
         foreach (var group in groups)
         {
             // Nur eindeutige Paare: bei mehreren Kandidaten ließe sich nicht sagen, welche Version welche ersetzt hat.
@@ -123,14 +119,6 @@ public static partial class InventoryDiff
             result.Remove(removed);
         }
         return result;
-    }
-
-    private static string NameWithoutVersion(string name, string? version)
-    {
-        if (!string.IsNullOrEmpty(version) && !version.Contains(','))
-            name = name.Replace(version, " ", StringComparison.OrdinalIgnoreCase);
-        name = VersionInName().Replace(name, " ");
-        return string.Join(' ', name.Split([' ', '-', '_'], StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
     }
 
     /// <summary>Mehrere Einträge mit gleichem Schlüssel (z. B. zwei Versionen eines Programms) werden zu einem Wert zusammengefasst.</summary>

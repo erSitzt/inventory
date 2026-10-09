@@ -8,6 +8,9 @@ namespace Inventory.Data.Services;
 
 public sealed record SoftwareSummary(string Name, string? Version, string? Publisher, int Computers);
 
+/// <summary>Ein Programm über alle Versionen hinweg; <see cref="Versions"/> enthält je Name/Version eine Zeile.</summary>
+public sealed record SoftwareGroup(string Name, string? Publisher, int Computers, List<SoftwareSummary> Versions);
+
 /// <summary>Kennzahlen der Übersichtsseite.</summary>
 public sealed class DashboardStats
 {
@@ -55,6 +58,33 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
             .Select(g => new SoftwareSummary(g.Key.Name, g.Key.Version, g.Select(s => s.Publisher).FirstOrDefault(p => p is not null), g.Select(s => s.ComputerId).Distinct().Count()))
             .OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase).ThenBy(s => s.Version)
             .ToList();
+    }
+
+    /// <summary>Programme zusammengefasst über Versionen ("7-Zip 24.08" und "7-Zip 26.04"), Jahreszahlen bleiben getrennt ("Office 2019" / "Office 2022").</summary>
+    public async Task<List<SoftwareGroup>> SoftwareGroupsAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var rows = await db.Software.AsNoTracking().Select(s => new { s.Name, s.Version, s.Publisher, s.ComputerId }).ToListAsync(ct);
+        return rows.GroupBy(s => SoftwareNames.Key(s.Name, s.Version))
+            .Select(group =>
+            {
+                var versions = group.GroupBy(s => (s.Name, s.Version))
+                    .Select(g => new SoftwareSummary(g.Key.Name, g.Key.Version, g.Select(s => s.Publisher).FirstOrDefault(p => p is not null), g.Select(s => s.ComputerId).Distinct().Count()))
+                    .OrderByDescending(v => v.Version, VersionOrder.Instance).ThenBy(v => v.Name, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+                // Der häufigste gemeldete Name, ohne Version, steht für die Gruppe.
+                var typical = group.GroupBy(s => s.Name).OrderByDescending(g => g.Count()).First().First();
+                return new SoftwareGroup(SoftwareNames.Display(typical.Name, typical.Version), versions.Select(v => v.Publisher).FirstOrDefault(p => p is not null),
+                    group.Select(s => s.ComputerId).Distinct().Count(), versions);
+            })
+            .OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    private sealed class VersionOrder : IComparer<string?>
+    {
+        public static readonly VersionOrder Instance = new();
+        public int Compare(string? x, string? y) => Inventory.Contracts.VersionComparer.Compare(x ?? "", y ?? "");
     }
 
     public async Task<List<Computer>> ComputersWithSoftwareAsync(string name, string? version, CancellationToken ct = default)

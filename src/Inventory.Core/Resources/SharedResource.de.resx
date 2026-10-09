@@ -1061,6 +1061,9 @@
   <data name="New versions are not adopted automatically" xml:space="preserve">
     <value>Neue Versionen werden nicht automatisch übernommen</value>
   </data>
+  <data name="newest {0}" xml:space="preserve">
+    <value>neueste {0}</value>
+  </data>
   <data name="Next run" xml:space="preserve">
     <value>Nächster Lauf</value>
   </data>
@@ -1243,6 +1246,9 @@
   </data>
   <data name="One per line; empty = whole domain" xml:space="preserve">
     <value>Eine je Zeile; leer = gesamte Domäne</value>
+  </data>
+  <data name="One row per program; different versions are grouped and listed when the row is expanded. Click a version to see the computers." xml:space="preserve">
+    <value>Eine Zeile je Programm; verschiedene Versionen sind zusammengefasst und erscheinen beim Aufklappen. Ein Klick auf eine Version zeigt die Rechner.</value>
   </data>
   <data name="Online" xml:space="preserve">
     <value>Online</value>
@@ -2216,6 +2222,9 @@
   <data name="Version {0}, last contact {1}" xml:space="preserve">
     <value>Version {0}, letzter Kontakt {1}</value>
   </data>
+  <data name="Versions" xml:space="preserve">
+    <value>Versionen</value>
+  </data>
   <data name="View" xml:space="preserve">
     <value>Ansicht</value>
   </data>
@@ -2416,6 +2425,9 @@
   </data>
   <data name="{0} updates pending" xml:space="preserve">
     <value>{0} Updates ausstehend</value>
+  </data>
+  <data name="{0} versions" xml:space="preserve">
+    <value>{0} Versionen</value>
   </data>
   <data name="{0} waiting for computers" xml:space="preserve">
     <value>{0} warten auf Rechner</value>
