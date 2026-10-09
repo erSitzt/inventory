@@ -34,8 +34,8 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
                 progress?.Report(new ProgressEvent { Kind = ProgressKind.Output, Step = i, Text = line });
             }
 
-            // Schritte, deren Name "fehler" enthält, schlagen fehl: so lässt sich das Fehlerverhalten ohne Zielrechner ausprobieren.
-            var fails = step.Name.Contains("fehler", StringComparison.OrdinalIgnoreCase);
+            // Schritte, deren Name "fail" oder "fehler" enthält, schlagen fehl: so lässt sich das Fehlerverhalten ohne Zielrechner ausprobieren.
+            var fails = step.Name.Contains("fail", StringComparison.OrdinalIgnoreCase) || step.Name.Contains("fehler", StringComparison.OrdinalIgnoreCase);
             var status = fails ? StepStatus.Failed : StepStatus.Succeeded;
             progress?.Report(new ProgressEvent { Kind = ProgressKind.StepFinished, Step = i, Status = status, ExitCode = fails ? 1 : 0 });
             result.Steps.Add(new StepResult
