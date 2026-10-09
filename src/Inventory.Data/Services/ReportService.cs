@@ -1,4 +1,5 @@
 using System.Text;
+using Inventory.Core;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,7 +7,39 @@ namespace Inventory.Data.Services;
 
 public sealed record SoftwareSummary(string Name, string? Version, string? Publisher, int Computers);
 
-public sealed record DashboardStats(int Computers, int Online, int Scanned, int ScanErrors, int Packages, int FirewallOff, int AntivirusProblems, int RebootRequired, int WithPendingUpdates, List<(string Os, int Count)> OperatingSystems, List<Deployment> RecentDeployments);
+/// <summary>Kennzahlen der Übersichtsseite.</summary>
+public sealed class DashboardStats
+{
+    public int Computers { get; init; }
+    public int Online { get; init; }
+    public int Scanned { get; init; }
+    public int ScanErrors { get; init; }
+    public int Unscanned { get; init; }
+    /// <summary>Gescannt, aber länger als <see cref="StaleDays"/> Tage her.</summary>
+    public int StaleScans { get; init; }
+    public int Packages { get; init; }
+    public int Schedules { get; init; }
+    public int Agents { get; init; }
+    public int AgentsConnected { get; init; }
+    public int FirewallOff { get; init; }
+    public int AntivirusProblems { get; init; }
+    public int RebootRequired { get; init; }
+    public int WithPendingUpdates { get; init; }
+    public int NameMismatch { get; init; }
+    public int MissingInDirectory { get; init; }
+    public int RunningDeployments { get; init; }
+    public int WaitingOffline { get; init; }
+    public int ChangesLast24h { get; init; }
+    public List<(string Os, int Count)> OperatingSystems { get; init; } = [];
+    public List<Deployment> RecentDeployments { get; init; } = [];
+    public List<(InventoryChange Change, string Computer)> RecentChanges { get; init; } = [];
+    public List<AuditEntry> RecentAudit { get; init; } = [];
+
+    public const int StaleDays = 7;
+
+    /// <summary>Rechner, bei denen etwas zu tun ist (ein Rechner kann mehrfach zählen).</summary>
+    public int AttentionItems => FirewallOff + AntivirusProblems + RebootRequired + WithPendingUpdates + ScanErrors + NameMismatch + MissingInDirectory;
+}
 
 public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactory)
 {
@@ -36,11 +69,37 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
         var systems = computers.Where(c => c.OsName is not null)
             .GroupBy(c => $"{c.OsName!.Replace("Microsoft ", "")} {c.OsRelease}".Trim())
             .Select(g => (g.Key, g.Count())).OrderByDescending(g => g.Item2).ToList();
-        var recent = await db.Deployments.AsNoTracking().Include(d => d.Targets).OrderByDescending(d => d.Id).Take(5).ToListAsync(ct);
-        return new DashboardStats(computers.Count, computers.Count(c => c.IsOnline), computers.Count(c => c.LastScanUtc is not null),
-            computers.Count(c => c.LastScanError is not null), await db.Packages.CountAsync(ct),
-            computers.Count(c => c.FirewallOff), computers.Count(c => c.AntivirusProblem), computers.Count(c => c.UpdateRebootRequired == true),
-            computers.Count(c => c.UpdatePendingCount > 0), systems, recent);
+        var recent = await db.Deployments.AsNoTracking().Include(d => d.Targets).OrderByDescending(d => d.Id).Take(6).ToListAsync(ct);
+        var now = DateTime.UtcNow;
+        var dayAgo = now.AddDays(-1);
+        var names = computers.ToDictionary(c => c.Id, c => c.Name);
+        var recentChanges = await db.InventoryChanges.AsNoTracking().OrderByDescending(c => c.Id).Take(8).ToListAsync(ct);
+        return new DashboardStats
+        {
+            Computers = computers.Count,
+            Online = computers.Count(c => c.IsOnline),
+            Scanned = computers.Count(c => c.LastScanUtc is not null),
+            ScanErrors = computers.Count(c => c.LastScanError is not null),
+            Unscanned = computers.Count(c => c.LastScanUtc is null),
+            StaleScans = computers.Count(c => c.LastScanUtc is { } scan && now - scan > TimeSpan.FromDays(DashboardStats.StaleDays)),
+            Packages = await db.Packages.CountAsync(ct),
+            Schedules = await db.Schedules.CountAsync(s => s.Enabled, ct),
+            Agents = computers.Count(c => c.AgentKeyHash is not null),
+            AgentsConnected = computers.Count(c => c.AgentLastSeenUtc is { } seen && now - seen < TimeSpan.FromMinutes(5)),
+            FirewallOff = computers.Count(c => c.FirewallOff),
+            AntivirusProblems = computers.Count(c => c.AntivirusProblem),
+            RebootRequired = computers.Count(c => c.UpdateRebootRequired == true),
+            WithPendingUpdates = computers.Count(c => c.UpdatePendingCount > 0),
+            NameMismatch = computers.Count(c => c.NameMismatch),
+            MissingInDirectory = computers.Count(c => c.MissingInDirectory),
+            RunningDeployments = await db.Deployments.CountAsync(d => d.FinishedUtc == null && d.Targets.Any(t => t.Status == TargetStatus.Running || t.Status == TargetStatus.Queued), ct),
+            WaitingOffline = await db.Deployments.Where(d => d.FinishedUtc == null).SelectMany(d => d.Targets).CountAsync(t => t.Status == TargetStatus.WaitingOffline, ct),
+            ChangesLast24h = await db.InventoryChanges.CountAsync(c => c.TimeUtc >= dayAgo, ct),
+            OperatingSystems = systems,
+            RecentDeployments = recent,
+            RecentChanges = InventoryDiff.MergeUpdates(recentChanges).Select(c => (c, names.GetValueOrDefault(c.ComputerId, "?"))).ToList(),
+            RecentAudit = await db.AuditEntries.AsNoTracking().OrderByDescending(e => e.Id).Take(6).ToListAsync(ct),
+        };
     }
 
     public async Task<string> ComputersCsvAsync(CancellationToken ct = default)

@@ -3,73 +3,214 @@
 
 <PageTitle>Übersicht – Inventory</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-4">Übersicht</MudText>
+<AutoRefresh Seconds="15" OnTick="RefreshAsync" />
 
-@if (_stats is not null)
+@if (_stats is null)
 {
-    <MudGrid>
-        @Tile("Rechner", _stats.Computers.ToString(), "computers")
-        @Tile("Online", _stats.Online.ToString(), "computers")
-        @Tile("Gescannt", $"{_stats.Scanned} von {_stats.Computers}", "computers")
-        @Tile("Scan-Fehler", _stats.ScanErrors.ToString(), "computers")
-        @Tile("Pakete", _stats.Packages.ToString(), "packages")
-        @Tile("Firewall aus", _stats.FirewallOff.ToString(), "computers?filter=firewall")
-        @Tile("Ohne Echtzeitschutz", _stats.AntivirusProblems.ToString(), "computers?filter=antivirus")
-        @Tile("Updates ausstehend", _stats.WithPendingUpdates.ToString(), "computers?filter=updates")
-        @Tile("Neustart ausstehend", _stats.RebootRequired.ToString(), "computers?filter=reboot")
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    return;
+}
 
-        <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4" Outlined="true">
-                <MudText Typo="Typo.h6" Class="mb-2">Betriebssysteme</MudText>
-                @if (_stats.OperatingSystems.Count == 0)
+<div class="dash-hero mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="6">
+        <div style="flex: 1; min-width: 260px">
+            <MudText Typo="Typo.overline" Class="muted">Inventory · @DateTime.Now.ToString("dddd, d. MMMM yyyy", German)</MudText>
+            <div class="big mt-1">@_stats.Computers <span style="font-size: 1.25rem; font-weight: 500">Rechner</span></div>
+            <MudText Typo="Typo.body1" Class="muted mt-2">
+                @if (_stats.Computers == 0)
                 {
-                    <MudText Color="Color.Secondary">Noch keine Inventardaten. Unter „Rechner“ lässt sich ein Scan starten.</MudText>
+                    <span>Noch keine Rechner. Unter „Rechner“ lassen sich Namen anlegen oder aus dem Active Directory übernehmen.</span>
                 }
-                @foreach (var (os, count) in _stats.OperatingSystems)
+                else if (_stats.AttentionItems == 0)
                 {
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
-                        <MudText Typo="Typo.body2" Style="width: 45%">@os</MudText>
-                        <MudProgressLinear Value="@(100d * count / Math.Max(_stats.Scanned, 1))" Color="Color.Primary" Rounded="true" Size="Size.Medium" Style="flex: 1" />
-                        <MudText Typo="Typo.body2" Style="width: 2.5rem; text-align: right">@count</MudText>
-                    </MudStack>
+                    <span>Alles in Ordnung – keine offenen Punkte.</span>
                 }
-            </MudPaper>
-        </MudItem>
+                else
+                {
+                    <span>@_stats.AttentionItems @(_stats.AttentionItems == 1 ? "offener Punkt" : "offene Punkte") – Einzelheiten unter „Handlungsbedarf“.</span>
+                }
+            </MudText>
+            <MudStack Row="true" Spacing="2" Class="mt-4" Wrap="Wrap.Wrap">
+                <MudButton Href="computers" Variant="Variant.Filled" Style="background: rgba(255,255,255,0.92); color: #312e81" StartIcon="@Icons.Material.Filled.Computer">Rechner</MudButton>
+                <MudButton Href="run" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.Terminal">Befehl ausführen</MudButton>
+                <MudButton Href="deployments" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.RocketLaunch">Deployment</MudButton>
+            </MudStack>
+        </div>
+        <MudStack Row="true" Spacing="6" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+            @Ring("Online", _stats.Online, _stats.Computers, "#34d399")
+            @Ring("Gescannt", _stats.Scanned, _stats.Computers, "#7dd3fc")
+            @if (_stats.Agents > 0)
+            {
+                @Ring("Agenten", _stats.AgentsConnected, _stats.Agents, "#fcd34d")
+            }
+        </MudStack>
+    </MudStack>
+</div>
 
-        <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4" Outlined="true">
-                <MudText Typo="Typo.h6" Class="mb-2">Letzte Deployments</MudText>
-                @if (_stats.RecentDeployments.Count == 0)
-                {
-                    <MudText Color="Color.Secondary">Noch keine Deployments.</MudText>
-                }
-                @foreach (var deployment in _stats.RecentDeployments)
-                {
-                    var failed = deployment.Targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled);
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
-                        <MudLink Href="@($"deployments/{deployment.Id}")" Style="flex: 1">@deployment.PackageName @deployment.PackageVersion</MudLink>
-                        <MudText Typo="Typo.caption">@Display.LocalTime(deployment.CreatedUtc)</MudText>
-                        <MudChip T="string" Size="Size.Small" Color="@(failed > 0 ? Color.Error : Color.Success)">
-                            @deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded)/@deployment.Targets.Count
+<MudGrid Spacing="3">
+    @Kpi("Online", _stats.Online, $"von {_stats.Computers}", Icons.Material.Filled.Wifi, "tint-success", "computers?filter=online")
+    @Kpi("Offline", _stats.Computers - _stats.Online, "", Icons.Material.Filled.WifiOff, "tint-neutral", "computers?filter=offline")
+    @Kpi("Nicht gescannt", _stats.Unscanned, _stats.StaleScans > 0 ? $"{_stats.StaleScans} älter als {DashboardStats.StaleDays} Tage" : "", Icons.Material.Filled.ManageSearch, _stats.Unscanned > 0 ? "tint-warning" : "tint-info", "computers?filter=unscanned")
+    @Kpi("Änderungen", _stats.ChangesLast24h, "letzte 24 Stunden", Icons.Material.Filled.Timeline, "tint-primary", "changes")
+    @Kpi("Deployments", _stats.RunningDeployments, _stats.WaitingOffline > 0 ? $"{_stats.WaitingOffline} warten auf Rechner" : "laufen gerade", Icons.Material.Filled.RocketLaunch, _stats.RunningDeployments > 0 ? "tint-info" : "tint-neutral", "deployments")
+    @Kpi("Pakete", _stats.Packages, _stats.Schedules > 0 ? $"{_stats.Schedules} aktive Zeitpläne" : "", Icons.Material.Filled.Inventory2, "tint-primary", "packages")
+
+    <MudItem xs="12" md="5" lg="4">
+        <div class="dash-card">
+            <div class="title"><MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Size="Size.Small" Color="Color.Warning" /> Handlungsbedarf</div>
+            @if (_stats.AttentionItems == 0)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                    <MudText Typo="Typo.body2">Keine offenen Punkte.</MudText>
+                </MudStack>
+            }
+            @Attention("Firewall (teilweise) aus", _stats.FirewallOff, "computers?filter=firewall", "tint-error")
+            @Attention("Kein Echtzeit-Virenschutz", _stats.AntivirusProblems, "computers?filter=antivirus", "tint-error")
+            @Attention("Updates ausstehend", _stats.WithPendingUpdates, "computers?filter=updates", "tint-warning")
+            @Attention("Neustart ausstehend", _stats.RebootRequired, "computers?filter=reboot", "tint-warning")
+            @Attention("Scan fehlgeschlagen", _stats.ScanErrors, "computers?filter=scanerror", "tint-warning")
+            @Attention("Falscher Rechner antwortet", _stats.NameMismatch, "computers?filter=mismatch", "tint-warning")
+            @Attention("Nicht (mehr) im Active Directory", _stats.MissingInDirectory, "computers?filter=nodirectory", "tint-neutral")
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" md="7" lg="4">
+        <div class="dash-card">
+            <div class="title"><MudIcon Icon="@Icons.Material.Filled.Laptop" Size="Size.Small" Color="Color.Primary" /> Betriebssysteme</div>
+            @if (_stats.OperatingSystems.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Noch keine Inventardaten. Unter „Rechner“ lässt sich ein Scan starten.</MudText>
+            }
+            @foreach (var (os, count) in _stats.OperatingSystems.Take(8))
+            {
+                <div class="os-row">
+                    <MudText Typo="Typo.body2" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">@os</MudText>
+                    <div class="bar"><span style="width: @(100 * count / Math.Max(_stats.Scanned, 1))%"></span></div>
+                    <MudText Typo="Typo.body2" Style="text-align: right; font-weight: 600">@count</MudText>
+                </div>
+            }
+            @if (_stats.OperatingSystems.Count > 8)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">… und @(_stats.OperatingSystems.Count - 8) weitere</MudText>
+            }
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" lg="4">
+        <div class="dash-card">
+            <div class="title"><MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Size="Size.Small" Color="Color.Info" /> Letzte Deployments</div>
+            @if (_stats.RecentDeployments.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Noch keine Deployments.</MudText>
+            }
+            @foreach (var deployment in _stats.RecentDeployments)
+            {
+                var total = Math.Max(deployment.Targets.Count, 1);
+                var ok = deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded);
+                var failed = deployment.Targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled);
+                var waiting = deployment.Targets.Count(t => t.Status == TargetStatus.WaitingOffline);
+                var running = deployment.FinishedUtc is null && deployment.Targets.Any(t => t.Status is TargetStatus.Running or TargetStatus.Queued);
+                <div class="deploy-row">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudLink Href="@($"deployments/{deployment.Id}")" Style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+                            @deployment.PackageName @deployment.PackageVersion
+                        </MudLink>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@Display.LocalTime(deployment.CreatedUtc)</MudText>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(running ? Color.Info : failed > 0 ? Color.Error : waiting > 0 ? Color.Warning : Color.Success)">
+                            @(running ? "läuft" : $"{ok}/{deployment.Targets.Count}")
                         </MudChip>
                     </MudStack>
-                }
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
-}
+                    <div class="bar">
+                        <span style="width: @(100 * ok / total)%; background: #10b981"></span>
+                        <span style="width: @(100 * failed / total)%; background: #ef4444"></span>
+                        <span style="width: @(100 * waiting / total)%; background: #f59e0b"></span>
+                    </div>
+                </div>
+            }
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <div class="dash-card">
+            <div class="title">
+                <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Small" Color="Color.Primary" /> Letzte Änderungen
+                <MudSpacer /><MudLink Href="changes" Typo="Typo.caption">Alle</MudLink>
+            </div>
+            @if (_stats.RecentChanges.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Noch keine Änderungen erfasst; ab dem zweiten Scan eines Rechners entsteht der Verlauf.</MudText>
+            }
+            @foreach (var (change, computer) in _stats.RecentChanges)
+            {
+                <div class="feed-row">
+                    <span class="time">@Display.LocalTime(change.TimeUtc)</span>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@Display.ChangeColor(change)" Style="margin: 0">@Display.Change(change)</MudChip>
+                    <span class="text"><MudLink Href="@($"computers/{change.ComputerId}")">@computer</MudLink> · @change.Category: @change.Item @Display.ChangeValues(change)</span>
+                </div>
+            }
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <div class="dash-card">
+            <div class="title">
+                <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Primary" /> Protokoll
+                <MudSpacer /><MudLink Href="audit" Typo="Typo.caption">Alle</MudLink>
+            </div>
+            @if (_stats.RecentAudit.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Noch keine Einträge.</MudText>
+            }
+            @foreach (var entry in _stats.RecentAudit)
+            {
+                <div class="feed-row">
+                    <span class="time">@Display.LocalTime(entry.TimeUtc)</span>
+                    <span class="text"><b>@entry.Action</b>@(string.IsNullOrEmpty(entry.Details) ? "" : $" – {entry.Details}") <span style="color: var(--mud-palette-text-secondary)">(@entry.User)</span></span>
+                </div>
+            }
+        </div>
+    </MudItem>
+</MudGrid>
 
 @code {
     private DashboardStats? _stats;
+    /// <summary>Die Oberfläche ist deutsch, unabhängig von der Sprache des Server-Betriebssystems.</summary>
+    private static readonly System.Globalization.CultureInfo German = System.Globalization.CultureInfo.GetCultureInfo("de-DE");
 
     protected override async Task OnInitializedAsync() => _stats = await Reports.DashboardAsync();
 
-    private static RenderFragment Tile(string label, string value, string href) => @<MudItem xs="6" sm="4" md="2">
-        <MudLink Href="@href" Underline="Underline.None">
-            <MudPaper Class="pa-4" Outlined="true">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@label</MudText>
-                <MudText Typo="Typo.h5">@value</MudText>
-            </MudPaper>
+    private async Task RefreshAsync() => _stats = await Reports.DashboardAsync();
+
+    /// <summary>Kreisdiagramm im Kopfbereich: Anteil als Ring, Zahl in der Mitte.</summary>
+    private static RenderFragment Ring(string label, int value, int total, string color)
+    {
+        var share = total == 0 ? 0 : 100d * value / total;
+        var style = $"background: conic-gradient({color} {share.ToString(System.Globalization.CultureInfo.InvariantCulture)}%, rgba(255,255,255,0.18) 0); border-radius: 50%; width: 100%; height: 100%; mask: radial-gradient(circle, transparent 54%, #000 56%); -webkit-mask: radial-gradient(circle, transparent 54%, #000 56%)";
+        return @<div class="dash-ring">
+            <div style="@style"></div>
+            <div class="center">
+                <span style="font-size: 1.5rem; font-weight: 700">@value</span>
+                <span style="font-size: 0.7rem; opacity: 0.85">@label</span>
+            </div>
+        </div>;
+    }
+
+    private static RenderFragment Kpi(string label, int value, string hint, string icon, string tint, string href) => @<MudItem xs="6" sm="4" lg="2">
+        <MudLink Href="@href" Underline="Underline.None" Style="display: block; height: 100%">
+            <div class="kpi">
+                <div class="icon @tint"><MudIcon Icon="@icon" /></div>
+                <div style="min-width: 0">
+                    <div class="value">@value</div>
+                    <div class="label">@label@(string.IsNullOrEmpty(hint) ? "" : $" · {hint}")</div>
+                </div>
+            </div>
         </MudLink>
     </MudItem>;
+
+    private static RenderFragment Attention(string label, int count, string href, string tint) => count == 0 ? _ => { } : @<a class="attention-row" href="@href">
+        <span class="count @tint">@count</span>
+        <span style="flex: 1">@label</span>
+        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Style="color: var(--mud-palette-text-secondary)" />
+    </a>;
 }

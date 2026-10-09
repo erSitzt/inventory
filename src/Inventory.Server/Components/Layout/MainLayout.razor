@@ -1,7 +1,7 @@
 @inherits LayoutComponentBase
 @inject UpdateService Updates
 
-<MudThemeProvider />
+<MudThemeProvider Theme="Theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -46,4 +46,37 @@
 
 @code {
     private bool _drawerOpen = true;
+
+    /// <summary>Etwas wärmere Farben und rundere Kanten als der MudBlazor-Standard; alle Seiten erben das.</summary>
+    private static readonly MudTheme Theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#4f46e5",
+            Secondary = "#0ea5e9",
+            Info = "#0284c7",
+            Success = "#059669",
+            Warning = "#d97706",
+            Error = "#dc2626",
+            Background = "#f5f6fa",
+            AppbarBackground = "#1e1b4b",
+            DrawerBackground = "#ffffff",
+            Surface = "#ffffff",
+            LinesDefault = "#e5e7eb",
+            TextPrimary = "#111827",
+            TextSecondary = "#6b7280",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#818cf8",
+            Secondary = "#38bdf8",
+            Background = "#0f172a",
+            Surface = "#1e293b",
+            AppbarBackground = "#1e1b4b",
+            DrawerBackground = "#111827",
+            LinesDefault = "#334155",
+        },
+        LayoutProperties = new LayoutProperties { DefaultBorderRadius = "10px" },
+        Typography = new Typography { Default = new DefaultTypography { FontFamily = ["Segoe UI", "Inter", "Roboto", "Helvetica", "Arial", "sans-serif"] } },
+    };
 }
