@@ -33,7 +33,7 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
             .Include(c => c.Credential).Include(c => c.Software).Include(c => c.Hotfixes).Include(c => c.Disks)
             .Include(c => c.NetworkAdapters).Include(c => c.Services).Include(c => c.Collections)
             .Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
-            .Include(c => c.PendingUpdates).Include(c => c.MemoryModules).Include(c => c.PhysicalDisks).Include(c => c.Volumes).Include(c => c.Monitors).Include(c => c.Printers)
+            .Include(c => c.PendingUpdates).Include(c => c.UserProfiles).Include(c => c.MemoryModules).Include(c => c.PhysicalDisks).Include(c => c.Volumes).Include(c => c.Monitors).Include(c => c.Printers)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
@@ -60,6 +60,118 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         computer.Transport = transport;
         computer.CredentialId = credentialId;
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Setzt die Bestandsangaben eines Rechners; leere Texte werden zu "nicht angegeben".</summary>
+    public async Task UpdateAssetAsync(int id, AssetData asset, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var computer = await db.Computers.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Computer {0} not found", id]);
+        Apply(computer, asset);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static void Apply(Computer computer, AssetData asset)
+    {
+        static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        computer.Owner = Clean(asset.Owner);
+        computer.Location = Clean(asset.Location);
+        computer.CostCenter = Clean(asset.CostCenter);
+        computer.InventoryNumber = Clean(asset.InventoryNumber);
+        computer.PurchaseDate = asset.PurchaseDate;
+        computer.WarrantyUntil = asset.WarrantyUntil;
+        computer.Tags = AssetTags.Normalize(asset.Tags);
+        computer.Notes = Clean(asset.Notes);
+    }
+
+    /// <summary>
+    /// Übernimmt Bestandsangaben aus einer CSV-Tabelle (Semikolon oder Komma, erste Zeile = Spaltennamen wie im Export
+    /// oder englisch). Zugeordnet wird über den Rechnernamen. Eine leere Zelle lässt den Wert unverändert, "-" löscht ihn;
+    /// Spalten, die die Tabelle nicht enthält, bleiben unberührt.
+    /// </summary>
+    public async Task<AssetImportResult> ImportAssetsAsync(string csv, CancellationToken ct = default)
+    {
+        var rows = AssetCsv.Parse(csv);
+        if (rows.Count < 2)
+            throw new InvalidOperationException(L["The table needs a header row and at least one data row."]);
+        var columns = rows[0].Select(h => AssetCsv.Column(h, L)).ToList();
+        var nameIndex = columns.IndexOf("Name");
+        if (nameIndex < 0)
+            throw new InvalidOperationException(L["The table has no column \"Name\"."]);
+        if (columns.Count(c => c is not null and not "Name") == 0)
+            throw new InvalidOperationException(L["The table contains none of the asset columns."]);
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var computers = await db.Computers.ToListAsync(ct);
+        // Der genaue Name geht vor; der Kurzname hilft nur, wenn er eindeutig ist.
+        var exact = computers.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+        var byShortName = computers.GroupBy(c => c.Name.Split('.')[0], StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        var updated = new List<string>();
+        var unknown = new List<string>();
+        var errors = new List<string>();
+        for (var r = 1; r < rows.Count; r++)
+        {
+            var row = rows[r];
+            var name = nameIndex < row.Count ? row[nameIndex].Trim() : "";
+            if (name.Length == 0)
+                continue;
+            if (!exact.TryGetValue(name, out var computer))
+            {
+                var candidates = byShortName.GetValueOrDefault(name.Split('.')[0]) ?? [];
+                if (candidates.Count > 1)
+                {
+                    errors.Add(L["{0}: several computers have this short name ({1}); use the full name.", name, string.Join(", ", candidates.Select(c => c.Name))]);
+                    continue;
+                }
+                if (candidates.Count == 0)
+                {
+                    unknown.Add(name);
+                    continue;
+                }
+                computer = candidates[0];
+            }
+            var asset = computer.Asset;
+            var description = computer.Description;
+            string? problem = null;
+            for (var c = 0; c < columns.Count && c < row.Count && problem is null; c++)
+            {
+                var cell = row[c].Trim();
+                if (columns[c] is not { } column || column == "Name" || cell.Length == 0)
+                    continue;
+                var text = cell == "-" ? null : AssetCsv.Unescape(cell);
+                switch (column)
+                {
+                    case "Owner": asset = asset with { Owner = text }; break;
+                    case "Location": asset = asset with { Location = text }; break;
+                    case "Cost center": asset = asset with { CostCenter = text }; break;
+                    case "Inventory number": asset = asset with { InventoryNumber = text }; break;
+                    case "Tags": asset = asset with { Tags = text }; break;
+                    case "Notes": asset = asset with { Notes = text }; break;
+                    case "Description": description = text; break;
+                    case "Purchase date" or "Warranty until":
+                        DateOnly? date = null;
+                        if (text is not null)
+                        {
+                            if (AssetCsv.Date(text) is { } parsed)
+                                date = parsed;
+                            else
+                                problem = L["{0}: \"{1}\" is not a date (expected e.g. 2027-03-31 or 31.03.2027).", name, cell];
+                        }
+                        asset = column == "Purchase date" ? asset with { PurchaseDate = date } : asset with { WarrantyUntil = date };
+                        break;
+                }
+            }
+            if (problem is not null)
+            {
+                errors.Add(problem);
+                continue;
+            }
+            Apply(computer, asset);
+            computer.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+            updated.Add(computer.Name);
+        }
+        await db.SaveChangesAsync(ct);
+        return new AssetImportResult(updated, unknown, errors);
     }
 
     /// <summary>Benennt den Eintrag auf den Namen um, den der Rechner selbst gemeldet hat.</summary>

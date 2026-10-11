@@ -25,6 +25,11 @@ namespace Inventory.Contracts
         public int CpuLogicalProcessors { get; set; }
         public long MemoryBytes { get; set; }
         public string? LoggedOnUser { get; set; }
+        /// <summary>
+        /// Benutzer mit einer interaktiven Sitzung (Konsole oder Remotedesktop) zum Zeitpunkt des Scans, als DOMÄNE\name.
+        /// Dienste, geplante Aufgaben und Netzwerkanmeldungen zählen nicht. null bei Runnern, die das noch nicht erfassen.
+        /// </summary>
+        public List<string>? InteractiveUsers { get; set; }
 
         public List<SoftwareItem> Software { get; set; } = new List<SoftwareItem>();
         public List<HotfixItem> Hotfixes { get; set; } = new List<HotfixItem>();
@@ -57,6 +62,10 @@ namespace Inventory.Contracts
     {
         public string Sid { get; set; } = "";
         public bool Loaded { get; set; }
+        /// <summary>DOMÄNE\\name; lässt sich die SID nicht auflösen, der Name des Profilordners. null bei Runnern, die das noch nicht erfassen.</summary>
+        public string? Name { get; set; }
+        /// <summary>Letzte Nutzung des Profils laut Windows.</summary>
+        public DateTime? LastUseUtc { get; set; }
     }
 
     public sealed class SoftwareItem

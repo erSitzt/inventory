@@ -9,6 +9,16 @@
     <DialogContent>
         <MudStack Spacing="3">
             <MudTextField @bind-Value="_description" Label="@L["Description"]" Variant="Variant.Outlined" />
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_owner" Label="@L["Owner"]" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_location" Label="@L["Location"]" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_costCenter" Label="@L["Cost center"]" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField @bind-Value="_inventoryNumber" Label="@L["Inventory number"]" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+                <MudItem xs="12" sm="6"><MudDatePicker @bind-Date="_purchaseDate" Label="@L["Purchase date"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Editable="true" /></MudItem>
+                <MudItem xs="12" sm="6"><MudDatePicker @bind-Date="_warrantyUntil" Label="@L["Warranty until"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Editable="true" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="_tags" Label="@L["Tags"]" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="@L["Separated by commas, e.g. \"Kiosk, Loan device\""]" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" AutoGrow="true" /></MudItem>
+            </MudGrid>
             <MudSelect T="TransportKind?" @bind-Value="_transport" Label="@L["Transport"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["Default"]">
                 <MudSelectItem T="TransportKind?" Value="@(TransportKind.SmbService)">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
                 <MudSelectItem T="TransportKind?" Value="@(TransportKind.WinRm)">@Display.Transport(TransportKind.WinRm)</MudSelectItem>
@@ -47,12 +57,17 @@
     [Parameter, EditorRequired] public List<Credential> Credentials { get; set; } = [];
 
     private string? _description;
+    private string? _owner, _location, _costCenter, _inventoryNumber, _tags, _notes;
+    private DateTime? _purchaseDate, _warrantyUntil;
     private TransportKind? _transport;
     private int? _credentialId;
 
     protected override void OnInitialized()
     {
         _description = Computer.Description;
+        (_owner, _location, _costCenter, _inventoryNumber, _tags, _notes) = (Computer.Owner, Computer.Location, Computer.CostCenter, Computer.InventoryNumber, Computer.Tags, Computer.Notes);
+        _purchaseDate = Computer.PurchaseDate?.ToDateTime(TimeOnly.MinValue);
+        _warrantyUntil = Computer.WarrantyUntil?.ToDateTime(TimeOnly.MinValue);
         _transport = Computer.Transport;
         _credentialId = Computer.CredentialId;
     }
@@ -71,6 +86,8 @@
         if (!await Access.DemandAdminAsync())
             return;
         await ComputerService.UpdateAsync(Computer.Id, _description, _transport, _credentialId);
+        await ComputerService.UpdateAssetAsync(Computer.Id, new AssetData(_owner, _location, _costCenter, _inventoryNumber,
+            _purchaseDate is { } purchase ? DateOnly.FromDateTime(purchase) : null, _warrantyUntil is { } warranty ? DateOnly.FromDateTime(warranty) : null, _tags, _notes));
         await Audit.LogAsync(L["Computer changed"], Computer.Name);
         MudDialog.Close(DialogResult.Ok(true));
     }

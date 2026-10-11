@@ -81,6 +81,7 @@
             @Attention(L["Scan failed"], _stats.ScanErrors, "computers?filter=scanerror", "tint-warning")
             @Attention(L["Wrong computer responds"], _stats.NameMismatch, "computers?filter=mismatch", "tint-warning")
             @Attention(L["Not (anymore) in Active Directory"], _stats.MissingInDirectory, "computers?filter=nodirectory", "tint-neutral")
+            @Attention(L["Warranty ends within 90 days"], _stats.WarrantyEnding, "computers?filter=warranty", "tint-neutral")
         </div>
     </MudItem>
 

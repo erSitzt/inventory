@@ -11,7 +11,13 @@ public static class ComputerEndpoints
 {
     public sealed record ComputerDto(int Id, string Name, string? Description, string? IpAddress, bool IsOnline,
         DateTime? LastSeenUtc, DateTime? LastScanUtc, string? LastScanError, TransportKind? Transport, int? CredentialId,
-        string? ReportedName, string? ReverseDnsName, bool NameMismatch, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser);
+        string? ReportedName, string? ReverseDnsName, bool NameMismatch, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser,
+        string? PrimaryUser = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
+        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null);
+
+    /// <summary>Jedes Feld ist optional: weggelassen oder null = unverändert, leerer Text = löschen. Die Datumsfelder löscht <c>Clear</c>.</summary>
+    public sealed record AssetRequest(string? Description = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
+        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string[]? Clear = null);
 
     public sealed record HardwareDto(string DeviceType, string? FirmwareType, bool? SecureBoot, DateTime? BiosDateUtc, bool? TpmPresent, string? TpmVersion, bool? TpmReady,
         string? Gpu, int? MemorySlots, bool? BatteryPresent, int? BatteryHealthPercent, int? BatteryCycleCount,
@@ -60,6 +66,38 @@ public static class ComputerEndpoints
         group.MapPost("", async (ImportRequest request, ComputerService computers, CancellationToken ct) =>
             (await computers.ImportAsync(request.Names, ct)).Select(ToDto))
             .RequireAdmin().WithSummary("Create computers").WithDescription("Names separated by newline, comma, semicolon or space. Returns only the newly created computers; existing ones stay unchanged.");
+
+        group.MapPatch("{id:int}", async (int id, AssetRequest request, ComputerService computers, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if (await computers.GetAsync(id, ct) is not { } computer)
+                return Results.NotFound();
+            bool Cleared(string field) => request.Clear?.Contains(field, StringComparer.OrdinalIgnoreCase) == true;
+            var asset = computer.Asset;
+            await computers.UpdateAssetAsync(id, new AssetData(request.Owner ?? asset.Owner, request.Location ?? asset.Location, request.CostCenter ?? asset.CostCenter,
+                request.InventoryNumber ?? asset.InventoryNumber,
+                Cleared("purchaseDate") ? null : request.PurchaseDate ?? asset.PurchaseDate, Cleared("warrantyUntil") ? null : request.WarrantyUntil ?? asset.WarrantyUntil,
+                request.Tags ?? asset.Tags, request.Notes ?? asset.Notes), ct);
+            if (request.Description is not null)
+                await computers.UpdateAsync(id, request.Description, computer.Transport, computer.CredentialId, ct);
+            await audit.LogAsync(http.Actor(), "Computer changed via API", computer.Name, ct);
+            return Results.Ok(ToDto((await computers.GetAsync(id, ct))!));
+        }).RequireAdmin().WithSummary("Change asset data").WithDescription("Sets description, owner, location, cost center, inventory number, purchase date, end of warranty, tags (comma-separated) and notes. Omitted fields stay unchanged; an empty string clears a text field; clear = [\"purchaseDate\", \"warrantyUntil\"] clears the dates.").Produces<ComputerDto>().Produces(404);
+
+        group.MapPost("assets/import", async (HttpContext http, ComputerService computers, AuditService audit, CancellationToken ct) =>
+        {
+            using var reader = new StreamReader(http.Request.Body);
+            try
+            {
+                var result = await computers.ImportAssetsAsync(await reader.ReadToEndAsync(ct), ct);
+                if (result.Updated.Count > 0)
+                    await audit.LogAsync(http.Actor(), "Asset data imported via API", string.Join(", ", result.Updated), ct);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        }).RequireAdmin().WithSummary("Import asset data").WithDescription("Body: CSV text (semicolon, comma or tab; first row = column names as in the computer CSV export or in English: Name, Owner, Location, Cost center, Inventory number, Purchase date, Warranty until, Tags, Notes, Description). An empty cell leaves the value unchanged, \"-\" clears it.").Accepts<string>("text/csv").Produces<AssetImportResult>().Produces(400);
 
         group.MapDelete("{id:int}", async (int id, ComputerService computers, CancellationToken ct) =>
             await computers.DeleteAsync([id], ct) > 0 ? Results.NoContent() : Results.NotFound())
@@ -120,5 +158,6 @@ public static class ComputerEndpoints
 
     private static ComputerDto ToDto(Computer c) =>
         new(c.Id, c.Name, c.Description, c.IpAddress, c.IsOnline, c.LastSeenUtc, c.LastScanUtc, c.LastScanError, c.Transport, c.CredentialId,
-            c.ReportedName, c.ReverseDnsName, c.NameMismatch, c.OsName, c.OsVersion, c.Manufacturer, c.Model, c.SerialNumber, c.MemoryBytes, c.LoggedOnUser);
+            c.ReportedName, c.ReverseDnsName, c.NameMismatch, c.OsName, c.OsVersion, c.Manufacturer, c.Model, c.SerialNumber, c.MemoryBytes, c.LoggedOnUser,
+            c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate, c.WarrantyUntil, c.Tags, c.Notes);
 }

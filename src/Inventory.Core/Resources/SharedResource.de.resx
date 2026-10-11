@@ -209,6 +209,9 @@
   <data name="always notify" xml:space="preserve">
     <value>immer benachrichtigen</value>
   </data>
+  <data name='An empty cell leaves the value unchanged, "-" clears it. The easiest start is the computer CSV export: edit it in a spreadsheet and import it here.' xml:space="preserve">
+    <value>Eine leere Zelle lässt den Wert unverändert, „-“ löscht ihn. Am einfachsten geht es mit dem CSV-Export der Rechner: in der Tabellenkalkulation bearbeiten und hier wieder einlesen.</value>
+  </data>
   <data name="An unexpected error occurred." xml:space="preserve">
     <value>Ein unerwarteter Fehler ist aufgetreten.</value>
   </data>
@@ -283,6 +286,9 @@
   </data>
   <data name="as of {0}" xml:space="preserve">
     <value>Stand {0}</value>
+  </data>
+  <data name="Asset data imported" xml:space="preserve">
+    <value>Bestandsdaten importiert</value>
   </data>
   <data name="At fixed intervals" xml:space="preserve">
     <value>In festen Abständen</value>
@@ -382,6 +388,9 @@
   </data>
   <data name="Checks the reachability of all computers at fixed intervals so the online status in the computer list and on the overview stays current. Computers with name anomalies – a different computer responds under the name, or reverse DNS names another – are skipped until the discrepancy is resolved." xml:space="preserve">
     <value>Prüft in festen Abständen die Erreichbarkeit aller Rechner, damit der Online-Status in der Rechnerliste und auf der Übersicht aktuell bleibt. Rechner mit Namensauffälligkeiten – ein anderer Rechner antwortet unter dem Namen oder Reverse-DNS nennt einen anderen – werden übersprungen, bis die Abweichung geklärt ist.</value>
+  </data>
+  <data name="Choose file" xml:space="preserve">
+    <value>Datei wählen</value>
   </data>
   <data name="Classification" xml:space="preserve">
     <value>Klassifizierung</value>
@@ -532,6 +541,9 @@
   </data>
   <data name="Cores / threads" xml:space="preserve">
     <value>Kerne / Threads</value>
+  </data>
+  <data name="Cost center" xml:space="preserve">
+    <value>Kostenstelle</value>
   </data>
   <data name="Create" xml:space="preserve">
     <value>Anlegen</value>
@@ -1031,6 +1043,9 @@
   <data name="Import an older version as a separate package" xml:space="preserve">
     <value>Eine ältere Version als eigenes Paket importieren</value>
   </data>
+  <data name="Import asset data (CSV)" xml:space="preserve">
+    <value>Bestandsdaten importieren (CSV)</value>
+  </data>
   <data name="Import older version" xml:space="preserve">
     <value>Ältere Version importieren</value>
   </data>
@@ -1108,6 +1123,9 @@
   </data>
   <data name="Inventory is up to date (checked {0}, source: github.com/{1})." xml:space="preserve">
     <value>Inventory ist aktuell (geprüft {0}, Quelle: github.com/{1}).</value>
+  </data>
+  <data name="Inventory number" xml:space="preserve">
+    <value>Inventarnummer</value>
   </data>
   <data name="Inventory scan" xml:space="preserve">
     <value>Inventar-Scan</value>
@@ -1264,6 +1282,9 @@
   </data>
   <data name="Locally built development version – no update check." xml:space="preserve">
     <value>Lokal gebauter Entwicklungsstand – es wird nicht nach Updates gesucht.</value>
+  </data>
+  <data name="Location" xml:space="preserve">
+    <value>Standort</value>
   </data>
   <data name="Logged-on user" xml:space="preserve">
     <value>Angemeldeter Benutzer</value>
@@ -1448,6 +1469,9 @@
   <data name="No collections yet." xml:space="preserve">
     <value>Noch keine Sammlungen vorhanden.</value>
   </data>
+  <data name="No computer with this name: {0}" xml:space="preserve">
+    <value>Kein Rechner mit diesem Namen: {0}</value>
+  </data>
   <data name="No computers in the collection" xml:space="preserve">
     <value>Keine Rechner in der Sammlung</value>
   </data>
@@ -1562,6 +1586,9 @@
   <data name="Not captured yet. Hardware details are read with the next scan; computers with an agent need the current agent version first." xml:space="preserve">
     <value>Noch nicht erfasst. Hardware-Details werden mit dem nächsten Scan gelesen; Rechner mit Agent brauchen dafür zuerst die aktuelle Agent-Version.</value>
   </data>
+  <data name="Not captured yet. Profiles are read with the next scan." xml:space="preserve">
+    <value>Noch nicht erfasst. Die Profile werden mit dem nächsten Scan gelesen.</value>
+  </data>
   <data name="Not found" xml:space="preserve">
     <value>Nicht gefunden</value>
   </data>
@@ -1585,6 +1612,9 @@
   </data>
   <data name="Not scanned yet" xml:space="preserve">
     <value>Noch nicht gescannt</value>
+  </data>
+  <data name="Notes" xml:space="preserve">
+    <value>Notizen</value>
   </data>
   <data name="Nothing happens? Set up the launcher / show commands …" xml:space="preserve">
     <value>Passiert nichts? Starter einrichten / Befehle anzeigen …</value>
@@ -1706,11 +1736,17 @@
   <data name="or MSI product code" xml:space="preserve">
     <value>oder MSI-Produktcode</value>
   </data>
+  <data name="Or paste the table here" xml:space="preserve">
+    <value>Oder die Tabelle hier einfügen</value>
+  </data>
   <data name="Outlook will be closed in two minutes for an update. Please save your work." xml:space="preserve">
     <value>Outlook wird in zwei Minuten für ein Update geschlossen. Bitte Arbeit speichern.</value>
   </data>
   <data name="Overview" xml:space="preserve">
     <value>Übersicht</value>
+  </data>
+  <data name="Owner" xml:space="preserve">
+    <value>Zuständig</value>
   </data>
   <data name="Package" xml:space="preserve">
     <value>Paket</value>
@@ -1883,6 +1919,12 @@
   <data name="Preview" xml:space="preserve">
     <value>Vorschau</value>
   </data>
+  <data name="Primary user" xml:space="preserve">
+    <value>Hauptbenutzer</value>
+  </data>
+  <data name="Primary user: {0}." xml:space="preserve">
+    <value>Hauptbenutzer: {0}.</value>
+  </data>
   <data name="Printer" xml:space="preserve">
     <value>Drucker</value>
   </data>
@@ -1900,6 +1942,12 @@
   </data>
   <data name="Processor" xml:space="preserve">
     <value>Prozessor</value>
+  </data>
+  <data name="Profile loaded during the scan" xml:space="preserve">
+    <value>Profil beim Scan geladen</value>
+  </data>
+  <data name="Profiles" xml:space="preserve">
+    <value>Profile</value>
   </data>
   <data name="Program" xml:space="preserve">
     <value>Programm</value>
@@ -1933,6 +1981,9 @@
   </data>
   <data name="Publisher" xml:space="preserve">
     <value>Hersteller</value>
+  </data>
+  <data name="Purchase date" xml:space="preserve">
+    <value>Kaufdatum</value>
   </data>
   <data name="queued" xml:space="preserve">
     <value>wartet</value>
@@ -2312,6 +2363,9 @@
   <data name="Self-update is only available on Windows." xml:space="preserve">
     <value>Die Selbstaktualisierung gibt es nur unter Windows.</value>
   </data>
+  <data name='Separated by commas, e.g. "Kiosk, Loan device"' xml:space="preserve">
+    <value>Durch Komma getrennt, z. B. „Kiosk, Leihgerät“</value>
+  </data>
   <data name="Serial number" xml:space="preserve">
     <value>Seriennummer</value>
   </data>
@@ -2546,8 +2600,17 @@
   <data name="System setting" xml:space="preserve">
     <value>Systemeinstellung</value>
   </data>
+  <data name='Table with one row per computer; the first row names the columns. The computer is found by the column "Name". Recognised columns: {0}.' xml:space="preserve">
+    <value>Tabelle mit einer Zeile je Rechner; die erste Zeile nennt die Spalten. Der Rechner wird über die Spalte „Name“ gefunden. Erkannte Spalten: {0}.</value>
+  </data>
   <data name="Tablet" xml:space="preserve">
     <value>Tablet</value>
+  </data>
+  <data name="Tag" xml:space="preserve">
+    <value>Tag</value>
+  </data>
+  <data name="Tags" xml:space="preserve">
+    <value>Tags</value>
   </data>
   <data name="Take over collection" xml:space="preserve">
     <value>Sammlung übernehmen</value>
@@ -2560,6 +2623,9 @@
   </data>
   <data name="Target computers" xml:space="preserve">
     <value>Zielrechner</value>
+  </data>
+  <data name="That is who had an interactive session (console or Remote Desktop) on the most days during scans of the last {0} days. Accounts stored as credentials never count; services and scheduled tasks do not either." xml:space="preserve">
+    <value>Das ist, wer bei Scans der letzten {0} Tage an den meisten Tagen eine interaktive Sitzung hatte (Konsole oder Remotedesktop). Als Zugangsdaten hinterlegte Konten zählen nie, Dienste und geplante Aufgaben ebenso wenig.</value>
   </data>
   <data name="The agent on {0} did not pick up the job – the computer is off or the agent is not running." xml:space="preserve">
     <value>Der Agent auf {0} hat den Job nicht abgeholt – der Rechner ist aus oder der Agent läuft nicht.</value>
@@ -2668,6 +2734,15 @@
   </data>
   <data name="The steps of the selected package run at this point; its files are copied along." xml:space="preserve">
     <value>Die Schritte des gewählten Pakets laufen an dieser Stelle; seine Dateien werden mitkopiert.</value>
+  </data>
+  <data name="The table contains none of the asset columns." xml:space="preserve">
+    <value>Die Tabelle enthält keine der Bestandsspalten.</value>
+  </data>
+  <data name='The table has no column "Name".' xml:space="preserve">
+    <value>Die Tabelle hat keine Spalte „Name“.</value>
+  </data>
+  <data name="The table needs a header row and at least one data row." xml:space="preserve">
+    <value>Die Tabelle braucht eine Kopfzeile und mindestens eine Datenzeile.</value>
   </data>
   <data name="The transport {0} is not available on this server" xml:space="preserve">
     <value>Der Transport {0} steht auf diesem Server nicht zur Verfügung</value>
@@ -2993,6 +3068,15 @@
   <data name="Warning" xml:space="preserve">
     <value>Warnung</value>
   </data>
+  <data name="Warranty ends within 90 days" xml:space="preserve">
+    <value>Garantie endet innerhalb von 90 Tagen</value>
+  </data>
+  <data name="Warranty until" xml:space="preserve">
+    <value>Garantie bis</value>
+  </data>
+  <data name="Warranty: days left" xml:space="preserve">
+    <value>Garantie: verbleibende Tage</value>
+  </data>
   <data name="Web interface" xml:space="preserve">
     <value>Weboberfläche</value>
   </data>
@@ -3161,6 +3245,9 @@
   <data name="{0} computers selected" xml:space="preserve">
     <value>{0} Rechner ausgewählt</value>
   </data>
+  <data name="{0} computers updated." xml:space="preserve">
+    <value>{0} Rechner aktualisiert.</value>
+  </data>
   <data name="{0} computers would be deleted; that is conspicuously many at once, so nothing was deleted (check the search roots or delete manually)" xml:space="preserve">
     <value>{0} Rechner wären zu löschen; das sind auffällig viele auf einmal, deshalb wurde nichts gelöscht (Suchwurzeln prüfen oder von Hand löschen)</value>
   </data>
@@ -3254,11 +3341,17 @@
   <data name="{0}, including drivers" xml:space="preserve">
     <value>{0}, einschließlich Treiber</value>
   </data>
+  <data name='{0}: "{1}" is not a date (expected e.g. 2027-03-31 or 31.03.2027).' xml:space="preserve">
+    <value>{0}: „{1}“ ist kein Datum (erwartet z. B. 2027-03-31 oder 31.03.2027).</value>
+  </data>
   <data name="{0}: name and minimum version" xml:space="preserve">
     <value>{0}: Name und Mindestversion</value>
   </data>
   <data name="{0}: product code (exactly this version)" xml:space="preserve">
     <value>{0}: Produktcode (genau diese Version)</value>
+  </data>
+  <data name="{0}: several computers have this short name ({1}); use the full name." xml:space="preserve">
+    <value>{0}: mehrere Rechner haben diesen Kurznamen ({1}); bitte den vollständigen Namen verwenden.</value>
   </data>
   <data name="… and {0} more" xml:space="preserve">
     <value>… und {0} weitere</value>

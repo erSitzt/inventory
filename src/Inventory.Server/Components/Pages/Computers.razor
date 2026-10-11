@@ -33,6 +33,9 @@
                   AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 240px" />
     <AdminOnly>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">@L["Add"]</MudButton>
+        <MudTooltip Text="@L["Import asset data (CSV)"]">
+            <MudIconButton Icon="@Icons.Material.Filled.UploadFile" aria-label="@L["Import asset data (CSV)"]" OnClick="ImportAssetsAsync" />
+        </MudTooltip>
     </AdminOnly>
     <OperatorOnly>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_busy" OnClick="ScanAsync">
@@ -84,6 +87,10 @@
         <TemplateColumn Title="Name" SortBy="c => c.Name">
             <CellTemplate>
                 <MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink>
+                @foreach (var tag in context.Item.TagList)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@tag</MudChip>
+                }
                 @if (context.Item.NameMismatch)
                 {
                     <MudTooltip Text="@L["Under this name the computer {0} responded (stale DNS entry or alias?)", context.Item.ReportedName]">
@@ -213,6 +220,7 @@
         ("all", "All computers"), ("online", "Online"), ("offline", "Offline"), ("mismatch", "Wrong computer responds"),
         ("nodirectory", "Not (anymore) in AD"), ("unscanned", "Not scanned yet"), ("scanerror", "Scan failed"), ("agent", "With agent"),
         ("firewall", "Firewall off"), ("antivirus", "No real-time antivirus"), ("updates", "Updates pending"), ("reboot", "Reboot pending"),
+        ("warranty", "Warranty ends within 90 days"),
     ];
 
     private List<Computer> _all = [];
@@ -231,6 +239,7 @@
         "antivirus" => c.AntivirusProblem,
         "updates" => c.UpdatePendingCount > 0,
         "reboot" => c.UpdateRebootRequired == true,
+        "warranty" => c.WarrantyDaysLeft(DateOnly.FromDateTime(DateTime.Now)) <= DashboardStats.WarrantyWarningDays,
         _ => true,
     };
 
@@ -272,11 +281,22 @@
 
     private bool Matches(Computer c) =>
         string.IsNullOrWhiteSpace(_search)
-        || new[] { c.Name, c.ReportedName, c.IpAddress, c.Description, c.OsName, c.Model, c.LoggedOnUser, c.SerialNumber }
+        || new[] { c.Name, c.ReportedName, c.IpAddress, c.Description, c.OsName, c.Model, c.LoggedOnUser, c.SerialNumber,
+                c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.Tags, c.PrimaryUser, c.Notes,
+                c.PurchaseDate?.ToString("yyyy-MM-dd"), c.WarrantyUntil?.ToString("yyyy-MM-dd") }
             .Any(v => v?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
 
     /// <summary>Die Auswahl, sonst alle gerade angezeigten Rechner.</summary>
     private List<int> TargetIds() => (_selected.Count > 0 ? _selected : _computers.Where(Matches)).Select(c => c.Id).ToList();
+
+    private async Task ImportAssetsAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var dialog = await Dialogs.ShowAsync<ImportAssetsDialog>(L["Import asset data (CSV)"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium });
+        if (await dialog.Result is { Canceled: false, Data: true })
+            await ReloadAsync();
+    }
 
     private async Task AddAsync()
     {

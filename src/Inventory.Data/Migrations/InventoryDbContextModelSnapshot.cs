@@ -194,6 +194,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int?>("ChassisType")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("CostCenter")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("CpuCores")
                         .HasColumnType("INTEGER");
 
@@ -278,6 +281,9 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("HardwareScanUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("InventoryNumber")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("IpAddress")
                         .HasColumnType("TEXT");
 
@@ -297,6 +303,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastSeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Location")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("LoggedOnUser")
@@ -326,6 +335,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT")
                         .UseCollation("NOCASE");
 
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("OsArchitecture")
                         .HasColumnType("TEXT");
 
@@ -339,6 +351,15 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("OsVersion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Owner")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PrimaryUser")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("TEXT");
 
                     b.Property<bool?>("RdpEnabled")
@@ -367,6 +388,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<bool?>("SystemDriveProtected")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("TeamViewerId")
                         .HasColumnType("TEXT");
@@ -408,6 +432,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("UpdateServer")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("WarrantyUntil")
                         .HasColumnType("TEXT");
 
                     b.Property<bool?>("WindowsActivated")
@@ -794,6 +821,59 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("Name");
 
                     b.ToTable("Software");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerUserProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastUseUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Loaded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Sid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("UserProfiles");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerUserSighting", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId", "UserName", "Day")
+                        .IsUnique();
+
+                    b.ToTable("UserSightings");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.ComputerVolumeEncryption", b =>
@@ -1328,6 +1408,24 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerUserProfile", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("UserProfiles")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerUserSighting", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany()
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerVolumeEncryption", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -1443,6 +1541,8 @@ namespace Inventory.Data.Migrations
                     b.Navigation("Services");
 
                     b.Navigation("Software");
+
+                    b.Navigation("UserProfiles");
 
                     b.Navigation("Volumes");
                 });
