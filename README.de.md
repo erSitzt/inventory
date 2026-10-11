@@ -92,6 +92,10 @@ Drei Dinge halten die Sicherheitskonsole ruhig, ohne echte Angriffe zu verdecken
    Nicht das Anlegen von Diensten aus der Ferne allgemein unterdrücken und den Ordner nicht vom Virenscan ausnehmen –
    dort landen Paketdateien.
 
+Produkte mit automatischer Reaktion belassen es nicht bei Meldungen: sie können das für den Zugriff verwendete Konto
+deaktivieren und die beteiligten Rechner isolieren. Solange keine Freigabe eingerichtet ist, agentenlose Jobs nicht
+mit einem Konto ausführen, von dem andere Systeme abhängen, und das Werkzeug zuerst an wenigen Rechnern ausprobieren.
+
 Die veröffentlichten Programmdateien sind noch nicht signiert, eine Regel nach Herausgeber-Zertifikat ist daher nicht
 möglich; das ist zusammen mit signierten Updates geplant (siehe Roadmap). PowerShell-Schritte laufen als
 `powershell.exe -ExecutionPolicy Bypass -File <Skript im Job-Verzeichnis>`; Regeln, die auf den Bypass-Schalter

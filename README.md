@@ -87,6 +87,10 @@ the security console quiet without hiding real attacks:
    alert suppression rule created from one of the alerts, with these conditions. Do not suppress remote service
    creation in general and do not exclude the folder from antivirus scanning – package files land there.
 
+Products with an automatic response go further than alerting: they can disable the account used for the access and
+isolate the computers involved. Until an allow rule is in place, do not run agentless jobs with an account that other
+systems depend on, and try the tool on a few computers first.
+
 The released binaries are not code-signed yet, so a rule by publisher certificate is not possible; that is planned
 together with signed updates (see the roadmap). PowerShell steps run as
 `powershell.exe -ExecutionPolicy Bypass -File <script in the job directory>`; rules that flag the bypass switch will
