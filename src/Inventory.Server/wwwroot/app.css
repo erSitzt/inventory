@@ -280,3 +280,9 @@ a:hover > .kpi {
 
 /* Dunkles Design: Die Kacheln nutzen die Palettenvariablen und folgen dem Farbschema von selbst; die Farbflächen der
    Symbole sind halbtransparent und funktionieren auf hellem wie dunklem Grund. */
+
+/* Auswahllisten des Regel-Editors: lange Feldnamen bleiben einzeilig, die Liste wird dafür breiter. */
+.rule-select .mud-list-item-text,
+.rule-select .mud-list-item-text .mud-typography {
+    white-space: nowrap;
+}

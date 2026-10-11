@@ -24,14 +24,15 @@
 
                 @foreach (var rule in _rules)
                 {
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudSelect T="RuleField" Value="rule.Field" ValueChanged="@(f => SetField(rule, f))" Label="@L["Field"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                        @* Die Listen dürfen breiter werden als ihr Feld (Adaptive), sonst brechen lange Einträge um; das Feld selbst bekommt den meisten Platz. *@
+                        <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" Style="flex: 2 1 0; min-width: 240px" T="RuleField" Value="rule.Field" ValueChanged="@(f => SetField(rule, f))" Label="@L["Field"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var field in Fields)
                             {
                                 <MudSelectItem T="RuleField" Value="field">@Display.Field(field)</MudSelectItem>
                             }
                         </MudSelect>
-                        <MudSelect T="RuleOperator" Value="rule.Operator" ValueChanged="@(op => SetOperator(rule, op))" Label="@L["Condition"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" T="RuleOperator" Value="rule.Operator" ValueChanged="@(op => SetOperator(rule, op))" Label="@L["Condition"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var op in Display.OperatorsFor(rule.Field))
                             {
                                 <MudSelectItem T="RuleOperator" Value="op">@Display.Operator(op)</MudSelectItem>
@@ -39,14 +40,14 @@
                         </MudSelect>
                         @if (Display.IsFlag(rule.Field))
                         {
-                            <MudSelect T="string" @bind-Value="rule.Value" Label="@L["Value"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" T="string" @bind-Value="rule.Value" Label="@L["Value"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                                 <MudSelectItem T="string" Value="@("true")">@L["yes"]</MudSelectItem>
                                 <MudSelectItem T="string" Value="@("false")">@L["no"]</MudSelectItem>
                             </MudSelect>
                         }
                         else if (rule.Field == RuleField.InCollection)
                         {
-                            <MudSelect T="string" @bind-Value="rule.Value" Label="@L["Collection"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" T="string" @bind-Value="rule.Value" Label="@L["Collection"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                                 @foreach (var other in _others)
                                 {
                                     <MudSelectItem T="string" Value="@other.Id.ToString()">@other.Name</MudSelectItem>
@@ -55,7 +56,7 @@
                         }
                         else if (rule.Field == RuleField.DeviceType)
                         {
-                            <MudSelect T="string" @bind-Value="rule.Value" Label="@L["Value"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" T="string" @bind-Value="rule.Value" Label="@L["Value"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                                 @foreach (var kind in Enum.GetValues<ChassisKind>().Where(k => k != ChassisKind.Unknown))
                                 {
                                     <MudSelectItem T="string" Value="@kind.ToString()">@L[Chassis.Label(kind)]</MudSelectItem>
@@ -68,7 +69,7 @@
                         }
                         @if (rule.Field == RuleField.Service && rule.Operator is not RuleOperator.NotEquals)
                         {
-                            <MudSelect T="string" @bind-Value="rule.Value2" Label="@L["State"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["any"]">
+                            <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" T="string" @bind-Value="rule.Value2" Label="@L["State"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["any"]">
                                 <MudSelectItem T="string" Value="@("Running")">@Display.ServiceState("Running")</MudSelectItem>
                                 <MudSelectItem T="string" Value="@("Stopped")">@Display.ServiceState("Stopped")</MudSelectItem>
                             </MudSelect>
