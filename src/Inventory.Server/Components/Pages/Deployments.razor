@@ -46,8 +46,13 @@
                 @{
                     var targets = context.Item.Targets;
                     var failed = targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled);
+                    var present = targets.Count(t => t.Status == TargetStatus.AlreadyInstalled);
                 }
-                <span>@L["{0} of {1} succeeded", targets.Count(t => t.Status == TargetStatus.Succeeded), targets.Count]</span>
+                <span>@L["{0} of {1} succeeded", targets.Count(t => t.Status.IsSuccess()), targets.Count]</span>
+                @if (present > 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Inline="true"> · @L["{0} already installed", present]</MudText>
+                }
                 @if (failed > 0)
                 {
                     <MudText Typo="Typo.body2" Color="Color.Error" Inline="true"> · @L["{0} failed", failed]</MudText>

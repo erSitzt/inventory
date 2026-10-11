@@ -37,6 +37,8 @@ public sealed class CatalogTests : IDisposable
         await _catalog.RefreshAsync();
 
         var package = await _catalog.ImportAsync("7zip.7zip", autoUpdate: true, createCollection: true, "anna");
+        Assert.Equal(("7-Zip", package.Version), (package.Detection?.SoftwareInstalled, package.Detection?.SoftwareMinVersion));
+        Assert.False(package.VerifyAfterInstall);
 
         Assert.Equal(("7-Zip", "24.08", "7zip.7zip", true), (package.Name, package.Version, package.CatalogId, package.CatalogAutoUpdate));
         var step = Assert.Single(package.Steps).Definition;
@@ -75,6 +77,7 @@ public sealed class CatalogTests : IDisposable
 
         var updated = (await _packages.GetAsync(package.Id))!;
         Assert.Equal("25.01", updated.Version);
+        Assert.Equal(("7-Zip", "25.01"), (updated.Detection?.SoftwareInstalled, updated.Detection?.SoftwareMinVersion));
         Assert.Equal(["Install 7-Zip", "Verknüpfung entfernen"], updated.Steps.Select(s => s.Definition.Name));
         Assert.Equal(("7zip.7zip-25.01.msi", "/norestart"), (updated.Steps[0].Definition.File, updated.Steps[0].Definition.Arguments));
         Assert.Equal(["7zip.7zip-25.01.msi", "eigene.cfg"], _packages.Repository.List(package.Id).Select(f => f.RelativePath));

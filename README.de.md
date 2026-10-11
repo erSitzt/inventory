@@ -17,6 +17,10 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
   Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten; Schritte nach einem Neustart laufen
   automatisch weiter, sobald der Rechner wieder da ist
+- **Erkennung**: Ein Paket kann angeben, woran zu erkennen ist, dass es schon installiert ist (Programmname mit
+  Mindestversion, MSI-Produktcode, Datei oder Registry-Schlüssel) – solche Rechner werden übersprungen und als
+  „bereits installiert“ gemeldet; auf Wunsch läuft dieselbe Prüfung nach dem letzten Schritt noch einmal, sodass ein
+  Setup, das Erfolg meldet, ohne zu installieren, als fehlgeschlagen gilt
 - **Paketbibliothek**: fertige Pakete gängiger Programme (täglich aus den winget-Manifesten erzeugt), Import per
   Klick, automatische Übernahme neuer Versionen und eine mitwandernde Sammlung „… veraltet“
 - **Ausführungskontext** je Schritt: als Lokales System oder in der Sitzung des angemeldeten Benutzers
@@ -341,7 +345,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 | Bereich | Endpunkte |
 |---|---|
 | Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, Inventar-Scan, installierte Software, RDP-Datei, Befehl oder PowerShell-Skript ausführen |
-| Pakete | auflisten, anlegen, ändern, löschen; Schritte hinzufügen, ändern, verschieben und löschen; Dateien hochladen und löschen (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`) |
+| Pakete | auflisten, anlegen, ändern, löschen; Schritte hinzufügen, ändern, verschieben und löschen; Dateien hochladen und löschen (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); Erkennung festlegen (`detection`, `verifyAfterInstall`) und Name, Version und Produktcode einer hochgeladenen MSI lesen (`…/api/packages/<id>/msi/setup.msi`) |
 | Deployments | starten, auflisten, Fortschritt je Rechner abfragen, abbrechen |
 | Sammlungen | auflisten, anlegen, ändern, löschen; Mitglieder statischer Sammlungen hinzufügen und entfernen |
 | Zeitpläne | auflisten, anlegen, ändern, löschen, sofort ausführen |

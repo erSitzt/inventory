@@ -216,6 +216,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
                 throw;
             }
             await packages.SaveStepAsync(package.Id, null, InstallStep(entry), null, ct);
+            await packages.SaveDetectionAsync(package.Id, Detection(entry), false, ct);
 
             int? collectionId = null;
             if (createCollection)
@@ -273,6 +274,9 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
                 packages.Repository.Delete(packageId, old);
 
             await packages.SaveAsync(packageId, package.Name, entry.Version, Describe(entry), ct);
+            // Eine selbst eingetragene Erkennung bleibt; die aus der Bibliothek wandert mit der Version mit.
+            if (package.Detection is null || IsCatalogDetection(package.Detection, entry))
+                await packages.SaveDetectionAsync(packageId, Detection(entry), package.VerifyAfterInstall, ct);
             if (package.CatalogCollectionId is { } collectionId && await collections.GetAsync(collectionId, ct) is { } collection)
                 await collections.SaveAsync(collectionId, collection.Name, collection.Description, true, collection.MatchAll, [OutdatedRule(entry)], ct);
 
@@ -349,6 +353,17 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         // Ein Setup, das sich nur ins Benutzerprofil installiert, wäre als SYSTEM wirkungslos.
         RunAs = entry.Scope == "user" ? StepRunAs.LoggedOnUser : StepRunAs.System,
     };
+
+    /// <summary>Installiert heißt: das Programm ist in mindestens dieser Version vorhanden; neuere Versionen werden nicht überschrieben.</summary>
+    private static StepConditions Detection(CatalogEntry entry) => new() { SoftwareInstalled = entry.Match, SoftwareMinVersion = entry.Version };
+
+    /// <summary>true, wenn die Erkennung nur aus dem besteht, was ein Import einträgt (also nicht von Hand erweitert wurde).</summary>
+    private static bool IsCatalogDetection(StepConditions detection, CatalogEntry entry)
+    {
+        var rest = JobJson.Deserialize<StepConditions>(JobJson.Serialize(detection, false))!;
+        rest.SoftwareInstalled = rest.SoftwareMinVersion = null;
+        return rest.IsEmpty && string.Equals(detection.SoftwareInstalled, entry.Match, StringComparison.OrdinalIgnoreCase);
+    }
 
     private static CollectionRule OutdatedRule(CatalogEntry entry) =>
         new() { Field = RuleField.Software, Operator = RuleOperator.Contains, Value = entry.Match, Value2 = entry.Version };

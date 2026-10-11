@@ -279,7 +279,7 @@ public sealed class PackageTests : IDisposable
         _probe.Offline.Add("pc-02");
         await using (var db = _db.CreateDbContext())
         {
-            db.DeploymentTargets.Single(t => t.ComputerName == "pc-01").RebootUtc = DateTime.UtcNow - DeploymentService.RebootWindow - TimeSpan.FromMinutes(1);
+            db.DeploymentTargets.Single(t => t.ComputerName == "pc-01").RebootUtc = DateTime.UtcNow - TimeSpan.FromMinutes(SettingsService.DefaultRebootWaitMinutes + 1);
             await db.SaveChangesAsync();
         }
         Assert.Equal(0, await deployments.ResumeRebootedAsync());
@@ -290,6 +290,118 @@ public sealed class PackageTests : IDisposable
 
         await deployments.CancelAsync(parked.Id);
         Assert.Equal(TargetStatus.Cancelled, (await deployments.GetAsync(parked.Id))!.Targets.Single(t => t.ComputerName == "pc-02").Status);
+    }
+
+    [Fact]
+    public async Task A_package_whose_detection_already_applies_is_skipped_and_reported_as_already_installed()
+    {
+        var installed = SimulatedInventory.Create("pc-01").Software[0];
+        var package = await _packages.SaveAsync(null, "Vorhanden", installed.Version, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Installieren"), null);
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions { SoftwareInstalled = installed.Name, SoftwareMinVersion = installed.Version }, false);
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        var target = (await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], scanAfter: true)).Id)).Targets[0];
+        Assert.Equal(TargetStatus.AlreadyInstalled, target.Status);
+        Assert.True(target.Status.IsSuccess());
+        Assert.All(target.Steps, s => Assert.Equal(StepStatus.Skipped, s.Status));
+        Assert.NotNull(target.FinishedUtc);
+
+        // Eine neuere Mindestversion ist nicht vorhanden: das Paket läuft.
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions { SoftwareInstalled = installed.Name, SoftwareMinVersion = "9999.0" }, false);
+        var again = (await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], scanAfter: false)).Id)).Targets[0];
+        Assert.Equal(TargetStatus.Succeeded, again.Status);
+        Assert.Equal(StepStatus.Succeeded, Assert.Single(again.Steps).Status);
+    }
+
+    [Fact]
+    public async Task Verification_fails_the_target_when_the_package_is_not_detected_after_the_last_step()
+    {
+        var package = await _packages.SaveAsync(null, "Kaputtes Setup", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Installieren"), null);
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions { SoftwareInstalled = "Fehler-App" }, verifyAfterInstall: true);
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        var target = (await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], false)).Id)).Targets[0];
+        Assert.Equal(TargetStatus.Failed, target.Status);
+        Assert.Contains("Verification failed", target.Error);
+        Assert.Equal(StepStatus.Succeeded, Assert.Single(target.Steps).Status);
+
+        // Eine leere Erkennung schaltet auch die Prüfung ab.
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions(), verifyAfterInstall: true);
+        var stored = (await _packages.GetAsync(package.Id))!;
+        Assert.Null(stored.Detection);
+        Assert.False(stored.VerifyAfterInstall);
+    }
+
+    [Fact]
+    public async Task After_a_reboot_the_remaining_steps_run_even_if_the_package_is_already_detected()
+    {
+        var package = await _packages.SaveAsync(null, "Mit Neustart", null, null);
+        await _packages.SaveStepAsync(package.Id, null, new JobStep { Name = "Neustart", Type = StepType.Reboot }, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Einrichten"), null);
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions { FileExists = @"C:\App\app.exe" }, verifyAfterInstall: true);
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var transport = new RecordingTransport();
+        var deployments = CreateDeployments(transport);
+
+        var id = (await deployments.StartAsync(package.Id, [computer.Id], false)).Id;
+        await WaitAsync(deployments, id);
+        Assert.Equal(1, await deployments.ResumeRebootedAsync());
+        await WaitAsync(deployments, id);
+
+        Assert.Equal([true, false], transport.Jobs.Select(j => j.SkipIfDetected));
+        Assert.All(transport.Jobs, j => Assert.True(j.VerifyAfterInstall && j.Detection?.FileExists == @"C:\App\app.exe"));
+    }
+
+    [Fact]
+    public async Task The_wait_for_a_restart_follows_the_setting()
+    {
+        var package = await _packages.SaveAsync(null, "Langsamer Neustart", null, null);
+        await _packages.SaveStepAsync(package.Id, null, new JobStep { Name = "Neustart", Type = StepType.Reboot }, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Danach"), null);
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var settings = new SettingsService(_db);
+        Assert.Equal(SettingsService.DefaultRebootWaitMinutes, await settings.GetRebootWaitMinutesAsync());
+
+        var parked = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], false)).Id);
+        _probe.Offline.Add("pc-01");
+        await using (var db = _db.CreateDbContext())
+        {
+            db.DeploymentTargets.Single().RebootUtc = DateTime.UtcNow - TimeSpan.FromMinutes(45);
+            await db.SaveChangesAsync();
+        }
+
+        await settings.SetRebootWaitMinutesAsync(60);
+        await deployments.ResumeRebootedAsync();
+        Assert.Equal(TargetStatus.WaitingReboot, (await deployments.GetAsync(parked.Id))!.Targets[0].Status);
+
+        await settings.SetRebootWaitMinutesAsync(40);
+        await deployments.ResumeRebootedAsync();
+        var failed = (await deployments.GetAsync(parked.Id))!.Targets[0];
+        Assert.Equal(TargetStatus.Failed, failed.Status);
+        Assert.Contains("40 minutes", failed.Error);
+    }
+
+    /// <summary>Merkt sich die Manifeste; der erste Job endet mit einem Neustart, der zweite läuft durch.</summary>
+    private sealed class RecordingTransport : IRemoteTransport
+    {
+        public TransportKind Kind => TransportKind.SmbService;
+        public List<JobManifest> Jobs { get; } = [];
+
+        public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
+        {
+            Jobs.Add(job);
+            var first = Jobs.Count == 1;
+            return Task.FromResult(new JobResult
+            {
+                JobId = job.JobId, Success = true, ResumeFromStep = first ? 1 : null, BootTimeUtc = DateTime.UtcNow.AddMinutes(first ? -60 : 0),
+                Steps = [.. job.Steps.Select((s, i) => new StepResult { Index = i, Name = s.Name, Status = first && i > 0 ? StepStatus.Deferred : StepStatus.Succeeded })],
+            });
+        }
     }
 
     private sealed class SwitchableProbe : IHostProbe

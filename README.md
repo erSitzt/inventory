@@ -19,6 +19,9 @@ credentials. The user interface is available in English and German; translations
 - **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
   embedded package – each with conditions and error handling; steps after a reboot continue automatically once the
   computer is back
+- **Detection**: a package can state how to recognise that it is already installed (program name with minimum
+  version, MSI product code, file or registry key) – such computers are skipped and reported as "already installed";
+  optionally the same check runs again after the last step, so a setup that reports success without installing fails
 - **Package library**: ready-made packages of common programs (generated daily from the winget manifests), import
   with one click, automatic adoption of new versions and a dynamic "… outdated" collection that follows along
 - **Run context** per step: as Local System or in the session of the logged-on user
@@ -339,7 +342,7 @@ addresses require the same sign-in as the rest of the API.
 | Area | Endpoints |
 |---|---|
 | Computers | create, query, delete, check reachability, inventory scan, installed software, RDP file, run command or PowerShell script |
-| Packages | list, create, change, delete; add, change, move and delete steps; upload and delete files (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`) |
+| Packages | list, create, change, delete; add, change, move and delete steps; upload and delete files (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); set the detection (`detection`, `verifyAfterInstall`) and read name, version and product code of an uploaded MSI (`…/api/packages/<id>/msi/setup.msi`) |
 | Deployments | start, list, query progress per computer, cancel |
 | Collections | list, create, change, delete; add and remove members of static collections |
 | Schedules | list, create, change, delete, run now |

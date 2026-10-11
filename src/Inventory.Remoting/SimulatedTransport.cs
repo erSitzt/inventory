@@ -13,12 +13,19 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
     {
         var result = new JobResult { JobId = job.JobId, Success = true, StartedUtc = DateTime.UtcNow, BootTimeUtc = SimulatedBootTime(job) };
         var aborted = false;
+        // Erkennung gegen das simulierte Inventar: so lässt sich "bereits installiert" ohne Zielrechner ausprobieren.
+        result.AlreadyInstalled = job.SkipIfDetected && Detected(job.Detection, target.Host);
         for (var i = 0; i < job.Steps.Count; i++)
         {
             var step = job.Steps[i];
             if (result.ResumeFromStep != null)
             {
                 result.Steps.Add(new StepResult { Index = i, Name = step.Name, Status = StepStatus.Deferred, Output = "Continues after the restart" });
+                continue;
+            }
+            if (result.AlreadyInstalled)
+            {
+                result.Steps.Add(new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Already installed" });
                 continue;
             }
             if (aborted)
@@ -62,6 +69,13 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
                 result.ResumeFromStep = i + 1;
             }
         }
+        // Die Simulation installiert nichts; die Prüfung schlägt nur fehl, wenn der gesuchte Name "fail" oder "fehler" enthält.
+        if (result.Success && !result.AlreadyInstalled && result.ResumeFromStep is null && job.VerifyAfterInstall
+            && job.Detection?.SoftwareInstalled is { } wanted && (wanted.Contains("fail", StringComparison.OrdinalIgnoreCase) || wanted.Contains("fehler", StringComparison.OrdinalIgnoreCase)))
+        {
+            result.Success = false;
+            result.Error = $"Verification failed: {wanted} is not installed";
+        }
         result.FinishedUtc = DateTime.UtcNow;
         return result;
     }
@@ -69,6 +83,10 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
     /// <summary>Die Simulation "startet" sofort neu: eine Fortsetzung sieht immer eine jüngere Startzeit als zuvor.</summary>
     private static DateTime SimulatedBootTime(JobManifest job) =>
         job.RequireBootAfterUtc is { } previous && previous > DateTime.UtcNow.AddHours(-1) ? previous.AddMinutes(1) : DateTime.UtcNow.AddHours(-1);
+
+    private static bool Detected(StepConditions? detection, string host) =>
+        detection is { IsEmpty: false } && !string.IsNullOrWhiteSpace(detection.SoftwareInstalled)
+        && SimulatedInventory.Create(host).Software.Any(s => SoftwareMatcher.Matches(detection.SoftwareInstalled, detection.SoftwareMinVersion, s.Name, s.Version));
 
     private static string Describe(JobStep step) => step.Type switch
     {

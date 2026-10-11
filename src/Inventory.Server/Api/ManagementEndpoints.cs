@@ -11,7 +11,8 @@ namespace Inventory.Server.Api;
 /// </summary>
 public static class ManagementEndpoints
 {
-    public sealed record PackageRequest(string Name, string? Version, string? Description, List<StepRequest>? Steps);
+    public sealed record PackageRequest(string Name, string? Version, string? Description, List<StepRequest>? Steps,
+        StepConditions? Detection = null, bool VerifyAfterInstall = false);
 
     /// <param name="NestedPackageId">Gesetzt = dieser Schritt führt ein anderes Paket aus; <paramref name="Definition"/> braucht dann nur den Namen.</param>
     public sealed record StepRequest(JobStep Definition, int? NestedPackageId = null);
@@ -21,7 +22,7 @@ public static class ManagementEndpoints
     public sealed record FileDto(string Path, long Size, DateTime ModifiedUtc);
 
     public sealed record PackageDetailDto(int Id, string Name, string? Version, string? Description, DateTime ModifiedUtc, string? CatalogId,
-        List<StepDto> Steps, List<FileDto> Files);
+        List<StepDto> Steps, List<FileDto> Files, StepConditions? Detection, bool VerifyAfterInstall);
 
     public sealed record CollectionRequest(string Name, string? Description, bool IsDynamic, bool MatchAll = true, List<CollectionRule>? Rules = null);
 
@@ -36,7 +37,7 @@ public static class ManagementEndpoints
         ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult);
 
     public sealed record DeploymentSummaryDto(int Id, int? PackageId, string PackageName, string? PackageVersion, DateTime CreatedUtc, DateTime? FinishedUtc,
-        int Targets, int Succeeded, int Failed, int Waiting);
+        int Targets, int Succeeded, int AlreadyInstalled, int Failed, int Waiting);
 
     public sealed record ResultDto(string Result);
 
@@ -59,6 +60,7 @@ public static class ManagementEndpoints
             {
                 foreach (var step in request.Steps ?? [])
                     await service.SaveStepAsync(package.Id, null, step.Definition, step.NestedPackageId, ct);
+                await service.SaveDetectionAsync(package.Id, request.Detection, request.VerifyAfterInstall, ct);
             }
             catch
             {
@@ -68,15 +70,16 @@ public static class ManagementEndpoints
             }
             await audit.LogAsync(User(http), "Package created via API", $"{package.Name} ({request.Steps?.Count ?? 0} steps)", ct);
             return Results.Created($"/api/packages/{package.Id}", ToDetail((await service.GetAsync(package.Id, ct))!, service));
-        }).WithSummary("Create package").WithDescription("Creates a package, optionally with its steps. Step types: Command, PowerShell, Install, FileCopy, Service, Sleep, Reboot, InventoryScan. Files are uploaded separately with PUT /api/packages/{id}/files/{path}.")
+        }).WithSummary("Create package").WithDescription("Creates a package, optionally with its steps. Step types: Command, PowerShell, Install, FileCopy, Service, Sleep, Reboot, InventoryScan. Files are uploaded separately with PUT /api/packages/{id}/files/{path}. `detection` tells the runner how to recognise that the package is already installed (softwareInstalled with optional softwareMinVersion, msiProductCode, fileExists, registryKeyExists); such computers finish as AlreadyInstalled without running a step. With `verifyAfterInstall` the detection must also hold after the last step.")
             .Produces<PackageDetailDto>(201).Produces(400);
 
         packages.MapPut("{id:int}", async (int id, PackageRequest request, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             await service.SaveAsync(id, request.Name, request.Version, request.Description, ct);
+            await service.SaveDetectionAsync(id, request.Detection, request.VerifyAfterInstall, ct);
             await audit.LogAsync(User(http), "Package changed via API", request.Name, ct);
             return Results.Ok(ToDetail((await service.GetAsync(id, ct))!, service));
-        }).WithSummary("Change package header").WithDescription("Changes name, version and description. Steps are managed through the step endpoints; a `steps` array here is ignored.").Produces<PackageDetailDto>().Produces(404);
+        }).WithSummary("Change package header").WithDescription("Changes name, version, description and the detection (`detection`, `verifyAfterInstall`; omitting `detection` removes it). Steps are managed through the step endpoints; a `steps` array here is ignored.").Produces<PackageDetailDto>().Produces(404);
 
         packages.MapDelete("{id:int}", async (int id, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
@@ -114,6 +117,16 @@ public static class ManagementEndpoints
             return await service.GetAsync(id, ct) is { } package ? Results.Ok(ToDetail(package, service)) : Results.NotFound();
         }).WithSummary("Move step").WithDescription("Query parameter direction: -1 = one position up, 1 = one position down.").Produces<PackageDetailDto>().Produces(404);
 
+        packages.MapGet("{id:int}/msi/{**path}", async (int id, string path, PackageService service, CancellationToken ct) =>
+        {
+            if (await service.GetAsync(id, ct) is null || !service.Repository.List(id).Any(f => f.RelativePath.Equals(path.Replace('/', '\\'), StringComparison.OrdinalIgnoreCase) || f.RelativePath.Equals(path, StringComparison.OrdinalIgnoreCase)))
+                return Results.NotFound();
+            return Inventory.Data.MsiProperties.Read(service.Repository.Resolve(id, path)) is { } product
+                ? Results.Ok(product)
+                : throw new ArgumentException("the file cannot be read as an MSI");
+        }).WithSummary("MSI properties of a package file").WithDescription("Product name, version and product code of an MSI in the package folder – the values for the package detection.")
+            .Produces<Inventory.Data.MsiProperties.Product>().Produces(400).Produces(404);
+
         packages.MapDelete("{id:int}/files/{**path}", async (int id, string path, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             if (await service.GetAsync(id, ct) is not { } package)
@@ -127,7 +140,8 @@ public static class ManagementEndpoints
 
         deployments.MapGet("", async (DeploymentService service, int? take, CancellationToken ct) =>
             (await service.ListAsync(Math.Clamp(take ?? 50, 1, 500), ct)).Select(d => new DeploymentSummaryDto(d.Id, d.PackageId, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc,
-                d.Targets.Count, d.Targets.Count(t => t.Status == TargetStatus.Succeeded), d.Targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled),
+                d.Targets.Count, d.Targets.Count(t => t.Status == TargetStatus.Succeeded), d.Targets.Count(t => t.Status == TargetStatus.AlreadyInstalled),
+                d.Targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled),
                 d.Targets.Count(t => t.Status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot))))
             .WithSummary("Recent deployments").WithDescription("Newest first; query parameter take (default 50, at most 500).");
 
@@ -232,7 +246,7 @@ public static class ManagementEndpoints
 
     private static PackageDetailDto ToDetail(Package p, PackageService service) => new(p.Id, p.Name, p.Version, p.Description, p.ModifiedUtc, p.CatalogId,
         [.. p.Steps.OrderBy(s => s.Order).Select(s => new StepDto(s.Id, s.Order, s.NestedPackageId, s.Definition))],
-        [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))]);
+        [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall);
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
         s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult);

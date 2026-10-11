@@ -49,6 +49,8 @@ namespace Inventory.Runner
                 else
                 {
                     result.Success = true;
+                    // Bereits installiert: nichts ausführen, damit ein erneutes Deployment weder neu installiert noch neu startet.
+                    result.AlreadyInstalled = manifest.SkipIfDetected && manifest.Detection is { IsEmpty: false } && ConditionEvaluator.WhyNot(manifest.Detection) == null;
                 }
 
                 using (var progress = new StreamWriter(new FileStream(Path.Combine(_jobDir, JobFiles.Progress),
@@ -63,13 +65,17 @@ namespace Inventory.Runner
                         {
                             stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Deferred, Output = "Continues after the restart" };
                         }
+                        else if (result.AlreadyInstalled)
+                        {
+                            stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Already installed" };
+                        }
                         else if (aborted != null || _cancelled)
                         {
                             stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = aborted ?? "Abgebrochen" };
                         }
                         else if (ConditionEvaluator.WhyNot(step.Conditions) is string reason)
                         {
-                            stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Bedingung nicht erfüllt: " + reason };
+                            stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Condition not met: " + reason };
                         }
                         else
                         {
@@ -94,6 +100,14 @@ namespace Inventory.Runner
                 {
                     result.Success = false;
                     result.Error = "Abgebrochen";
+                }
+                // Der Exitcode allein beweist nichts: nach dem letzten Schritt muss das Paket wirklich vorhanden sein.
+                // Steht noch ein Neustart aus, prüft erst der Folgejob.
+                else if (result.Success && !result.AlreadyInstalled && result.ResumeFromStep == null && manifest.VerifyAfterInstall
+                         && manifest.Detection is { IsEmpty: false } && ConditionEvaluator.WhyNot(manifest.Detection) is string missing)
+                {
+                    result.Success = false;
+                    result.Error = "Verification failed: " + missing;
                 }
             }
             catch (Exception ex)

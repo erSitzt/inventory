@@ -32,6 +32,22 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
     public Task SetVerifyTargetNameAsync(bool enabled, CancellationToken ct = default) =>
         SetAsync(SettingKeys.SkipTargetNameCheck, (!enabled).ToString(), ct);
 
+    public const int DefaultRebootWaitMinutes = 30;
+
+    /// <summary>Wartefrist nach einem Neustart-Schritt; danach gilt das Ziel als fehlgeschlagen.</summary>
+    public async Task<int> GetRebootWaitMinutesAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await RebootWaitMinutesAsync(db, ct);
+    }
+
+    internal static async Task<int> RebootWaitMinutesAsync(InventoryDbContext db, CancellationToken ct) =>
+        int.TryParse(await db.Settings.Where(s => s.Key == SettingKeys.RebootWaitMinutes).Select(s => s.Value).FirstOrDefaultAsync(ct), out var minutes) && minutes > 0
+            ? minutes : DefaultRebootWaitMinutes;
+
+    public Task SetRebootWaitMinutesAsync(int minutes, CancellationToken ct = default) =>
+        SetAsync(SettingKeys.RebootWaitMinutes, Math.Clamp(minutes, 5, 24 * 60).ToString(), ct);
+
     public async Task<string?> GetAsync(string key, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

@@ -80,6 +80,9 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasIndex(p => p.Name).IsUnique();
             e.HasMany(p => p.Steps).WithOne().HasForeignKey(s => s.PackageId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Collection>().WithMany().HasForeignKey(p => p.CatalogCollectionId).OnDelete(DeleteBehavior.SetNull);
+            e.Property(p => p.Detection).HasConversion(
+                detection => detection == null ? null : JobJson.Serialize(detection, false),
+                json => json == null ? null : JobJson.Deserialize<StepConditions>(json));
         });
 
         modelBuilder.Entity<PackageStep>(e =>

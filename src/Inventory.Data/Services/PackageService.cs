@@ -54,6 +54,18 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         return package;
     }
 
+    /// <summary>Legt fest, woran ein bereits installiertes Paket erkannt wird; eine leere Erkennung schaltet sie ab.</summary>
+    public async Task SaveDetectionAsync(int id, StepConditions? detection, bool verifyAfterInstall, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var package = await db.Packages.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Package {0} not found", id]);
+        package.Detection = detection is null or { IsEmpty: true } ? null : detection;
+        // Ohne Erkennung gäbe es nichts zu prüfen.
+        package.VerifyAfterInstall = verifyAfterInstall && package.Detection is not null;
+        package.ModifiedUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
@@ -121,6 +133,10 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         await AppendAsync(db, packageId, prefix: "", manifest, files, included: [], MaxNestingDepth, ct);
         if (manifest.Steps.Count == 0)
             throw new InvalidOperationException(L["The package contains no steps."]);
+        // Maßgeblich ist die Erkennung des verteilten Pakets; eingebettete Pakete bringen nur ihre Schritte mit.
+        var header = await db.Packages.AsNoTracking().Where(p => p.Id == packageId).Select(p => new { p.Detection, p.VerifyAfterInstall }).FirstAsync(ct);
+        manifest.Detection = header.Detection;
+        manifest.VerifyAfterInstall = header.VerifyAfterInstall;
         return new BuiltJob(manifest, files);
     }
 

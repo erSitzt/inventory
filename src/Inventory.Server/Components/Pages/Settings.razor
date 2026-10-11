@@ -33,6 +33,8 @@
         <MudText Typo="Typo.body2">
             @L["SMB + service needs the ADMIN$ share and the Service Control Manager (port 445); the job runs as Local System. WinRM needs PowerShell remoting enabled (port 5985); the job runs with the stored account."]
         </MudText>
+        <MudNumericField T="int" Value="_rebootWait" ValueChanged="SetRebootWaitAsync" Min="5" Max="1440" Label="@L["Wait for restart (minutes)"]" Variant="Variant.Outlined"
+                         HelperText="@L["How long a computer may take to come back after a restart step. After that the deployment counts as failed for this computer."]" />
         <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="@L["Data directory"]" Variant="Variant.Outlined" ReadOnly="true"
                       HelperText="@L["Database, keys, package files and daily backups (subfolder backups, 14 copies). Configurable via Inventory:DataDirectory."]" />
         <MudText Typo="Typo.body2">
@@ -405,6 +407,16 @@
     private bool _fallback;
     private bool _verifyName = true;
 
+    private int _rebootWait = Inventory.Data.Services.SettingsService.DefaultRebootWaitMinutes;
+
+    private async Task SetRebootWaitAsync(int minutes)
+    {
+        await SettingsService.SetRebootWaitMinutesAsync(minutes);
+        _rebootWait = await SettingsService.GetRebootWaitMinutesAsync();
+        await Audit.LogAsync(L["Setting changed"], $"{L["Wait for restart (minutes)"]}: {_rebootWait}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
     private async Task SetVerifyNameAsync(bool enabled)
     {
         _verifyName = enabled;
@@ -418,6 +430,7 @@
         _transport = await SettingsService.GetDefaultTransportAsync();
         _fallback = await SettingsService.GetTransportFallbackAsync();
         _verifyName = await SettingsService.GetVerifyTargetNameAsync();
+        _rebootWait = await SettingsService.GetRebootWaitMinutesAsync();
         await LoadAdAsync();
         await LoadHeartbeatAsync();
         await LoadUpdateAsync();

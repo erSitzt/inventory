@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Inventory.Contracts;
 using Microsoft.Win32;
 
@@ -16,33 +17,53 @@ namespace Inventory.Runner
 
             var os = OsVersion();
             if (!string.IsNullOrWhiteSpace(conditions.MinOsVersion) && VersionComparer.Compare(os, conditions.MinOsVersion) < 0)
-                return $"Windows-Version {os} ist älter als {conditions.MinOsVersion}";
+                return $"Windows version {os} is older than {conditions.MinOsVersion}";
             if (!string.IsNullOrWhiteSpace(conditions.BelowOsVersion) && VersionComparer.Compare(os, conditions.BelowOsVersion) >= 0)
-                return $"Windows-Version {os} ist nicht älter als {conditions.BelowOsVersion}";
+                return $"Windows version {os} is not older than {conditions.BelowOsVersion}";
 
             if (!string.IsNullOrWhiteSpace(conditions.Architecture))
             {
                 var actual = Environment.Is64BitOperatingSystem ? "x64" : "x86";
                 if (!string.Equals(actual, conditions.Architecture!.Trim(), StringComparison.OrdinalIgnoreCase))
-                    return $"Architektur ist {actual}, nicht {conditions.Architecture}";
+                    return $"architecture is {actual}, not {conditions.Architecture}";
             }
 
             if (!string.IsNullOrWhiteSpace(conditions.FileExists) && !PathExists(conditions.FileExists!))
-                return $"{conditions.FileExists} ist nicht vorhanden";
+                return $"{conditions.FileExists} does not exist";
             if (!string.IsNullOrWhiteSpace(conditions.FileMissing) && PathExists(conditions.FileMissing!))
-                return $"{conditions.FileMissing} ist vorhanden";
+                return $"{conditions.FileMissing} exists";
 
             if (!string.IsNullOrWhiteSpace(conditions.RegistryKeyExists) && !RegistryKeyExists(conditions.RegistryKeyExists!))
-                return $"Registry-Schlüssel {conditions.RegistryKeyExists} ist nicht vorhanden";
+                return $"registry key {conditions.RegistryKeyExists} does not exist";
             if (!string.IsNullOrWhiteSpace(conditions.RegistryKeyMissing) && RegistryKeyExists(conditions.RegistryKeyMissing!))
-                return $"Registry-Schlüssel {conditions.RegistryKeyMissing} ist vorhanden";
+                return $"registry key {conditions.RegistryKeyMissing} exists";
+
+            if (!string.IsNullOrWhiteSpace(conditions.SoftwareInstalled) || !string.IsNullOrWhiteSpace(conditions.SoftwareMissing))
+            {
+                var software = InventoryCollector.InstalledSoftware();
+                if (!string.IsNullOrWhiteSpace(conditions.SoftwareInstalled)
+                    && !software.Any(s => SoftwareMatcher.Matches(conditions.SoftwareInstalled, conditions.SoftwareMinVersion, s.Name, s.Version)))
+                {
+                    // Für die Meldung unterscheiden: gar nicht da oder nur zu alt.
+                    var older = software.FirstOrDefault(s => SoftwareMatcher.Matches(conditions.SoftwareInstalled, null, s.Name, s.Version));
+                    return older != null
+                        ? $"{older.Name} {older.Version} is older than {conditions.SoftwareMinVersion}"
+                        : $"{conditions.SoftwareInstalled} is not installed";
+                }
+                if (!string.IsNullOrWhiteSpace(conditions.SoftwareMissing)
+                    && software.FirstOrDefault(s => SoftwareMatcher.Matches(conditions.SoftwareMissing, null, s.Name, s.Version)) is SoftwareItem present)
+                    return $"{present.Name} is installed";
+            }
+
+            if (!string.IsNullOrWhiteSpace(conditions.MsiProductCode) && !ProductInstalled(conditions.MsiProductCode!))
+                return $"MSI product {conditions.MsiProductCode} is not installed";
 
             if (conditions.UserLoggedOn is bool expected)
             {
                 // Eine laufende Shell erfasst auch RDP-Sitzungen, nicht nur die Konsole.
                 var loggedOn = Process.GetProcessesByName("explorer").Length > 0;
                 if (loggedOn != expected)
-                    return loggedOn ? "Ein Benutzer ist angemeldet" : "Kein Benutzer angemeldet";
+                    return loggedOn ? "a user is logged on" : "no user is logged on";
             }
             return null;
         }
@@ -51,6 +72,22 @@ namespace Inventory.Runner
         {
             var expanded = Environment.ExpandEnvironmentVariables(path);
             return File.Exists(expanded) || Directory.Exists(expanded);
+        }
+
+        /// <summary>Ein MSI-Produkt trägt sich unter seinem Produktcode in den Uninstall-Schlüssel ein (64- oder 32-Bit-Sicht).</summary>
+        private static bool ProductInstalled(string productCode)
+        {
+            var path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\" + SoftwareMatcher.NormalizeProductCode(productCode);
+            foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+            {
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
+                using (var key = hklm.OpenSubKey(path))
+                {
+                    if (key != null)
+                        return true;
+                }
+            }
+            return false;
         }
 
         private static string OsVersion()

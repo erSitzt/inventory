@@ -724,6 +724,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Detection")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("ModifiedUtc")
                         .HasColumnType("TEXT");
 
@@ -732,6 +735,9 @@ namespace Inventory.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT")
                         .UseCollation("NOCASE");
+
+                    b.Property<bool>("VerifyAfterInstall")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Version")
                         .HasColumnType("TEXT");

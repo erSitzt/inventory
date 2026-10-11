@@ -143,6 +143,19 @@
                                 <MudTextField @bind-Value="_conditions.RegistryKeyMissing" Label="@L["Registry key missing"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_conditions.SoftwareInstalled" Label="@L["Program installed"]" Placeholder="7-Zip" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_conditions.SoftwareMinVersion" Label="@L["Minimum version"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                              Disabled="@string.IsNullOrWhiteSpace(_conditions.SoftwareInstalled)" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_conditions.SoftwareMissing" Label="@L["Program not installed"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_conditions.MsiProductCode" Label="@L["MSI product code"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
                                 <MudSelect T="bool?" @bind-Value="_conditions.UserLoggedOn" Label="@L["User logged on"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["any"]">
                                     <MudSelectItem T="bool?" Value="true">@L["only if someone is logged on"]</MudSelectItem>
                                     <MudSelectItem T="bool?" Value="false">@L["only if nobody is logged on"]</MudSelectItem>

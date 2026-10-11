@@ -38,7 +38,11 @@
     {
         <span> · @L["finished {0}", Display.LocalTime(_deployment.FinishedUtc)]</span>
     }
-    · @L["{0} of {1} succeeded", _deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded), _deployment.Targets.Count]
+    · @L["{0} of {1} succeeded", _deployment.Targets.Count(t => t.Status.IsSuccess()), _deployment.Targets.Count]
+    @if (_deployment.Targets.Any(t => t.Status == TargetStatus.AlreadyInstalled))
+    {
+        <span> (@L["{0} already installed", _deployment.Targets.Count(t => t.Status == TargetStatus.AlreadyInstalled)])</span>
+    }
     @if (_deployment.Targets.Any(t => t.Status == TargetStatus.WaitingOffline))
     {
         <span> · @L["Offline computers are retried until {0}", Display.LocalTime(_deployment.RetryUntilUtc)]</span>

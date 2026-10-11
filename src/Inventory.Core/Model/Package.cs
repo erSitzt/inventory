@@ -19,6 +19,11 @@ public class Package
     public bool CatalogAutoUpdate { get; set; }
     /// <summary>Dynamische Sammlung "… veraltet", deren Versionsgrenze mit dem Paket mitwandert.</summary>
     public int? CatalogCollectionId { get; set; }
+
+    /// <summary>Woran der Runner erkennt, dass das Paket schon installiert ist; null = keine Erkennung, immer ausführen.</summary>
+    public StepConditions? Detection { get; set; }
+    /// <summary>Nach dem letzten Schritt muss <see cref="Detection"/> zutreffen, sonst gilt das Ziel als fehlgeschlagen.</summary>
+    public bool VerifyAfterInstall { get; set; }
 }
 
 public class PackageStep
@@ -44,6 +49,14 @@ public enum TargetStatus
     WaitingOffline,
     /// <summary>Ein Neustart-Schritt läuft; die restlichen Schritte folgen, sobald der Rechner wieder da ist.</summary>
     WaitingReboot = 6,
+    /// <summary>Die Erkennung des Pakets traf schon vor dem ersten Schritt zu; es wurde nichts ausgeführt.</summary>
+    AlreadyInstalled = 7,
+}
+
+public static class TargetStatusExtensions
+{
+    /// <summary>Das Paket ist auf dem Rechner vorhanden: gerade installiert oder schon vorher da.</summary>
+    public static bool IsSuccess(this TargetStatus status) => status is TargetStatus.Succeeded or TargetStatus.AlreadyInstalled;
 }
 
 /// <summary>Ausführung eines Pakets auf einer Menge von Rechnern.</summary>

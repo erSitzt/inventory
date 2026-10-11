@@ -128,6 +128,14 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         _ => step.Script.Split('\n')[0].Trim(),
     };
 
+    /// <summary>Kurzfassung einer Paket-Erkennung, z. B. für das Protokoll.</summary>
+    public string Detection(StepConditions detection) => string.Join(", ", new[]
+    {
+        string.IsNullOrWhiteSpace(detection.SoftwareInstalled) ? null
+            : string.IsNullOrWhiteSpace(detection.SoftwareMinVersion) ? detection.SoftwareInstalled : $"{detection.SoftwareInstalled} ≥ {detection.SoftwareMinVersion}",
+        detection.MsiProductCode, detection.FileExists, detection.RegistryKeyExists,
+    }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
     public string RunAs(StepRunAs runAs) => runAs switch
     {
         StepRunAs.System => T("Local System"),
@@ -155,6 +163,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.Cancelled => T("cancelled"),
         TargetStatus.WaitingOffline => T("waiting for computer"),
         TargetStatus.WaitingReboot => T("restarting"),
+        TargetStatus.AlreadyInstalled => T("already installed"),
         _ => status.ToString(),
     };
 
@@ -166,6 +175,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.Cancelled => Color.Warning,
         TargetStatus.WaitingOffline => Color.Warning,
         TargetStatus.WaitingReboot => Color.Info,
+        TargetStatus.AlreadyInstalled => Color.Success,
         _ => Color.Default,
     };
 

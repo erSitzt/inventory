@@ -18,8 +18,6 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     private const int MaxParallelTargets = 16;
     /// <summary>So lange werden Offline-Rechner nachgeholt, bevor das Ziel als fehlgeschlagen gilt.</summary>
     public static readonly TimeSpan RetryWindow = TimeSpan.FromDays(3);
-    /// <summary>So lange darf ein Rechner nach einem Neustart-Schritt brauchen, bis er wieder erreichbar ist.</summary>
-    public static readonly TimeSpan RebootWindow = TimeSpan.FromMinutes(30);
     private string WaitingText => L["Computer unreachable – will be retried as soon as it is online"];
 
     // Über alle Deployments hinweg begrenzt, damit mehrere gleichzeitige Deployments Server und Netz nicht überlasten.
@@ -184,18 +182,23 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
     /// <summary>
     /// Setzt Ziele fort, deren Rechner nach einem Neustart-Schritt wieder erreichbar ist: der Folgejob enthält die restlichen
-    /// Schritte und läuft nur, wenn der Rechner wirklich neu gestartet ist. Nach <see cref="RebootWindow"/> gilt das Ziel als fehlgeschlagen.
+    /// Schritte und läuft nur, wenn der Rechner wirklich neu gestartet ist. Nach der eingestellten Wartefrist
+    /// (<see cref="SettingKeys.RebootWaitMinutes"/>) gilt das Ziel als fehlgeschlagen.
     /// Wird vom Zeitplaner in jedem Takt aufgerufen.
     /// </summary>
     public async Task<int> ResumeRebootedAsync(CancellationToken ct = default)
     {
         List<Deployment> waiting;
+        TimeSpan rebootWindow;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
             waiting = await db.Deployments.AsNoTracking()
                 .Include(d => d.Targets.Where(t => t.Status == TargetStatus.WaitingReboot))
                 .Where(d => d.Targets.Any(t => t.Status == TargetStatus.WaitingReboot))
                 .ToListAsync(ct);
+            if (waiting.Count == 0)
+                return 0;
+            rebootWindow = TimeSpan.FromMinutes(await SettingsService.RebootWaitMinutesAsync(db, ct));
         }
 
         var started = 0;
@@ -204,9 +207,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             var ready = new List<DeploymentTarget>();
             foreach (var target in deployment.Targets)
             {
-                if (target.RebootUtc is { } rebooted && DateTime.UtcNow - rebooted > RebootWindow)
+                if (target.RebootUtc is { } rebooted && DateTime.UtcNow - rebooted > rebootWindow)
                 {
-                    var timeout = L["The computer did not come back within {0} minutes after the restart", (int)RebootWindow.TotalMinutes].Value;
+                    var timeout = L["The computer did not come back within {0} minutes after the restart", (int)rebootWindow.TotalMinutes].Value;
                     await UpdateAsync(db => db.DeploymentTargets.Where(t => t.Id == target.Id)
                         .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, timeout)
                             .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
@@ -302,6 +305,10 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             {
                 Steps = built.Manifest.Steps.Skip(resumeFrom).ToList(),
                 RequireBootAfterUtc = resumeFrom > 0 ? target.BootTimeUtc : null,
+                Detection = built.Manifest.Detection,
+                VerifyAfterInstall = built.Manifest.VerifyAfterInstall,
+                // Nach einem Neustart ist das Paket oft schon erkennbar, obwohl noch Schritte ausstehen: dann nicht überspringen.
+                SkipIfDetected = resumeFrom == 0,
             };
             var progress = new CallbackProgress(e =>
             {
@@ -334,6 +341,11 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             bootTime = result.BootTimeUtc ?? bootTime;
             error = result.Error ?? (result.Success ? null : steps.FirstOrDefault(s => s.Status == StepStatus.Failed)?.Error);
             status = result.Success ? TargetStatus.Succeeded : ct.IsCancellationRequested ? TargetStatus.Cancelled : TargetStatus.Failed;
+            if (result.Success && result.AlreadyInstalled)
+            {
+                status = TargetStatus.AlreadyInstalled;
+                error = L["Already installed – nothing was executed"];
+            }
             if (result.Success && result.ResumeFromStep is { } next)
             {
                 // Der Neustart läuft; die restlichen Schritte folgen, sobald der Rechner wieder erreichbar ist.

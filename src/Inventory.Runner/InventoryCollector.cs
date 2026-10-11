@@ -101,6 +101,14 @@ namespace Inventory.Runner
             }
         }
 
+        /// <summary>Nur die Programmliste, z. B. für Bedingungen und die Erkennung installierter Pakete.</summary>
+        internal static List<SoftwareItem> InstalledSoftware()
+        {
+            var data = new InventoryData();
+            ReadSoftware(data);
+            return data.Software;
+        }
+
         private static void ReadSoftware(InventoryData data)
         {
             using (var hklm64 = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))

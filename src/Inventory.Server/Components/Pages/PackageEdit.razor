@@ -109,6 +109,43 @@
             </MudStack>
         </MudPaper>
 
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                <MudText Typo="Typo.h6">@L["Detection"]</MudText>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(_package.Detection is null ? Color.Default : Color.Success)">@(_package.Detection is null ? L["off"] : L["active"])</MudChip>
+                <MudSpacer />
+                @if (MsiFiles.Count > 0)
+                {
+                    <MudMenu Label="@L["Fill from MSI"]" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Dense="true">
+                        @foreach (var file in MsiFiles)
+                        {
+                            <MudMenuItem OnClick="@(() => FillFromMsi(file, false))">@L["{0}: name and minimum version", file]</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => FillFromMsi(file, true))">@L["{0}: product code (exactly this version)", file]</MudMenuItem>
+                        }
+                    </MudMenu>
+                }
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mb-3">
+                @L["If all conditions entered here apply, the package counts as already installed: the computer is skipped and reported as \"already installed\". Without detection the package always runs."]
+            </MudText>
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_detection.SoftwareInstalled" Label="@L["Installed program (name)"]" Placeholder="7-Zip" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              HelperText="@L["Name as shown in \"Programs and Features\". Without * it must occur as whole words, with * it is a pattern for the whole name."]" />
+                <MudTextField @bind-Value="_detection.SoftwareMinVersion" Label="@L["Minimum version"]" Placeholder="24.08" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Disabled="@string.IsNullOrWhiteSpace(_detection.SoftwareInstalled)" />
+                <MudTextField @bind-Value="_detection.MsiProductCode" Label="@L["MSI product code"]" Placeholder="{00000000-0000-0000-0000-000000000000}" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudTextField @bind-Value="_detection.FileExists" Label="@L["File/folder exists"]" Placeholder="%ProgramFiles%\App\app.exe" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudTextField @bind-Value="_detection.RegistryKeyExists" Label="@L["Registry key exists"]" Placeholder="HKLM\SOFTWARE\Company\Product" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudSwitch T="bool" @bind-Value="_verify" Color="Color.Primary" Disabled="@_detection.IsEmpty" Label="@L["Verify after the installation"]" />
+                <MudText Typo="Typo.caption">
+                    @L["With verification the detection must also apply after the last step; otherwise the deployment fails for this computer even if every step reported success."]
+                </MudText>
+                <div>
+                    <MudButton Variant="Variant.Outlined" OnClick="SaveDetectionAsync">@L["Save"]</MudButton>
+                </div>
+            </MudStack>
+        </MudPaper>
+
         <MudPaper Class="pa-4" Outlined="true">
             <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
                 <MudText Typo="Typo.h6">@L["Files"]</MudText>
@@ -159,6 +196,10 @@
     private string? _description;
     private List<Inventory.Data.RepositoryFile> _files = [];
     private bool _uploading;
+    private StepConditions _detection = new();
+    private bool _verify;
+
+    private List<string> MsiFiles => _files.Select(f => f.RelativePath).Where(f => f.EndsWith(".msi", StringComparison.OrdinalIgnoreCase)).ToList();
     private string _uploadText = "";
 
     protected override async Task OnParametersSetAsync()
@@ -170,6 +211,7 @@
             _name = _package.Name;
             _version = _package.Version;
             _description = _package.Description;
+            LoadDetection();
         }
     }
 
@@ -191,6 +233,41 @@
         {
             Snackbar.Add(L["A package named \"{0}\" already exists.", _name.Trim()], Severity.Error);
         }
+    }
+
+    private void LoadDetection()
+    {
+        // Kopie, damit ungespeicherte Eingaben nicht im geladenen Paket landen.
+        _detection = _package!.Detection is { } stored ? JobJson.Deserialize<StepConditions>(JobJson.Serialize(stored))! : new StepConditions();
+        _verify = _package.VerifyAfterInstall;
+    }
+
+    private async Task SaveDetectionAsync()
+    {
+        await PackageService.SaveDetectionAsync(Id, _detection, _verify);
+        await Audit.LogAsync(L["Package detection changed"], $"{_package!.Name}: {(_detection.IsEmpty ? L["off"] : Display.Detection(_detection))}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+        await ReloadAsync();
+        LoadDetection();
+    }
+
+    private void FillFromMsi(string file, bool productCode)
+    {
+        if (Inventory.Data.MsiProperties.Read(PackageService.Repository.Resolve(Id, file)) is not { } product)
+        {
+            Snackbar.Add(L["{0} could not be read as an MSI file.", file], Severity.Error);
+            return;
+        }
+        if (productCode)
+        {
+            _detection.MsiProductCode = product.ProductCode;
+        }
+        else
+        {
+            _detection.SoftwareInstalled = product.Name is null ? null : SoftwareMatcher.BaseName(product.Name);
+            _detection.SoftwareMinVersion = product.Version;
+        }
+        Snackbar.Add(L["Filled in – check the values and save."], Severity.Info);
     }
 
     private async Task EditStepAsync(PackageStep? step, StepType type, bool nested)

@@ -45,6 +45,8 @@ namespace Inventory.Contracts
         public DateTime? BootTimeUtc { get; set; }
         /// <summary>true, wenn der Job wegen <see cref="JobManifest.RequireBootAfterUtc"/> nicht ausgeführt wurde: der Rechner ist noch nicht neu gestartet.</summary>
         public bool NotRebootedYet { get; set; }
+        /// <summary>true, wenn <see cref="JobManifest.Detection"/> schon vor dem ersten Schritt zutraf und deshalb nichts ausgeführt wurde.</summary>
+        public bool AlreadyInstalled { get; set; }
         /// <summary>Gefüllt, wenn der Job einen Inventar-Scan enthielt.</summary>
         public InventoryData? Inventory { get; set; }
 

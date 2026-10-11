@@ -50,6 +50,12 @@ namespace Inventory.Contracts
         /// Uhr, aus dem vorigen Ergebnis) neu gestartet ist. Sonst meldet der Runner <see cref="JobResult.NotRebootedYet"/>.
         /// </summary>
         public DateTime? RequireBootAfterUtc { get; set; }
+        /// <summary>Woran zu erkennen ist, dass das Paket bereits installiert ist: alle Bedingungen müssen zutreffen.</summary>
+        public StepConditions? Detection { get; set; }
+        /// <summary>Trifft <see cref="Detection"/> schon vor dem ersten Schritt zu, wird nichts ausgeführt (<see cref="JobResult.AlreadyInstalled"/>).</summary>
+        public bool SkipIfDetected { get; set; }
+        /// <summary>Nach dem letzten Schritt muss <see cref="Detection"/> zutreffen, sonst gilt der Job als fehlgeschlagen.</summary>
+        public bool VerifyAfterInstall { get; set; }
         public List<JobStep> Steps { get; set; } = new List<JobStep>();
     }
 
@@ -95,12 +101,23 @@ namespace Inventory.Contracts
         public string? RegistryKeyMissing { get; set; }
         /// <summary>true = nur wenn ein Benutzer angemeldet ist, false = nur wenn keiner angemeldet ist.</summary>
         public bool? UserLoggedOn { get; set; }
+        /// <summary>
+        /// Programm aus "Programme und Features": ohne * ein Teil des Anzeigenamens (ganze Wörter), mit * ein Muster für den ganzen Namen.
+        /// </summary>
+        public string? SoftwareInstalled { get; set; }
+        /// <summary>Zusammen mit <see cref="SoftwareInstalled"/>: mindestens diese Version.</summary>
+        public string? SoftwareMinVersion { get; set; }
+        /// <summary>Kein Programm mit diesem Namen installiert (Schreibweise wie <see cref="SoftwareInstalled"/>).</summary>
+        public string? SoftwareMissing { get; set; }
+        /// <summary>MSI-Produktcode ({GUID}) eines installierten Produkts; trifft nur genau diese Version.</summary>
+        public string? MsiProductCode { get; set; }
 
         [System.Text.Json.Serialization.JsonIgnore]
         public bool IsEmpty =>
             string.IsNullOrWhiteSpace(MinOsVersion) && string.IsNullOrWhiteSpace(BelowOsVersion) && string.IsNullOrWhiteSpace(Architecture)
             && string.IsNullOrWhiteSpace(FileExists) && string.IsNullOrWhiteSpace(FileMissing)
-            && string.IsNullOrWhiteSpace(RegistryKeyExists) && string.IsNullOrWhiteSpace(RegistryKeyMissing) && UserLoggedOn == null;
+            && string.IsNullOrWhiteSpace(RegistryKeyExists) && string.IsNullOrWhiteSpace(RegistryKeyMissing) && UserLoggedOn == null
+            && string.IsNullOrWhiteSpace(SoftwareInstalled) && string.IsNullOrWhiteSpace(SoftwareMissing) && string.IsNullOrWhiteSpace(MsiProductCode);
     }
 
     public static class JobFiles

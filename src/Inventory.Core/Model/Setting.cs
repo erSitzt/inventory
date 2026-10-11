@@ -11,6 +11,8 @@ public static class SettingKeys
     public const string DefaultTransport = "DefaultTransport";
     public const string TransportFallback = "TransportFallback";
     public const string SkipTargetNameCheck = "SkipTargetNameCheck";
+    /// <summary>So viele Minuten darf ein Rechner nach einem Neustart-Schritt brauchen, bis er wieder erreichbar ist.</summary>
+    public const string RebootWaitMinutes = "Deployment.RebootWaitMinutes";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>
