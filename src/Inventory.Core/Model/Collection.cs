@@ -33,6 +33,20 @@ public enum RuleField
     DaysSinceUpdate = 106,
     /// <summary>Das Computerkonto fehlt im Active Directory oder ist dort deaktiviert.</summary>
     MissingInDirectory = 107,
+    /// <summary>Remotedesktop-Verbindungen sind erlaubt.</summary>
+    RdpEnabled = 108,
+    /// <summary>Remotedesktop ist erlaubt, ohne die Anmeldung auf Netzwerkebene zu verlangen.</summary>
+    RdpWithoutNla = 109,
+    UacOff = 110,
+    Smb1Enabled = 111,
+    CredentialGuard = 112,
+    LsaProtection = 113,
+    /// <summary>Das vordefinierte Administratorkonto ist aktiv.</summary>
+    BuiltinAdminEnabled = 114,
+    /// <summary>Alter des Kennworts des vordefinierten Administratorkontos in Tagen.</summary>
+    BuiltinAdminPasswordAgeDays = 115,
+    /// <summary>Windows ist nicht aktiviert.</summary>
+    NotActivated = 116,
     Online = 1,
     Scanned,
     OsName,

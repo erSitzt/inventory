@@ -185,6 +185,12 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("BiosVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("BuiltinAdminEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BuiltinAdminPasswordAgeDays")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("ChassisType")
                         .HasColumnType("INTEGER");
 
@@ -199,6 +205,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("CredentialGuard")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("CredentialId")
                         .HasColumnType("INTEGER");
@@ -281,10 +290,16 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("LoggedOnUser")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("LsaProtection")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Manufacturer")
                         .HasColumnType("TEXT");
 
                     b.Property<long?>("MemoryBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("MemoryIntegrity")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("MemorySlots")
@@ -314,6 +329,12 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("OsVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("RdpEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("RdpNla")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ReportedName")
                         .HasColumnType("TEXT");
 
@@ -327,6 +348,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("SessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Smb1Enabled")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool?>("SystemDriveProtected")
@@ -347,6 +371,12 @@ namespace Inventory.Data.Migrations
                     b.Property<int?>("Transport")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("UacEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UacLevel")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("UpdateLastInstallUtc")
                         .HasColumnType("TEXT");
 
@@ -364,6 +394,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<string>("UpdateServer")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("WindowsActivated")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -477,9 +510,15 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("FullName")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("LastLogonUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("PasswordAgeDays")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Sid")
                         .HasColumnType("TEXT");

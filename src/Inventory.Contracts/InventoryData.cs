@@ -118,6 +118,10 @@ namespace Inventory.Contracts
         public string? Description { get; set; }
         public bool Disabled { get; set; }
         public string? Sid { get; set; }
+        /// <summary>Alter des Kennworts in Tagen; null, wenn nicht ermittelt.</summary>
+        public int? PasswordAgeDays { get; set; }
+        /// <summary>Letzte Anmeldung an diesem Rechner; null = nie oder nicht ermittelt.</summary>
+        public DateTime? LastLogonUtc { get; set; }
     }
 
     public sealed class LocalAdminItem
@@ -168,6 +172,32 @@ namespace Inventory.Contracts
         public List<string>? UpdatePending { get; set; }
         /// <summary>WSUS-Server aus der Richtlinie; leer = Microsoft Update.</summary>
         public string? UpdateServer { get; set; }
+
+        /// <summary>Sicherheitsrelevante Einstellungen des Betriebssystems; null bei Runnern, die das noch nicht erfassen.</summary>
+        public SecurityPosture? Posture { get; set; }
+    }
+
+    /// <summary>Jeder Wert ist null, wenn er sich bei diesem Scan nicht ermitteln ließ; der Server behält dann den vorigen.</summary>
+    public sealed class SecurityPosture
+    {
+        /// <summary>Remotedesktop-Verbindungen sind erlaubt (Richtlinie berücksichtigt).</summary>
+        public bool? RdpEnabled { get; set; }
+        /// <summary>Remotedesktop verlangt die Anmeldung auf Netzwerkebene (NLA).</summary>
+        public bool? RdpNla { get; set; }
+        public bool? UacEnabled { get; set; }
+        /// <summary>Stufe wie im Schieberegler der Systemsteuerung: 0 = nie benachrichtigen … 3 = immer benachrichtigen.</summary>
+        public int? UacLevel { get; set; }
+        /// <summary>SMB 1 ist als Server oder Client nutzbar.</summary>
+        public bool? Smb1Enabled { get; set; }
+        public bool? CredentialGuard { get; set; }
+        /// <summary>Speicherintegrität (HVCI) läuft.</summary>
+        public bool? MemoryIntegrity { get; set; }
+        /// <summary>LSA läuft als geschützter Prozess (RunAsPPL).</summary>
+        public bool? LsaProtection { get; set; }
+        /// <summary>Das vordefinierte Administratorkonto (RID 500) ist aktiv.</summary>
+        public bool? BuiltinAdminEnabled { get; set; }
+        public int? BuiltinAdminPasswordAgeDays { get; set; }
+        public bool? WindowsActivated { get; set; }
     }
 
     public sealed class RemoteAccessInfo

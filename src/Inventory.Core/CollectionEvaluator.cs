@@ -38,6 +38,15 @@ public static class CollectionEvaluator
         RuleField.PendingUpdates => Text(rule, computer.UpdatePendingCount?.ToString(CultureInfo.InvariantCulture)),
         RuleField.DaysSinceUpdate => Text(rule, computer.UpdateLastInstallUtc is { } installed
             ? ((int)(DateTime.UtcNow - installed).TotalDays).ToString(CultureInfo.InvariantCulture) : null),
+        RuleField.RdpEnabled => Flag(rule, computer.RdpEnabled == true),
+        RuleField.RdpWithoutNla => Flag(rule, computer.RdpEnabled == true && computer.RdpNla == false),
+        RuleField.UacOff => Flag(rule, computer.UacEnabled == false),
+        RuleField.Smb1Enabled => Flag(rule, computer.Smb1Enabled == true),
+        RuleField.CredentialGuard => Flag(rule, computer.CredentialGuard == true),
+        RuleField.LsaProtection => Flag(rule, computer.LsaProtection == true),
+        RuleField.BuiltinAdminEnabled => Flag(rule, computer.BuiltinAdminEnabled == true),
+        RuleField.BuiltinAdminPasswordAgeDays => Text(rule, computer.BuiltinAdminPasswordAgeDays?.ToString(CultureInfo.InvariantCulture)),
+        RuleField.NotActivated => Flag(rule, computer.WindowsActivated == false),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         _ => false,
     };

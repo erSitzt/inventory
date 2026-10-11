@@ -12,6 +12,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 
 - **Rechner** anlegen, aus dem Active Directory importieren, Erreichbarkeit prüfen – auf Wunsch regelmäßig per Heartbeat (Rechner mit Namensauffälligkeiten ausgenommen)
 - **Inventar-Scan**: System, Betriebssystem, Prozessor, Software, Hotfixes, Datenträger, Netzwerk, Dienste
+- **Systemkonfiguration**: Remotedesktop und Authentifizierung auf Netzwerkebene, Benutzerkontensteuerung, SMB 1,
+  Credential Guard, Speicherintegrität, LSA-Schutz, vordefiniertes Administratorkonto (aktiv, Kennwortalter),
+  Windows-Aktivierung, letzte Anmeldung und Kennwortalter lokaler Konten – alles auch als Regel für Sammlungen
 - **Hardware und Plattformsicherheit**: Gerätetyp (Desktop/Notebook/Server/virtuelle Maschine), UEFI und Secure Boot,
   TPM, BitLocker je Laufwerk, Grafik, Speichermodule und freie Steckplätze, physische Datenträger mit Typ und Zustand,
   Akkuzustand, Monitore und Drucker

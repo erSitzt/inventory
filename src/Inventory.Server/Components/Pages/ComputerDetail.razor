@@ -375,6 +375,38 @@ else if (_computer.ReverseDnsMismatch)
                         <MudText Typo="Typo.body2">@L["Source: {0}", string.IsNullOrEmpty(_computer.UpdateServer) ? "Microsoft Update" : _computer.UpdateServer]</MudText>
                     </MudPaper>
                 </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="pa-4" Outlined="true">
+                        <MudText Typo="Typo.h6" Class="mb-2">@L["System configuration"]</MudText>
+                        @if (_computer.UacEnabled is null && _computer.RdpEnabled is null && _computer.Smb1Enabled is null && _computer.LsaProtection is null)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not captured yet."]</MudText>
+                        }
+                        else
+                        {
+                            @RiskRow(L["Remote Desktop"], _computer.RdpEnabled, riskWhen: null)
+                            @if (_computer.RdpEnabled == true)
+                            {
+                                @RiskRow(L["Network level authentication"], _computer.RdpNla, riskWhen: false)
+                            }
+                            @RiskRow(L["User Account Control"], _computer.UacEnabled, riskWhen: false)
+                            @RiskRow("SMB 1", _computer.Smb1Enabled, riskWhen: true)
+                            @RiskRow("Credential Guard", _computer.CredentialGuard, riskWhen: null)
+                            @RiskRow(L["Memory integrity"], _computer.MemoryIntegrity, riskWhen: null)
+                            @RiskRow(L["LSA protection"], _computer.LsaProtection, riskWhen: null)
+                            @RiskRow(L["Built-in administrator account"], _computer.BuiltinAdminEnabled, riskWhen: null)
+                            @RiskRow(L["Windows activated"], _computer.WindowsActivated, riskWhen: false)
+                            @if (_computer.UacEnabled == true)
+                            {
+                                <MudText Typo="Typo.body2" Class="mt-2">@L["User Account Control level: {0}", Display.UacLevel(_computer.UacLevel)]</MudText>
+                            }
+                            @if (_computer.BuiltinAdminEnabled == true && _computer.BuiltinAdminPasswordAgeDays is { } age)
+                            {
+                                <MudText Typo="Typo.body2">@L["Built-in administrator: password is {0} days old", age]</MudText>
+                            }
+                        }
+                    </MudPaper>
+                </MudItem>
                 @if (_computer.UpdatePendingCount > 0)
                 {
                     <MudItem xs="12">
@@ -414,6 +446,8 @@ else if (_computer.ReverseDnsMismatch)
                             </CellTemplate>
                         </TemplateColumn>
                         <TemplateColumn Title="@L["Description"]"><CellTemplate>@(context.Item.FullName ?? context.Item.Description)</CellTemplate></TemplateColumn>
+                        <TemplateColumn Title="@L["Last logon"]"><CellTemplate>@(context.Item.LastLogonUtc is null ? "–" : Display.LocalTime(context.Item.LastLogonUtc))</CellTemplate></TemplateColumn>
+                        <TemplateColumn Title="@L["Password age (days)"]"><CellTemplate>@context.Item.PasswordAgeDays</CellTemplate></TemplateColumn>
                     </Columns>
                 </MudDataGrid>
             </MudItem>
@@ -513,6 +547,12 @@ else if (_computer.ReverseDnsMismatch)
     private RenderFragment StatusRow(string label, bool? value) => @<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
         <MudText Typo="Typo.body2" Style="flex: 1">@label</MudText>
         <MudChip T="string" Size="Size.Small" Color="@Display.OnOffColor(value)">@Display.OnOff(value)</MudChip>
+    </MudStack>;
+
+    /// <param name="riskWhen">Der Wert, der als Auffälligkeit gilt; null = rein informativ.</param>
+    private RenderFragment RiskRow(string label, bool? value, bool? riskWhen) => @<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+        <MudText Typo="Typo.body2" Style="flex: 1">@label</MudText>
+        <MudChip T="string" Size="Size.Small" Color="@(value is null ? Color.Default : riskWhen is null ? Color.Info : value == riskWhen ? Color.Warning : Color.Success)">@Display.OnOff(value)</MudChip>
     </MudStack>;
 
     private static RenderFragment Row(string label, string? value) => @<tr>

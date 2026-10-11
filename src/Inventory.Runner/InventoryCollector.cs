@@ -33,6 +33,8 @@ namespace Inventory.Runner
             Section(data, "Defender", () => ReadDefender(data.Security));
             Section(data, "Virenschutz", () => ReadAntivirusProducts(data.Security));
             Section(data, "Windows Update", () => ReadWindowsUpdate(data.Security));
+            // Nach den lokalen Benutzern: das vordefinierte Administratorkonto wird aus deren Liste gelesen.
+            data.Security.Posture = ReadPosture(data);
             data.RemoteAccess = new RemoteAccessInfo();
             Section(data, "Fernzugriff", () => ReadRemoteAccess(data.RemoteAccess));
             var hardware = data.Hardware = new HardwareInfo();
@@ -264,16 +266,149 @@ namespace Inventory.Runner
             // LocalAccount = TRUE hält die Abfrage lokal; ohne den Filter würde WMI auf Domänenrechnern die ganze Domäne aufzählen.
             foreach (var o in Query("SELECT Name, FullName, Description, Disabled, SID FROM Win32_UserAccount WHERE LocalAccount = TRUE"))
             {
-                data.LocalUsers.Add(new LocalUserItem
+                var user = new LocalUserItem
                 {
                     Name = Text(o, "Name") ?? "",
                     FullName = Text(o, "FullName"),
                     Description = Text(o, "Description"),
                     Disabled = o["Disabled"] is bool disabled && disabled,
                     Sid = Text(o, "SID"),
-                });
+                };
+                ReadAccountTimes(user);
+                data.LocalUsers.Add(user);
             }
             data.LocalUsers = data.LocalUsers.OrderBy(u => u.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>Kennwortalter und letzte Anmeldung stehen nicht in WMI, nur in der Kontenverwaltung.</summary>
+        private static void ReadAccountTimes(LocalUserItem user)
+        {
+            if (user.Name.Length == 0 || NetUserGetInfo(null, user.Name, 2, out var buffer) != 0)
+                return;
+            try
+            {
+                var info = (USER_INFO_2)Marshal.PtrToStructure(buffer, typeof(USER_INFO_2));
+                user.PasswordAgeDays = (int)(info.PasswordAge / 86400);
+                // Sekunden seit 1970; 0 = noch nie angemeldet.
+                if (info.LastLogon > 0)
+                    user.LastLogonUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(info.LastLogon);
+            }
+            finally
+            {
+                NetApiBufferFree(buffer);
+            }
+        }
+
+        /// <summary>Jeder Wert für sich: was sich nicht lesen lässt, bleibt null und erzeugt eine Warnung, der Rest gilt trotzdem.</summary>
+        private static SecurityPosture ReadPosture(InventoryData data)
+        {
+            var posture = new SecurityPosture();
+            Section(data, "Remotedesktop", () =>
+            {
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                {
+                    // Eine Gruppenrichtlinie hat Vorrang vor der lokalen Einstellung.
+                    const string policy = @"SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services";
+                    var deny = Dword(hklm, policy, "fDenyTSConnections") ?? Dword(hklm, @"SYSTEM\CurrentControlSet\Control\Terminal Server", "fDenyTSConnections");
+                    posture.RdpEnabled = deny == null ? (bool?)null : deny == 0;
+                    var nla = Dword(hklm, policy, "UserAuthentication")
+                              ?? Dword(hklm, @"SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp", "UserAuthentication");
+                    posture.RdpNla = nla == null ? (bool?)null : nla != 0;
+                }
+            });
+            Section(data, "Benutzerkontensteuerung", () =>
+            {
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                {
+                    const string system = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System";
+                    var lua = Dword(hklm, system, "EnableLUA");
+                    if (lua == null)
+                        return;
+                    posture.UacEnabled = lua != 0;
+                    posture.UacLevel = lua == 0 ? 0 : UacLevel(Dword(hklm, system, "ConsentPromptBehaviorAdmin") ?? 5, (Dword(hklm, system, "PromptOnSecureDesktop") ?? 1) != 0);
+                }
+            });
+            Section(data, "SMB 1", () =>
+            {
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                {
+                    const string services = @"SYSTEM\CurrentControlSet\Services\";
+                    // Server: der ausdrückliche Schalter gilt; ohne ihn entscheidet, ob der SMB-1-Treiber installiert und nicht deaktiviert ist.
+                    var server = Dword(hklm, services + @"LanmanServer\Parameters", "SMB1") is int explicitValue
+                        ? explicitValue != 0
+                        : DriverActive(hklm, services + "srv");
+                    posture.Smb1Enabled = server || DriverActive(hklm, services + "mrxsmb10");
+                }
+            });
+            Section(data, "Virtualisierungsbasierte Sicherheit", () =>
+            {
+                try
+                {
+                    foreach (var o in Query(@"root\Microsoft\Windows\DeviceGuard", "SELECT SecurityServicesRunning FROM Win32_DeviceGuard"))
+                    {
+                        // SecurityServicesRunning: 1 = Credential Guard, 2 = Speicherintegrität (HVCI).
+                        var running = o["SecurityServicesRunning"] is Array values ? values.Cast<object>().Select(Convert.ToInt32).ToList() : new List<int>();
+                        posture.CredentialGuard = running.Contains(1);
+                        posture.MemoryIntegrity = running.Contains(2);
+                    }
+                }
+                catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace || ex.ErrorCode == ManagementStatus.InvalidClass)
+                {
+                    // Ohne die Klasse (ältere Server) gibt es beides nicht.
+                    posture.CredentialGuard = false;
+                    posture.MemoryIntegrity = false;
+                }
+            });
+            Section(data, "LSA-Schutz", () =>
+            {
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                {
+                    const string lsa = @"SYSTEM\CurrentControlSet\Control\Lsa";
+                    // RunAsPPL: 1 = mit UEFI-Sperre, 2 = ohne; Windows 11 schaltet den Schutz bei Neuinstallationen selbst über RunAsPPLBoot ein.
+                    posture.LsaProtection = (Dword(hklm, lsa, "RunAsPPL") ?? 0) != 0 || (Dword(hklm, lsa, "RunAsPPLBoot") ?? 0) != 0;
+                }
+            });
+            // Das vordefinierte Konto heißt je nach Sprache und Umbenennung anders; seine SID endet immer auf -500.
+            var builtin = data.LocalUsers.FirstOrDefault(u => u.Sid != null && u.Sid.StartsWith("S-1-5-21-", StringComparison.Ordinal) && u.Sid.EndsWith("-500", StringComparison.Ordinal));
+            if (builtin != null)
+            {
+                posture.BuiltinAdminEnabled = !builtin.Disabled;
+                posture.BuiltinAdminPasswordAgeDays = builtin.PasswordAgeDays;
+            }
+            Section(data, "Aktivierung", () =>
+            {
+                // Die ApplicationID kennzeichnet Windows selbst (nicht Office); nur Einträge mit eingetragenem Schlüssel zählen.
+                foreach (var o in Query("SELECT LicenseStatus FROM SoftwareLicensingProduct WHERE ApplicationID = '55c92734-d682-4d71-983e-d6ec3f16059f' AND PartialProductKey IS NOT NULL"))
+                    posture.WindowsActivated = posture.WindowsActivated == true || Number(o, "LicenseStatus") == 1;
+            });
+            return posture;
+        }
+
+        /// <summary>Übersetzt die beiden Registry-Werte in die vier Stufen des Schiebereglers.</summary>
+        private static int UacLevel(int consentPrompt, bool secureDesktop)
+        {
+            switch (consentPrompt)
+            {
+                case 0: return 0;
+                // 1/3 verlangen Anmeldedaten, 2 die Bestätigung bei jeder Änderung: alles strenger als der Standard.
+                case 1:
+                case 2:
+                case 3: return 3;
+                default: return secureDesktop ? 2 : 1;
+            }
+        }
+
+        private static int? Dword(RegistryKey hive, string path, string name)
+        {
+            using (var key = hive.OpenSubKey(path))
+                return key?.GetValue(name) as int?;
+        }
+
+        /// <summary>Start = 4 bedeutet "deaktiviert"; fehlt der Schlüssel, ist der Treiber nicht installiert.</summary>
+        private static bool DriverActive(RegistryKey hive, string path)
+        {
+            using (var key = hive.OpenSubKey(path))
+                return key != null && (key.GetValue("Start") as int? ?? 4) != 4;
         }
 
         private static void ReadLocalAdmins(InventoryData data)
@@ -875,6 +1010,29 @@ namespace Inventory.Runner
 
         [DllImport("netapi32.dll")]
         private static extern int NetApiBufferFree(IntPtr buffer);
+
+        [DllImport("netapi32.dll", CharSet = CharSet.Unicode)]
+        private static extern int NetUserGetInfo(string? serverName, string userName, int level, out IntPtr buffer);
+
+        /// <summary>Anfang von USER_INFO_2 bis einschließlich der letzten Anmeldung; die restlichen Felder werden nicht gebraucht.</summary>
+        [StructLayout(LayoutKind.Sequential)]
+        private struct USER_INFO_2
+        {
+            public IntPtr Name;
+            public IntPtr Password;
+            public uint PasswordAge;
+            public uint Priv;
+            public IntPtr HomeDir;
+            public IntPtr Comment;
+            public uint Flags;
+            public IntPtr ScriptPath;
+            public uint AuthFlags;
+            public IntPtr FullName;
+            public IntPtr UserComment;
+            public IntPtr Parms;
+            public IntPtr Workstations;
+            public uint LastLogon;
+        }
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]

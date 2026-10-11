@@ -129,7 +129,20 @@ internal static class SimulatedInventory
             BatteryHealthPercent = laptop ? random.Next(55, 100) : null,
             BatteryCycleCount = laptop ? random.Next(20, 700) : null,
         };
-        data.LocalUsers.Add(new LocalUserItem { Name = "Administrator", Disabled = true, Description = "Vordefiniertes Konto" });
+        var adminActive = random.Next(5) == 0;
+        var adminPasswordAge = random.Next(3, 900);
+        data.Security.Posture = new SecurityPosture
+        {
+            RdpEnabled = random.Next(3) == 0, RdpNla = random.Next(10) != 0, UacEnabled = random.Next(20) != 0, UacLevel = 2,
+            Smb1Enabled = random.Next(12) == 0, CredentialGuard = random.Next(2) == 0, MemoryIntegrity = random.Next(2) == 0,
+            LsaProtection = random.Next(2) == 0, BuiltinAdminEnabled = adminActive, BuiltinAdminPasswordAgeDays = adminPasswordAge,
+            WindowsActivated = random.Next(25) != 0,
+        };
+        data.LocalUsers.Add(new LocalUserItem
+        {
+            Name = "Administrator", Disabled = !adminActive, Description = "Vordefiniertes Konto", Sid = "S-1-5-21-1000000000-2000000000-3000000000-500",
+            PasswordAgeDays = adminPasswordAge,
+        });
         data.LocalUsers.Add(new LocalUserItem { Name = "Gast", Disabled = true });
         data.LocalAdmins.Add(new LocalAdminItem { Name = $"{data.ComputerName}\\Administrator" });
         data.LocalAdmins.Add(new LocalAdminItem { Name = "CORP\\Domain Admins", IsGroup = true });

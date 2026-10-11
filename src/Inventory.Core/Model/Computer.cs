@@ -97,6 +97,20 @@ public class Computer
     public string? UpdatePending { get; set; }
     public string? UpdateServer { get; set; }
 
+    // Sicherheitsrelevante Einstellungen des Betriebssystems; null = nicht ermittelt
+    public bool? RdpEnabled { get; set; }
+    public bool? RdpNla { get; set; }
+    public bool? UacEnabled { get; set; }
+    /// <summary>0 = nie benachrichtigen … 3 = immer benachrichtigen.</summary>
+    public int? UacLevel { get; set; }
+    public bool? Smb1Enabled { get; set; }
+    public bool? CredentialGuard { get; set; }
+    public bool? MemoryIntegrity { get; set; }
+    public bool? LsaProtection { get; set; }
+    public bool? BuiltinAdminEnabled { get; set; }
+    public int? BuiltinAdminPasswordAgeDays { get; set; }
+    public bool? WindowsActivated { get; set; }
+
     // Hardware und Plattformsicherheit aus dem letzten Scan; null = nicht ermittelt
     /// <summary>Wann zuletzt ein Scan Hardware-Details geliefert hat; null = noch nie (älterer Runner oder nicht gescannt).</summary>
     public DateTime? HardwareScanUtc { get; set; }

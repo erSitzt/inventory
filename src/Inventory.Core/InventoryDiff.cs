@@ -75,6 +75,18 @@ public static partial class InventoryDiff
             Security("Defender tamper protection", previous.DefenderTamperProtected, security.DefenderTamperProtected, "on", "off");
             if (previous.DefenderMode is not null && security.DefenderMode is not null && previous.DefenderMode != security.DefenderMode)
                 Add("Security", ChangeKind.Changed, "Defender mode", previous.DefenderMode, security.DefenderMode);
+            if (security.Posture is { } posture)
+            {
+                Security("Remote Desktop", previous.RdpEnabled, posture.RdpEnabled, "on", "off");
+                Security("Remote Desktop network level authentication", previous.RdpNla, posture.RdpNla, "on", "off");
+                Security("User Account Control", previous.UacEnabled, posture.UacEnabled, "on", "off");
+                Security("SMB 1", previous.Smb1Enabled, posture.Smb1Enabled, "on", "off");
+                Security("Credential Guard", previous.CredentialGuard, posture.CredentialGuard, "on", "off");
+                Security("Memory integrity", previous.MemoryIntegrity, posture.MemoryIntegrity, "on", "off");
+                Security("LSA protection", previous.LsaProtection, posture.LsaProtection, "on", "off");
+                Security("Built-in administrator account", previous.BuiltinAdminEnabled, posture.BuiltinAdminEnabled, "active", "disabled");
+                Security("Windows activation", previous.WindowsActivated, posture.WindowsActivated, "activated", "not activated");
+            }
             if (previous.AntivirusProducts is not null)
                 Set("Antivirus", Split(previous.AntivirusProducts).Select(p => (p, (string?)null)), security.AntivirusProducts.Select(p => (p, (string?)null)));
         }

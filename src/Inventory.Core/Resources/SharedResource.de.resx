@@ -77,6 +77,9 @@
   <data name="Actions" xml:space="preserve">
     <value>Aktionen</value>
   </data>
+  <data name="activated" xml:space="preserve">
+    <value>aktiviert</value>
+  </data>
   <data name="active" xml:space="preserve">
     <value>aktiv</value>
   </data>
@@ -178,6 +181,9 @@
   </data>
   <data name="already running" xml:space="preserve">
     <value>läuft bereits</value>
+  </data>
+  <data name="always notify" xml:space="preserve">
+    <value>immer benachrichtigen</value>
   </data>
   <data name="An unexpected error occurred." xml:space="preserve">
     <value>Ein unerwarteter Fehler ist aufgetreten.</value>
@@ -295,6 +301,18 @@
   </data>
   <data name="BitLocker: no volume reported." xml:space="preserve">
     <value>BitLocker: kein Laufwerk gemeldet.</value>
+  </data>
+  <data name="Built-in administrator account" xml:space="preserve">
+    <value>Vordefiniertes Administratorkonto</value>
+  </data>
+  <data name="Built-in administrator account active" xml:space="preserve">
+    <value>Vordefiniertes Administratorkonto aktiv</value>
+  </data>
+  <data name="Built-in administrator: password age (days)" xml:space="preserve">
+    <value>Vordefinierter Administrator: Kennwortalter (Tage)</value>
+  </data>
+  <data name="Built-in administrator: password is {0} days old" xml:space="preserve">
+    <value>Vordefinierter Administrator: Kennwort ist {0} Tage alt</value>
   </data>
   <data name="by {0}" xml:space="preserve">
     <value>von {0}</value>
@@ -494,6 +512,12 @@
   <data name="Creates computers from the directory's computer accounts and marks computers whose account is no longer found there. Manually added computers the directory never knew remain untouched." xml:space="preserve">
     <value>Legt Computerkonten aus dem Verzeichnis als Rechner an und kennzeichnet Rechner, deren Konto dort nicht mehr gefunden wird. Von Hand angelegte Rechner, die das Verzeichnis nie gekannt hat, bleiben unberührt.</value>
   </data>
+  <data name="Credential Guard" xml:space="preserve">
+    <value>Credential Guard</value>
+  </data>
+  <data name="Credential Guard running" xml:space="preserve">
+    <value>Credential Guard läuft</value>
+  </data>
   <data name="Credentials" xml:space="preserve">
     <value>Zugangsdaten</value>
   </data>
@@ -543,6 +567,9 @@
     <value>Tage seit letzter Update-Installation</value>
   </data>
   <data name="Default" xml:space="preserve">
+    <value>Standard</value>
+  </data>
+  <data name="default" xml:space="preserve">
     <value>Standard</value>
   </data>
   <data name="Default credentials changed" xml:space="preserve">
@@ -1067,6 +1094,9 @@
   <data name="Last installation: {0}" xml:space="preserve">
     <value>Letzte Installation: {0}</value>
   </data>
+  <data name="Last logon" xml:space="preserve">
+    <value>Letzte Anmeldung</value>
+  </data>
   <data name="last present {0}" xml:space="preserve">
     <value>zuletzt vorhanden {0}</value>
   </data>
@@ -1160,6 +1190,12 @@
   <data name="Logon failed – user name or password wrong, account locked or disabled" xml:space="preserve">
     <value>Anmeldung fehlgeschlagen – Benutzername oder Passwort falsch, Konto gesperrt oder deaktiviert</value>
   </data>
+  <data name="LSA protection" xml:space="preserve">
+    <value>LSA-Schutz</value>
+  </data>
+  <data name="LSA protection on" xml:space="preserve">
+    <value>LSA-Schutz an</value>
+  </data>
   <data name="MAC address" xml:space="preserve">
     <value>MAC-Adresse</value>
   </data>
@@ -1186,6 +1222,9 @@
   </data>
   <data name="Memory (GB)" xml:space="preserve">
     <value>Arbeitsspeicher (GB)</value>
+  </data>
+  <data name="Memory integrity" xml:space="preserve">
+    <value>Speicherintegrität</value>
   </data>
   <data name="Memory module" xml:space="preserve">
     <value>Speichermodul</value>
@@ -1252,6 +1291,12 @@
   </data>
   <data name="Network adapter" xml:space="preserve">
     <value>Netzwerkadapter</value>
+  </data>
+  <data name="Network level authentication" xml:space="preserve">
+    <value>Authentifizierung auf Netzwerkebene (NLA)</value>
+  </data>
+  <data name="never notify" xml:space="preserve">
+    <value>nie benachrichtigen</value>
   </data>
   <data name="new" xml:space="preserve">
     <value>neu</value>
@@ -1397,11 +1442,17 @@
   <data name="Not (anymore) in AD" xml:space="preserve">
     <value>Nicht (mehr) im AD</value>
   </data>
+  <data name="not activated" xml:space="preserve">
+    <value>nicht aktiviert</value>
+  </data>
   <data name="not approved" xml:space="preserve">
     <value>nicht freigegeben</value>
   </data>
   <data name="Not approved: operators and schedules cannot deploy this package. Every change to steps, detection or files withdraws the approval." xml:space="preserve">
     <value>Nicht freigegeben: Operatoren und Zeitpläne können dieses Paket nicht verteilen. Jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf.</value>
+  </data>
+  <data name="Not captured yet." xml:space="preserve">
+    <value>Noch nicht erfasst.</value>
   </data>
   <data name="Not captured yet. Firewall, antivirus and Windows Update are read with the next scan." xml:space="preserve">
     <value>Noch nicht erfasst. Firewall, Virenschutz und Windows Update werden beim nächsten Scan gelesen.</value>
@@ -1435,6 +1486,9 @@
   </data>
   <data name="Nothing happens? Set up the launcher / show commands …" xml:space="preserve">
     <value>Passiert nichts? Starter einrichten / Befehle anzeigen …</value>
+  </data>
+  <data name="notify without dimming the desktop" xml:space="preserve">
+    <value>benachrichtigen, ohne den Desktop abzublenden</value>
   </data>
   <data name="of {0}" xml:space="preserve">
     <value>von {0}</value>
@@ -1636,6 +1690,9 @@
   </data>
   <data name="Password" xml:space="preserve">
     <value>Passwort</value>
+  </data>
+  <data name="Password age (days)" xml:space="preserve">
+    <value>Kennwortalter (Tage)</value>
   </data>
   <data name="Password is missing" xml:space="preserve">
     <value>Passwort fehlt</value>
@@ -1864,6 +1921,15 @@
   </data>
   <data name="Remote Desktop as .rdp file" xml:space="preserve">
     <value>Remotedesktop als .rdp-Datei</value>
+  </data>
+  <data name="Remote Desktop enabled" xml:space="preserve">
+    <value>Remotedesktop eingeschaltet</value>
+  </data>
+  <data name="Remote Desktop network level authentication" xml:space="preserve">
+    <value>Remotedesktop: Authentifizierung auf Netzwerkebene</value>
+  </data>
+  <data name="Remote Desktop without network level authentication" xml:space="preserve">
+    <value>Remotedesktop ohne Authentifizierung auf Netzwerkebene</value>
   </data>
   <data name='Remove from "{0}"' xml:space="preserve">
     <value>Aus „{0}“ entfernen</value>
@@ -2228,6 +2294,12 @@
   <data name="SMB + service needs the ADMIN$ share and the Service Control Manager (port 445); the job runs as Local System. WinRM needs PowerShell remoting enabled (port 5985); the job runs with the stored account." xml:space="preserve">
     <value>SMB + Dienst braucht die Freigabe ADMIN$ und den Dienststeuerungs-Manager (Port 445), der Job läuft als Lokales System. WinRM braucht aktiviertes PowerShell-Remoting (Port 5985), der Job läuft mit dem hinterlegten Konto.</value>
   </data>
+  <data name="SMB 1" xml:space="preserve">
+    <value>SMB 1</value>
+  </data>
+  <data name="SMB 1 enabled" xml:space="preserve">
+    <value>SMB 1 eingeschaltet</value>
+  </data>
   <data name="So that Remote Assistance, shadowing and Remote Desktop open with one click, your PC needs the launcher once: download it, put it in a fixed place (e.g. C:\Tools) and double-click it once. It registers itself for your user account as the handler for inventory:// links; admin rights are not needed. On the first click the browser asks whether it may open the launcher." xml:space="preserve">
     <value>Damit sich Remoteunterstützung, Spiegelung und Remotedesktop per Klick öffnen, braucht dein PC einmalig den Starter: herunterladen, an einem festen Ort ablegen (z. B. C:\Tools) und einmal doppelklicken. Er trägt sich für dein Benutzerkonto als Ziel für inventory://-Links ein; Adminrechte sind dafür nicht nötig. Beim ersten Klick fragt der Browser, ob er den Starter öffnen darf.</value>
   </data>
@@ -2314,6 +2386,9 @@
   </data>
   <data name="System" xml:space="preserve">
     <value>System</value>
+  </data>
+  <data name="System configuration" xml:space="preserve">
+    <value>Systemkonfiguration</value>
   </data>
   <data name="System setting" xml:space="preserve">
     <value>Systemeinstellung</value>
@@ -2621,6 +2696,15 @@
   <data name="User" xml:space="preserve">
     <value>Benutzer</value>
   </data>
+  <data name="User Account Control" xml:space="preserve">
+    <value>Benutzerkontensteuerung</value>
+  </data>
+  <data name="User Account Control level: {0}" xml:space="preserve">
+    <value>Stufe der Benutzerkontensteuerung: {0}</value>
+  </data>
+  <data name="User Account Control off" xml:space="preserve">
+    <value>Benutzerkontensteuerung aus</value>
+  </data>
   <data name="User is missing" xml:space="preserve">
     <value>Benutzer fehlt</value>
   </data>
@@ -2750,6 +2834,12 @@
   <data name="When a limit is reached, no further computers are started; running ones finish. The failure rate counts once five computers have finished and at least two failed. With few computers at once, the first ones act as a pilot group." xml:space="preserve">
     <value>Ist eine Grenze erreicht, werden keine weiteren Rechner gestartet; laufende werden fertig. Die Fehlerquote zählt, sobald fünf Rechner abgeschlossen und mindestens zwei fehlgeschlagen sind. Mit wenigen Rechnern gleichzeitig wirken die ersten als Pilotgruppe.</value>
   </data>
+  <data name="Windows activated" xml:space="preserve">
+    <value>Windows aktiviert</value>
+  </data>
+  <data name="Windows activation" xml:space="preserve">
+    <value>Windows-Aktivierung</value>
+  </data>
   <data name="Windows below version" xml:space="preserve">
     <value>Windows unter Version</value>
   </data>
@@ -2764,6 +2854,9 @@
   </data>
   <data name="Windows Installer patch (MSP)" xml:space="preserve">
     <value>Windows-Installer-Patch (MSP)</value>
+  </data>
+  <data name="Windows not activated" xml:space="preserve">
+    <value>Windows nicht aktiviert</value>
   </data>
   <data name="Windows PowerShell 5.1, 64 bit. The script's exit code (exit N) decides about success." xml:space="preserve">
     <value>Windows PowerShell 5.1, 64 Bit. Der Exitcode des Skripts (exit N) entscheidet über Erfolg.</value>
