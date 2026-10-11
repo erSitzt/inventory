@@ -17,7 +17,7 @@
                 <MudItem xs="12" sm="6"><MudDatePicker @bind-Date="_purchaseDate" Label="@L["Purchase date"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Editable="true" /></MudItem>
                 <MudItem xs="12" sm="6"><MudDatePicker @bind-Date="_warrantyUntil" Label="@L["Warranty until"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Editable="true" /></MudItem>
                 <MudItem xs="12"><MudTextField @bind-Value="_tags" Label="@L["Tags"]" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="@L["Separated by commas, e.g. \"Kiosk, Loan device\""]" /></MudItem>
-                <MudItem xs="12"><MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" AutoGrow="true" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" /></MudItem>
             </MudGrid>
             <MudSelect T="TransportKind?" @bind-Value="_transport" Label="@L["Transport"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["Default"]">
                 <MudSelectItem T="TransportKind?" Value="@(TransportKind.SmbService)">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
