@@ -761,6 +761,9 @@
   <data name="Free" xml:space="preserve">
     <value>Frei</value>
   </data>
+  <data name="from an earlier scan, user not logged on" xml:space="preserve">
+    <value>aus früherem Scan, Benutzer nicht angemeldet</value>
+  </data>
   <data name="from winget search" xml:space="preserve">
     <value>aus der winget-Suche</value>
   </data>
@@ -1486,6 +1489,9 @@
   </data>
   <data name="Program not installed" xml:space="preserve">
     <value>Programm nicht installiert</value>
+  </data>
+  <data name="Programs installed per user are only readable while that user is logged on; otherwise they are kept from the previous scan." xml:space="preserve">
+    <value>Pro Benutzer installierte Programme sind nur lesbar, solange dieser Benutzer angemeldet ist; sonst bleiben sie aus dem vorigen Scan erhalten.</value>
   </data>
   <data name="Properties" xml:space="preserve">
     <value>Eigenschaften</value>

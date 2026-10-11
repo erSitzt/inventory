@@ -43,6 +43,17 @@ namespace Inventory.Contracts
 
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
+        /// <summary>
+        /// Benutzerprofile des Rechners und ob ihre Registry beim Scan geladen war. Nur aus geladenen Profilen sind pro Benutzer
+        /// installierte Programme sichtbar; null = der Runner meldet das noch nicht.
+        /// </summary>
+        public List<UserProfileState>? UserProfiles { get; set; }
+    }
+
+    public sealed class UserProfileState
+    {
+        public string Sid { get; set; } = "";
+        public bool Loaded { get; set; }
     }
 
     public sealed class SoftwareItem
@@ -56,6 +67,10 @@ namespace Inventory.Contracts
         /// <summary>true = nur für einen Benutzer installiert (HKCU).</summary>
         public bool PerUser { get; set; }
         public string? UninstallString { get; set; }
+        /// <summary>Bei <see cref="PerUser"/>: SID des Benutzers, in dessen Profil das Programm eingetragen ist.</summary>
+        public string? UserSid { get; set; }
+        /// <summary>Setzt der Server: aus dem vorigen Scan übernommen, weil der Benutzer diesmal nicht angemeldet war.</summary>
+        public bool CarriedOver { get; set; }
     }
 
     public sealed class HotfixItem

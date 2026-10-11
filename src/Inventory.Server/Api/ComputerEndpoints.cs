@@ -16,7 +16,7 @@ public static class ComputerEndpoints
 
     public sealed record ProbeResponse(int Online);
 
-    public sealed record SoftwareDto(string Name, string? Version, string? Publisher, string? InstallDate, bool Is64Bit, bool PerUser);
+    public sealed record SoftwareDto(string Name, string? Version, string? Publisher, string? InstallDate, bool Is64Bit, bool PerUser, bool CarriedOver);
 
     public sealed record RunRequest(StepType Type, string Script, int? TimeoutSeconds, StepRunAs RunAs = StepRunAs.System);
 
@@ -56,9 +56,9 @@ public static class ComputerEndpoints
 
         group.MapGet("{id:int}/software", async (int id, ComputerService computers, CancellationToken ct) =>
             await computers.GetDetailAsync(id, ct) is { } computer
-                ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new SoftwareDto(s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser)))
+                ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new SoftwareDto(s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser, s.CarriedOver)))
                 : Results.NotFound())
-            .WithSummary("Installed software").Produces<IEnumerable<SoftwareDto>>().Produces(404);
+            .WithSummary("Installed software").WithDescription("perUser = installed in one user's profile only. carriedOver = kept from an earlier scan because that user was not logged on during the last scan.").Produces<IEnumerable<SoftwareDto>>().Produces(404);
 
         // Lädt eine .rdp-Datei; Windows öffnet sie direkt mit der Remotedesktopverbindung.
         group.MapGet("{id:int}/rdp", async (int id, ComputerService computers, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>

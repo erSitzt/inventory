@@ -114,7 +114,7 @@ else if (_computer.ReverseDnsMismatch)
                 <PropertyColumn Property="s => s.Publisher" Title="@L["Publisher"]" />
                 <PropertyColumn Property="s => s.InstallDate" Title="@L["Installed"]" />
                 <TemplateColumn Title="@L["Type"]" Sortable="false">
-                    <CellTemplate>@(context.Item.Is64Bit ? "64 Bit" : "32 Bit")@(context.Item.PerUser ? ", " + L["per user"] : "")</CellTemplate>
+                    <CellTemplate>@(context.Item.Is64Bit ? "64 Bit" : "32 Bit")@(context.Item.PerUser ? ", " + L["per user"] : "")@(context.Item.CarriedOver ? " – " + L["from an earlier scan, user not logged on"] : "")</CellTemplate>
                 </TemplateColumn>
             </Columns>
             <PagerContent>

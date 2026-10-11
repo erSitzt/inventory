@@ -476,6 +476,9 @@ namespace Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("CarriedOver")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("ComputerId")
                         .HasColumnType("INTEGER");
 
@@ -497,6 +500,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("UninstallString")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserSid")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Version")

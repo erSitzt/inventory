@@ -18,6 +18,7 @@
 
 <MudText Typo="Typo.body2" Class="mb-4">
     @L["One row per program; different versions are grouped and listed when the row is expanded. Click a version to see the computers."]
+    @L["Programs installed per user are only readable while that user is logged on; otherwise they are kept from the previous scan."]
 </MudText>
 
 <MudGrid>
@@ -51,6 +52,18 @@
                         }
                     </CellTemplate>
                 </TemplateColumn>
+                <TemplateColumn Title="@L["Installation"]" Sortable="false">
+                    <CellTemplate>
+                        @if (context.Item.PerMachine)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@L["all users"]</MudChip>
+                        }
+                        @if (context.Item.PerUser)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">@L["per user"]</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
                 <TemplateColumn Title="@L["Computers"]" SortBy="g => g.Computers">
                     <CellTemplate>@context.Item.Computers</CellTemplate>
                 </TemplateColumn>
@@ -58,7 +71,7 @@
             <ChildRowContent>
                 <MudSimpleTable Dense="true" Elevation="0" Class="ma-2" Style="max-width: 800px">
                     <thead>
-                        <tr><th>@L["Version"]</th><th>@L["Reported name"]</th><th style="text-align: right">@L["Computers"]</th></tr>
+                        <tr><th>@L["Version"]</th><th>@L["Reported name"]</th><th style="text-align: right">@L["all users"]</th><th style="text-align: right">@L["per user"]</th><th style="text-align: right">@L["Computers"]</th></tr>
                     </thead>
                     <tbody>
                         @foreach (var version in context.Item.Versions)
@@ -66,6 +79,8 @@
                             <tr>
                                 <td><MudLink OnClick="@(() => SelectAsync(version))">@(version.Version ?? L["unknown"])</MudLink></td>
                                 <td>@version.Name</td>
+                                <td style="text-align: right">@version.PerMachine</td>
+                                <td style="text-align: right">@version.PerUser</td>
                                 <td style="text-align: right">@version.Computers</td>
                             </tr>
                         }
@@ -95,7 +110,13 @@
                 <MudList T="string" Dense="true">
                     @foreach (var computer in _computers)
                     {
-                        <MudListItem T="string" Href="@($"computers/{computer.Id}")">@computer.Name</MudListItem>
+                        <MudListItem T="string" Href="@($"computers/{computer.Computer.Id}")">
+                            @computer.Computer.Name
+                            @if (computer.PerUser)
+                            {
+                                <MudText Typo="Typo.caption" Inline="true" Style="color: var(--mud-palette-text-secondary)"> · @L["per user"]@(computer.CarriedOver ? " – " + L["from an earlier scan, user not logged on"] : "")</MudText>
+                            }
+                        </MudListItem>
                     }
                 </MudList>
             </MudPaper>
@@ -106,7 +127,7 @@
 @code {
     private List<SoftwareGroup> _groups = [];
     private SoftwareSummary? _selected;
-    private List<Computer> _computers = [];
+    private List<SoftwareInstall> _computers = [];
     private string _search = "";
 
     protected override async Task OnInitializedAsync() => _groups = await Reports.SoftwareGroupsAsync();
@@ -117,7 +138,7 @@
         var (package, created) = await PackageService.EnsureUninstallPackageAsync(_selected!.Name, _selected.Name, null);
         if (created)
             await Audit.LogAsync(L["Package created"], package.Name);
-        var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id }, { d => d.ComputerIds, _computers.Select(c => c.Id).ToList() } };
+        var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id }, { d => d.ComputerIds, _computers.Select(c => c.Computer.Id).ToList() } };
         await Dialogs.ShowAsync<DeployDialog>(L["Deploy \"{0}\"", package.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
     }
 

@@ -122,8 +122,19 @@ namespace Inventory.Runner
             // Pro Benutzer installierte Programme; sichtbar sind nur die Profile, deren Registry gerade geladen ist.
             using (var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64))
             {
-                foreach (var sid in users.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal) && !n.EndsWith("_Classes", StringComparison.Ordinal)))
-                    ReadUninstall(data, users.OpenSubKey(sid + "\\" + UninstallKey), is64Bit: Environment.Is64BitOperatingSystem, perUser: true);
+                var loaded = users.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal) && !n.EndsWith("_Classes", StringComparison.Ordinal)).ToList();
+                foreach (var sid in loaded)
+                    ReadUninstall(data, users.OpenSubKey(sid + "\\" + UninstallKey), is64Bit: Environment.Is64BitOperatingSystem, perUser: true, userSid: sid);
+
+                // Welche Profile es gibt und welche davon lesbar waren: damit kann der Server Programme abgemeldeter Benutzer behalten.
+                data.UserProfiles = new List<UserProfileState>();
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var profiles = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"))
+                {
+                    var known = profiles?.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal)) ?? Enumerable.Empty<string>();
+                    foreach (var sid in known.Union(loaded, StringComparer.OrdinalIgnoreCase))
+                        data.UserProfiles.Add(new UserProfileState { Sid = sid, Loaded = loaded.Contains(sid, StringComparer.OrdinalIgnoreCase) });
+                }
             }
 
             data.Software = data.Software
@@ -133,7 +144,7 @@ namespace Inventory.Runner
                 .ToList();
         }
 
-        private static void ReadUninstall(InventoryData data, RegistryKey? uninstall, bool is64Bit, bool perUser)
+        private static void ReadUninstall(InventoryData data, RegistryKey? uninstall, bool is64Bit, bool perUser, string? userSid = null)
         {
             if (uninstall == null)
                 return;
@@ -160,6 +171,7 @@ namespace Inventory.Runner
                             UninstallString = key.GetValue("UninstallString") as string,
                             Is64Bit = is64Bit,
                             PerUser = perUser,
+                            UserSid = userSid,
                         });
                     }
                 }

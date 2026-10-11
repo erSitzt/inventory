@@ -41,6 +41,8 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
                        ?? throw new KeyNotFoundException(L["Computer {0} not found", computerId]);
 
         var now = DateTime.UtcNow;
+        // Vor dem Vergleich: Programme abgemeldeter Benutzer sind nicht verschwunden, nur gerade nicht lesbar.
+        PerUserSoftware.CarryOver(computer.Software, data);
         db.InventoryChanges.AddRange(InventoryDiff.Compare(computer, data, now));
         db.ChangeTracker.Entries().Where(e => e.Entity is not Computer and not InventoryChange).ToList().ForEach(e => e.State = EntityState.Detached);
         computer.LastScanUtc = now;
@@ -117,7 +119,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         db.Software.AddRange(data.Software.Select(s => new ComputerSoftware
         {
             ComputerId = computerId, Name = s.Name, Version = s.Version, Publisher = s.Publisher, InstallDate = s.InstallDate,
-            Is64Bit = s.Is64Bit, PerUser = s.PerUser, UninstallString = s.UninstallString,
+            Is64Bit = s.Is64Bit, PerUser = s.PerUser, UninstallString = s.UninstallString, UserSid = s.UserSid, CarriedOver = s.CarriedOver,
         }));
         db.Hotfixes.AddRange(data.Hotfixes.Select(h => new ComputerHotfix
         {

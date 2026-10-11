@@ -6,10 +6,19 @@ using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
-public sealed record SoftwareSummary(string Name, string? Version, string? Publisher, int Computers);
+/// <param name="PerMachine">Rechner, auf denen das Programm für alle Benutzer installiert ist.</param>
+/// <param name="PerUser">Rechner, auf denen es nur im Profil eines Benutzers installiert ist.</param>
+public sealed record SoftwareSummary(string Name, string? Version, string? Publisher, int Computers, int PerMachine = 0, int PerUser = 0);
+
+/// <summary>Ein Rechner mit einem bestimmten Programm und der Art, wie es dort installiert ist.</summary>
+public sealed record SoftwareInstall(Computer Computer, bool PerMachine, bool PerUser, bool CarriedOver);
 
 /// <summary>Ein Programm über alle Versionen hinweg; <see cref="Versions"/> enthält je Name/Version eine Zeile.</summary>
-public sealed record SoftwareGroup(string Name, string? Publisher, int Computers, List<SoftwareSummary> Versions);
+public sealed record SoftwareGroup(string Name, string? Publisher, int Computers, List<SoftwareSummary> Versions)
+{
+    public bool PerMachine => Versions.Any(v => v.PerMachine > 0);
+    public bool PerUser => Versions.Any(v => v.PerUser > 0);
+}
 
 /// <summary>Kennzahlen der Übersichtsseite.</summary>
 public sealed class DashboardStats
@@ -53,7 +62,7 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
     public async Task<List<SoftwareSummary>> SoftwareAsync(CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var rows = await db.Software.AsNoTracking().Select(s => new { s.Name, s.Version, s.Publisher, s.ComputerId }).ToListAsync(ct);
+        var rows = await db.Software.AsNoTracking().Select(s => new { s.Name, s.Version, s.Publisher, s.ComputerId, s.PerUser }).ToListAsync(ct);
         return rows.GroupBy(s => (s.Name, s.Version))
             .Select(g => new SoftwareSummary(g.Key.Name, g.Key.Version, g.Select(s => s.Publisher).FirstOrDefault(p => p is not null), g.Select(s => s.ComputerId).Distinct().Count()))
             .OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase).ThenBy(s => s.Version)
@@ -64,12 +73,13 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
     public async Task<List<SoftwareGroup>> SoftwareGroupsAsync(CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var rows = await db.Software.AsNoTracking().Select(s => new { s.Name, s.Version, s.Publisher, s.ComputerId }).ToListAsync(ct);
+        var rows = await db.Software.AsNoTracking().Select(s => new { s.Name, s.Version, s.Publisher, s.ComputerId, s.PerUser }).ToListAsync(ct);
         return rows.GroupBy(s => SoftwareNames.Key(s.Name, s.Version))
             .Select(group =>
             {
                 var versions = group.GroupBy(s => (s.Name, s.Version))
-                    .Select(g => new SoftwareSummary(g.Key.Name, g.Key.Version, g.Select(s => s.Publisher).FirstOrDefault(p => p is not null), g.Select(s => s.ComputerId).Distinct().Count()))
+                    .Select(g => new SoftwareSummary(g.Key.Name, g.Key.Version, g.Select(s => s.Publisher).FirstOrDefault(p => p is not null), g.Select(s => s.ComputerId).Distinct().Count(),
+                        g.Where(s => !s.PerUser).Select(s => s.ComputerId).Distinct().Count(), g.Where(s => s.PerUser).Select(s => s.ComputerId).Distinct().Count()))
                     .OrderByDescending(v => v.Version, VersionOrder.Instance).ThenBy(v => v.Name, StringComparer.CurrentCultureIgnoreCase)
                     .ToList();
                 // Der häufigste gemeldete Name, ohne Version, steht für die Gruppe.
@@ -87,12 +97,14 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
         public int Compare(string? x, string? y) => Inventory.Contracts.VersionComparer.Compare(x ?? "", y ?? "");
     }
 
-    public async Task<List<Computer>> ComputersWithSoftwareAsync(string name, string? version, CancellationToken ct = default)
+    public async Task<List<SoftwareInstall>> ComputersWithSoftwareAsync(string name, string? version, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        return await db.Computers.AsNoTracking()
+        var computers = await db.Computers.AsNoTracking()
+            .Include(c => c.Software.Where(s => s.Name == name && s.Version == version))
             .Where(c => c.Software.Any(s => s.Name == name && s.Version == version))
             .OrderBy(c => c.Name).ToListAsync(ct);
+        return computers.Select(c => new SoftwareInstall(c, c.Software.Any(s => !s.PerUser), c.Software.Any(s => s.PerUser), c.Software.Any(s => s.CarriedOver))).ToList();
     }
 
     public async Task<DashboardStats> DashboardAsync(CancellationToken ct = default)

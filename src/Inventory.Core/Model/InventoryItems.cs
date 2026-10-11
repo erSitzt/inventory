@@ -11,6 +11,10 @@ public class ComputerSoftware
     public bool Is64Bit { get; set; }
     public bool PerUser { get; set; }
     public string? UninstallString { get; set; }
+    /// <summary>Bei <see cref="PerUser"/>: SID des Benutzers, in dessen Profil das Programm eingetragen ist.</summary>
+    public string? UserSid { get; set; }
+    /// <summary>Aus einem früheren Scan übernommen: der Benutzer war beim letzten Scan nicht angemeldet, sein Profil daher nicht lesbar.</summary>
+    public bool CarriedOver { get; set; }
 }
 
 public class ComputerHotfix
