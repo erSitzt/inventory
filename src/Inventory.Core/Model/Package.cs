@@ -42,6 +42,8 @@ public enum TargetStatus
     Cancelled,
     /// <summary>Rechner war nicht erreichbar; wird nachgeholt, sobald er online ist.</summary>
     WaitingOffline,
+    /// <summary>Ein Neustart-Schritt läuft; die restlichen Schritte folgen, sobald der Rechner wieder da ist.</summary>
+    WaitingReboot = 6,
 }
 
 /// <summary>Ausführung eines Pakets auf einer Menge von Rechnern.</summary>
@@ -71,4 +73,10 @@ public class DeploymentTarget
     public DateTime? StartedUtc { get; set; }
     public DateTime? FinishedUtc { get; set; }
     public List<StepResult> Steps { get; set; } = [];
+    /// <summary>Index des ersten Schritts, der nach dem Neustart noch aussteht (Status <see cref="TargetStatus.WaitingReboot"/>).</summary>
+    public int? ResumeFromStep { get; set; }
+    /// <summary>Wann der Neustart-Schritt gemeldet wurde; danach beginnt die Wartefrist.</summary>
+    public DateTime? RebootUtc { get; set; }
+    /// <summary>Betriebssystem-Startzeit des Rechners vor dem Neustart (seine eigene Uhr).</summary>
+    public DateTime? BootTimeUtc { get; set; }
 }

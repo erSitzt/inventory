@@ -87,7 +87,7 @@
                     case StepType.Reboot:
                         <MudNumericField T="int" @bind-Value="_step.Seconds" Label="@L["Delay (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="86400" />
                         <MudTextField @bind-Value="_step.Script" Label="@L["Message for logged-on users"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                        <MudAlert Severity="Severity.Info" Dense="true">@L["Steps after a reboot are not executed. The reboot should be the last step."]</MudAlert>
+                        <MudAlert Severity="Severity.Info" Dense="true">@L["Steps after the restart continue automatically once the computer is reachable again (within 30 minutes); the final inventory scan runs then as well."]</MudAlert>
                         break;
                     case StepType.InventoryScan:
                         <MudText Typo="Typo.body2">@L["Re-captures the computer's hardware and software, e.g. after an installation."]</MudText>

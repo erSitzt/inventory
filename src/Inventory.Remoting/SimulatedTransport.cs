@@ -11,11 +11,16 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
 
     public async Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
     {
-        var result = new JobResult { JobId = job.JobId, Success = true, StartedUtc = DateTime.UtcNow };
+        var result = new JobResult { JobId = job.JobId, Success = true, StartedUtc = DateTime.UtcNow, BootTimeUtc = SimulatedBootTime(job) };
         var aborted = false;
         for (var i = 0; i < job.Steps.Count; i++)
         {
             var step = job.Steps[i];
+            if (result.ResumeFromStep != null)
+            {
+                result.Steps.Add(new StepResult { Index = i, Name = step.Name, Status = StepStatus.Deferred, Output = "Continues after the restart" });
+                continue;
+            }
             if (aborted)
             {
                 result.Steps.Add(new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Not executed: a previous step failed" });
@@ -52,10 +57,18 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
             {
                 result.Inventory = SimulatedInventory.Create(target.Host);
             }
+            else if (step.Type == StepType.Reboot && i + 1 < job.Steps.Count)
+            {
+                result.ResumeFromStep = i + 1;
+            }
         }
         result.FinishedUtc = DateTime.UtcNow;
         return result;
     }
+
+    /// <summary>Die Simulation "startet" sofort neu: eine Fortsetzung sieht immer eine jüngere Startzeit als zuvor.</summary>
+    private static DateTime SimulatedBootTime(JobManifest job) =>
+        job.RequireBootAfterUtc is { } previous && previous > DateTime.UtcNow.AddHours(-1) ? previous.AddMinutes(1) : DateTime.UtcNow.AddHours(-1);
 
     private static string Describe(JobStep step) => step.Type switch
     {

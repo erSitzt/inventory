@@ -18,6 +18,7 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
             try
             {
                 await schedules.RunDueAsync(stoppingToken);
+                await deployments.ResumeRebootedAsync(stoppingToken);
                 if (DateTime.UtcNow - lastRetry >= RetryInterval)
                 {
                     lastRetry = DateTime.UtcNow;

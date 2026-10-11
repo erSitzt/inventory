@@ -45,6 +45,11 @@ namespace Inventory.Contracts
         /// veralteter DNS-Eintrag den Job auf einen anderen Rechner lenkt.
         /// </summary>
         public string? ExpectedComputerName { get; set; }
+        /// <summary>
+        /// Fortsetzung nach einem Neustart: nur ausführen, wenn der Rechner seit dieser Betriebssystem-Startzeit (seine eigene
+        /// Uhr, aus dem vorigen Ergebnis) neu gestartet ist. Sonst meldet der Runner <see cref="JobResult.NotRebootedYet"/>.
+        /// </summary>
+        public DateTime? RequireBootAfterUtc { get; set; }
         public List<JobStep> Steps { get; set; } = new List<JobStep>();
     }
 

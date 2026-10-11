@@ -110,6 +110,9 @@
   <data name="Adopt new versions automatically" xml:space="preserve">
     <value>Neue Versionen automatisch übernehmen</value>
   </data>
+  <data name="after restart" xml:space="preserve">
+    <value>nach Neustart</value>
+  </data>
   <data name="after {0} seconds" xml:space="preserve">
     <value>nach {0} Sekunden</value>
   </data>
@@ -1583,6 +1586,12 @@
   <data name="Restart" xml:space="preserve">
     <value>Neu starten</value>
   </data>
+  <data name="restarting" xml:space="preserve">
+    <value>startet neu</value>
+  </data>
+  <data name="Restarting – the remaining steps follow once the computer is back" xml:space="preserve">
+    <value>Startet neu – die restlichen Schritte folgen, sobald der Rechner wieder da ist</value>
+  </data>
   <data name="Result" xml:space="preserve">
     <value>Ergebnis</value>
   </data>
@@ -1916,6 +1925,9 @@
   <data name="Steps after a reboot are not executed. The reboot should be the last step." xml:space="preserve">
     <value>Schritte nach einem Neustart werden nicht mehr ausgeführt. Der Neustart sollte der letzte Schritt sein.</value>
   </data>
+  <data name="Steps after the restart continue automatically once the computer is reachable again (within 30 minutes); the final inventory scan runs then as well." xml:space="preserve">
+    <value>Schritte nach dem Neustart laufen automatisch weiter, sobald der Rechner wieder erreichbar ist (innerhalb von 30 Minuten); auch der abschließende Inventar-Scan folgt dann.</value>
+  </data>
   <data name="Stop" xml:space="preserve">
     <value>Beenden</value>
   </data>
@@ -1978,6 +1990,9 @@
   </data>
   <data name="The computer account was no longer found in Active Directory" xml:space="preserve">
     <value>Das Computerkonto wurde im Active Directory nicht mehr gefunden</value>
+  </data>
+  <data name="The computer did not come back within {0} minutes after the restart" xml:space="preserve">
+    <value>Der Rechner war {0} Minuten nach dem Neustart nicht wieder erreichbar</value>
   </data>
   <data name="The computer has not reported a name yet." xml:space="preserve">
     <value>Der Rechner hat noch keinen Namen gemeldet.</value>
@@ -2267,6 +2282,9 @@
   <data name="waiting for offline computers" xml:space="preserve">
     <value>wartet auf Offline-Rechner</value>
   </data>
+  <data name="waiting for restart" xml:space="preserve">
+    <value>wartet auf Neustart</value>
+  </data>
   <data name="Website" xml:space="preserve">
     <value>Webseite</value>
   </data>
@@ -2362,6 +2380,9 @@
   </data>
   <data name="{0} computers added, {1} of them reachable." xml:space="preserve">
     <value>{0} Rechner hinzugefügt, {1} davon erreichbar.</value>
+  </data>
+  <data name="{0} computers are restarting; the remaining steps follow automatically" xml:space="preserve">
+    <value>{0} Rechner starten neu; die restlichen Schritte folgen automatisch</value>
   </data>
   <data name="{0} computers checked, {1} online" xml:space="preserve">
     <value>{0} Rechner geprüft, {1} online</value>

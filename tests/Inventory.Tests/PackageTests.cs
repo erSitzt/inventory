@@ -225,6 +225,73 @@ public sealed class PackageTests : IDisposable
         Assert.Equal(TargetStatus.Succeeded, direct.Targets[0].Status);
     }
 
+    [Fact]
+    public async Task A_reboot_step_parks_the_target_and_the_remaining_steps_run_once_the_computer_is_back()
+    {
+        var package = await _packages.SaveAsync(null, "Treiber", "1.0", null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Vorbereiten"), null);
+        await _packages.SaveStepAsync(package.Id, null, new JobStep { Name = "Neustart", Type = StepType.Reboot, Seconds = 0 }, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Nachbereiten"), null);
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        var parked = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], scanAfter: true)).Id);
+        var target = parked.Targets[0];
+        Assert.Equal(TargetStatus.WaitingReboot, target.Status);
+        Assert.Equal(2, target.ResumeFromStep);
+        Assert.NotNull(target.RebootUtc);
+        Assert.NotNull(target.BootTimeUtc);
+        Assert.Null(target.FinishedUtc);
+        Assert.Equal([StepStatus.Succeeded, StepStatus.Succeeded, StepStatus.Deferred, StepStatus.Deferred], target.Steps.Select(s => s.Status));
+
+        // Solange der Rechner nicht erreichbar ist, bleibt das Ziel geparkt.
+        _probe.Offline.Add("pc-01");
+        Assert.Equal(0, await deployments.ResumeRebootedAsync());
+        _probe.Offline.Clear();
+        Assert.Equal(1, await deployments.ResumeRebootedAsync());
+
+        var done = await WaitAsync(deployments, parked.Id);
+        target = done.Targets[0];
+        Assert.Equal(TargetStatus.Succeeded, target.Status);
+        Assert.Null(target.ResumeFromStep);
+        Assert.Null(target.RebootUtc);
+        Assert.NotNull(target.FinishedUtc);
+        // Die Ergebnisse vor dem Neustart bleiben erhalten; die Fortsetzung hängt mit fortlaufenden Nummern an.
+        Assert.Equal(["Vorbereiten", "Neustart", "Nachbereiten", "Inventar-Scan"], target.Steps.Select(s => s.Name));
+        Assert.Equal([0, 1, 2, 3], target.Steps.Select(s => s.Index));
+        Assert.All(target.Steps, s => Assert.Equal(StepStatus.Succeeded, s.Status));
+        Assert.NotNull((await _computers.GetAsync(computer.Id))!.LastScanUtc);
+        Assert.Equal(0, await deployments.ResumeRebootedAsync());
+    }
+
+    [Fact]
+    public async Task A_computer_that_does_not_return_after_the_reboot_fails_after_the_window_and_cancel_stops_waiting()
+    {
+        var package = await _packages.SaveAsync(null, "Treiber", null, null);
+        await _packages.SaveStepAsync(package.Id, null, new JobStep { Name = "Neustart", Type = StepType.Reboot }, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Danach"), null);
+        var computers = await _computers.ImportAsync("pc-01 pc-02");
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        var parked = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), false)).Id);
+        Assert.All(parked.Targets, t => Assert.Equal(TargetStatus.WaitingReboot, t.Status));
+        _probe.Offline.Add("pc-01");
+        _probe.Offline.Add("pc-02");
+        await using (var db = _db.CreateDbContext())
+        {
+            db.DeploymentTargets.Single(t => t.ComputerName == "pc-01").RebootUtc = DateTime.UtcNow - DeploymentService.RebootWindow - TimeSpan.FromMinutes(1);
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(0, await deployments.ResumeRebootedAsync());
+        var after = (await deployments.GetAsync(parked.Id))!;
+        Assert.Equal(TargetStatus.Failed, after.Targets.Single(t => t.ComputerName == "pc-01").Status);
+        Assert.Contains("did not come back", after.Targets.Single(t => t.ComputerName == "pc-01").Error);
+        Assert.Equal(TargetStatus.WaitingReboot, after.Targets.Single(t => t.ComputerName == "pc-02").Status);
+
+        await deployments.CancelAsync(parked.Id);
+        Assert.Equal(TargetStatus.Cancelled, (await deployments.GetAsync(parked.Id))!.Targets.Single(t => t.ComputerName == "pc-02").Status);
+    }
+
     private sealed class SwitchableProbe : IHostProbe
     {
         public HashSet<string> Offline { get; } = new(StringComparer.OrdinalIgnoreCase);

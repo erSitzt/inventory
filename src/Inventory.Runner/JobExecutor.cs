@@ -37,7 +37,19 @@ namespace Inventory.Runner
                         $"Dieser Rechner heißt {Environment.MachineName}, erwartet wurde {manifest.ExpectedComputerName}. " +
                         "Es wurde nichts ausgeführt. Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias auf diesen Rechner.");
                 }
-                result.Success = true;
+                result.BootTimeUtc = BootTimeUtc();
+                // Fortsetzung nach einem Neustart: Dieselbe Uhr wie im vorigen Ergebnis, daher unabhängig von Zeitabweichungen zum Server.
+                if (manifest.RequireBootAfterUtc is DateTime previousBoot && result.BootTimeUtc <= previousBoot.AddSeconds(5))
+                {
+                    result.Success = false;
+                    result.NotRebootedYet = true;
+                    result.Error = "The computer has not restarted yet; the remaining steps follow after the restart.";
+                    manifest.Steps.Clear();
+                }
+                else
+                {
+                    result.Success = true;
+                }
 
                 using (var progress = new StreamWriter(new FileStream(Path.Combine(_jobDir, JobFiles.Progress),
                            FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete), new UTF8Encoding(false)))
@@ -47,7 +59,11 @@ namespace Inventory.Runner
                     {
                         var step = manifest.Steps[i];
                         StepResult stepResult;
-                        if (aborted != null || _cancelled)
+                        if (result.ResumeFromStep != null)
+                        {
+                            stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Deferred, Output = "Continues after the restart" };
+                        }
+                        else if (aborted != null || _cancelled)
                         {
                             stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = aborted ?? "Abgebrochen" };
                         }
@@ -59,8 +75,9 @@ namespace Inventory.Runner
                         {
                             Write(progress, new ProgressEvent { Kind = ProgressKind.StepStarted, Step = i, Text = step.Name });
                             stepResult = Dispatch(i, step, progress, result);
-                            if (step.Type == StepType.Reboot && stepResult.Status == StepStatus.Succeeded)
-                                aborted = "Nicht ausgeführt: Der Rechner startet neu";
+                            // Die restlichen Schritte übernimmt der Server in einem Folgejob, sobald der Rechner wieder da ist.
+                            if (step.Type == StepType.Reboot && stepResult.Status == StepStatus.Succeeded && i + 1 < manifest.Steps.Count)
+                                result.ResumeFromStep = i + 1;
                         }
                         Write(progress, new ProgressEvent { Kind = ProgressKind.StepFinished, Step = i, Status = stepResult.Status, ExitCode = stepResult.ExitCode, Text = stepResult.Error });
                         result.Steps.Add(stepResult);
@@ -520,6 +537,12 @@ namespace Inventory.Runner
                 kill?.WaitForExit(10_000);
             }
         }
+
+        /// <summary>Startzeit des Betriebssystems aus der Laufzeit seit dem Start; wrapfrei (64 Bit).</summary>
+        private static DateTime BootTimeUtc() => DateTime.UtcNow - TimeSpan.FromMilliseconds(GetTickCount64());
+
+        [DllImport("kernel32.dll")]
+        private static extern ulong GetTickCount64();
 
         [DllImport("kernel32.dll")]
         private static extern uint GetOEMCP();

@@ -621,6 +621,9 @@ namespace Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("BootTimeUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("ComputerId")
                         .HasColumnType("INTEGER");
 
@@ -636,6 +639,12 @@ namespace Inventory.Data.Migrations
 
                     b.Property<DateTime?>("FinishedUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RebootUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ResumeFromStep")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("StartedUtc")
                         .HasColumnType("TEXT");

@@ -126,7 +126,7 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
             NameMismatch = computers.Count(c => c.NameMismatch),
             MissingInDirectory = computers.Count(c => c.MissingInDirectory),
             RunningDeployments = await db.Deployments.CountAsync(d => d.FinishedUtc == null && d.Targets.Any(t => t.Status == TargetStatus.Running || t.Status == TargetStatus.Queued), ct),
-            WaitingOffline = await db.Deployments.Where(d => d.FinishedUtc == null).SelectMany(d => d.Targets).CountAsync(t => t.Status == TargetStatus.WaitingOffline, ct),
+            WaitingOffline = await db.Deployments.Where(d => d.FinishedUtc == null).SelectMany(d => d.Targets).CountAsync(t => t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot, ct),
             ChangesLast24h = await db.InventoryChanges.CountAsync(c => c.TimeUtc >= dayAgo, ct),
             OperatingSystems = systems,
             RecentDeployments = recent,

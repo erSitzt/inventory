@@ -27,6 +27,10 @@
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Info">@L["running"]</MudChip>
                 }
+                else if (context.Item.Targets.Any(t => t.Status == TargetStatus.WaitingReboot))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">@L["waiting for restart"]</MudChip>
+                }
                 else if (context.Item.Targets.Any(t => t.Status == TargetStatus.WaitingOffline))
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["waiting for offline computers"]</MudChip>

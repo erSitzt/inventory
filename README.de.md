@@ -15,7 +15,8 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Sammlungen**: statisch oder dynamisch über Regeln (z. B. „Chrome installiert mit Version unter 141“)
 - **Remote-Befehl** (cmd/PowerShell) mit Live-Ausgabe
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
-  Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten
+  Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten; Schritte nach einem Neustart laufen
+  automatisch weiter, sobald der Rechner wieder da ist
 - **Paketbibliothek**: fertige Pakete gängiger Programme (täglich aus den winget-Manifesten erzeugt), Import per
   Klick, automatische Übernahme neuer Versionen und eine mitwandernde Sammlung „… veraltet“
 - **Ausführungskontext** je Schritt: als Lokales System oder in der Sitzung des angemeldeten Benutzers

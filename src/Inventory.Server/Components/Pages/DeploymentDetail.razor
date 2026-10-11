@@ -39,9 +39,13 @@
         <span> · @L["finished {0}", Display.LocalTime(_deployment.FinishedUtc)]</span>
     }
     · @L["{0} of {1} succeeded", _deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded), _deployment.Targets.Count]
-    @if (Waiting)
+    @if (_deployment.Targets.Any(t => t.Status == TargetStatus.WaitingOffline))
     {
         <span> · @L["Offline computers are retried until {0}", Display.LocalTime(_deployment.RetryUntilUtc)]</span>
+    }
+    @if (_deployment.Targets.Any(t => t.Status == TargetStatus.WaitingReboot))
+    {
+        <span> · @L["{0} computers are restarting; the remaining steps follow automatically", _deployment.Targets.Count(t => t.Status == TargetStatus.WaitingReboot)]</span>
     }
 </MudText>
 
@@ -117,7 +121,7 @@
     private Timer? _liveRefresh;
 
     private bool Running => DeploymentService.IsRunning(Id);
-    private bool Waiting => _deployment!.Targets.Any(t => t.Status == TargetStatus.WaitingOffline);
+    private bool Waiting => _deployment!.Targets.Any(t => t.Status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot);
     private List<DeploymentTarget> FailedTargets =>
         _deployment!.Targets.Where(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled && t.ComputerId is not null).ToList();
 

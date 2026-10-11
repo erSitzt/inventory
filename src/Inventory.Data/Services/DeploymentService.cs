@@ -18,6 +18,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     private const int MaxParallelTargets = 16;
     /// <summary>So lange werden Offline-Rechner nachgeholt, bevor das Ziel als fehlgeschlagen gilt.</summary>
     public static readonly TimeSpan RetryWindow = TimeSpan.FromDays(3);
+    /// <summary>So lange darf ein Rechner nach einem Neustart-Schritt brauchen, bis er wieder erreichbar ist.</summary>
+    public static readonly TimeSpan RebootWindow = TimeSpan.FromMinutes(30);
     private string WaitingText => L["Computer unreachable – will be retried as soon as it is online"];
 
     // Über alle Deployments hinweg begrenzt, damit mehrere gleichzeitige Deployments Server und Netz nicht überlasten.
@@ -113,7 +115,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     {
         if (_running.TryGetValue(deploymentId, out var cts))
             cts.Cancel();
-        await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId && t.Status == TargetStatus.WaitingOffline)
+        await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot))
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, "Abgebrochen")
                 .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
         Changed?.Invoke(deploymentId);
@@ -180,6 +182,66 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         return started;
     }
 
+    /// <summary>
+    /// Setzt Ziele fort, deren Rechner nach einem Neustart-Schritt wieder erreichbar ist: der Folgejob enthält die restlichen
+    /// Schritte und läuft nur, wenn der Rechner wirklich neu gestartet ist. Nach <see cref="RebootWindow"/> gilt das Ziel als fehlgeschlagen.
+    /// Wird vom Zeitplaner in jedem Takt aufgerufen.
+    /// </summary>
+    public async Task<int> ResumeRebootedAsync(CancellationToken ct = default)
+    {
+        List<Deployment> waiting;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            waiting = await db.Deployments.AsNoTracking()
+                .Include(d => d.Targets.Where(t => t.Status == TargetStatus.WaitingReboot))
+                .Where(d => d.Targets.Any(t => t.Status == TargetStatus.WaitingReboot))
+                .ToListAsync(ct);
+        }
+
+        var started = 0;
+        foreach (var deployment in waiting.Where(d => !_running.ContainsKey(d.Id)))
+        {
+            var ready = new List<DeploymentTarget>();
+            foreach (var target in deployment.Targets)
+            {
+                if (target.RebootUtc is { } rebooted && DateTime.UtcNow - rebooted > RebootWindow)
+                {
+                    var timeout = L["The computer did not come back within {0} minutes after the restart", (int)RebootWindow.TotalMinutes].Value;
+                    await UpdateAsync(db => db.DeploymentTargets.Where(t => t.Id == target.Id)
+                        .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, timeout)
+                            .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+                    Changed?.Invoke(deployment.Id);
+                }
+                else if (await IsReachableAsync(target.ComputerName, ct))
+                {
+                    ready.Add(target);
+                }
+            }
+            if (ready.Count == 0)
+                continue;
+
+            BuiltJob built;
+            try
+            {
+                built = deployment.PackageId is { } packageId
+                    ? await BuildAsync(packageId, deployment.ScanAfter, ct)
+                    : throw new InvalidOperationException(L["The package was deleted"]);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+            {
+                var failure = ex.Message;
+                await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.WaitingReboot)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, failure)
+                        .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+                Changed?.Invoke(deployment.Id);
+                continue;
+            }
+            Launch(deployment, ready, built, checkOnline: false);
+            started += ready.Count;
+        }
+        return started;
+    }
+
     /// <summary>Nach einem Neustart des Servers: Ziele, die noch als wartend oder laufend gespeichert sind, wurden nie beendet.</summary>
     public async Task MarkInterruptedAsync(CancellationToken ct = default)
     {
@@ -215,6 +277,11 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         string? error = null;
         List<StepResult> steps = [];
         var started = false;
+        // Fortsetzung nach einem Neustart: nur die restlichen Schritte, Ergebnisse der bisherigen bleiben erhalten.
+        var resumeFrom = target.Status == TargetStatus.WaitingReboot ? target.ResumeFromStep ?? 0 : 0;
+        var previousSteps = resumeFrom > 0 ? target.Steps.Take(resumeFrom).ToList() : [];
+        int? resumeNext = null;
+        DateTime? bootTime = target.BootTimeUtc;
         try
         {
             await _slots.WaitAsync(ct);
@@ -231,7 +298,11 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             Changed?.Invoke(deployment.Id);
 
             // Jedes Ziel braucht eine eigene Job-ID: sie benennt Dienst und Verzeichnis auf dem Zielrechner.
-            var job = new JobManifest { Steps = built.Manifest.Steps };
+            var job = new JobManifest
+            {
+                Steps = built.Manifest.Steps.Skip(resumeFrom).ToList(),
+                RequireBootAfterUtc = resumeFrom > 0 ? target.BootTimeUtc : null,
+            };
             var progress = new CallbackProgress(e =>
             {
                 if (e.Kind == ProgressKind.StepStarted)
@@ -249,9 +320,27 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             var result = target.ComputerId is { } computerId
                 ? await jobs.RunAsync(computerId, job, progress, ct, built.Files)
                 : JobResult.Failed(job.JobId, L["The computer was deleted"]);
-            steps = result.Steps;
+            if (result.NotRebootedYet)
+            {
+                // Der Rechner läuft noch mit dem alten Systemstart (z. B. Verzögerung des Neustarts): weiter warten.
+                status = TargetStatus.WaitingReboot;
+                steps = target.Steps;
+                resumeNext = resumeFrom;
+                return;
+            }
+            foreach (var step in result.Steps)
+                step.Index += resumeFrom;
+            steps = [.. previousSteps, .. result.Steps];
+            bootTime = result.BootTimeUtc ?? bootTime;
             error = result.Error ?? (result.Success ? null : steps.FirstOrDefault(s => s.Status == StepStatus.Failed)?.Error);
             status = result.Success ? TargetStatus.Succeeded : ct.IsCancellationRequested ? TargetStatus.Cancelled : TargetStatus.Failed;
+            if (result.Success && result.ResumeFromStep is { } next)
+            {
+                // Der Neustart läuft; die restlichen Schritte folgen, sobald der Rechner wieder erreichbar ist.
+                status = TargetStatus.WaitingReboot;
+                resumeNext = resumeFrom + next;
+                error = L["Restarting – the remaining steps follow once the computer is back"];
+            }
 
             if (result.Inventory is not null && target.ComputerId is { } scannedId)
                 await inventory.SaveAsync(scannedId, result.Inventory, CancellationToken.None);
@@ -276,7 +365,13 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 stored.Status = status;
                 stored.Error = error;
                 stored.Steps = steps;
-                stored.FinishedUtc = status == TargetStatus.WaitingOffline ? null : DateTime.UtcNow;
+                stored.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
+                stored.BootTimeUtc = bootTime;
+                if (status == TargetStatus.WaitingReboot)
+                    stored.RebootUtc ??= DateTime.UtcNow;
+                else
+                    stored.RebootUtc = null;
+                stored.FinishedUtc = status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot ? null : DateTime.UtcNow;
                 await db.SaveChangesAsync();
             });
             Changed?.Invoke(deployment.Id);

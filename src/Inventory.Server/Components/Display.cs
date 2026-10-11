@@ -154,6 +154,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.Failed => T("failed"),
         TargetStatus.Cancelled => T("cancelled"),
         TargetStatus.WaitingOffline => T("waiting for computer"),
+        TargetStatus.WaitingReboot => T("restarting"),
         _ => status.ToString(),
     };
 
@@ -164,6 +165,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.Failed => Color.Error,
         TargetStatus.Cancelled => Color.Warning,
         TargetStatus.WaitingOffline => Color.Warning,
+        TargetStatus.WaitingReboot => Color.Info,
         _ => Color.Default,
     };
 
@@ -172,6 +174,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepStatus.Succeeded => T("succeeded"),
         StepStatus.Failed => T("failed"),
         StepStatus.Skipped => T("skipped"),
+        StepStatus.Deferred => T("after restart"),
         _ => status.ToString(),
     };
 

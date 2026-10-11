@@ -17,7 +17,8 @@ credentials. The user interface is available in English and German; translations
 - **Collections**: static or dynamic via rules (e.g. "Chrome installed with version below 141")
 - **Remote command** (cmd/PowerShell) with live output
 - **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
-  embedded package – each with conditions and error handling
+  embedded package – each with conditions and error handling; steps after a reboot continue automatically once the
+  computer is back
 - **Package library**: ready-made packages of common programs (generated daily from the winget manifests), import
   with one click, automatic adoption of new versions and a dynamic "… outdated" collection that follows along
 - **Run context** per step: as Local System or in the session of the logged-on user

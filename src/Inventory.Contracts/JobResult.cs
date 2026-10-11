@@ -8,6 +8,8 @@ namespace Inventory.Contracts
         Succeeded,
         Failed,
         Skipped,
+        /// <summary>Wird nach dem Neustart des Rechners in einem Folgejob ausgeführt.</summary>
+        Deferred = 3,
     }
 
     public enum ProgressKind
@@ -37,6 +39,12 @@ namespace Inventory.Contracts
         public DateTime StartedUtc { get; set; }
         public DateTime FinishedUtc { get; set; }
         public List<StepResult> Steps { get; set; } = new List<StepResult>();
+        /// <summary>Index des ersten Schritts, der nach einem erfolgreichen Neustart-Schritt noch aussteht; null = alles erledigt.</summary>
+        public int? ResumeFromStep { get; set; }
+        /// <summary>Startzeit des Betriebssystems laut Rechner; damit erkennt der Server, ob der Neustart stattgefunden hat.</summary>
+        public DateTime? BootTimeUtc { get; set; }
+        /// <summary>true, wenn der Job wegen <see cref="JobManifest.RequireBootAfterUtc"/> nicht ausgeführt wurde: der Rechner ist noch nicht neu gestartet.</summary>
+        public bool NotRebootedYet { get; set; }
         /// <summary>Gefüllt, wenn der Job einen Inventar-Scan enthielt.</summary>
         public InventoryData? Inventory { get; set; }
 
