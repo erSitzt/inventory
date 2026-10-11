@@ -149,6 +149,8 @@ namespace Inventory.Runner
                 case StepType.Install:
                 case StepType.Reboot:
                     return RunStep(index, step, progress);
+                case StepType.Uninstall:
+                    return RunUninstall(index, step, progress);
                 case StepType.InventoryScan:
                     return RunInProcess(index, step, progress, () =>
                     {
@@ -243,6 +245,72 @@ namespace Inventory.Runner
                 service.Refresh();
                 return $"Dienst {step.ServiceName}: {service.Status}";
             }
+        }
+
+        /// <summary>Deinstalliert alle passenden Programme nacheinander und prüft jeweils, dass der Eintrag danach fehlt.</summary>
+        private StepResult RunUninstall(int index, JobStep step, StreamWriter progress)
+        {
+            var result = new StepResult { Index = index, Name = step.Name, Status = StepStatus.Succeeded };
+            var watch = Stopwatch.StartNew();
+            var output = new StringBuilder();
+            Action<string> say = line =>
+            {
+                output.AppendLine(line);
+                Write(progress, new ProgressEvent { Kind = ProgressKind.Output, Step = index, Text = line });
+            };
+            try
+            {
+                var entries = Uninstaller.Find(step);
+                if (entries.Count == 0)
+                    say("Not installed – nothing to do");
+                foreach (var entry in entries)
+                {
+                    say($"Uninstalling {entry.Name} {entry.Version}".TrimEnd());
+                    var perUser = entry.UserSid != null;
+                    if (perUser)
+                    {
+                        // Ein nur für einen Benutzer installiertes Programm lässt sich nur in dessen Sitzung entfernen.
+                        using (var session = UserSession.Open())
+                        {
+                            if (session == null || !string.Equals(Uninstaller.Sid(session.UserName), entry.UserSid, StringComparison.OrdinalIgnoreCase))
+                                throw new InvalidOperationException($"{entry.Name} is installed for one user only ({entry.UserSid}); it can only be removed while that user is logged on.");
+                        }
+                    }
+                    var command = Uninstaller.Command(entry, step.Arguments);
+                    say("> " + command);
+                    var codes = step.SuccessCodes != null && step.SuccessCodes.Count > 0 ? step.SuccessCodes
+                        // 1605 = Produkt ist nicht (mehr) installiert.
+                        : entry.IsMsi ? new List<int> { 0, 3010, 1641, 1605 } : new List<int> { 0, 3010, 1641 };
+                    var run = RunStep(index, new JobStep
+                    {
+                        Name = step.Name, Type = StepType.Command, Script = command, TimeoutSeconds = step.TimeoutSeconds, SuccessCodes = codes,
+                        RunAs = perUser ? StepRunAs.LoggedOnUser : StepRunAs.System,
+                    }, progress);
+                    output.Append(run.Output);
+                    result.ExitCode = run.ExitCode;
+                    if (run.Status != StepStatus.Succeeded)
+                    {
+                        result.Status = StepStatus.Failed;
+                        result.Error = run.Error ?? run.Output;
+                        break;
+                    }
+                    if (!Uninstaller.WaitUntilGone(entry, 60, () => _cancelled))
+                    {
+                        result.Status = StepStatus.Failed;
+                        result.Error = $"{entry.Name} is still installed although the uninstaller finished with exit code {run.ExitCode}";
+                        break;
+                    }
+                    say($"{entry.Name} removed");
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Status = StepStatus.Failed;
+                result.Error = ex.Message;
+            }
+            result.Output = output.ToString();
+            result.DurationSeconds = Math.Round(watch.Elapsed.TotalSeconds, 2);
+            return result;
         }
 
         private StepResult RunStep(int index, JobStep step, StreamWriter progress)

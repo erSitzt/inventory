@@ -66,6 +66,28 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Liefert das Paket "Uninstall &lt;Name&gt;" mit einem Deinstallations-Schritt und legt es an, falls es noch fehlt.
+    /// Ein vorhandenes Paket dieses Namens bleibt unverändert, damit eigene Anpassungen (Parameter, weitere Schritte) erhalten bleiben.
+    /// </summary>
+    public async Task<(Package Package, bool Created)> EnsureUninstallPackageAsync(string label, string? softwareName, string? productCode, CancellationToken ct = default)
+    {
+        var name = L["Uninstall {0}", label.Trim()].Value;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            if (await db.Packages.AsNoTracking().FirstOrDefaultAsync(p => p.Name == name, ct) is { } existing)
+                return (existing, false);
+        }
+        var package = await SaveAsync(null, name, null, null, ct);
+        await SaveStepAsync(package.Id, null, new JobStep
+        {
+            Name = name, Type = StepType.Uninstall, TimeoutSeconds = 3600,
+            SoftwareName = string.IsNullOrWhiteSpace(softwareName) ? null : softwareName.Trim(),
+            ProductCode = string.IsNullOrWhiteSpace(productCode) ? null : productCode.Trim(),
+        }, null, ct);
+        return (package, true);
+    }
+
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

@@ -58,6 +58,15 @@
                         <MudTextField @bind-Value="_step.Arguments" Label="@L["Parameters"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
                                       HelperText="@L["Passed to the installer. For recognized installers the silent parameters are already filled in."]" />
                         break;
+                    case StepType.Uninstall:
+                        <MudTextField @bind-Value="_step.SoftwareName" Label="@L["Program (name)"]" Placeholder="7-Zip" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                      Disabled="@(!string.IsNullOrWhiteSpace(_step.ProductCode))"
+                                      HelperText="@L["Name as shown in \"Programs and Features\". Without * it must occur as whole words, with * it is a pattern for the whole name."]" />
+                        <MudTextField @bind-Value="_step.ProductCode" Label="@L["or MSI product code"]" Placeholder="{00000000-0000-0000-0000-000000000000}" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+                        <MudTextField @bind-Value="_step.Arguments" Label="@L["Parameters"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      HelperText="@L["Usually empty: MSI, Inno Setup and NSIS setups and programs with a registered silent command are removed silently on their own. For other setups enter the parameters for a silent uninstall here."]" />
+                        <MudAlert Severity="Severity.Info" Dense="true">@L["If the program is not installed, the step counts as done. If the name matches more than three programs, nothing is uninstalled and the step fails."]</MudAlert>
+                        break;
                     case StepType.FileCopy:
                         <MudSelect T="string" @bind-Value="_step.File" Label="@L["Source"]" HelperText="@L["File or folder from the package's files"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var option in FileOptions)
@@ -87,7 +96,7 @@
                     case StepType.Reboot:
                         <MudNumericField T="int" @bind-Value="_step.Seconds" Label="@L["Delay (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="86400" />
                         <MudTextField @bind-Value="_step.Script" Label="@L["Message for logged-on users"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                        <MudAlert Severity="Severity.Info" Dense="true">@L["Steps after the restart continue automatically once the computer is reachable again (within 30 minutes); the final inventory scan runs then as well."]</MudAlert>
+                        <MudAlert Severity="Severity.Info" Dense="true">@L["Steps after the restart continue automatically once the computer is reachable again (within the wait time from the settings); the final inventory scan runs then as well."]</MudAlert>
                         break;
                     case StepType.InventoryScan:
                         <MudText Typo="Typo.body2">@L["Re-captures the computer's hardware and software, e.g. after an installation."]</MudText>
@@ -104,11 +113,11 @@
                         <MudSelectItem T="StepRunAs" Value="StepRunAs.LoggedOnUser">@Display.RunAs(StepRunAs.LoggedOnUser)</MudSelectItem>
                     </MudSelect>
                 }
-                @if (Type is StepType.Command or StepType.PowerShell or StepType.Install)
+                @if (Type is StepType.Command or StepType.PowerShell or StepType.Install or StepType.Uninstall)
                 {
                     <MudStack Row="true" Spacing="3">
                         <MudTextField @bind-Value="_successCodes" Label="@L["Success exit codes"]" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      Placeholder="@(Type == StepType.Install ? "0, 3010, 1641" : "0")" HelperText="@L["Comma-separated; empty = default"]" />
+                                      Placeholder="@(Type is StepType.Install or StepType.Uninstall ? "0, 3010, 1641" : "0")" HelperText="@L["Comma-separated; empty = default"]" />
                         <MudNumericField T="int" @bind-Value="_step.TimeoutSeconds" Label="@L["Timeout (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="86400" />
                     </MudStack>
                 }
@@ -204,6 +213,7 @@
             StepType.Install => !string.IsNullOrWhiteSpace(_step.File),
             StepType.FileCopy => !string.IsNullOrWhiteSpace(_step.File) && !string.IsNullOrWhiteSpace(_step.Destination),
             StepType.Service => !string.IsNullOrWhiteSpace(_step.ServiceName),
+            StepType.Uninstall => !string.IsNullOrWhiteSpace(_step.SoftwareName) || !string.IsNullOrWhiteSpace(_step.ProductCode),
             _ => true,
         });
 
@@ -222,7 +232,7 @@
                 Type = Type,
                 Name = Nested ? "" : Display.Step(Type),
                 Seconds = Type switch { StepType.Sleep => 30, StepType.Reboot => 60, _ => 0 },
-                TimeoutSeconds = Type == StepType.Install ? 3600 : 600,
+                TimeoutSeconds = Type is StepType.Install or StepType.Uninstall ? 3600 : 600,
             };
         }
         _conditions = _step.Conditions ?? new StepConditions();

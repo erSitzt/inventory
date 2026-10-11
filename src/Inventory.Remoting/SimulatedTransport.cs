@@ -93,6 +93,7 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
         StepType.Install => $"{step.File} {step.Arguments}".Trim(),
         StepType.FileCopy => $"{step.File} → {step.Destination}",
         StepType.Service => $"{step.ServiceAction} {step.ServiceName}",
+        StepType.Uninstall => $"{step.ProductCode ?? step.SoftwareName} {step.Arguments}".Trim(),
         StepType.Sleep or StepType.Reboot => $"{step.Seconds} s",
         _ => step.Script.Split('\n')[0].Trim(),
     };

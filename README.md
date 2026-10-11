@@ -19,6 +19,9 @@ credentials. The user interface is available in English and German; translations
 - **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
   embedded package – each with conditions and error handling; steps after a reboot continue automatically once the
   computer is back
+- **Uninstall**: a step type that removes a program by name or MSI product code – silently for MSI, Inno Setup and
+  NSIS setups and for programs with a registered silent command – and checks that it is really gone; the software
+  overview offers "Uninstall …" for the computers that have a program
 - **Detection**: a package can state how to recognise that it is already installed (program name with minimum
   version, MSI product code, file or registry key) – such computers are skipped and reported as "already installed";
   optionally the same check runs again after the last step, so a setup that reports success without installing fails

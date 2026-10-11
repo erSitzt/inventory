@@ -797,6 +797,9 @@
   <data name='If all conditions entered here apply, the package counts as already installed: the computer is skipped and reported as "already installed". Without detection the package always runs.' xml:space="preserve">
     <value>Treffen alle hier eingetragenen Bedingungen zu, gilt das Paket als bereits installiert: der Rechner wird übersprungen und als „bereits installiert“ gemeldet. Ohne Erkennung läuft das Paket immer.</value>
   </data>
+  <data name="If the program is not installed, the step counts as done. If the name matches more than three programs, nothing is uninstalled and the step fails." xml:space="preserve">
+    <value>Ist das Programm nicht installiert, gilt der Schritt als erledigt. Trifft der Name mehr als drei Programme, wird nichts deinstalliert und der Schritt schlägt fehl.</value>
+  </data>
   <data name="immediately" xml:space="preserve">
     <value>sofort</value>
   </data>
@@ -1334,6 +1337,9 @@
   <data name="OR" xml:space="preserve">
     <value>ODER</value>
   </data>
+  <data name="or MSI product code" xml:space="preserve">
+    <value>oder MSI-Produktcode</value>
+  </data>
   <data name="Overview" xml:space="preserve">
     <value>Übersicht</value>
   </data>
@@ -1345,6 +1351,9 @@
   </data>
   <data name="Package auto-update changed" xml:space="preserve">
     <value>Paket-Automatik geändert</value>
+  </data>
+  <data name="Package created" xml:space="preserve">
+    <value>Paket angelegt</value>
   </data>
   <data name="Package deleted" xml:space="preserve">
     <value>Paket gelöscht</value>
@@ -1462,6 +1471,9 @@
   </data>
   <data name="Program" xml:space="preserve">
     <value>Programm</value>
+  </data>
+  <data name="Program (name)" xml:space="preserve">
+    <value>Programm (Name)</value>
   </data>
   <data name="Program installed" xml:space="preserve">
     <value>Programm installiert</value>
@@ -1967,8 +1979,8 @@
   <data name="Steps after a reboot are not executed. The reboot should be the last step." xml:space="preserve">
     <value>Schritte nach einem Neustart werden nicht mehr ausgeführt. Der Neustart sollte der letzte Schritt sein.</value>
   </data>
-  <data name="Steps after the restart continue automatically once the computer is reachable again (within 30 minutes); the final inventory scan runs then as well." xml:space="preserve">
-    <value>Schritte nach dem Neustart laufen automatisch weiter, sobald der Rechner wieder erreichbar ist (innerhalb von 30 Minuten); auch der abschließende Inventar-Scan folgt dann.</value>
+  <data name="Steps after the restart continue automatically once the computer is reachable again (within the wait time from the settings); the final inventory scan runs then as well." xml:space="preserve">
+    <value>Schritte nach dem Neustart laufen automatisch weiter, sobald der Rechner wieder erreichbar ist (innerhalb der Wartezeit aus den Einstellungen); auch der abschließende Inventar-Scan läuft dann.</value>
   </data>
   <data name="Stop" xml:space="preserve">
     <value>Beenden</value>
@@ -2201,6 +2213,18 @@
   <data name="Under this name {0} responds" xml:space="preserve">
     <value>Unter diesem Namen antwortet {0}</value>
   </data>
+  <data name="Uninstall" xml:space="preserve">
+    <value>Deinstallation</value>
+  </data>
+  <data name="Uninstall package" xml:space="preserve">
+    <value>Deinstallations-Paket</value>
+  </data>
+  <data name="Uninstall {0}" xml:space="preserve">
+    <value>{0} deinstallieren</value>
+  </data>
+  <data name="Uninstall …" xml:space="preserve">
+    <value>Deinstallieren …</value>
+  </data>
   <data name="unknown" xml:space="preserve">
     <value>unbekannt</value>
   </data>
@@ -2263,6 +2287,9 @@
   </data>
   <data name="Users" xml:space="preserve">
     <value>Benutzer</value>
+  </data>
+  <data name="Usually empty: MSI, Inno Setup and NSIS setups and programs with a registered silent command are removed silently on their own. For other setups enter the parameters for a silent uninstall here." xml:space="preserve">
+    <value>Meist leer: MSI-, Inno-Setup- und NSIS-Setups sowie Programme mit eingetragenem stillen Befehl werden von selbst still entfernt. Für andere Setups hier die Parameter für eine stille Deinstallation eintragen.</value>
   </data>
   <data name="Valid until" xml:space="preserve">
     <value>Gültig bis</value>

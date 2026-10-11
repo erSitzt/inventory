@@ -1,5 +1,6 @@
 @page "/packages/{Id:int}"
 @inject PackageService PackageService
+@inject NavigationManager Navigation
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject Auditor Audit
@@ -140,9 +141,13 @@
                 <MudText Typo="Typo.caption">
                     @L["With verification the detection must also apply after the last step; otherwise the deployment fails for this computer even if every step reported success."]
                 </MudText>
-                <div>
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
                     <MudButton Variant="Variant.Outlined" OnClick="SaveDetectionAsync">@L["Save"]</MudButton>
-                </div>
+                    @if (!string.IsNullOrWhiteSpace(_package.Detection?.SoftwareInstalled) || !string.IsNullOrWhiteSpace(_package.Detection?.MsiProductCode))
+                    {
+                        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.DeleteSweep" OnClick="CreateUninstallAsync">@L["Uninstall package"]</MudButton>
+                    }
+                </MudStack>
             </MudStack>
         </MudPaper>
 
@@ -185,7 +190,7 @@
     private const long MaxUploadBytes = 8L << 30;
 
     private static readonly StepType[] AddableTypes =
-        [StepType.Install, StepType.Command, StepType.PowerShell, StepType.FileCopy, StepType.Service, StepType.Sleep, StepType.Reboot, StepType.InventoryScan];
+        [StepType.Install, StepType.Uninstall, StepType.Command, StepType.PowerShell, StepType.FileCopy, StepType.Service, StepType.Sleep, StepType.Reboot, StepType.InventoryScan];
 
     [Parameter] public int Id { get; set; }
 
@@ -249,6 +254,17 @@
         Snackbar.Add(L["Saved."], Severity.Success);
         await ReloadAsync();
         LoadDetection();
+    }
+
+    /// <summary>Gegenstück zum Paket: entfernt das Programm, das die Erkennung beschreibt.</summary>
+    private async Task CreateUninstallAsync()
+    {
+        var detection = _package!.Detection!;
+        var (package, created) = await PackageService.EnsureUninstallPackageAsync(
+            string.IsNullOrWhiteSpace(detection.SoftwareInstalled) ? _package.Name : detection.SoftwareInstalled, detection.SoftwareInstalled, detection.MsiProductCode);
+        if (created)
+            await Audit.LogAsync(L["Package created"], package.Name);
+        Navigation.NavigateTo($"packages/{package.Id}");
     }
 
     private void FillFromMsi(string file, bool productCode)

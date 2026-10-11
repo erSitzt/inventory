@@ -1,5 +1,8 @@
 @page "/software"
 @inject ReportService Reports
+@inject PackageService PackageService
+@inject IDialogService Dialogs
+@inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
 
 <PageTitle>@L["Software"] – Inventory</PageTitle>
@@ -88,6 +91,7 @@
                     </div>
                     <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _selected = null)" />
                 </MudStack>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="mt-2" StartIcon="@Icons.Material.Filled.DeleteSweep" Disabled="@(_computers.Count == 0)" OnClick="UninstallAsync">@L["Uninstall …"]</MudButton>
                 <MudList T="string" Dense="true">
                     @foreach (var computer in _computers)
                     {
@@ -106,6 +110,16 @@
     private string _search = "";
 
     protected override async Task OnInitializedAsync() => _groups = await Reports.SoftwareGroupsAsync();
+
+    /// <summary>Legt bei Bedarf das Deinstallations-Paket für genau dieses Programm an und öffnet den Deploy-Dialog mit den betroffenen Rechnern.</summary>
+    private async Task UninstallAsync()
+    {
+        var (package, created) = await PackageService.EnsureUninstallPackageAsync(_selected!.Name, _selected.Name, null);
+        if (created)
+            await Audit.LogAsync(L["Package created"], package.Name);
+        var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id }, { d => d.ComputerIds, _computers.Select(c => c.Id).ToList() } };
+        await Dialogs.ShowAsync<DeployDialog>(L["Deploy \"{0}\"", package.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+    }
 
     private async Task SelectAsync(SoftwareSummary version)
     {

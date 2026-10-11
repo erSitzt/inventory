@@ -18,6 +18,8 @@ namespace Inventory.Contracts
         Sleep,
         /// <summary>Neustart auslösen; nachfolgende Schritte werden nicht mehr ausgeführt.</summary>
         Reboot,
+        /// <summary>Installiertes Programm still deinstallieren (Name oder MSI-Produktcode); ist es nicht vorhanden, gilt der Schritt als erledigt.</summary>
+        Uninstall = 8,
     }
 
     /// <summary>Unter welchem Konto ein Schritt auf dem Zielrechner läuft.</summary>
@@ -69,7 +71,11 @@ namespace Inventory.Contracts
         public StepRunAs RunAs { get; set; }
         /// <summary>Install/FileCopy: Pfad relativ zum Ordner <see cref="JobFiles.FilesFolder"/> des Jobs.</summary>
         public string? File { get; set; }
-        /// <summary>Install: zusätzliche Parameter für den Installer.</summary>
+        /// <summary>Uninstall: Name des Programms, Schreibweise wie bei <see cref="StepConditions.SoftwareInstalled"/>.</summary>
+        public string? SoftwareName { get; set; }
+        /// <summary>Uninstall: MSI-Produktcode; hat Vorrang vor <see cref="SoftwareName"/>.</summary>
+        public string? ProductCode { get; set; }
+        /// <summary>Install: zusätzliche Parameter für den Installer. Uninstall: Parameter für die stille Deinstallation, falls der Runner sie nicht selbst kennt.</summary>
         public string? Arguments { get; set; }
         /// <summary>FileCopy: Zielpfad auf dem Rechner; Umgebungsvariablen wie %ProgramFiles% werden aufgelöst.</summary>
         public string? Destination { get; set; }

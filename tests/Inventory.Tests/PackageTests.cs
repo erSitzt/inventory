@@ -386,6 +386,26 @@ public sealed class PackageTests : IDisposable
         Assert.Contains("40 minutes", failed.Error);
     }
 
+    [Fact]
+    public async Task An_uninstall_package_is_created_once_and_reused()
+    {
+        var (package, created) = await _packages.EnsureUninstallPackageAsync("7-Zip", "7-Zip", null);
+        Assert.True(created);
+        Assert.Equal("Uninstall 7-Zip", package.Name);
+        var step = Assert.Single((await _packages.GetAsync(package.Id))!.Steps).Definition;
+        Assert.Equal((StepType.Uninstall, "7-Zip", null), (step.Type, step.SoftwareName, step.ProductCode));
+
+        var (again, createdAgain) = await _packages.EnsureUninstallPackageAsync(" 7-Zip ", "etwas anderes", "{code}");
+        Assert.False(createdAgain);
+        Assert.Equal(package.Id, again.Id);
+
+        // Der Schritt-Typ übersteht Speichern und Laden und läuft in der Simulation durch.
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var target = (await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], false)).Id)).Targets[0];
+        Assert.Equal(TargetStatus.Succeeded, target.Status);
+    }
+
     /// <summary>Merkt sich die Manifeste; der erste Job endet mit einem Neustart, der zweite läuft durch.</summary>
     private sealed class RecordingTransport : IRemoteTransport
     {

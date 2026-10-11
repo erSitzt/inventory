@@ -17,6 +17,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
   Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten; Schritte nach einem Neustart laufen
   automatisch weiter, sobald der Rechner wieder da ist
+- **Deinstallation**: ein Schritt-Typ, der ein Programm über Name oder MSI-Produktcode entfernt – still bei MSI-,
+  Inno-Setup- und NSIS-Setups sowie bei Programmen mit eingetragenem stillen Befehl – und prüft, dass es wirklich weg
+  ist; die Software-Übersicht bietet „Deinstallieren …“ für die Rechner an, die ein Programm haben
 - **Erkennung**: Ein Paket kann angeben, woran zu erkennen ist, dass es schon installiert ist (Programmname mit
   Mindestversion, MSI-Produktcode, Datei oder Registry-Schlüssel) – solche Rechner werden übersprungen und als
   „bereits installiert“ gemeldet; auf Wunsch läuft dieselbe Prüfung nach dem letzten Schritt noch einmal, sodass ein

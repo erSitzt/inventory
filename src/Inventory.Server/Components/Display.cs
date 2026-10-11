@@ -100,6 +100,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.Sleep => T("Wait"),
         StepType.Reboot => T("Reboot"),
         StepType.InventoryScan => T("Inventory scan"),
+        StepType.Uninstall => T("Uninstall"),
         _ => type.ToString(),
     };
 
@@ -113,6 +114,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.Sleep => Icons.Material.Filled.HourglassEmpty,
         StepType.Reboot => Icons.Material.Filled.RestartAlt,
         StepType.InventoryScan => Icons.Material.Filled.ManageSearch,
+        StepType.Uninstall => Icons.Material.Filled.DeleteSweep,
         _ => Icons.Material.Filled.PlayArrow,
     };
 
@@ -125,6 +127,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.Sleep => T("{0} seconds", step.Seconds),
         StepType.Reboot => step.Seconds > 0 ? T("after {0} seconds", step.Seconds) : T("immediately"),
         StepType.InventoryScan => "",
+        StepType.Uninstall => $"{(string.IsNullOrWhiteSpace(step.ProductCode) ? step.SoftwareName : step.ProductCode)} {step.Arguments}".Trim(),
         _ => step.Script.Split('\n')[0].Trim(),
     };
 
