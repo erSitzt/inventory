@@ -41,8 +41,21 @@ public sealed class InventoryOptions
     /// </remarks>
     public string[] AllowedGroups { get; set; } = [];
 
-    /// <summary>Die konfigurierten Gruppen; ist keine konfiguriert, die lokalen Administratoren des Servers.</summary>
-    public string[] EffectiveGroups => AllowedGroups.Length > 0 ? AllowedGroups : [LocalAdministratorsSid];
+    /// <summary>
+    /// Gruppen je Rolle (Name oder SID). <see cref="AllowedGroups"/> zählt zu den Administratoren; ohne jede Administratorgruppe
+    /// sind es die lokalen Administratoren des Servers.
+    /// </summary>
+    public RoleGroups Roles { get; set; } = new();
+
+    /// <summary>Die Administratorgruppen; ist keine konfiguriert, die lokalen Administratoren des Servers.</summary>
+    public string[] EffectiveGroups => AllowedGroups.Concat(Roles.Admin).ToArray() is { Length: > 0 } groups ? groups : [LocalAdministratorsSid];
+
+    /// <summary>Höchste Rolle, die sich aus den Gruppen eines Windows-Benutzers ergibt.</summary>
+    public Inventory.Core.Model.AccessRole RoleOf(System.Security.Claims.ClaimsPrincipal user) =>
+        EffectiveGroups.Any(group => InGroup(user, group)) ? Inventory.Core.Model.AccessRole.Admin
+        : Roles.Operator.Any(group => InGroup(user, group)) ? Inventory.Core.Model.AccessRole.Operator
+        : Roles.Viewer.Any(group => InGroup(user, group)) ? Inventory.Core.Model.AccessRole.Viewer
+        : Inventory.Core.Model.AccessRole.None;
 
     private static readonly string[] GroupClaimTypes =
     [
@@ -54,10 +67,10 @@ public sealed class InventoryOptions
 
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string?> _groupSids = new(StringComparer.OrdinalIgnoreCase);
 
-    public bool IsAllowed(System.Security.Claims.ClaimsPrincipal user) => EffectiveGroups.Any(group =>
+    private bool InGroup(System.Security.Claims.ClaimsPrincipal user, string group) =>
         ResolveSid(group) is { } sid
             ? user.HasClaim(c => GroupClaimTypes.Contains(c.Type) && c.Value.Equals(sid, StringComparison.OrdinalIgnoreCase))
-            : user.IsInRole(group));
+            : user.IsInRole(group);
 
     /// <summary>SID einer Gruppe; null, wenn sich der Name (noch) nicht auflösen lässt, etwa weil kein Domänencontroller erreichbar ist.</summary>
     private string? ResolveSid(string group)
@@ -83,8 +96,11 @@ public sealed class InventoryOptions
         return sid;
     }
 
+    /// <summary>Administratorgruppen für die Anzeige; SIDs werden unter Windows in Namen übersetzt.</summary>
+    public IEnumerable<string> DescribeAllowedGroups() => Describe(EffectiveGroups);
+
     /// <summary>Gruppen für die Anzeige; SIDs werden unter Windows in Namen übersetzt.</summary>
-    public IEnumerable<string> DescribeAllowedGroups() => EffectiveGroups.Select(group =>
+    public static IEnumerable<string> Describe(IEnumerable<string> groups) => groups.Select(group =>
     {
         if (!OperatingSystem.IsWindows() || !group.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
             return group;
@@ -112,6 +128,14 @@ public sealed class InventoryOptions
     public bool ResolveSimulate() => Simulate ?? !OperatingSystem.IsWindows();
 }
 
+/// <summary>Gruppen je Rolle; die höchste zutreffende Rolle gilt.</summary>
+public sealed class RoleGroups
+{
+    public string[] Admin { get; set; } = [];
+    public string[] Operator { get; set; } = [];
+    public string[] Viewer { get; set; } = [];
+}
+
 /// <summary>Anmeldung über OpenID Connect, z. B. Microsoft Entra ID.</summary>
 public sealed class OidcOptions
 {
@@ -125,10 +149,13 @@ public sealed class OidcOptions
     public string? ClientSecret { get; set; }
 
     /// <summary>
-    /// Wer hinein darf: Werte aus dem Gruppen-Claim (bei Entra ID die Objekt-IDs der Gruppen) oder App-Rollen.
-    /// Ohne Eintrag wird niemand zugelassen.
+    /// Administratoren: Werte aus dem Gruppen-Claim (bei Entra ID die Objekt-IDs der Gruppen) oder App-Rollen.
+    /// Ohne Eintrag hier und in <see cref="Roles"/> wird niemand zugelassen.
     /// </summary>
     public string[] AllowedGroups { get; set; } = [];
+
+    /// <summary>Gruppen oder App-Rollen je Rolle; <see cref="AllowedGroups"/> zählt zu den Administratoren.</summary>
+    public RoleGroups Roles { get; set; } = new();
 
     /// <summary>Claim mit den Gruppen; App-Rollen ("roles") werden zusätzlich immer geprüft.</summary>
     public string GroupClaim { get; set; } = "groups";
@@ -141,9 +168,19 @@ public sealed class OidcOptions
         : !string.IsNullOrWhiteSpace(TenantId) ? $"https://login.microsoftonline.com/{TenantId}/v2.0"
         : throw new InvalidOperationException("OIDC sign-in requires Inventory:Oidc:TenantId or Inventory:Oidc:Authority.");
 
-    public bool IsAllowed(System.Security.Claims.ClaimsPrincipal user) => user.Claims.Any(c =>
-        (c.Type.Equals(GroupClaim, StringComparison.OrdinalIgnoreCase) || c.Type == "roles")
-        && AllowedGroups.Contains(c.Value, StringComparer.OrdinalIgnoreCase));
+    /// <summary>Höchste Rolle, die sich aus Gruppen und App-Rollen des Benutzers ergibt.</summary>
+    public Inventory.Core.Model.AccessRole RoleOf(System.Security.Claims.ClaimsPrincipal user)
+    {
+        bool In(IEnumerable<string> groups) => user.Claims.Any(c =>
+            (c.Type.Equals(GroupClaim, StringComparison.OrdinalIgnoreCase) || c.Type == "roles")
+            && groups.Contains(c.Value, StringComparer.OrdinalIgnoreCase));
+        return In(AllowedGroups.Concat(Roles.Admin)) ? Inventory.Core.Model.AccessRole.Admin
+            : In(Roles.Operator) ? Inventory.Core.Model.AccessRole.Operator
+            : In(Roles.Viewer) ? Inventory.Core.Model.AccessRole.Viewer
+            : Inventory.Core.Model.AccessRole.None;
+    }
+
+    public IEnumerable<string> AllGroups => AllowedGroups.Concat(Roles.Admin).Concat(Roles.Operator).Concat(Roles.Viewer);
 
     /// <exception cref="InvalidOperationException">Die Konfiguration ist unvollständig.</exception>
     public void Validate()
@@ -151,8 +188,8 @@ public sealed class OidcOptions
         _ = ResolveAuthority();
         if (string.IsNullOrWhiteSpace(ClientId))
             throw new InvalidOperationException("OIDC sign-in requires Inventory:Oidc:ClientId.");
-        if (AllowedGroups.Length == 0)
-            throw new InvalidOperationException("OIDC sign-in requires at least one group or app role in Inventory:Oidc:AllowedGroups; otherwise every account of the tenant could sign in.");
+        if (!AllGroups.Any())
+            throw new InvalidOperationException("OIDC sign-in requires at least one group or app role in Inventory:Oidc:AllowedGroups or Inventory:Oidc:Roles; otherwise every account of the tenant could sign in.");
     }
 }
 

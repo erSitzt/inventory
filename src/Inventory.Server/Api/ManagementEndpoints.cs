@@ -1,3 +1,4 @@
+using Inventory.Server.Services;
 using Inventory.Contracts;
 using Inventory.Core.Model;
 using Inventory.Data.Services;
@@ -43,9 +44,15 @@ public static class ManagementEndpoints
 
     public sealed record ResultDto(string Result);
 
+    public sealed record TokenRequest(string Name, AccessRole Role = AccessRole.Admin, int? ValidDays = null);
+
+    public sealed record TokenDto(int Id, string Name, string Prefix, AccessRole Role, string CreatedBy, DateTime CreatedUtc, DateTime? ExpiresUtc, DateTime? LastUsedUtc);
+
+    public sealed record TokenCreatedDto(string Token);
+
     public static IEndpointRouteBuilder MapManagementEndpoints(this IEndpointRouteBuilder app)
     {
-        var packages = app.MapGroup("/api/packages").WithTags("Packages").AddEndpointFilter(MapErrors);
+        var packages = app.MapGroup("/api/packages").WithTags("Packages").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
 
         packages.MapGet("{id:int}", async (int id, PackageService service, CancellationToken ct) =>
             await service.GetAsync(id, ct) is { } package ? Results.Ok(ToDetail(package, service)) : Results.NotFound())
@@ -138,7 +145,7 @@ public static class ManagementEndpoints
             return Results.NoContent();
         }).WithSummary("Delete file").Produces(204).Produces(400).Produces(404);
 
-        var deployments = app.MapGroup("/api/deployments").WithTags("Deployments").AddEndpointFilter(MapErrors);
+        var deployments = app.MapGroup("/api/deployments").WithTags("Deployments").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.OperatorPolicy);
 
         deployments.MapGet("", async (DeploymentService service, int? take, CancellationToken ct) =>
             (await service.ListAsync(Math.Clamp(take ?? 50, 1, 500), ct)).Select(d => new DeploymentSummaryDto(d.Id, d.PackageId, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc,
@@ -156,7 +163,32 @@ public static class ManagementEndpoints
             return Results.NoContent();
         }).WithSummary("Cancel deployment").WithDescription("Stops running targets and drops targets waiting for an offline computer or a restart.").Produces(204).Produces(404);
 
-        var maintenanceDefault = app.MapGroup("/api/settings/maintenance-window").WithTags("Settings").AddEndpointFilter(MapErrors);
+        var tokens = app.MapGroup("/api/tokens").WithTags("API tokens").AddEndpointFilter(MapErrors).RequireAdmin();
+
+        tokens.MapGet("", async (ApiTokenService service, CancellationToken ct) =>
+            (await service.ListAsync(ct)).Select(t => new TokenDto(t.Id, t.Name, t.Prefix, t.Role, t.CreatedBy, t.CreatedUtc, t.ExpiresUtc, t.LastUsedUtc)))
+            .WithSummary("All API tokens").WithDescription("Without the secret itself; only its first characters are kept for recognition.");
+
+        tokens.MapPost("", async (TokenRequest request, ApiTokenService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                throw new ArgumentException("name is required");
+            if (request.Role is not (AccessRole.Viewer or AccessRole.Operator or AccessRole.Admin))
+                throw new ArgumentException("role must be Viewer, Operator or Admin");
+            var secret = await service.CreateAsync(request.Name, User(http), request.ValidDays is > 0 ? DateTime.UtcNow.AddDays(request.ValidDays.Value) : null, ct, request.Role);
+            await audit.LogAsync(User(http), "API token created via API", $"{request.Name.Trim()} ({request.Role})", ct);
+            return Results.Ok(new TokenCreatedDto(secret));
+        }).WithSummary("Create API token").WithDescription("role: Viewer (read only), Operator (also scan, deploy, cancel, remote access) or Admin. validDays: omit for an unlimited token. The secret is returned once and cannot be retrieved later.")
+            .Produces<TokenCreatedDto>().Produces(400);
+
+        tokens.MapDelete("{id:int}", async (int id, ApiTokenService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            await service.DeleteAsync(id, ct);
+            await audit.LogAsync(User(http), "API token deleted via API", $"Token {id}", ct);
+            return Results.NoContent();
+        }).WithSummary("Delete API token").Produces(204);
+
+        var maintenanceDefault = app.MapGroup("/api/settings/maintenance-window").WithTags("Settings").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
 
         maintenanceDefault.MapGet("", async (MaintenanceService service, CancellationToken ct) => Results.Json(await service.GetDefaultAsync(ct)))
             .WithSummary("Default maintenance window").WithDescription("Applies to computers that are in no collection with a window of its own; null = no restriction.").Produces<MaintenanceWindow>();
@@ -168,7 +200,7 @@ public static class ManagementEndpoints
             return Results.Json(await service.GetDefaultAsync(ct));
         }).WithSummary("Set default maintenance window").WithDescription("Body: a window ({daysOfWeek, from, to}) or null to remove it.").Produces<MaintenanceWindow>();
 
-        var collections = app.MapGroup("/api/collections").WithTags("Collections").AddEndpointFilter(MapErrors);
+        var collections = app.MapGroup("/api/collections").WithTags("Collections").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
 
         collections.MapGet("", async (CollectionService service, CancellationToken ct) =>
             (await service.ListAsync(ct)).Select(s => new CollectionDto(s.Collection.Id, s.Collection.Name, s.Collection.Description, s.Collection.IsDynamic, s.Collection.MatchAll, s.Collection.Rules, s.Count, s.Collection.MaintenanceWindow)))
@@ -182,6 +214,8 @@ public static class ManagementEndpoints
 
         collections.MapPost("", async (CollectionRequest request, CollectionService service, MaintenanceService maintenance, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                throw new ArgumentException("name is required");
             var c = await service.SaveAsync(null, request.Name, request.Description, request.IsDynamic, request.MatchAll, request.Rules ?? [], ct);
             await maintenance.SetAsync(c.Id, request.MaintenanceWindow, ct);
             await audit.LogAsync(User(http), "Collection created via API", c.Name, ct);
@@ -190,6 +224,8 @@ public static class ManagementEndpoints
 
         collections.MapPut("{id:int}", async (int id, CollectionRequest request, CollectionService service, MaintenanceService maintenance, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                throw new ArgumentException("name is required");
             var c = await service.SaveAsync(id, request.Name, request.Description, request.IsDynamic, request.MatchAll, request.Rules ?? [], ct);
             await maintenance.SetAsync(id, request.MaintenanceWindow, ct);
             await audit.LogAsync(User(http), "Collection changed via API", c.Name, ct);
@@ -219,7 +255,7 @@ public static class ManagementEndpoints
             return Results.Ok(new ResultDto($"{removed} removed"));
         }).WithSummary("Remove members").WithDescription("Body: JSON array of computer IDs.");
 
-        var schedules = app.MapGroup("/api/schedules").WithTags("Schedules").AddEndpointFilter(MapErrors);
+        var schedules = app.MapGroup("/api/schedules").WithTags("Schedules").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
 
         schedules.MapGet("", async (ScheduleService service, CancellationToken ct) => (await service.ListAsync(ct)).Select(ToDto))
             .WithSummary("All schedules");

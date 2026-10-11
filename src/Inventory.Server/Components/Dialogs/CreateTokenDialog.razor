@@ -1,10 +1,16 @@
 @inject IStringLocalizer<SharedResource> L
+@inject Display Display
 
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
             <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" AutoFocus="true" Immediate="true"
                           HelperText="@L["What the token is for, e.g. \"Monitoring\" or \"Package upload\""]" />
+            <MudSelect T="AccessRole" @bind-Value="_role" Label="@L["Role"]" Variant="Variant.Outlined" HelperText="@Display.RoleHint(_role)">
+                <MudSelectItem T="AccessRole" Value="AccessRole.Viewer">@Display.Role(AccessRole.Viewer)</MudSelectItem>
+                <MudSelectItem T="AccessRole" Value="AccessRole.Operator">@Display.Role(AccessRole.Operator)</MudSelectItem>
+                <MudSelectItem T="AccessRole" Value="AccessRole.Admin">@Display.Role(AccessRole.Admin)</MudSelectItem>
+            </MudSelect>
             <MudSelect T="int?" @bind-Value="_days" Label="@L["Validity"]" Variant="Variant.Outlined">
                 <MudSelectItem T="int?" Value="30">@L["{0} days", 30]</MudSelectItem>
                 <MudSelectItem T="int?" Value="90">@L["{0} days", 90]</MudSelectItem>
@@ -16,15 +22,17 @@
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@string.IsNullOrWhiteSpace(_name)"
-                   OnClick="@(() => MudDialog.Close(DialogResult.Ok(new Request(_name.Trim(), _days))))">@L["Create"]</MudButton>
+                   OnClick="@(() => MudDialog.Close(DialogResult.Ok(new Request(_name.Trim(), _days, _role))))">@L["Create"]</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    public sealed record Request(string Name, int? Days);
+    public sealed record Request(string Name, int? Days, AccessRole Role);
 
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
 
     private string _name = "";
     private int? _days = 90;
+    // Vorbelegt mit der kleinsten Rolle: ein Token für ein Skript braucht selten mehr.
+    private AccessRole _role = AccessRole.Viewer;
 }

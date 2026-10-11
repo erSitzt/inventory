@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 using Inventory.Core;
+using Inventory.Core.Model;
 using Microsoft.Extensions.Localization;
 
 namespace Inventory.Server.Services;
@@ -20,6 +21,16 @@ public static class AccessControl
 {
     /// <summary>Kennzeichnet eine Anmeldung, deren Berechtigung bereits beim Anmelden geprüft wurde (OIDC, Windows per Cookie, API-Token).</summary>
     public const string AccessClaim = "inventory_access";
+    /// <summary>Rolle der Anmeldung (<see cref="AccessRole"/> als Name).</summary>
+    public const string RoleClaim = "inventory_role";
+    /// <summary>Namen der Richtlinien; "Viewer" ist zugleich die Grundregel für alles ohne eigene Angabe.</summary>
+    public const string ViewerPolicy = "Viewer";
+    public const string OperatorPolicy = "Operator";
+    public const string AdminPolicy = "Admin";
+
+    /// <summary>Rolle einer Anmeldung; ohne Rollenangabe <see cref="AccessRole.None"/>.</summary>
+    public static AccessRole RoleOf(ClaimsPrincipal user) =>
+        Enum.TryParse<AccessRole>(user.FindFirst(RoleClaim)?.Value, out var role) ? role : AccessRole.None;
     private const string SelectorScheme = "Inventory";
     private const string PromptItem = "prompt";
 
@@ -29,7 +40,11 @@ public static class AccessControl
         var oidc = options.OidcEnabled;
         if (!windows && !oidc)
         {
-            services.AddAuthorization();
+            // Ohne Anmeldung darf jeder alles; die Richtlinien müssen trotzdem existieren, weil Seiten und Endpunkte sie nennen.
+            services.AddAuthorizationBuilder()
+                .AddPolicy(ViewerPolicy, policy => policy.RequireAssertion(_ => true))
+                .AddPolicy(OperatorPolicy, policy => policy.RequireAssertion(_ => true))
+                .AddPolicy(AdminPolicy, policy => policy.RequireAssertion(_ => true));
             return;
         }
         if (oidc)
@@ -111,7 +126,8 @@ public static class AccessControl
                     var user = context.Principal!;
                     var name = user.FindFirst("preferred_username")?.Value ?? user.FindFirst("email")?.Value
                                ?? user.FindFirst("name")?.Value ?? user.FindFirst("sub")?.Value ?? "unbekannt";
-                    if (!options.Oidc.IsAllowed(user))
+                    var role = options.Oidc.RoleOf(user);
+                    if (role == AccessRole.None)
                     {
                         context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(AccessControl))
                             .LogWarning("OIDC sign-in rejected: {User} is not in any allowed group or role", name);
@@ -120,17 +136,44 @@ public static class AccessControl
                         return Task.CompletedTask;
                     }
                     // Nur das Nötige ins Sitzungs-Cookie: bei vielen Gruppen würde es sonst zu groß.
-                    context.Principal = SessionPrincipal(name, "oidc");
+                    context.Principal = SessionPrincipal(name, "oidc", role);
                     return Task.CompletedTask;
                 };
             });
         }
 
-        services.AddAuthorizationBuilder().SetFallbackPolicy(new AuthorizationPolicyBuilder()
+        // Die direkte Windows-Anmeldung (ohne Sitzungs-Cookie) bringt nur Gruppen mit; daraus wird je Anfrage die Rolle.
+        if (windows)
+            services.AddSingleton<IClaimsTransformation>(new WindowsRoleTransformation(options));
+
+        AuthorizationPolicy AtLeast(AccessRole role) => new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
-            // Ohne Berechtigung gibt es weder Oberfläche noch API: der Server verwaltet Administrator-Zugangsdaten.
-            .RequireAssertion(context => context.User.HasClaim(c => c.Type == AccessClaim) || (windows && options.IsAllowed(context.User)))
-            .Build());
+            .RequireAssertion(context => RoleOf(context.User) >= role)
+            .Build();
+        // Ohne Rolle gibt es weder Oberfläche noch API: der Server verwaltet Administrator-Zugangsdaten.
+        var viewer = AtLeast(AccessRole.Viewer);
+        services.AddAuthorizationBuilder()
+            .AddPolicy(ViewerPolicy, viewer)
+            .AddPolicy(OperatorPolicy, AtLeast(AccessRole.Operator))
+            .AddPolicy(AdminPolicy, AtLeast(AccessRole.Admin))
+            .SetFallbackPolicy(viewer);
+    }
+
+    /// <summary>Ergänzt die Rolle für Anmeldungen, die sie noch nicht tragen (Negotiate ohne Sitzungs-Cookie).</summary>
+    private sealed class WindowsRoleTransformation(InventoryOptions options) : IClaimsTransformation
+    {
+        public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
+        {
+            if (principal.Identity?.IsAuthenticated != true || principal.HasClaim(c => c.Type == RoleClaim))
+                return Task.FromResult(principal);
+            var role = options.RoleOf(principal);
+            if (role == AccessRole.None)
+                return Task.FromResult(principal);
+            // Eigene Identität: die Windows-Identität selbst bleibt unverändert und wird je Verbindung wiederverwendet.
+            var result = new ClaimsPrincipal(principal.Identities);
+            result.AddIdentity(new ClaimsIdentity([new Claim(RoleClaim, role.ToString())]));
+            return Task.FromResult(result);
+        }
     }
 
     public static void MapInventoryLogin(this IEndpointRouteBuilder app, InventoryOptions options)
@@ -161,9 +204,10 @@ public static class AccessControl
                 var result = await http.AuthenticateAsync(NegotiateDefaults.AuthenticationScheme);
                 if (!result.Succeeded)
                     return Results.Challenge(null, [NegotiateDefaults.AuthenticationScheme]);
-                if (!options.IsAllowed(result.Principal))
+                var role = options.RoleOf(result.Principal);
+                if (role == AccessRole.None)
                     return Results.Redirect("/denied");
-                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(result.Principal.Identity?.Name ?? "unknown", "windows"));
+                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(result.Principal.Identity?.Name ?? "unknown", "windows", role));
                 return Results.Redirect(LocalUrl(returnUrl));
             }).AllowAnonymous();
         }
@@ -179,8 +223,8 @@ public static class AccessControl
             "text/html; charset=utf-8", statusCode: StatusCodes.Status403Forbidden)).AllowAnonymous();
     }
 
-    private static ClaimsPrincipal SessionPrincipal(string name, string method) => new(new ClaimsIdentity(
-        [new Claim(ClaimTypes.Name, name), new Claim(AccessClaim, method)], CookieAuthenticationDefaults.AuthenticationScheme));
+    private static ClaimsPrincipal SessionPrincipal(string name, string method, AccessRole role) => new(new ClaimsIdentity(
+        [new Claim(ClaimTypes.Name, name), new Claim(AccessClaim, method), new Claim(RoleClaim, role.ToString())], CookieAuthenticationDefaults.AuthenticationScheme));
 
     /// <summary>Nur Ziele innerhalb der Anwendung; verhindert, dass ein präparierter Link nach der Anmeldung woandershin führt.</summary>
     private static string LocalUrl(string? url) =>

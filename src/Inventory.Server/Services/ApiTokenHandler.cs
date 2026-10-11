@@ -31,6 +31,7 @@ public sealed class ApiTokenHandler(IOptionsMonitor<AuthenticationSchemeOptions>
         [
             new Claim(ClaimTypes.Name, $"API token \"{token.Name}\" ({token.CreatedBy})"),
             new Claim(AccessControl.AccessClaim, "api-token"),
+            new Claim(AccessControl.RoleClaim, token.Role.ToString()),
         ], SchemeName);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName));
     }

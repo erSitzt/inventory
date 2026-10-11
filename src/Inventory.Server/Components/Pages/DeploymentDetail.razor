@@ -24,11 +24,15 @@
     <MudSpacer />
     @if (Running || Waiting)
     {
-        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="CancelAsync">@L["Cancel"]</MudButton>
+        <OperatorOnly>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="CancelAsync">@L["Cancel"]</MudButton>
+        </OperatorOnly>
     }
     else if (FailedTargets.Count > 0 && _deployment.PackageId is not null)
     {
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Replay" OnClick="RetryAsync">@L["Retry {0} failed", FailedTargets.Count]</MudButton>
+        <OperatorOnly>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Replay" OnClick="RetryAsync">@L["Retry {0} failed", FailedTargets.Count]</MudButton>
+        </OperatorOnly>
     }
 </MudStack>
 

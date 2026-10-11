@@ -39,7 +39,7 @@ public static class PackageEndpoints
                 return Results.BadRequest(ex.Message);
             }
             return Results.NoContent();
-        }).WithTags("Packages").WithSummary("Upload file").WithDescription("Stores the file under the given path in the package; the body is the raw file content (e.g. curl -T setup.msi). Existing files are replaced.")
+        }).RequireAdmin().WithTags("Packages").WithSummary("Upload file").WithDescription("Stores the file under the given path in the package; the body is the raw file content (e.g. curl -T setup.msi). Existing files are replaced.")
             .Accepts<byte[]>("application/octet-stream").Produces(204).Produces(404).Produces(400);
 
         app.MapPost("/api/deployments", async (DeployRequest request, DeploymentService deployments, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
@@ -56,7 +56,7 @@ public static class PackageEndpoints
             {
                 return Results.BadRequest(ex.Message);
             }
-        }).WithTags("Deployments").WithSummary("Start deployment").WithDescription("Deploys the package to the computers and returns immediately; GET /api/deployments/{id} delivers the progress. ScanAfter: rescan inventory afterwards. RetryOffline: retry unreachable computers for up to 3 days. RespectMaintenanceWindow: computers outside their maintenance window wait until it opens (at most 8 days). MaxFailures / MaxFailurePercent: stop starting further computers once that many failed (the rate counts after five finished and two failed computers); MaxParallel: computers of this deployment running at once.")
+        }).RequireOperator().WithTags("Deployments").WithSummary("Start deployment").WithDescription("Deploys the package to the computers and returns immediately; GET /api/deployments/{id} delivers the progress. ScanAfter: rescan inventory afterwards. RetryOffline: retry unreachable computers for up to 3 days. RespectMaintenanceWindow: computers outside their maintenance window wait until it opens (at most 8 days). MaxFailures / MaxFailurePercent: stop starting further computers once that many failed (the rate counts after five finished and two failed computers); MaxParallel: computers of this deployment running at once.")
             .Produces<DeploymentDto>(201).Produces(400);
 
         app.MapGet("/api/deployments/{id:int}", async (int id, DeploymentService deployments, CancellationToken ct) =>

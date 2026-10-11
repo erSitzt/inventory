@@ -290,10 +290,12 @@ pipeline signs server, runner and setup.
 | `Inventory:DataDirectory` | database, keys, package files (`repository`), backups (`backups`) |
 | `Inventory:Language` | default language of the interface and of background jobs (`en` or `de`); users can switch in the top bar |
 | `Inventory:Authentication` | `Windows` (default on Windows), `Oidc`, both (`Windows,Oidc`) or `None` |
-| `Inventory:AllowedGroups` | Windows groups with access, as name (`COMPANY\IT-Admins`) or SID. Default: local administrators (`S-1-5-32-544`) |
+| `Inventory:AllowedGroups` | Windows groups of the **administrators**, as name (`COMPANY\IT-Admins`) or SID. Default: local administrators (`S-1-5-32-544`) |
+| `Inventory:Roles:Admin`, `Operator`, `Viewer` | Windows groups per role (see [Roles](#roles)); `Roles:Admin` adds to `AllowedGroups` |
 | `Inventory:Oidc:TenantId` | Entra tenant (GUID or domain); for other providers use `Inventory:Oidc:Authority` instead |
 | `Inventory:Oidc:ClientId`, `ClientSecret` | from the app registration |
-| `Inventory:Oidc:AllowedGroups` | object IDs of the allowed groups or names of app roles; without an entry the server does not start |
+| `Inventory:Oidc:AllowedGroups` | object IDs of the administrator groups or names of app roles |
+| `Inventory:Oidc:Roles:Admin`, `Operator`, `Viewer` | groups or app roles per role; without any entry here or in `AllowedGroups` the server does not start |
 | `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher` | update check, source of the releases, expected publisher of the signature |
 | `Inventory:Catalog:Url` | address or path of the package library's `catalog.json` |
 | `Inventory:Catalog:VersionsUrl` | folder with the version lists (`<winget-ID>.json`); empty = offer only the current version |
@@ -304,6 +306,29 @@ pipeline signs server, runner and setup.
 
 Windows sign-in and OIDC can be enabled individually or together. If both are active, a chooser page appears; both
 paths lead to the same session. The agent interface is independent of this (own keys).
+
+#### Roles
+
+Every sign-in gets the highest role its groups grant; an account without any role is rejected.
+
+| Role | May |
+|---|---|
+| **Viewer** | see everything: computers, software, changes, deployments, packages, collections, schedules, reports |
+| **Operator** | additionally scan and check reachability, deploy existing packages, cancel and retry deployments, use remote access, read the audit log |
+| **Administrator** | everything else: create and edit packages (they run as Local System on every computer), package library, uninstall, remote commands, collections, schedules, computers, credentials, API tokens, settings |
+
+Groups are configured per sign-in method (`Inventory:Roles:…` for Windows, `Inventory:Oidc:Roles:…` for OIDC). The
+existing `AllowedGroups` settings keep their meaning as administrators, so an installation without `Roles` behaves as
+before. API tokens carry a role of their own, chosen when the token is created; tokens created before roles existed
+are administrator tokens. The same rules apply to the interface and the API: without the role, buttons are not
+offered and API calls answer `403`.
+
+```json
+"Inventory": {
+  "AllowedGroups": [ "COMPANY\\IT-Admins" ],
+  "Roles": { "Operator": [ "COMPANY\\Helpdesk" ], "Viewer": [ "COMPANY\\IT-Audit" ] }
+}
+```
 
 **Setting up Microsoft Entra ID**
 
@@ -356,6 +381,7 @@ addresses require the same sign-in as the rest of the API.
 | Deployments | start, list, query progress per computer, cancel |
 | Collections | list, create, change, delete; add and remove members of static collections; maintenance window per collection (`maintenanceWindow`) and the default window (`/api/settings/maintenance-window`) |
 | Schedules | list, create, change, delete, run now |
+| API tokens | list, create with a role (the secret is shown once), delete – administrators only |
 | Reports | computers and software as CSV or JSON |
 
 The protocol between agent and server (`/api/agent/…`) is not part of the documented API.

@@ -59,6 +59,9 @@ namespace Inventory.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Role")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("TEXT");

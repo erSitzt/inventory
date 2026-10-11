@@ -1,4 +1,5 @@
 @page "/packages/{Id:int}"
+@attribute [Authorize(Policy = AccessControl.AdminPolicy)]
 @inject PackageService PackageService
 @inject NavigationManager Navigation
 @inject IDialogService Dialogs

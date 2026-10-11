@@ -106,7 +106,9 @@
                     </div>
                     <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _selected = null)" />
                 </MudStack>
-                <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="mt-2" StartIcon="@Icons.Material.Filled.DeleteSweep" Disabled="@(_computers.Count == 0)" OnClick="UninstallAsync">@L["Uninstall …"]</MudButton>
+                <AdminOnly>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="mt-2" StartIcon="@Icons.Material.Filled.DeleteSweep" Disabled="@(_computers.Count == 0)" OnClick="UninstallAsync">@L["Uninstall …"]</MudButton>
+                </AdminOnly>
                 <MudList T="string" Dense="true">
                     @foreach (var computer in _computers)
                     {

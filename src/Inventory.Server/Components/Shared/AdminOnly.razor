@@ -1,0 +1,11 @@
+@* Inhalt nur für Administratoren; für alle anderen wird nichts gerendert (und damit ist auch nichts auslösbar). *@
+<AuthorizeView Policy="@AccessControl.AdminPolicy" Context="authorization">
+    <Authorized>@ChildContent</Authorized>
+    <NotAuthorized>@Otherwise</NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Ersatzinhalt für alle ohne diese Rolle.</summary>
+    [Parameter] public RenderFragment? Otherwise { get; set; }
+}

@@ -30,35 +30,45 @@
     </MudSelect>
     <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" Immediate="true"
                   AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 240px" />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">@L["Add"]</MudButton>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_busy" OnClick="ScanAsync">
-        @(_selected.Count > 0 ? L["Scan ({0})", _selected.Count] : L["Scan all"])
-    </MudButton>
-    <MudMenu Label="@L["Actions"]" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Disabled="_busy">
-        <MudMenuItem Icon="@Icons.Material.Filled.NetworkCheck" OnClick="ProbeAsync">
-            @(_selected.Count > 0 ? L["Check reachability of selection"] : L["Check reachability of all"])
-        </MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">@L["Deploy package"]</MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">@L["Run command"]</MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MudMenuItem>
-        <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">@L["Install remote access launcher"]</MudMenuItem>
-        <MudDivider />
-        @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
-        {
-            var target = summary.Collection;
-            <MudMenuItem Icon="@Icons.Material.Filled.CreateNewFolder" Disabled="@(_selected.Count == 0)" OnClick="@(() => AddToCollectionAsync(target))">
-                @L["Add to \"{0}\"", target.Name]
+    <AdminOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">@L["Add"]</MudButton>
+    </AdminOnly>
+    <OperatorOnly>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_busy" OnClick="ScanAsync">
+            @(_selected.Count > 0 ? L["Scan ({0})", _selected.Count] : L["Scan all"])
+        </MudButton>
+    </OperatorOnly>
+    <OperatorOnly>
+        <MudMenu Label="@L["Actions"]" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Disabled="_busy">
+            <MudMenuItem Icon="@Icons.Material.Filled.NetworkCheck" OnClick="ProbeAsync">
+                @(_selected.Count > 0 ? L["Check reachability of selection"] : L["Check reachability of all"])
             </MudMenuItem>
-        }
-        @if (_activeCollection is { IsDynamic: false })
-        {
-            <MudMenuItem Icon="@Icons.Material.Filled.FolderOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveFromCollectionAsync">
-                @L["Remove from \"{0}\"", _activeCollection.Name]
-            </MudMenuItem>
-        }
-        <MudDivider />
-        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(_selected.Count == 0)" OnClick="DeleteAsync">@L["Delete"]</MudMenuItem>
-    </MudMenu>
+            <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">@L["Deploy package"]</MudMenuItem>
+            <AdminOnly>
+                <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">@L["Run command"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">@L["Install remote access launcher"]</MudMenuItem>
+            </AdminOnly>
+            <AdminOnly>
+                <MudDivider />
+                @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
+                {
+                    var target = summary.Collection;
+                    <MudMenuItem Icon="@Icons.Material.Filled.CreateNewFolder" Disabled="@(_selected.Count == 0)" OnClick="@(() => AddToCollectionAsync(target))">
+                        @L["Add to \"{0}\"", target.Name]
+                    </MudMenuItem>
+                }
+                @if (_activeCollection is { IsDynamic: false })
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.FolderOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveFromCollectionAsync">
+                        @L["Remove from \"{0}\"", _activeCollection.Name]
+                    </MudMenuItem>
+                }
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(_selected.Count == 0)" OnClick="DeleteAsync">@L["Delete"]</MudMenuItem>
+            </AdminOnly>
+        </MudMenu>
+    </OperatorOnly>
 </MudStack>
 
 @if (_busy && _progressText is not null)
@@ -172,8 +182,12 @@
         </TemplateColumn>
         <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
-                <RemoteAccessMenu Computer="context.Item" Compact="true" />
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" />
+                <OperatorOnly>
+                    <RemoteAccessMenu Computer="context.Item" Compact="true" />
+                </OperatorOnly>
+                <AdminOnly>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" />
+                </AdminOnly>
             </CellTemplate>
         </TemplateColumn>
     </Columns>

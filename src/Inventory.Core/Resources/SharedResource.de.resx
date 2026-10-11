@@ -113,6 +113,9 @@
   <data name="Address of this server as seen by the agents" xml:space="preserve">
     <value>Adresse dieses Servers aus Sicht der Agenten</value>
   </data>
+  <data name="Administrator" xml:space="preserve">
+    <value>Administrator</value>
+  </data>
   <data name="Adopt new versions automatically" xml:space="preserve">
     <value>Neue Versionen automatisch übernehmen</value>
   </data>
@@ -682,6 +685,9 @@
   </data>
   <data name="every {0} minutes" xml:space="preserve">
     <value>alle {0} Minuten</value>
+  </data>
+  <data name="Everything, including packages, credentials, settings and commands on target computers." xml:space="preserve">
+    <value>Alles, einschließlich Paketen, Zugangsdaten, Einstellungen und Befehlen auf Zielrechnern.</value>
   </data>
   <data name="Example: " xml:space="preserve">
     <value>Beispiel: </value>
@@ -1388,6 +1394,9 @@
   <data name="Operating systems" xml:space="preserve">
     <value>Betriebssysteme</value>
   </data>
+  <data name="Operator" xml:space="preserve">
+    <value>Operator</value>
+  </data>
   <data name='Optional: a permanently installed agent fetches jobs over an outbound connection – useful for computers the server cannot reach directly (notebooks on the road, other networks). It is installed via "Computers → Actions → Install agent". After a server update the agents update themselves on their next request.' xml:space="preserve">
     <value>Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“. Nach einem Update des Servers aktualisieren sich die Agenten bei ihrer nächsten Anfrage selbst.</value>
   </data>
@@ -1750,6 +1759,9 @@
   </data>
   <data name="Rhythm" xml:space="preserve">
     <value>Rhythmus</value>
+  </data>
+  <data name="Role" xml:space="preserve">
+    <value>Rolle</value>
   </data>
   <data name="Rows per page" xml:space="preserve">
     <value>Zeilen pro Seite</value>
@@ -2444,6 +2456,15 @@
   <data name="View" xml:space="preserve">
     <value>Ansicht</value>
   </data>
+  <data name="View everything, change and run nothing." xml:space="preserve">
+    <value>Alles ansehen, nichts ändern und nichts ausführen.</value>
+  </data>
+  <data name="View everything; scan, deploy existing packages, cancel and retry deployments, remote access." xml:space="preserve">
+    <value>Alles ansehen; scannen, vorhandene Pakete verteilen, Deployments abbrechen und wiederholen, Fernzugriff.</value>
+  </data>
+  <data name="Viewer" xml:space="preserve">
+    <value>Betrachter</value>
+  </data>
   <data name="Virus definitions are out of date." xml:space="preserve">
     <value>Die Virendefinitionen sind veraltet.</value>
   </data>
@@ -2557,6 +2578,9 @@
   </data>
   <data name="Your account is not a member of any group that may use Inventory." xml:space="preserve">
     <value>Dein Konto gehört zu keiner Gruppe, die Inventory nutzen darf.</value>
+  </data>
+  <data name="Your role does not allow this page." xml:space="preserve">
+    <value>Deine Rolle erlaubt diese Seite nicht.</value>
   </data>
   <data name="{0} ({1}), allowed for {2}." xml:space="preserve">
     <value>{0} ({1}), erlaubt für {2}.</value>

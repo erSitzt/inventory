@@ -12,7 +12,9 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
     <MudText Typo="Typo.h5">@L["Packages"]</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">@L["New package"]</MudButton>
+    <AdminOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">@L["New package"]</MudButton>
+    </AdminOnly>
 </MudStack>
 
 <MudDataGrid T="Package" Items="_packages" Dense="true" Hover="true" SortMode="SortMode.Single">
@@ -30,9 +32,13 @@
         </TemplateColumn>
         <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
-                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(context.Item.Steps.Count == 0)"
-                           OnClick="@(() => DeployAsync(context.Item))">@L["Deploy"]</MudButton>
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item))" />
+                <OperatorOnly>
+                    <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(context.Item.Steps.Count == 0)"
+                               OnClick="@(() => DeployAsync(context.Item))">@L["Deploy"]</MudButton>
+                </OperatorOnly>
+                <AdminOnly>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item))" />
+                </AdminOnly>
             </CellTemplate>
         </TemplateColumn>
     </Columns>

@@ -38,7 +38,9 @@
             </MudText>
             <MudStack Row="true" Spacing="2" Class="mt-4" Wrap="Wrap.Wrap">
                 <MudButton Href="computers" Variant="Variant.Filled" Style="background: rgba(255,255,255,0.92); color: #312e81" StartIcon="@Icons.Material.Filled.Computer">@L["Computers"]</MudButton>
-                <MudButton Href="run" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.Terminal">@L["Run command"]</MudButton>
+                <AdminOnly>
+                    <MudButton Href="run" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.Terminal">@L["Run command"]</MudButton>
+                </AdminOnly>
                 <MudButton Href="deployments" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.RocketLaunch">@L["Deployment"]</MudButton>
             </MudStack>
         </div>

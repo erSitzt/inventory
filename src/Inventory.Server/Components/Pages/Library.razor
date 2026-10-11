@@ -1,4 +1,5 @@
 @page "/library"
+@attribute [Authorize(Policy = AccessControl.AdminPolicy)]
 @inject CatalogService Catalog
 @inject Auditor Audit
 @inject IDialogService Dialogs

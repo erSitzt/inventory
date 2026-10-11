@@ -295,10 +295,12 @@ markiert und von der Update-Prüfung ignoriert. Liegen die Secrets `SIGNING_CERT
 | `Inventory:DataDirectory` | Datenbank, Schlüssel, Paketdateien (`repository`), Sicherungen (`backups`) |
 | `Inventory:Language` | Standardsprache der Oberfläche und der Hintergrundläufe (`en` oder `de`); Benutzer schalten in der Kopfleiste um |
 | `Inventory:Authentication` | `Windows` (Standard auf Windows), `Oidc`, beides (`Windows,Oidc`) oder `None` |
-| `Inventory:AllowedGroups` | Windows-Gruppen mit Zugriff, als Name (`FIRMA\IT-Admins`) oder SID. Standard: lokale Administratoren (`S-1-5-32-544`) |
+| `Inventory:AllowedGroups` | Windows-Gruppen der **Administratoren**, als Name (`FIRMA\IT-Admins`) oder SID. Standard: lokale Administratoren (`S-1-5-32-544`) |
+| `Inventory:Roles:Admin`, `Operator`, `Viewer` | Windows-Gruppen je Rolle (siehe [Rollen](#rollen)); `Roles:Admin` ergänzt `AllowedGroups` |
 | `Inventory:Oidc:TenantId` | Entra-Mandant (GUID oder Domäne); für andere Anbieter stattdessen `Inventory:Oidc:Authority` |
 | `Inventory:Oidc:ClientId`, `ClientSecret` | Aus der App-Registrierung |
-| `Inventory:Oidc:AllowedGroups` | Objekt-IDs der erlaubten Gruppen oder Namen von App-Rollen; ohne Eintrag startet der Server nicht |
+| `Inventory:Oidc:AllowedGroups` | Objekt-IDs der Administratorgruppen oder Namen von App-Rollen |
+| `Inventory:Oidc:Roles:Admin`, `Operator`, `Viewer` | Gruppen oder App-Rollen je Rolle; ohne jeden Eintrag hier oder in `AllowedGroups` startet der Server nicht |
 | `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher` | Update-Prüfung, Quelle der Releases, erwarteter Herausgeber der Signatur |
 | `Inventory:Catalog:Url` | Adresse oder Pfad der `catalog.json` der Paketbibliothek |
 | `Inventory:Catalog:VersionsUrl` | Ordner mit den Versionslisten (`<winget-ID>.json`); leer = nur die aktuelle Version anbieten |
@@ -309,6 +311,29 @@ markiert und von der Update-Prüfung ignoriert. Liegen die Secrets `SIGNING_CERT
 
 Windows-Anmeldung und OIDC lassen sich einzeln oder gemeinsam aktivieren. Sind beide aktiv, erscheint eine Auswahlseite;
 beide Wege führen zur selben Sitzung. Die Agenten-Schnittstelle ist davon unabhängig (eigene Schlüssel).
+
+#### Rollen
+
+Jede Anmeldung bekommt die höchste Rolle, die ihre Gruppen hergeben; ein Konto ohne Rolle wird abgewiesen.
+
+| Rolle | Darf |
+|---|---|
+| **Betrachter** (Viewer) | alles ansehen: Rechner, Software, Änderungen, Deployments, Pakete, Sammlungen, Zeitpläne, Berichte |
+| **Operator** | zusätzlich scannen und Erreichbarkeit prüfen, vorhandene Pakete verteilen, Deployments abbrechen und wiederholen, Fernzugriff nutzen, das Protokoll lesen |
+| **Administrator** | alles Übrige: Pakete anlegen und ändern (sie laufen als Lokales System auf jedem Rechner), Paketbibliothek, Deinstallation, Fernbefehle, Sammlungen, Zeitpläne, Rechner, Zugangsdaten, API-Tokens, Einstellungen |
+
+Die Gruppen werden je Anmeldeweg eingetragen (`Inventory:Roles:…` für Windows, `Inventory:Oidc:Roles:…` für OIDC). Die
+bisherigen Einstellungen `AllowedGroups` gelten weiter als Administratoren; eine Installation ohne `Roles` verhält sich
+also wie bisher. API-Tokens tragen eine eigene Rolle, die beim Anlegen gewählt wird; Tokens aus der Zeit vor den
+Rollen sind Administrator-Tokens. Für Oberfläche und API gelten dieselben Regeln: ohne die Rolle werden Schaltflächen
+nicht angeboten, und API-Aufrufe antworten mit `403`.
+
+```json
+"Inventory": {
+  "AllowedGroups": [ "FIRMA\\IT-Admins" ],
+  "Roles": { "Operator": [ "FIRMA\\Helpdesk" ], "Viewer": [ "FIRMA\\IT-Audit" ] }
+}
+```
 
 **Microsoft Entra ID einrichten**
 
@@ -361,6 +386,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 | Deployments | starten, auflisten, Fortschritt je Rechner abfragen, abbrechen |
 | Sammlungen | auflisten, anlegen, ändern, löschen; Mitglieder statischer Sammlungen hinzufügen und entfernen; Wartungsfenster je Sammlung (`maintenanceWindow`) und das Standardfenster (`/api/settings/maintenance-window`) |
 | Zeitpläne | auflisten, anlegen, ändern, löschen, sofort ausführen |
+| API-Tokens | auflisten, mit einer Rolle anlegen (das Geheimnis wird einmal gezeigt), löschen – nur Administratoren |
 | Berichte | Rechner und Software als CSV oder JSON |
 
 Das Protokoll zwischen Agent und Server (`/api/agent/…`) ist nicht Teil der dokumentierten API.

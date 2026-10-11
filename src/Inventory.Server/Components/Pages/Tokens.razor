@@ -1,4 +1,5 @@
 @page "/tokens"
+@attribute [Authorize(Policy = AccessControl.AdminPolicy)]
 @inject ApiTokenService TokenService
 @inject Auditor Audit
 @inject IDialogService Dialogs
@@ -32,6 +33,7 @@
     <Columns>
         <PropertyColumn Property="t => t.Name" Title="@L["Name"]" />
         <TemplateColumn Title="Token"><CellTemplate><code>@(context.Item.Prefix)…</code></CellTemplate></TemplateColumn>
+        <TemplateColumn Title="@L["Role"]"><CellTemplate>@Display.Role(context.Item.Role)</CellTemplate></TemplateColumn>
         <PropertyColumn Property="t => t.CreatedBy" Title="@L["Created by"]" />
         <TemplateColumn Title="@L["Created"]"><CellTemplate>@Display.LocalTime(context.Item.CreatedUtc)</CellTemplate></TemplateColumn>
         <TemplateColumn Title="@L["Valid until"]">
@@ -74,7 +76,7 @@
         if (await dialog.Result is not { Canceled: false, Data: CreateTokenDialog.Request request })
             return;
         var expires = request.Days is { } days ? DateTime.UtcNow.AddDays(days) : (DateTime?)null;
-        _created = await TokenService.CreateAsync(request.Name, await Audit.UserNameAsync(), expires);
+        _created = await TokenService.CreateAsync(request.Name, await Audit.UserNameAsync(), expires, role: request.Role);
         await Audit.LogAsync(L["API token created"], $"{request.Name}, {(request.Days is null ? L["valid without limit"] : L["valid {0} days", request.Days])}");
         _tokens = await TokenService.ListAsync();
     }
