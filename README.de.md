@@ -341,8 +341,10 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 | Bereich | Endpunkte |
 |---|---|
 | Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, Inventar-Scan, installierte Software, RDP-Datei, Befehl oder PowerShell-Skript ausführen |
-| Pakete | auflisten, Dateien hochladen (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`) |
-| Deployments | starten, Fortschritt je Rechner abfragen |
+| Pakete | auflisten, anlegen, ändern, löschen; Schritte hinzufügen, ändern, verschieben und löschen; Dateien hochladen und löschen (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`) |
+| Deployments | starten, auflisten, Fortschritt je Rechner abfragen, abbrechen |
+| Sammlungen | auflisten, anlegen, ändern, löschen; Mitglieder statischer Sammlungen hinzufügen und entfernen |
+| Zeitpläne | auflisten, anlegen, ändern, löschen, sofort ausführen |
 | Berichte | Rechner und Software als CSV oder JSON |
 
 Das Protokoll zwischen Agent und Server (`/api/agent/…`) ist nicht Teil der dokumentierten API.

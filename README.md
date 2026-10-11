@@ -339,8 +339,10 @@ addresses require the same sign-in as the rest of the API.
 | Area | Endpoints |
 |---|---|
 | Computers | create, query, delete, check reachability, inventory scan, installed software, RDP file, run command or PowerShell script |
-| Packages | list, upload files (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`) |
-| Deployments | start, query progress per computer |
+| Packages | list, create, change, delete; add, change, move and delete steps; upload and delete files (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`) |
+| Deployments | start, list, query progress per computer, cancel |
+| Collections | list, create, change, delete; add and remove members of static collections |
+| Schedules | list, create, change, delete, run now |
 | Reports | computers and software as CSV or JSON |
 
 The protocol between agent and server (`/api/agent/…`) is not part of the documented API.

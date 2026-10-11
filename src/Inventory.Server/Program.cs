@@ -197,6 +197,7 @@ app.MapStaticAssets();
 app.MapComputerEndpoints();
 app.MapPackageEndpoints();
 app.MapReportEndpoints();
+app.MapManagementEndpoints();
 app.MapAgentEndpoints();
 // Dokumentation unter /api/docs, Beschreibung unter /api/openapi.json; gleiche Anmeldung wie die übrige API.
 app.MapOpenApi("/api/openapi.json");
