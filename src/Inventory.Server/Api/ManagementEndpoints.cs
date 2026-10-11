@@ -158,8 +158,8 @@ public static class ManagementEndpoints
         {
             if (await service.GetAsync(id, ct) is not { } package)
                 return Results.NotFound();
-            service.Repository.Delete(id, path);
             await service.RevokeApprovalAsync(id, ct);
+            service.Repository.Delete(id, path);
             await audit.LogAsync(User(http), "Package file deleted via API", $"{package.Name}: {path}", ct);
             return Results.NoContent();
         }).WithSummary("Delete file").Produces(204).Produces(400).Produces(404);

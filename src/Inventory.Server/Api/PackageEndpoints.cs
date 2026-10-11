@@ -33,9 +33,10 @@ public static class PackageEndpoints
             http.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = null;
             try
             {
-                await packages.Repository.SaveAsync(id, path, http.Request.Body, ct);
-                // Andere Dateien als die freigegebenen: die Freigabe gilt nicht mehr.
+                // Andere Dateien als die freigegebenen: die Freigabe gilt nicht mehr. Zuerst zurückziehen, dann ändern,
+                // damit kein gleichzeitig gestartetes Deployment die neue Datei mit der alten Freigabe mitnimmt.
                 await packages.RevokeApprovalAsync(id, ct);
+                await packages.Repository.SaveAsync(id, path, http.Request.Body, ct);
             }
             catch (ArgumentException ex)
             {

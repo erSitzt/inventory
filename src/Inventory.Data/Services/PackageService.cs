@@ -8,7 +8,12 @@ using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
-public sealed record BuiltJob(JobManifest Manifest, List<JobFile> Files);
+/// <param name="PackageIds">Alle Pakete, deren Schritte und Dateien im Job stecken: das verteilte und die eingebetteten.</param>
+public sealed record BuiltJob(JobManifest Manifest, List<JobFile> Files, IReadOnlyCollection<int> PackageIds)
+{
+    /// <summary>Job ohne Paket dahinter, z. B. die Installation des Agenten.</summary>
+    public BuiltJob(JobManifest manifest, List<JobFile> files) : this(manifest, files, []) { }
+}
 
 public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFactory, PackageRepository repository, IStringLocalizer<SharedResource>? localizer = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
@@ -79,12 +84,17 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var package = await db.Packages.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Package {0} not found", id]);
+        var before = (package.Detection is null ? "" : JobJson.Serialize(package.Detection), package.VerifyAfterInstall);
         package.Detection = detection is null or { IsEmpty: true } ? null : detection;
         // Ohne Erkennung gäbe es nichts zu prüfen.
         package.VerifyAfterInstall = verifyAfterInstall && package.Detection is not null;
-        package.ModifiedUtc = DateTime.UtcNow;
-        package.ApprovedBy = null;
-        package.ApprovedUtc = null;
+        // Nur eine wirkliche Änderung hebt die Freigabe auf – ein Speichern ohne Unterschied (z. B. über die API zusammen mit dem Namen) nicht.
+        if (before != (package.Detection is null ? "" : JobJson.Serialize(package.Detection), package.VerifyAfterInstall))
+        {
+            package.ModifiedUtc = DateTime.UtcNow;
+            package.ApprovedBy = null;
+            package.ApprovedUtc = null;
+        }
         await db.SaveChangesAsync(ct);
     }
 
@@ -182,14 +192,15 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var manifest = new JobManifest();
         var files = new List<JobFile>();
-        await AppendAsync(db, packageId, prefix: "", manifest, files, included: [], MaxNestingDepth, ct);
+        var included = new HashSet<int>();
+        await AppendAsync(db, packageId, prefix: "", manifest, files, included, MaxNestingDepth, ct);
         if (manifest.Steps.Count == 0)
             throw new InvalidOperationException(L["The package contains no steps."]);
         // Maßgeblich ist die Erkennung des verteilten Pakets; eingebettete Pakete bringen nur ihre Schritte mit.
         var header = await db.Packages.AsNoTracking().Where(p => p.Id == packageId).Select(p => new { p.Detection, p.VerifyAfterInstall }).FirstAsync(ct);
         manifest.Detection = header.Detection;
         manifest.VerifyAfterInstall = header.VerifyAfterInstall;
-        return new BuiltJob(manifest, files);
+        return new BuiltJob(manifest, files, included);
     }
 
     private async Task AppendAsync(InventoryDbContext db, int packageId, string prefix, JobManifest manifest, List<JobFile> files, HashSet<int> included, int depth, CancellationToken ct)

@@ -406,8 +406,8 @@
                     continue;
                 }
                 await using var stream = file.OpenReadStream(MaxUploadBytes);
-                await PackageService.Repository.SaveAsync(Id, Path.GetFileName(file.Name), stream);
                 await PackageService.RevokeApprovalAsync(Id);
+                await PackageService.Repository.SaveAsync(Id, Path.GetFileName(file.Name), stream);
                 await Audit.LogAsync(L["Package file uploaded"], $"{_package!.Name}: {file.Name} ({Display.FileSize(file.Size)})");
             }
         }
@@ -426,8 +426,8 @@
     {
         if (!await Access.DemandAdminAsync())
             return;
-        PackageService.Repository.Delete(Id, file.RelativePath);
         await PackageService.RevokeApprovalAsync(Id);
+        PackageService.Repository.Delete(Id, file.RelativePath);
         _ = Audit.LogAsync(L["Package file deleted"], $"{_package!.Name}: {file.RelativePath}");
         await ReloadAsync();
     }

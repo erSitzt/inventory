@@ -432,9 +432,6 @@
     {
         await SettingsService.SetRebootWaitMinutesAsync(minutes);
         _rebootWait = await SettingsService.GetRebootWaitMinutesAsync();
-        _defaultWindow = await Maintenance.GetDefaultAsync();
-        _maxParallel = await SettingsService.GetMaxParallelTargetsAsync();
-        _autoApprove = await SettingsService.GetAutoApproveLibraryUpdatesAsync();
         await Audit.LogAsync(L["Setting changed"], $"{L["Wait for restart (minutes)"]}: {_rebootWait}");
         Snackbar.Add(L["Saved."], Severity.Success);
     }
@@ -488,6 +485,9 @@
         _fallback = await SettingsService.GetTransportFallbackAsync();
         _verifyName = await SettingsService.GetVerifyTargetNameAsync();
         _rebootWait = await SettingsService.GetRebootWaitMinutesAsync();
+        _defaultWindow = await Maintenance.GetDefaultAsync();
+        _maxParallel = await SettingsService.GetMaxParallelTargetsAsync();
+        _autoApprove = await SettingsService.GetAutoApproveLibraryUpdatesAsync();
         await LoadAdAsync();
         await LoadHeartbeatAsync();
         await LoadUpdateAsync();

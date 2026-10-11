@@ -601,6 +601,33 @@ public sealed class PackageTests : IDisposable
         await _packages.ApproveAsync(package.Id, "anna");
         await _packages.MoveStepAsync(package.Id, (await _packages.GetAsync(package.Id))!.Steps[0].Id, 1);
         Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+
+        // Dieselbe Erkennung noch einmal zu speichern ist keine Änderung.
+        await _packages.ApproveAsync(package.Id, "anna");
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions { FileExists = "C:\\x" }, false);
+        Assert.True((await _packages.GetAsync(package.Id))!.IsApproved);
+    }
+
+    [Fact]
+    public async Task An_approved_package_cannot_carry_an_unapproved_embedded_package_past_the_check()
+    {
+        var inner = await _packages.SaveAsync(null, "Laufzeit", null, null);
+        await _packages.SaveStepAsync(inner.Id, null, Command("Laufzeit installieren"), null);
+        await _packages.ApproveAsync(inner.Id, "anna");
+        var outer = await _packages.SaveAsync(null, "Anwendung", null, null);
+        await _packages.SaveStepAsync(outer.Id, null, new JobStep { Name = "Laufzeit" }, inner.Id);
+        await _packages.SaveStepAsync(outer.Id, null, Command("Anwendung installieren"), null);
+        await _packages.ApproveAsync(outer.Id, "anna");
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var strict = new DeploymentOptions(false) { RequireApproved = true };
+        Assert.Equal(TargetStatus.Succeeded, (await WaitAsync(deployments, (await deployments.StartAsync(outer.Id, [computer.Id], strict)).Id)).Targets[0].Status);
+
+        // Das eingebettete Paket ändert sich: das äußere ist noch freigegeben, sein Inhalt aber nicht mehr.
+        await _packages.SaveStepAsync(inner.Id, null, Command("Noch ein Schritt"), null);
+        Assert.True((await _packages.GetAsync(outer.Id))!.IsApproved);
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => deployments.StartAsync(outer.Id, [computer.Id], strict));
+        Assert.Contains("Laufzeit", refused.Message);
     }
 
     /// <summary>Merkt sich die Manifeste; der erste Job endet mit einem Neustart, der zweite läuft durch.</summary>

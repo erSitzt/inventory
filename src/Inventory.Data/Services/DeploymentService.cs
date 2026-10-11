@@ -89,15 +89,18 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, DeploymentOptions options, CancellationToken ct = default)
     {
         var (scanAfter, retryOffline, respectWindow) = (options.ScanAfter, options.RetryOffline, options.RespectWindow);
+        // Vor und nach dem Zusammenstellen prüfen: wer ein Paket ändert, zieht zuerst die Freigabe zurück und ändert dann den Inhalt.
+        if (options.RequireApproved)
+            await DemandApprovedAsync(packageId, [packageId], ct);
         var built = await BuildAsync(packageId, scanAfter, ct);
+        if (options.RequireApproved)
+            await DemandApprovedAsync(packageId, built.PackageIds, ct);
 
         var ids = computerIds.Distinct().ToList();
         Deployment deployment;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
             var package = await db.Packages.AsNoTracking().FirstAsync(p => p.Id == packageId, ct);
-            if (options.RequireApproved && !package.IsApproved)
-                throw new InvalidOperationException(L["The package \"{0}\" is not approved for deployment.", package.Name]);
             var computers = await db.Computers.AsNoTracking().Where(c => ids.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
             if (computers.Count == 0)
                 throw new InvalidOperationException(L["No target computers selected."]);
@@ -117,6 +120,16 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
         Launch(deployment, deployment.Targets, built, checkOnline: retryOffline);
         return deployment;
+    }
+
+    /// <summary>Das verteilte Paket und alle eingebetteten müssen freigegeben sein: ihr Inhalt läuft mit.</summary>
+    private async Task DemandApprovedAsync(int packageId, IReadOnlyCollection<int> included, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var pending = await db.Packages.AsNoTracking().Where(p => included.Contains(p.Id) && p.ApprovedUtc == null)
+            .OrderBy(p => p.Id == packageId ? 0 : 1).Select(p => p.Name).FirstOrDefaultAsync(ct);
+        if (pending is not null)
+            throw new InvalidOperationException(L["The package \"{0}\" is not approved for deployment.", pending]);
     }
 
     private async Task<BuiltJob> BuildAsync(int packageId, bool scanAfter, CancellationToken ct)

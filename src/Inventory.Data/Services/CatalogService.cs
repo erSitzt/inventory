@@ -261,6 +261,8 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
 
             var previous = package.Version;
             var oldFiles = packages.Repository.List(packageId).Select(f => f.RelativePath).ToList();
+            // Erst die Freigabe zurückziehen, dann den Inhalt ändern – auch wenn weiter unten kein Schritt angepasst wird.
+            await packages.RevokeApprovalAsync(packageId, ct);
             await DownloadCuratedAsync(packageId, entry, ct);
 
             // Den Schritt anpassen, der bisher das alte Setup installiert hat; eigene Zusatzschritte bleiben erhalten.
