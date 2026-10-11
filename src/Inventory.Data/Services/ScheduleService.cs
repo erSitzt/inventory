@@ -24,6 +24,7 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
         schedule.Name = schedule.Name.Trim();
         if (schedule.Action == ScheduleAction.Scan)
             schedule.PackageId = null;
+        schedule.RecheckDays = schedule.RecheckDays <= 0 ? 0 : Math.Clamp(schedule.RecheckDays, MinRecheckDays, 365);
         schedule.NextRunUtc = schedule.Enabled ? NextUtc(schedule) : null;
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);
@@ -54,7 +55,7 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
         {
             var late = now - schedule.NextRunUtc!.Value;
             var missed = afterDowntime && schedule.Trigger is ScheduleTrigger.Daily or ScheduleTrigger.Weekly or ScheduleTrigger.Monthly
-                         && late > (schedule.CatchUpMissed ? CatchUpLimit : MissedAfter);
+                         && late >= (schedule.CatchUpMissed ? CatchUpLimit : MissedAfter);
             if (missed)
             {
                 schedule.LastResult = L["Missed: the server was not running at {0}", TimeZoneInfo.ConvertTimeFromUtc(schedule.NextRunUtc.Value, time.LocalTimeZone).ToString("g")];
@@ -80,6 +81,10 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
     }
 
     private bool _checkedSinceStart;
+    private readonly SemaphoreSlim _membershipLock = new(1, 1);
+
+    /// <summary>Eine erneute Ausführung der Pflicht-Verteilung gibt es höchstens wöchentlich.</summary>
+    public const int MinRecheckDays = 7;
 
     /// <summary>Ein verpasster Lauf wird höchstens so lange nachgeholt.</summary>
     public static readonly TimeSpan CatchUpLimit = TimeSpan.FromHours(24);
@@ -113,13 +118,15 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
         var members = await TargetIdsAsync(schedule, ct);
         var now = time.GetUtcNow().UtcDateTime;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var targets = await db.DeploymentTargets.AsNoTracking()
-            .Join(db.Deployments.Where(d => d.ScheduleId == schedule.Id), t => t.DeploymentId, d => d.Id, (t, d) => t)
-            .Where(t => t.ComputerId != null)
-            .Select(t => new { t.Id, ComputerId = t.ComputerId!.Value, t.Status, t.FinishedUtc })
-            .ToListAsync(ct);
-        // Je Rechner zählt der jüngste Versuch.
-        var latest = targets.GroupBy(t => t.ComputerId).ToDictionary(g => g.Key, g => g.MaxBy(t => t.Id)!);
+        // Nur Versuche mit dem Paket, das der Zeitplan jetzt verteilt: wird es ausgetauscht, beginnt die Zählung neu.
+        // Je Rechner zählt der jüngste Versuch; nur dieser wird geladen, und nur für die aktuellen Mitglieder.
+        var attempts = db.DeploymentTargets.AsNoTracking()
+            .Join(db.Deployments.Where(d => d.ScheduleId == schedule.Id && d.PackageId == schedule.PackageId), t => t.DeploymentId, d => d.Id, (t, d) => t)
+            .Where(t => t.ComputerId != null && members.Contains(t.ComputerId.Value));
+        var latestIds = await attempts.GroupBy(t => t.ComputerId).Select(g => g.Max(t => t.Id)).ToListAsync(ct);
+        var latest = (await db.DeploymentTargets.AsNoTracking().Where(t => latestIds.Contains(t.Id))
+                .Select(t => new { ComputerId = t.ComputerId!.Value, t.Status, t.FinishedUtc }).ToListAsync(ct))
+            .ToDictionary(t => t.ComputerId);
         var compliant = new HashSet<int>();
         var due = new List<int>();
         foreach (var id in members)
@@ -198,14 +205,23 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
     {
         if (schedule.Action != ScheduleAction.Deploy || schedule.PackageId is not { } packageId)
             return L["No package selected"];
-        var state = await MembershipStateAsync(schedule, ct);
-        var status = L["{0} of {1} computers have the package", state.Compliant.Count, state.Members.Count].Value;
-        if (state.Due.Count == 0)
-            return status;
-        var batch = state.Due.Take(MembershipBatch).ToList();
-        var deployment = await deployments.StartAsync(packageId, batch, new DeploymentOptions(schedule.ScanAfter, schedule.RetryOffline, schedule.RespectMaintenanceWindow,
-            schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true, ScheduleId = schedule.Id }, ct);
-        return $"{status} – {L["Deployment #{0} started on {1} computers", deployment.Id, deployment.Targets.Count]}";
+        // Prüfen und Starten gehören zusammen: sonst könnten der Takt und "Jetzt ausführen" dieselben Rechner zweimal beauftragen.
+        await _membershipLock.WaitAsync(ct);
+        try
+        {
+            var state = await MembershipStateAsync(schedule, ct);
+            var status = L["{0} of {1} computers have the package", state.Compliant.Count, state.Members.Count].Value;
+            if (state.Due.Count == 0)
+                return status;
+            var batch = state.Due.Take(MembershipBatch).ToList();
+            var deployment = await deployments.StartAsync(packageId, batch, new DeploymentOptions(schedule.ScanAfter, schedule.RetryOffline, schedule.RespectMaintenanceWindow,
+                schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true, ScheduleId = schedule.Id }, ct);
+            return $"{status} – {L["Deployment #{0} started on {1} computers", deployment.Id, deployment.Targets.Count]}";
+        }
+        finally
+        {
+            _membershipLock.Release();
+        }
     }
 
     private DateTime? NextUtc(Schedule schedule)

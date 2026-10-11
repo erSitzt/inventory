@@ -35,8 +35,8 @@
   <data name="0 = close immediately" xml:space="preserve">
     <value>0 = sofort schließen</value>
   </data>
-  <data name="0 = never. Useful when the package has a detection: it then only reinstalls where the program has disappeared." xml:space="preserve">
-    <value>0 = nie. Sinnvoll, wenn das Paket eine Erkennung hat: dann wird nur dort neu installiert, wo das Programm verschwunden ist.</value>
+  <data name="0 = never, otherwise at least {0} days. Useful when the package has a detection: it then only reinstalls where the program has disappeared." xml:space="preserve">
+    <value>0 = nie, sonst mindestens {0} Tage. Sinnvoll, wenn das Paket eine Erkennung hat: dann wird nur dort neu installiert, wo das Programm verschwunden ist.</value>
   </data>
   <data name='1 open item – details under "Needs attention".' xml:space="preserve">
     <value>1 offener Punkt – Einzelheiten unter „Handlungsbedarf“.</value>

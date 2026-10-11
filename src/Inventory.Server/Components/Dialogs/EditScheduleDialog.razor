@@ -99,7 +99,7 @@
                         @L["Every {0} minutes the server checks which members of the target have not received the package through this schedule yet and starts it there – also on computers that join the collection later. A computer on which it failed is tried again after a day. Maintenance windows and offline computers are handled as set above.", ScheduleCalculator.MembershipCheckMinutes]
                     </MudAlert>
                     <MudNumericField T="int" @bind-Value="_s.RecheckDays" Label="@L["Run again after (days)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="365"
-                                     HelperText="@L["0 = never. Useful when the package has a detection: it then only reinstalls where the program has disappeared."]" />
+                                     HelperText="@L["0 = never, otherwise at least {0} days. Useful when the package has a detection: it then only reinstalls where the program has disappeared.", ScheduleService.MinRecheckDays]" />
                     break;
                 case ScheduleTrigger.Interval:
                     <MudNumericField T="int" @bind-Value="_s.IntervalMinutes" Label="@L["Interval (minutes)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="5" Max="43200" />

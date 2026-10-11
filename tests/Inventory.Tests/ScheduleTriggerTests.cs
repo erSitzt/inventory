@@ -225,12 +225,28 @@ public class ScheduleTriggerTests
         await schedules.RunDueAsync();
         Assert.Equal(2, (await rig.Deployments.ListAsync()).Count);
         var stored = (await schedules.ListAsync()).Single();
-        stored.RecheckDays = 7;
+        // Öfter als wöchentlich gibt es nicht.
+        stored.RecheckDays = 2;
         await schedules.SaveAsync(stored);
+        Assert.Equal(7, (await schedules.ListAsync()).Single().RecheckDays);
         rig.Time.Advance(TimeSpan.FromMinutes(ScheduleCalculator.MembershipCheckMinutes + 1));
         await schedules.RunDueAsync();
         await rig.WaitAsync();
         Assert.Equal(3, (await rig.Deployments.ListAsync()).Count);
+
+        // Ein anderes Paket: die bisherigen Erfolge zählen dafür nicht.
+        var other = await rig.Packages.SaveAsync(null, "Baseline 2", "1", null);
+        await rig.Packages.SaveStepAsync(other.Id, null, new JobStep { Name = "x", Type = StepType.Command, Script = "echo" }, null);
+        await rig.Packages.ApproveAsync(other.Id, "admin");
+        stored = (await schedules.ListAsync()).Single();
+        stored.PackageId = other.Id;
+        await schedules.SaveAsync(stored);
+        Assert.Equal(new ScheduleService.Compliance(0, 1), (await schedules.ComplianceAsync()).Values.Single());
+        rig.Time.Advance(TimeSpan.FromMinutes(ScheduleCalculator.MembershipCheckMinutes + 1));
+        await schedules.RunDueAsync();
+        await rig.WaitAsync();
+        Assert.Equal("Baseline 2", (await rig.Deployments.ListAsync()).MaxBy(d => d.Id)!.PackageName);
+        Assert.Equal(new ScheduleService.Compliance(1, 1), (await schedules.ComplianceAsync()).Values.Single());
     }
 
     /// <summary>Simulierter Transport, dessen Jobs sich auf Fehlschlag stellen lassen.</summary>
