@@ -347,6 +347,10 @@ The protocol between agent and server (`/api/agent/…`) is not part of the docu
 For a complete backup, the folders `keys` (without them the stored passwords are unreadable) and `repository` belong
 next to `backups`.
 
+## Roadmap
+
+[ROADMAP.md](ROADMAP.md) lists what is planned for the next releases – more robust deployments (reboot and resume, detection rules, uninstall, maintenance windows), roles, deeper inventory and compliance, alerts and reports – with the reasoning behind each item and what is deliberately left out. Every item is a GitHub issue in the milestones [v0.2](https://github.com/erSitzt/inventory/milestone/1), [v0.3](https://github.com/erSitzt/inventory/milestone/2) and [v0.4](https://github.com/erSitzt/inventory/milestone/3).
+
 ## License
 
 [MIT](LICENSE). Inventory uses, among others, MudBlazor (MIT), Entity Framework Core and ASP.NET Core (MIT) and
