@@ -2,6 +2,11 @@
 @inject ReportService Reports
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject PackageService PackageService
+@inject IDialogService Dialogs
+@inject Auditor Audit
+@inject Access Access
+@inject ISnackbar Snackbar
 
 <PageTitle>@L["Updates"] – Inventory</PageTitle>
 
@@ -70,6 +75,12 @@
                                 </div>
                                 <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _selected = null)" />
                             </MudStack>
+                            @if (_selected.KbIds is not null)
+                            {
+                                <AdminOnly>
+                                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="mt-2" StartIcon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_computers.Count == 0)" OnClick="InstallAsync">@L["Install …"]</MudButton>
+                                </AdminOnly>
+                            }
                             <MudList T="string" Dense="true">
                                 @foreach (var computer in _computers)
                                 {
@@ -131,6 +142,25 @@
         // Führt die Suche auf genau ein Update, zeigt die Seite gleich dessen Rechner.
         if (Query is not null && _report.Updates.FirstOrDefault(u => string.Equals(u.Key, Query, StringComparison.OrdinalIgnoreCase)) is { } match)
             await SelectAsync(match);
+    }
+
+    /// <summary>Legt bei Bedarf das Paket für genau dieses Update an und öffnet den Deploy-Dialog mit den betroffenen Rechnern.</summary>
+    private async Task InstallAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        try
+        {
+            var (package, created) = await PackageService.EnsureUpdatePackageAsync(_selected!.KbIds!, approvedBy: await Audit.UserNameAsync());
+            if (created)
+                await Audit.LogAsync(L["Package created"], package.Name);
+            var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id }, { d => d.ComputerIds, _computers.Select(c => c.Id).ToList() } };
+            await Dialogs.ShowAsync<DeployDialog>(L["Deploy \"{0}\"", package.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private bool Matches(params string?[] values) =>

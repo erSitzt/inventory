@@ -307,6 +307,8 @@ namespace Inventory.Runner
                     return RunStep(index, step, progress);
                 case StepType.Uninstall:
                     return RunUninstall(index, step, progress);
+                case StepType.WindowsUpdate:
+                    return RunWindowsUpdate(index, step, progress);
                 case StepType.InventoryScan:
                     return RunInProcess(index, step, progress, () =>
                     {
@@ -404,6 +406,27 @@ namespace Inventory.Runner
         }
 
         /// <summary>Deinstalliert alle passenden Programme nacheinander und prüft jeweils, dass der Eintrag danach fehlt.</summary>
+        private StepResult RunWindowsUpdate(int index, JobStep step, StreamWriter progress)
+        {
+            var result = new StepResult { Index = index, Name = step.Name };
+            var watch = Stopwatch.StartNew();
+            var output = new StringBuilder();
+            Action<string> say = line =>
+            {
+                lock (output)
+                    output.AppendLine(line);
+                Write(progress, new ProgressEvent { Kind = ProgressKind.Output, Step = index, Text = line });
+            };
+            var outcome = WindowsUpdateInstaller.Run(step, say, () => _cancelled);
+            result.ExitCode = outcome.ExitCode;
+            result.Error = outcome.Error;
+            result.Status = outcome.Error == null ? StepStatus.Succeeded : StepStatus.Failed;
+            lock (output)
+                result.Output = output.ToString();
+            result.DurationSeconds = Math.Round(watch.Elapsed.TotalSeconds, 2);
+            return result;
+        }
+
         private StepResult RunUninstall(int index, JobStep step, StreamWriter progress)
         {
             var result = new StepResult { Index = index, Name = step.Name, Status = StepStatus.Succeeded };

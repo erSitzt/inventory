@@ -1,3 +1,4 @@
+using Inventory.Data;
 using Inventory.Contracts;
 using Inventory.Core;
 using Inventory.Core.Model;
@@ -98,6 +99,67 @@ public class PatchTests
         Assert.Equal(1, detail.UpdatePendingSecurityCount);
         Assert.Equal(["KB5066835", null], detail.PendingUpdates.OrderBy(u => u.Title).Select(u => u.KbIds));
     }
+
+    [Fact]
+    public async Task An_update_package_installs_exactly_the_given_kb_numbers_and_is_reused()
+    {
+        using var db = new TestDb();
+        var repo = Path.Combine(Path.GetTempPath(), "inv-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var packages = new PackageService(db, new PackageRepository(repo));
+            var (package, created) = await packages.EnsureUpdatePackageAsync("KB5066835, KB5066836", approvedBy: "admin");
+            Assert.True(created);
+            var (again, createdAgain) = await packages.EnsureUpdatePackageAsync("kb5066835,5066836");
+            Assert.False(createdAgain);
+            Assert.Equal(package.Id, again.Id);
+
+            // Ändert jemand den Schritt, installiert das Paket etwas anderes und wird für diese Updates nicht mehr genommen.
+            var edited = (await packages.GetAsync(package.Id))!.Steps[0];
+            edited.Definition.UpdateKbIds = ["KB1234567"];
+            await packages.SaveStepAsync(package.Id, edited.Id, edited.Definition, null);
+            var (fresh, createdFresh) = await packages.EnsureUpdatePackageAsync("KB5066835, KB5066836");
+            Assert.True(createdFresh);
+            Assert.NotEqual(package.Id, fresh.Id);
+            package = fresh;
+
+            var step = Assert.Single((await packages.GetAsync(package.Id))!.Steps).Definition;
+            Assert.Equal(StepType.WindowsUpdate, step.Type);
+            Assert.Equal(["KB5066835", "KB5066836"], step.UpdateKbIds);
+            Assert.Equal(7200, step.TimeoutSeconds);
+            // Ohne KB-Nummer gibt es nichts, woran sich das Update gezielt auswählen ließe.
+            await Assert.ThrowsAsync<InvalidOperationException>(() => packages.EnsureUpdatePackageAsync("Windows 11, version 26H2"));
+        }
+        finally
+        {
+            if (Directory.Exists(repo))
+                Directory.Delete(repo, true);
+        }
+    }
+
+    [Fact]
+    public void The_update_step_and_the_restart_condition_survive_the_manifest_round_trip()
+    {
+        var step = new JobStep
+        {
+            Type = StepType.WindowsUpdate, UpdateSecurityOnly = true, UpdateIncludeDrivers = true, UpdateMaxCount = 5, UpdateKbIds = ["KB5066835"],
+            Conditions = new StepConditions { RebootPending = true },
+        };
+        Assert.False(step.Conditions.IsEmpty);
+        var json = JobJson.Serialize(step);
+        Assert.Contains("\"WindowsUpdate\"", json);
+        var copy = JobJson.Deserialize<JobStep>(json)!;
+        Assert.Equal((StepType.WindowsUpdate, true, true, 5, true), (copy.Type, copy.UpdateSecurityOnly, copy.UpdateIncludeDrivers, copy.UpdateMaxCount, copy.Conditions!.RebootPending));
+        Assert.Equal(["KB5066835"], copy.UpdateKbIds);
+        Assert.Equal(9, (int)StepType.WindowsUpdate);
+    }
+
+    [Theory]
+    [InlineData("KB5066835, 5044284; kb5066835", "KB5066835,KB5044284")]
+    [InlineData("Windows 11, version 26H2", "")]
+    [InlineData(null, "")]
+    public void Kb_numbers_are_read_from_free_text(string? text, string expected) =>
+        Assert.Equal(expected, string.Join(",", PendingUpdates.NormalizeKbIds(text)));
 
     [Fact]
     public void Rules_match_hotfixes_pending_updates_and_the_security_count()

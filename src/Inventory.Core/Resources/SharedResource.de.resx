@@ -5,6 +5,9 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name='"{0}" contains no KB number.' xml:space="preserve">
+    <value>„{0}“ enthält keine KB-Nummer.</value>
+  </data>
   <data name='"{0}" is not a valid exit code.' xml:space="preserve">
     <value>„{0}“ ist kein gültiger Exitcode.</value>
   </data>
@@ -22,6 +25,9 @@
   </data>
   <data name="(not signed in)" xml:space="preserve">
     <value>(ohne Anmeldung)</value>
+  </data>
+  <data name="0 = all" xml:space="preserve">
+    <value>0 = alle</value>
   </data>
   <data name="0 = close immediately" xml:space="preserve">
     <value>0 = sofort schließen</value>
@@ -164,6 +170,9 @@
   <data name="All installations (CSV)" xml:space="preserve">
     <value>Alle Installationen (CSV)</value>
   </data>
+  <data name="all pending updates" xml:space="preserve">
+    <value>alle ausstehenden Updates</value>
+  </data>
   <data name="all rules" xml:space="preserve">
     <value>alle Regeln</value>
   </data>
@@ -181,6 +190,9 @@
   </data>
   <data name="already running" xml:space="preserve">
     <value>läuft bereits</value>
+  </data>
+  <data name="Also drivers offered by Windows Update" xml:space="preserve">
+    <value>Auch Treiber, die Windows Update anbietet</value>
   </data>
   <data name="always notify" xml:space="preserve">
     <value>immer benachrichtigen</value>
@@ -268,6 +280,9 @@
   </data>
   <data name="at least one rule" xml:space="preserve">
     <value>mindestens eine Regel</value>
+  </data>
+  <data name="At most this many updates per run" xml:space="preserve">
+    <value>Höchstens so viele Updates je Lauf</value>
   </data>
   <data name="Audit log" xml:space="preserve">
     <value>Protokoll</value>
@@ -779,6 +794,9 @@
   <data name="EDR block mode" xml:space="preserve">
     <value>EDR-Blockmodus</value>
   </data>
+  <data name="Empty = everything the settings above allow. With KB numbers, only these updates are installed." xml:space="preserve">
+    <value>Leer = alles, was die Einstellungen oben zulassen. Mit KB-Nummern werden nur diese Updates installiert.</value>
+  </data>
   <data name="Empty = the domain this server belongs to" xml:space="preserve">
     <value>Leer = Domäne, der dieser Server angehört</value>
   </data>
@@ -1028,8 +1046,14 @@
   <data name="Install remote access launcher" xml:space="preserve">
     <value>Starter für Fernzugriff installieren</value>
   </data>
+  <data name="Install update {0}" xml:space="preserve">
+    <value>Update {0} installieren</value>
+  </data>
   <data name="Install {0}" xml:space="preserve">
     <value>{0} installieren</value>
+  </data>
+  <data name="Install …" xml:space="preserve">
+    <value>Installieren …</value>
   </data>
   <data name="Installation" xml:space="preserve">
     <value>Installation</value>
@@ -1610,14 +1634,26 @@
   <data name="online" xml:space="preserve">
     <value>online</value>
   </data>
+  <data name="only if a restart is pending" xml:space="preserve">
+    <value>nur wenn ein Neustart aussteht</value>
+  </data>
+  <data name="only if no restart is pending" xml:space="preserve">
+    <value>nur wenn kein Neustart aussteht</value>
+  </data>
   <data name="only if nobody is logged on" xml:space="preserve">
     <value>nur wenn niemand angemeldet ist</value>
   </data>
   <data name="only if someone is logged on" xml:space="preserve">
     <value>nur wenn jemand angemeldet ist</value>
   </data>
+  <data name="Only security and critical updates" xml:space="preserve">
+    <value>Nur Sicherheits- und kritische Updates</value>
+  </data>
   <data name="Only the first {0} matches – refine the search to see more." xml:space="preserve">
     <value>Nur die ersten {0} Treffer – Suche verfeinern, um weitere zu sehen.</value>
+  </data>
+  <data name="Only these KB numbers" xml:space="preserve">
+    <value>Nur diese KB-Nummern</value>
   </data>
   <data name="Only within the maintenance window (computers outside wait until it opens)" xml:space="preserve">
     <value>Nur im Wartungsfenster (Rechner außerhalb warten, bis es beginnt)</value>
@@ -2033,6 +2069,9 @@
   <data name="Restart" xml:space="preserve">
     <value>Neu starten</value>
   </data>
+  <data name="Restart pending" xml:space="preserve">
+    <value>Neustart ausstehend</value>
+  </data>
   <data name="restarting" xml:space="preserve">
     <value>startet neu</value>
   </data>
@@ -2227,6 +2266,9 @@
   </data>
   <data name="Security" xml:space="preserve">
     <value>Sicherheit</value>
+  </data>
+  <data name="security and critical updates" xml:space="preserve">
+    <value>Sicherheits- und kritische Updates</value>
   </data>
   <data name="Security Updates" xml:space="preserve">
     <value>Sicherheitsupdates</value>
@@ -2663,6 +2705,9 @@
   <data name="This setup installs into the user profile only. The step therefore runs in the context of the logged-on user and needs a logged-on session on the target computer." xml:space="preserve">
     <value>Dieses Setup installiert nur ins Benutzerprofil. Der Schritt läuft deshalb im Kontext des angemeldeten Benutzers und braucht eine angemeldete Sitzung am Zielrechner.</value>
   </data>
+  <data name="This update has no KB number and cannot be installed on its own." xml:space="preserve">
+    <value>Dieses Update hat keine KB-Nummer und lässt sich nicht einzeln installieren.</value>
+  </data>
   <data name="Time" xml:space="preserve">
     <value>Zeit</value>
   </data>
@@ -2785,6 +2830,9 @@
   </data>
   <data name="Updates" xml:space="preserve">
     <value>Updates</value>
+  </data>
+  <data name='Updates come from the source configured on the computer (WSUS or Microsoft Update). The step does not restart the computer: add a "Reboot" step with the condition "only if a restart is pending" after it. Works via SMB + service or agent, not over WinRM.' xml:space="preserve">
+    <value>Die Updates kommen aus der Quelle, die auf dem Rechner eingestellt ist (WSUS oder Microsoft Update). Der Schritt startet den Rechner nicht neu: dafür danach einen Schritt „Neustart“ mit der Bedingung „nur wenn ein Neustart aussteht“ anlegen. Funktioniert über SMB + Dienst oder Agent, nicht über WinRM.</value>
   </data>
   <data name="Updates pending" xml:space="preserve">
     <value>Updates ausstehend</value>
@@ -2977,6 +3025,9 @@
   </data>
   <data name="Windows sign-in, allowed for {0}." xml:space="preserve">
     <value>Windows-Anmeldung, erlaubt für {0}.</value>
+  </data>
+  <data name="Windows Update" xml:space="preserve">
+    <value>Windows Update</value>
   </data>
   <data name="Windows Update (MSU)" xml:space="preserve">
     <value>Windows-Update (MSU)</value>
@@ -3178,6 +3229,9 @@
   </data>
   <data name="{0} {1} is not (anymore) listed in the winget repository." xml:space="preserve">
     <value>{0} {1} wird im winget-Repository nicht (mehr) geführt.</value>
+  </data>
+  <data name="{0}, including drivers" xml:space="preserve">
+    <value>{0}, einschließlich Treiber</value>
   </data>
   <data name="{0}: name and minimum version" xml:space="preserve">
     <value>{0}: Name und Mindestversion</value>

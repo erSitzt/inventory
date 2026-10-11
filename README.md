@@ -37,6 +37,10 @@ credentials. The user interface is available in English and German; translations
 - **Maintenance windows**: weekdays and time of day per collection plus a default window; deployments and schedules
   with the option "only within the maintenance window" hold back computers whose window is closed and start them
   when it opens
+- **Windows Update**: a step type that searches, downloads and installs pending updates from the source configured
+  on the computer (WSUS or Microsoft Update) – all, only security and critical ones, or specific KB numbers; a
+  following "Reboot" step can be limited to "only if a restart is pending". The update overview offers "Install …"
+  for the computers that miss an update. Works via SMB + service or agent, not over WinRM
 - **Uninstall**: a step type that removes a program by name or MSI product code – silently for MSI, Inno Setup and
   NSIS setups and for programs with a registered silent command – and checks that it is really gone; the software
   overview offers "Uninstall …" for the computers that have a program
