@@ -24,7 +24,7 @@
 
                 @foreach (var rule in _rules)
                 {
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
                         @* Die Listen dürfen breiter werden als ihr Feld (Adaptive), sonst brechen lange Einträge um; das Feld selbst bekommt den meisten Platz. *@
                         <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" Style="flex: 2 1 0; min-width: 240px" T="RuleField" Value="rule.Field" ValueChanged="@(f => SetField(rule, f))" Label="@L["Field"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var field in Fields)
