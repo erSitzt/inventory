@@ -100,8 +100,9 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         }
 
         ServiceHandle? service = null;
-        var started = false;
-        var finished = false;
+        // Ab hier gehört der laufende Dienst nicht mehr sicher diesem Job: er hat sein Ergebnis geliefert oder sich beendet,
+        // und der Dienst kann bereits den nächsten Job ausführen.
+        var released = true;
         try
         {
             using var scm = OpenSCManagerW(host, null, SC_MANAGER_CONNECT | SC_MANAGER_CREATE_SERVICE);
@@ -115,16 +116,13 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
 
             service = OpenRunnerService(scm, host);
             StartRunner(service, host, job.JobId, ct);
-            started = true;
-
-            var result = WaitForResult(host, jobDir, service, job, progress, ct);
-            finished = true;
-            return result;
+            released = false;
+            return WaitForResult(host, jobDir, service, job, progress, ct, ref released);
         }
         finally
         {
-            // Nur einen eigenen, nicht zu Ende gelaufenen Job anhalten: nach dem Ergebnis kann der Dienst schon den nächsten Job ausführen.
-            if (service is { IsInvalid: false } && started && !finished)
+            // Nur den eigenen, noch laufenden Job anhalten (etwa nach einem Lesefehler), nie den eines anderen.
+            if (service is { IsInvalid: false } && !released)
                 ControlService(service, SERVICE_CONTROL_STOP, out _);
             service?.Dispose();
             TryDeleteDirectory(jobDir);
@@ -192,17 +190,18 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
                || name.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host is "127.0.0.1" or "::1";
     }
 
-    private JobResult WaitForResult(string host, string jobDir, ServiceHandle service, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct)
+    private JobResult WaitForResult(string host, string jobDir, ServiceHandle service, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct, ref bool released)
     {
         var resultPath = Path.Combine(jobDir, JobFiles.Result);
         var progressPath = Path.Combine(jobDir, JobFiles.Progress);
         long progressOffset = 0;
         DateTime? stoppedSince = null;
         var cancelRequested = false;
+        uint exitCode = 0;
 
         while (true)
         {
-            if (ct.IsCancellationRequested && !cancelRequested)
+            if (ct.IsCancellationRequested && !cancelRequested && !released)
             {
                 // Der Runner bricht den laufenden Schritt ab und schreibt trotzdem noch ein Ergebnis.
                 ControlService(service, SERVICE_CONTROL_STOP, out _);
@@ -213,6 +212,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
 
             if (File.Exists(resultPath))
             {
+                released = true;
                 PumpProgress(progressPath, progressOffset, progress);
                 return JobJson.Deserialize<JobResult>(ReadShared(resultPath))
                        ?? throw new RemoteException(L["Empty result from {0}", host]);
@@ -220,10 +220,13 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
 
             if (QueryServiceStatus(service, out var status) && status.dwCurrentState == SERVICE_STOPPED)
             {
+                released = true;
                 stoppedSince ??= DateTime.UtcNow;
-                if (DateTime.UtcNow - stoppedSince > ResultGrace)
-                    throw new RemoteException(L["The runner on {0} exited without delivering a result (exit code {1}). Possible causes: .NET Framework 4.8 is missing, or antivirus or AppLocker blocks execution.", host, status.dwWin32ExitCode]);
+                exitCode = status.dwWin32ExitCode;
             }
+            // Auch wenn der Dienst inzwischen für einen anderen Job wieder läuft: dieser Job hat kein Ergebnis hinterlassen.
+            if (stoppedSince is not null && DateTime.UtcNow - stoppedSince > ResultGrace)
+                throw new RemoteException(L["The runner on {0} exited without delivering a result (exit code {1}). Possible causes: .NET Framework 4.8 is missing, or antivirus or AppLocker blocks execution.", host, exitCode]);
 
             Thread.Sleep(PollInterval);
         }
