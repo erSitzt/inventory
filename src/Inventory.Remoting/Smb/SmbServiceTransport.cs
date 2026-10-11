@@ -157,7 +157,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
             return service;
         }
 
-        if (!string.Equals(BinaryPath(service), binPath, StringComparison.OrdinalIgnoreCase)
+        if (!SameRunner(BinaryPath(service), binPath)
             && !ChangeServiceConfigW(service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, binPath, null, IntPtr.Zero, null, null, null, null))
         {
             var error = Marshal.GetLastWin32Error();
@@ -165,6 +165,23 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
             throw new RemoteException(L["Service on {0} could not be updated: {1}", host, L[Describe(error)]]);
         }
         return service;
+    }
+
+    /// <summary>
+    /// true, wenn der Dienst bereits auf diesen Runner zeigt. Der Service Control Manager liefert die Befehlszeile mit
+    /// aufgelöstem %SystemRoot% zurück; verglichen wird deshalb nur der Teil dahinter.
+    /// </summary>
+    internal static bool SameRunner(string? registered, string wanted)
+    {
+        const string variable = "%SystemRoot%";
+        var index = wanted.IndexOf(variable, StringComparison.OrdinalIgnoreCase);
+        if (registered is null || index < 0)
+            return string.Equals(registered, wanted, StringComparison.OrdinalIgnoreCase);
+        var prefix = wanted[..index];
+        var suffix = wanted[(index + variable.Length)..];
+        return registered.Length > prefix.Length + suffix.Length
+               && registered.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+               && registered.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Startet den Dienst mit der Job-ID; läuft dort noch ein anderer Job, wird gewartet.</summary>

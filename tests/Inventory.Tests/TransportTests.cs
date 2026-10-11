@@ -33,6 +33,18 @@ public class TransportTests
     public void Runner_service_accepts_only_plain_job_ids(string value, bool expected) =>
         Assert.Equal(expected, JobFiles.IsJobId(value));
 
+    [Theory]
+    [InlineData("\"C:\\WINDOWS\\Inventory\\Runner\\abc\\InventoryRunner.exe\" --service", true)]
+    [InlineData("\"%SystemRoot%\\Inventory\\Runner\\abc\\InventoryRunner.exe\" --service", true)]
+    [InlineData("\"D:\\Win\\inventory\\runner\\ABC\\inventoryrunner.exe\" --SERVICE", true)]
+    [InlineData("\"C:\\WINDOWS\\Inventory\\Runner\\old\\InventoryRunner.exe\" --service", false)]
+    [InlineData("\"C:\\WINDOWS\\Inventory\\Runner\\abc\\InventoryRunner.exe\" --service extra", false)]
+    [InlineData("C:\\WINDOWS\\Inventory\\Runner\\abc\\InventoryRunner.exe --service", false)]
+    [InlineData(null, false)]
+    public void Runner_service_is_only_reconfigured_when_it_points_elsewhere(string? registered, bool same) =>
+        Assert.Equal(same, Inventory.Remoting.Smb.SmbServiceTransport.SameRunner(registered,
+            "\"%SystemRoot%\\Inventory\\Runner\\abc\\InventoryRunner.exe\" --service"));
+
     [Fact]
     public void New_job_ids_are_valid_for_the_runner_service() =>
         Assert.True(JobFiles.IsJobId(new JobManifest().JobId));
