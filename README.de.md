@@ -17,6 +17,8 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
   Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten; Schritte nach einem Neustart laufen
   automatisch weiter, sobald der Rechner wieder da ist
+- **Freigabe**: Ein Paket ist „in Arbeit“, bis ein Administrator es freigibt; Operatoren und Zeitpläne verteilen nur
+  freigegebene Pakete, und jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf
 - **Grenzen je Deployment**: nach einer Anzahl oder Quote von Fehlern keine weiteren Rechner mehr starten und
   begrenzen, wie viele Rechner gleichzeitig laufen – so erreicht ein kaputtes Paket nicht alle Rechner, und die ersten
   wirken als Pilotgruppe
@@ -319,7 +321,7 @@ Jede Anmeldung bekommt die höchste Rolle, die ihre Gruppen hergeben; ein Konto 
 | Rolle | Darf |
 |---|---|
 | **Betrachter** (Viewer) | alles ansehen: Rechner, Software, Änderungen, Deployments, Pakete, Sammlungen, Zeitpläne, Berichte |
-| **Operator** | zusätzlich scannen und Erreichbarkeit prüfen, vorhandene Pakete verteilen, Deployments abbrechen und wiederholen, Fernzugriff nutzen, das Protokoll lesen |
+| **Operator** | zusätzlich scannen und Erreichbarkeit prüfen, freigegebene Pakete verteilen, Deployments abbrechen und wiederholen, Fernzugriff nutzen, das Protokoll lesen |
 | **Administrator** | alles Übrige: Pakete anlegen und ändern (sie laufen als Lokales System auf jedem Rechner), Paketbibliothek, Deinstallation, Fernbefehle, Sammlungen, Zeitpläne, Rechner, Zugangsdaten, API-Tokens, Einstellungen |
 
 Die Gruppen werden je Anmeldeweg eingetragen (`Inventory:Roles:…` für Windows, `Inventory:Oidc:Roles:…` für OIDC). Die

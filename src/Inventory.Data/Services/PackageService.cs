@@ -8,7 +8,12 @@ using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
-public sealed record BuiltJob(JobManifest Manifest, List<JobFile> Files);
+/// <param name="PackageIds">Alle Pakete, deren Schritte und Dateien im Job stecken: das verteilte und die eingebetteten.</param>
+public sealed record BuiltJob(JobManifest Manifest, List<JobFile> Files, IReadOnlyCollection<int> PackageIds)
+{
+    /// <summary>Job ohne Paket dahinter, z. B. die Installation des Agenten.</summary>
+    public BuiltJob(JobManifest manifest, List<JobFile> files) : this(manifest, files, []) { }
+}
 
 public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFactory, PackageRepository repository, IStringLocalizer<SharedResource>? localizer = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
@@ -54,15 +59,42 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         return package;
     }
 
+    /// <summary>Gibt das Paket zum Verteilen durch Operatoren und Zeitpläne frei.</summary>
+    /// <exception cref="InvalidOperationException">Ein Paket ohne Schritte lässt sich nicht freigeben.</exception>
+    public async Task ApproveAsync(int id, string user, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var package = await db.Packages.Include(p => p.Steps).FirstOrDefaultAsync(p => p.Id == id, ct) ?? throw new KeyNotFoundException(L["Package {0} not found", id]);
+        if (package.Steps.Count == 0)
+            throw new InvalidOperationException(L["The package contains no steps."]);
+        package.ApprovedBy = user;
+        package.ApprovedUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Hebt die Freigabe auf, z. B. weil sich Dateien des Pakets geändert haben.</summary>
+    public async Task RevokeApprovalAsync(int id, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await db.Packages.Where(p => p.Id == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.ApprovedBy, (string?)null).SetProperty(p => p.ApprovedUtc, (DateTime?)null), ct);
+    }
+
     /// <summary>Legt fest, woran ein bereits installiertes Paket erkannt wird; eine leere Erkennung schaltet sie ab.</summary>
     public async Task SaveDetectionAsync(int id, StepConditions? detection, bool verifyAfterInstall, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var package = await db.Packages.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Package {0} not found", id]);
+        var before = (package.Detection is null ? "" : JobJson.Serialize(package.Detection), package.VerifyAfterInstall);
         package.Detection = detection is null or { IsEmpty: true } ? null : detection;
         // Ohne Erkennung gäbe es nichts zu prüfen.
         package.VerifyAfterInstall = verifyAfterInstall && package.Detection is not null;
-        package.ModifiedUtc = DateTime.UtcNow;
+        // Nur eine wirkliche Änderung hebt die Freigabe auf – ein Speichern ohne Unterschied (z. B. über die API zusammen mit dem Namen) nicht.
+        if (before != (package.Detection is null ? "" : JobJson.Serialize(package.Detection), package.VerifyAfterInstall))
+        {
+            package.ModifiedUtc = DateTime.UtcNow;
+            package.ApprovedBy = null;
+            package.ApprovedUtc = null;
+        }
         await db.SaveChangesAsync(ct);
     }
 
@@ -70,7 +102,8 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     /// Liefert das Paket "Uninstall &lt;Name&gt;" mit einem Deinstallations-Schritt und legt es an, falls es noch fehlt.
     /// Ein vorhandenes Paket dieses Namens bleibt unverändert, damit eigene Anpassungen (Parameter, weitere Schritte) erhalten bleiben.
     /// </summary>
-    public async Task<(Package Package, bool Created)> EnsureUninstallPackageAsync(string label, string? softwareName, string? productCode, CancellationToken ct = default)
+    /// <param name="approvedBy">Gesetzt = ein neu angelegtes Paket ist sofort freigegeben (der Administrator hat es gerade bewusst erzeugt).</param>
+    public async Task<(Package Package, bool Created)> EnsureUninstallPackageAsync(string label, string? softwareName, string? productCode, CancellationToken ct = default, string? approvedBy = null)
     {
         var name = L["Uninstall {0}", label.Trim()].Value;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
@@ -85,6 +118,8 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
             SoftwareName = string.IsNullOrWhiteSpace(softwareName) ? null : softwareName.Trim(),
             ProductCode = string.IsNullOrWhiteSpace(productCode) ? null : productCode.Trim(),
         }, null, ct);
+        if (approvedBy is not null)
+            await ApproveAsync(package.Id, approvedBy, ct);
         return (package, true);
     }
 
@@ -157,14 +192,15 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var manifest = new JobManifest();
         var files = new List<JobFile>();
-        await AppendAsync(db, packageId, prefix: "", manifest, files, included: [], MaxNestingDepth, ct);
+        var included = new HashSet<int>();
+        await AppendAsync(db, packageId, prefix: "", manifest, files, included, MaxNestingDepth, ct);
         if (manifest.Steps.Count == 0)
             throw new InvalidOperationException(L["The package contains no steps."]);
         // Maßgeblich ist die Erkennung des verteilten Pakets; eingebettete Pakete bringen nur ihre Schritte mit.
         var header = await db.Packages.AsNoTracking().Where(p => p.Id == packageId).Select(p => new { p.Detection, p.VerifyAfterInstall }).FirstAsync(ct);
         manifest.Detection = header.Detection;
         manifest.VerifyAfterInstall = header.VerifyAfterInstall;
-        return new BuiltJob(manifest, files);
+        return new BuiltJob(manifest, files, included);
     }
 
     private async Task AppendAsync(InventoryDbContext db, int packageId, string prefix, JobManifest manifest, List<JobFile> files, HashSet<int> included, int depth, CancellationToken ct)
@@ -212,6 +248,11 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     {
         var package = await db.Packages.FindAsync([packageId], ct);
         if (package is not null)
+        {
             package.ModifiedUtc = DateTime.UtcNow;
+            // Geänderte Schritte sind nicht mehr das, was freigegeben wurde.
+            package.ApprovedBy = null;
+            package.ApprovedUtc = null;
+        }
     }
 }

@@ -13,7 +13,11 @@ namespace Inventory.Data.Services;
 /// <summary>Legt Deployments an, führt sie im Hintergrund aus und hält den Live-Stand laufender Ziele bereit.</summary>
 /// <summary>Einstellungen eines Deployments; die Grenzen sind optional (null = keine).</summary>
 public sealed record DeploymentOptions(bool ScanAfter, bool RetryOffline = false, bool RespectWindow = false,
-    int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null);
+    int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null)
+{
+    /// <summary>true = nur freigegebene Pakete; gilt für Operatoren und Zeitpläne, nicht für Administratoren.</summary>
+    public bool RequireApproved { get; init; }
+}
 
 public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null, MaintenanceService? maintenance = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
@@ -85,7 +89,12 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, DeploymentOptions options, CancellationToken ct = default)
     {
         var (scanAfter, retryOffline, respectWindow) = (options.ScanAfter, options.RetryOffline, options.RespectWindow);
+        // Vor und nach dem Zusammenstellen prüfen: wer ein Paket ändert, zieht zuerst die Freigabe zurück und ändert dann den Inhalt.
+        if (options.RequireApproved)
+            await DemandApprovedAsync(packageId, [packageId], ct);
         var built = await BuildAsync(packageId, scanAfter, ct);
+        if (options.RequireApproved)
+            await DemandApprovedAsync(packageId, built.PackageIds, ct);
 
         var ids = computerIds.Distinct().ToList();
         Deployment deployment;
@@ -111,6 +120,16 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
         Launch(deployment, deployment.Targets, built, checkOnline: retryOffline);
         return deployment;
+    }
+
+    /// <summary>Das verteilte Paket und alle eingebetteten müssen freigegeben sein: ihr Inhalt läuft mit.</summary>
+    private async Task DemandApprovedAsync(int packageId, IReadOnlyCollection<int> included, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var pending = await db.Packages.AsNoTracking().Where(p => included.Contains(p.Id) && p.ApprovedUtc == null)
+            .OrderBy(p => p.Id == packageId ? 0 : 1).Select(p => p.Name).FirstOrDefaultAsync(ct);
+        if (pending is not null)
+            throw new InvalidOperationException(L["The package \"{0}\" is not approved for deployment.", pending]);
     }
 
     private async Task<BuiltJob> BuildAsync(int packageId, bool scanAfter, CancellationToken ct)

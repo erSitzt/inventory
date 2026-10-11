@@ -739,6 +739,12 @@ namespace Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ApprovedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ApprovedUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("CatalogAutoUpdate")
                         .HasColumnType("INTEGER");
 

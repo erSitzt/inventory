@@ -24,9 +24,24 @@
     <MudText Typo="Typo.h5">@_package.Name</MudText>
     <MudSpacer />
     <OperatorOnly>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_package.Steps.Count == 0)" OnClick="DeployAsync">@L["Deploy"]</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_package.Steps.Count == 0 || (!_package.IsApproved && !_isAdmin))" OnClick="DeployAsync">@L["Deploy"]</MudButton>
     </OperatorOnly>
 </MudStack>
+
+<MudAlert Severity="@(_package.IsApproved ? Severity.Success : Severity.Warning)" Dense="true" Class="mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Wrap="Wrap.Wrap">
+        @if (_package.IsApproved)
+        {
+            <span>@L["Approved for deployment by {0} on {1}.", _package.ApprovedBy, Display.LocalTime(_package.ApprovedUtc)]</span>
+            <AdminOnly><MudButton Size="Size.Small" Variant="Variant.Text" OnClick="RevokeApprovalAsync">@L["Withdraw approval"]</MudButton></AdminOnly>
+        }
+        else
+        {
+            <span>@L["Not approved: operators and schedules cannot deploy this package. Every change to steps, detection or files withdraws the approval."]</span>
+            <AdminOnly><MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@(_package.Steps.Count == 0)" OnClick="ApproveAsync">@L["Approve"]</MudButton></AdminOnly>
+        }
+    </MudStack>
+</MudAlert>
 
 @if (_package.CatalogId is not null)
 {
@@ -226,6 +241,7 @@
     private string? _description;
     private List<Inventory.Data.RepositoryFile> _files = [];
     private bool _uploading;
+    private bool _isAdmin;
     private StepConditions _detection = new();
     private bool _verify;
 
@@ -234,6 +250,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        _isAdmin = await Access.IsAdminAsync();
         await ReloadAsync();
         _loaded = true;
         if (_package is not null)
@@ -267,6 +284,24 @@
         }
     }
 
+    private async Task ApproveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await PackageService.ApproveAsync(Id, await Audit.UserNameAsync());
+        await Audit.LogAsync(L["Package approved"], $"{_package!.Name} {_package.Version}".Trim());
+        await ReloadAsync();
+    }
+
+    private async Task RevokeApprovalAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await PackageService.RevokeApprovalAsync(Id);
+        await Audit.LogAsync(L["Package approval withdrawn"], _package!.Name);
+        await ReloadAsync();
+    }
+
     private void LoadDetection()
     {
         // Kopie, damit ungespeicherte Eingaben nicht im geladenen Paket landen.
@@ -292,7 +327,8 @@
             return;
         var detection = _package!.Detection!;
         var (package, created) = await PackageService.EnsureUninstallPackageAsync(
-            string.IsNullOrWhiteSpace(detection.SoftwareInstalled) ? _package.Name : detection.SoftwareInstalled, detection.SoftwareInstalled, detection.MsiProductCode);
+            string.IsNullOrWhiteSpace(detection.SoftwareInstalled) ? _package.Name : detection.SoftwareInstalled, detection.SoftwareInstalled, detection.MsiProductCode,
+            approvedBy: await Audit.UserNameAsync());
         if (created)
             await Audit.LogAsync(L["Package created"], package.Name);
         Navigation.NavigateTo($"packages/{package.Id}");
@@ -370,6 +406,7 @@
                     continue;
                 }
                 await using var stream = file.OpenReadStream(MaxUploadBytes);
+                await PackageService.RevokeApprovalAsync(Id);
                 await PackageService.Repository.SaveAsync(Id, Path.GetFileName(file.Name), stream);
                 await Audit.LogAsync(L["Package file uploaded"], $"{_package!.Name}: {file.Name} ({Display.FileSize(file.Size)})");
             }
@@ -381,7 +418,7 @@
         finally
         {
             _uploading = false;
-            _files = PackageService.Repository.List(Id);
+            await ReloadAsync();
         }
     }
 
@@ -389,9 +426,10 @@
     {
         if (!await Access.DemandAdminAsync())
             return;
+        await PackageService.RevokeApprovalAsync(Id);
         PackageService.Repository.Delete(Id, file.RelativePath);
         _ = Audit.LogAsync(L["Package file deleted"], $"{_package!.Name}: {file.RelativePath}");
-        _files = PackageService.Repository.List(Id);
+        await ReloadAsync();
     }
 
     private async Task DeployAsync()

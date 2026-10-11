@@ -32,6 +32,13 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
     public Task SetVerifyTargetNameAsync(bool enabled, CancellationToken ct = default) =>
         SetAsync(SettingKeys.SkipTargetNameCheck, (!enabled).ToString(), ct);
 
+    /// <summary>Automatisch übernommene Bibliotheks-Updates behalten die Freigabe des Pakets. Standard: aus.</summary>
+    public async Task<bool> GetAutoApproveLibraryUpdatesAsync(CancellationToken ct = default) =>
+        await GetAsync(SettingKeys.AutoApproveLibraryUpdates, ct) == bool.TrueString;
+
+    public Task SetAutoApproveLibraryUpdatesAsync(bool enabled, CancellationToken ct = default) =>
+        SetAsync(SettingKeys.AutoApproveLibraryUpdates, enabled.ToString(), ct);
+
     public const int DefaultMaxParallelTargets = 16;
 
     /// <summary>Obergrenze gleichzeitig laufender Deployment-Ziele über alle Deployments hinweg.</summary>

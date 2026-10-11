@@ -24,6 +24,14 @@ public class Package
     public StepConditions? Detection { get; set; }
     /// <summary>Nach dem letzten Schritt muss <see cref="Detection"/> zutreffen, sonst gilt das Ziel als fehlgeschlagen.</summary>
     public bool VerifyAfterInstall { get; set; }
+
+    /// <summary>
+    /// Wer das Paket zum Verteilen freigegeben hat; null = noch in Arbeit. Operatoren und Zeitpläne verteilen nur freigegebene
+    /// Pakete. Jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf.
+    /// </summary>
+    public string? ApprovedBy { get; set; }
+    public DateTime? ApprovedUtc { get; set; }
+    public bool IsApproved => ApprovedUtc is not null;
 }
 
 public class PackageStep

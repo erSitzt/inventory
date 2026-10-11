@@ -570,6 +570,66 @@ public sealed class PackageTests : IDisposable
     public void The_failure_limit_counts_failures_or_a_rate_among_finished_computers(int? maxFailures, int? maxPercent, int failed, int finished, bool reached) =>
         Assert.Equal(reached, DeploymentLimits.Reached(maxFailures, maxPercent, failed, finished));
 
+    [Fact]
+    public async Task Only_approved_packages_can_be_deployed_where_approval_is_required_and_every_change_withdraws_it()
+    {
+        var package = await _packages.SaveAsync(null, "Neu", "1.0", null);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _packages.ApproveAsync(package.Id, "anna"));
+        await _packages.SaveStepAsync(package.Id, null, Command("Installieren"), null);
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var strict = new DeploymentOptions(false) { RequireApproved = true };
+
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => deployments.StartAsync(package.Id, [computer.Id], strict));
+        Assert.Contains("not approved", refused.Message);
+        // Ein Administrator darf ein Paket in Arbeit trotzdem verteilen, etwa zum Testen.
+        Assert.Equal(TargetStatus.Succeeded, (await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], false)).Id)).Targets[0].Status);
+
+        await _packages.ApproveAsync(package.Id, "anna");
+        var approved = (await _packages.GetAsync(package.Id))!;
+        Assert.True(approved is { IsApproved: true, ApprovedBy: "anna" });
+        Assert.Equal(TargetStatus.Succeeded, (await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], strict)).Id)).Targets[0].Status);
+
+        // Name und Beschreibung ändern nichts am Inhalt, Schritte und Erkennung schon.
+        await _packages.SaveAsync(package.Id, "Neu", "1.1", "Beschreibung");
+        Assert.True((await _packages.GetAsync(package.Id))!.IsApproved);
+        await _packages.SaveStepAsync(package.Id, null, Command("Aufräumen"), null);
+        Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+        await _packages.ApproveAsync(package.Id, "anna");
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions { FileExists = "C:\\x" }, false);
+        Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+        await _packages.ApproveAsync(package.Id, "anna");
+        await _packages.MoveStepAsync(package.Id, (await _packages.GetAsync(package.Id))!.Steps[0].Id, 1);
+        Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+
+        // Dieselbe Erkennung noch einmal zu speichern ist keine Änderung.
+        await _packages.ApproveAsync(package.Id, "anna");
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions { FileExists = "C:\\x" }, false);
+        Assert.True((await _packages.GetAsync(package.Id))!.IsApproved);
+    }
+
+    [Fact]
+    public async Task An_approved_package_cannot_carry_an_unapproved_embedded_package_past_the_check()
+    {
+        var inner = await _packages.SaveAsync(null, "Laufzeit", null, null);
+        await _packages.SaveStepAsync(inner.Id, null, Command("Laufzeit installieren"), null);
+        await _packages.ApproveAsync(inner.Id, "anna");
+        var outer = await _packages.SaveAsync(null, "Anwendung", null, null);
+        await _packages.SaveStepAsync(outer.Id, null, new JobStep { Name = "Laufzeit" }, inner.Id);
+        await _packages.SaveStepAsync(outer.Id, null, Command("Anwendung installieren"), null);
+        await _packages.ApproveAsync(outer.Id, "anna");
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var strict = new DeploymentOptions(false) { RequireApproved = true };
+        Assert.Equal(TargetStatus.Succeeded, (await WaitAsync(deployments, (await deployments.StartAsync(outer.Id, [computer.Id], strict)).Id)).Targets[0].Status);
+
+        // Das eingebettete Paket ändert sich: das äußere ist noch freigegeben, sein Inhalt aber nicht mehr.
+        await _packages.SaveStepAsync(inner.Id, null, Command("Noch ein Schritt"), null);
+        Assert.True((await _packages.GetAsync(outer.Id))!.IsApproved);
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => deployments.StartAsync(outer.Id, [computer.Id], strict));
+        Assert.Contains("Laufzeit", refused.Message);
+    }
+
     /// <summary>Merkt sich die Manifeste; der erste Job endet mit einem Neustart, der zweite läuft durch.</summary>
     private sealed class RecordingTransport : IRemoteTransport
     {

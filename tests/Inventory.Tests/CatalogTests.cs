@@ -66,6 +66,10 @@ public sealed class CatalogTests : IDisposable
         var package = await _catalog.ImportAsync("7zip.7zip", autoUpdate: false, createCollection: true, "anna");
         await _packages.SaveStepAsync(package.Id, null, new JobStep { Name = "Verknüpfung entfernen", Type = StepType.Command, Script = "del x" }, null);
         await _packages.Repository.SaveAsync(package.Id, "eigene.cfg", new MemoryStream([1]));
+        // Der eigene Schritt hat die Freigabe des Imports aufgehoben; der Administrator gibt das angepasste Paket wieder frei.
+        Assert.True(package.IsApproved);
+        Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+        await _packages.ApproveAsync(package.Id, "berta");
 
         _source.Publish("7zip.7zip", "7-Zip", "25.01", "/norestart");
         await _catalog.RefreshAsync(force: true);
@@ -77,6 +81,8 @@ public sealed class CatalogTests : IDisposable
 
         var updated = (await _packages.GetAsync(package.Id))!;
         Assert.Equal("25.01", updated.Version);
+        // Wer selbst aktualisiert, gibt die neue Version damit frei.
+        Assert.True(updated is { IsApproved: true, ApprovedBy: "anna" });
         Assert.Equal(("7-Zip", "25.01"), (updated.Detection?.SoftwareInstalled, updated.Detection?.SoftwareMinVersion));
         Assert.Equal(["Install 7-Zip", "Verknüpfung entfernen"], updated.Steps.Select(s => s.Definition.Name));
         Assert.Equal(("7zip.7zip-25.01.msi", "/norestart"), (updated.Steps[0].Definition.File, updated.Steps[0].Definition.Arguments));
@@ -90,6 +96,14 @@ public sealed class CatalogTests : IDisposable
         await _catalog.RefreshAsync(force: true);
         Assert.Equal(1, await _catalog.UpdateDueAsync());
         Assert.Equal("25.02", (await _packages.GetAsync(package.Id))!.Version);
+        // Unbeaufsichtigt bleibt die Freigabe nur mit der Einstellung erhalten.
+        Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+        await _packages.ApproveAsync(package.Id, "anna");
+        await new SettingsService(_db).SetAutoApproveLibraryUpdatesAsync(true);
+        _source.Publish("7zip.7zip", "7-Zip", "25.03", "");
+        await _catalog.RefreshAsync(force: true);
+        Assert.Equal(1, await _catalog.UpdateDueAsync());
+        Assert.True((await _packages.GetAsync(package.Id)) is { Version: "25.03", IsApproved: true, ApprovedBy: "anna" });
     }
 
     [Fact]

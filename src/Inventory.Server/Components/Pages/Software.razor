@@ -140,7 +140,7 @@
     {
         if (!await Access.DemandAdminAsync())
             return;
-        var (package, created) = await PackageService.EnsureUninstallPackageAsync(_selected!.Name, _selected.Name, null);
+        var (package, created) = await PackageService.EnsureUninstallPackageAsync(_selected!.Name, _selected.Name, null, approvedBy: await Audit.UserNameAsync());
         if (created)
             await Audit.LogAsync(L["Package created"], package.Name);
         var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id }, { d => d.ComputerIds, _computers.Select(c => c.Computer.Id).ToList() } };
