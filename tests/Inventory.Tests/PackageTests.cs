@@ -487,6 +487,11 @@ public sealed class PackageTests : IDisposable
         Assert.Equal((2, 5, 500, 120, "Bitte speichern"), (step.Retries, step.RetryDelaySeconds, step.MinFreeDiskMb, step.CloseProcessesWarnSeconds, step.CloseProcessesMessage));
         Assert.Equal(["outlook", "winword.exe"], step.CloseProcesses);
 
+        // Werte außerhalb der Grenzen (z. B. über die API) werden beim Speichern begrenzt.
+        await _packages.SaveStepAsync(package.Id, null, new JobStep { Name = "Zu viel", Type = StepType.Command, Script = "x", Retries = 500, RetryDelaySeconds = int.MaxValue, CloseProcessesWarnSeconds = int.MaxValue, MinFreeDiskMb = -5 }, null);
+        var clamped = (await _packages.BuildJobAsync(package.Id)).Manifest.Steps[1];
+        Assert.Equal((20, 3600, 3600, 0), (clamped.Retries, clamped.RetryDelaySeconds, clamped.CloseProcessesWarnSeconds, clamped.MinFreeDiskMb));
+
         // Schritte, die vor diesen Feldern gespeichert wurden, verhalten sich wie bisher.
         var old = JobJson.Deserialize<JobStep>("""{"name":"Alt","type":"Command","script":"echo"}""")!;
         Assert.Equal((0, 60, 0, 0), (old.Retries, old.RetryDelaySeconds, old.MinFreeDiskMb, old.CloseProcessesWarnSeconds));

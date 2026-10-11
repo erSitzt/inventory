@@ -1274,6 +1274,9 @@
   <data name="not installed" xml:space="preserve">
     <value>nicht installiert</value>
   </data>
+  <data name="Not retried: too little disk space or a program that cannot be closed." xml:space="preserve">
+    <value>Nicht wiederholt wird bei zu wenig Speicherplatz oder wenn sich ein Programm nicht schließen lässt.</value>
+  </data>
   <data name="not running" xml:space="preserve">
     <value>läuft nicht</value>
   </data>

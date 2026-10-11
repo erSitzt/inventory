@@ -113,6 +113,11 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         {
             step = await db.PackageSteps.FirstAsync(s => s.Id == stepId && s.PackageId == packageId, ct);
         }
+        // Auch über die API gelten die Grenzen des Dialogs; der Runner begrenzt zusätzlich selbst.
+        definition.Retries = Math.Clamp(definition.Retries, 0, 20);
+        definition.RetryDelaySeconds = Math.Clamp(definition.RetryDelaySeconds, 1, 3600);
+        definition.CloseProcessesWarnSeconds = Math.Clamp(definition.CloseProcessesWarnSeconds, 0, 3600);
+        definition.MinFreeDiskMb = Math.Max(definition.MinFreeDiskMb, 0);
         step.Definition = definition;
         step.NestedPackageId = nestedPackageId;
         await TouchAsync(db, packageId, ct);

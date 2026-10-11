@@ -170,12 +170,27 @@ namespace Inventory.Runner
                     }
                 }
                 CloseProcesses(index, step, progress);
-                return null;
+                // Ein Abbruch während der Vorbereitung darf den Schritt nicht mehr starten.
+                return _cancelled ? new StepResult { Index = index, Name = step.Name, Status = StepStatus.Failed, Error = "Abgebrochen", Output = _preparation.ToString() } : null;
             }
             catch (Exception ex)
             {
-                return new StepResult { Index = index, Name = step.Name, Status = StepStatus.Failed, Error = ex.Message };
+                return new StepResult { Index = index, Name = step.Name, Status = StepStatus.Failed, Error = ex.Message, Output = _preparation.ToString() };
             }
+        }
+
+        /// <summary>Obergrenze für Wartezeiten aus dem Manifest; schützt vor Überlauf und vor Jobs, die praktisch nie enden.</summary>
+        private const int MaxWaitSeconds = 3600;
+        private const int MaxRetries = 20;
+
+        /// <summary>Wartet abbrechbar; false, wenn der Job währenddessen abgebrochen wurde.</summary>
+        private bool Wait(int seconds)
+        {
+            var watch = Stopwatch.StartNew();
+            var limit = TimeSpan.FromSeconds(Math.Min(Math.Max(seconds, 0), MaxWaitSeconds));
+            while (watch.Elapsed < limit && !_cancelled)
+                Thread.Sleep(100);
+            return !_cancelled;
         }
 
         private void CloseProcesses(int index, JobStep step, StreamWriter progress)
@@ -196,7 +211,7 @@ namespace Inventory.Runner
                 return;
             if (step.CloseProcessesWarnSeconds > 0 && UserSession.ActiveSessionId() != null)
             {
-                var seconds = step.CloseProcessesWarnSeconds;
+                var seconds = Math.Min(step.CloseProcessesWarnSeconds, MaxWaitSeconds);
                 var message = string.IsNullOrWhiteSpace(step.CloseProcessesMessage)
                     ? $"{string.Join(", ", found.Select(p => p.ProcessName).Distinct())} will be closed in {seconds} seconds for a software installation. Please save your work."
                     : step.CloseProcessesMessage!.Trim();
@@ -211,28 +226,39 @@ namespace Inventory.Runner
                 {
                     say($"The notice could not be shown ({ex.Message}); closing in {seconds} s");
                 }
-                for (var waited = 0; waited < seconds * 10 && !_cancelled; waited++)
-                    Thread.Sleep(100);
+                // Wird der Job während der Frist abgebrochen, bleiben die Programme der Benutzer offen.
+                if (!Wait(seconds))
+                    return;
                 found = running();
             }
+            if (_cancelled)
+                return;
+            var stillRunning = new List<string>();
             foreach (var process in found)
             {
                 try
                 {
                     say($"Closing {process.ProcessName} (PID {process.Id})");
                     KillTree(process);
-                    process.WaitForExit(10_000);
+                    if (!process.WaitForExit(10_000))
+                        stillRunning.Add($"{process.ProcessName} (PID {process.Id})");
                 }
-                catch (Exception ex) when (ex is InvalidOperationException || ex is System.ComponentModel.Win32Exception)
+                catch (InvalidOperationException)
                 {
-                    // Schon beendet oder nicht beendbar: der Schritt zeigt dann selbst, ob es ohne ging.
-                    say($"{process.ProcessName} could not be closed: {ex.Message}");
+                    // Der Prozess hat sich inzwischen selbst beendet.
+                }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    stillRunning.Add($"{process.ProcessName} ({ex.Message})");
                 }
                 finally
                 {
                     process.Dispose();
                 }
             }
+            // Läuft das Programm weiter, fände das Setup seine Dateien in Benutzung vor: lieber klar scheitern als halb installieren.
+            if (stillRunning.Count > 0)
+                throw new InvalidOperationException("Could not close: " + string.Join(", ", stillRunning));
         }
 
         /// <summary>Wiederholt einen fehlgeschlagenen Schritt wie im Schritt eingestellt; die Ausgabe aller Versuche bleibt erhalten.</summary>
@@ -246,20 +272,27 @@ namespace Inventory.Runner
                 duration += result.DurationSeconds;
                 // 1618 = eine andere Installation läuft gerade; das erledigt sich fast immer von selbst.
                 var busy = result.ExitCode == 1618 && (step.Type == StepType.Install || step.Type == StepType.Uninstall);
-                var retries = Math.Max(Math.Max(step.Retries, 0), busy ? 3 : 0);
+                var retries = Math.Max(Math.Min(Math.Max(step.Retries, 0), MaxRetries), busy ? 3 : 0);
                 if (result.Status != StepStatus.Failed || _cancelled || attempt > retries)
                 {
                     result.Output = earlier + result.Output;
                     result.DurationSeconds = Math.Round(duration, 2);
                     return result;
                 }
-                var delay = step.RetryDelaySeconds > 0 ? step.RetryDelaySeconds : 60;
+                var delay = Math.Min(step.RetryDelaySeconds > 0 ? step.RetryDelaySeconds : 60, MaxWaitSeconds);
                 var note = $"Attempt {attempt} failed ({result.Error}); retrying in {delay} s";
                 earlier.Append(result.Output).AppendLine(note);
                 Write(progress, new ProgressEvent { Kind = ProgressKind.Output, Step = index, Text = note });
-                for (var waited = 0; waited < delay * 10 && !_cancelled; waited++)
-                    Thread.Sleep(100);
-                duration += delay;
+                var waiting = Stopwatch.StartNew();
+                if (!Wait(delay))
+                {
+                    // Abbruch während der Pause: keinen weiteren Versuch mehr starten.
+                    result.Output = earlier.ToString();
+                    result.Error = "Abgebrochen";
+                    result.DurationSeconds = Math.Round(duration + waiting.Elapsed.TotalSeconds, 2);
+                    return result;
+                }
+                duration += waiting.Elapsed.TotalSeconds;
             }
         }
 

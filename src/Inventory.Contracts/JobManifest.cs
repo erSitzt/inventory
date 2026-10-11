@@ -89,11 +89,12 @@ namespace Inventory.Contracts
         /// <summary>Bei Fehler mit dem nächsten Schritt weitermachen statt abzubrechen.</summary>
         public bool ContinueOnError { get; set; }
         /// <summary>
-        /// So oft wird ein fehlgeschlagener Schritt wiederholt. Unabhängig davon wiederholt der Runner Install und Uninstall
-        /// bis zu dreimal, wenn gerade eine andere Installation läuft (Exitcode 1618).
+        /// So oft wird ein fehlgeschlagener Schritt wiederholt (höchstens 20). Unabhängig davon wiederholt der Runner Install und
+        /// Uninstall bis zu dreimal, wenn gerade eine andere Installation läuft (Exitcode 1618). Scheitert schon die Vorbereitung
+        /// (zu wenig Speicherplatz, Programm lässt sich nicht schließen), wird nicht wiederholt: das erledigt sich nicht von selbst.
         /// </summary>
         public int Retries { get; set; }
-        /// <summary>Pause vor jeder Wiederholung.</summary>
+        /// <summary>Pause vor jeder Wiederholung, höchstens eine Stunde.</summary>
         public int RetryDelaySeconds { get; set; } = 60;
         /// <summary>
         /// So viel muss auf dem Systemlaufwerk frei sein, sonst schlägt der Schritt fehl, bevor er beginnt.
@@ -102,7 +103,7 @@ namespace Inventory.Contracts
         public int MinFreeDiskMb { get; set; }
         /// <summary>Prozessnamen (mit oder ohne .exe), die vor dem Schritt beendet werden, z. B. damit ein Setup keine Dateien in Benutzung vorfindet.</summary>
         public List<string> CloseProcesses { get; set; } = new List<string>();
-        /// <summary>Größer 0: läuft eines der Programme und ist jemand angemeldet, erscheint zuerst ein Hinweis; beendet wird nach dieser Frist.</summary>
+        /// <summary>Größer 0: läuft eines der Programme und ist jemand angemeldet, erscheint zuerst ein Hinweis; beendet wird nach dieser Frist (höchstens eine Stunde).</summary>
         public int CloseProcessesWarnSeconds { get; set; }
         /// <summary>Text des Hinweises; leer = Standardtext des Runners.</summary>
         public string? CloseProcessesMessage { get; set; }

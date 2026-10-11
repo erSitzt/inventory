@@ -178,7 +178,7 @@
                             <MudGrid Spacing="2">
                                 <MudItem xs="12" sm="6">
                                     <MudNumericField T="int" @bind-Value="_step.Retries" Label="@L["Retries on failure"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="20"
-                                                     HelperText="@(Type is StepType.Install or StepType.Uninstall ? L["If another installation is running (exit code 1618), the step is retried up to three times anyway."] : "")" />
+                                                     HelperText="@(Type is StepType.Install or StepType.Uninstall ? L["If another installation is running (exit code 1618), the step is retried up to three times anyway."] : L["Not retried: too little disk space or a program that cannot be closed."])" />
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
                                     <MudNumericField T="int" @bind-Value="_step.RetryDelaySeconds" Label="@L["Pause before a retry (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="3600" />
