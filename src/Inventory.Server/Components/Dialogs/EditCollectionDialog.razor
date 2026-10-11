@@ -1,4 +1,5 @@
 @inject CollectionService CollectionService
+@inject MaintenanceService Maintenance
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
 
@@ -56,6 +57,8 @@
                     <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _rules.Add(new CollectionRule()))">@L["Add rule"]</MudButton>
                 </div>
             }
+            <MaintenanceWindowEditor @bind-Value="_window" Label="@L["Maintenance window"]" />
+            <MudText Typo="Typo.caption">@L["Deployments that respect maintenance windows run on the members only during this period. A computer in several collections may run as soon as one of their windows is open."]</MudText>
             @if (_error is not null)
             {
                 <MudAlert Severity="Severity.Error">@_error</MudAlert>
@@ -79,6 +82,7 @@
     private bool _matchAll = true;
     private List<CollectionRule> _rules = [];
     private string? _error;
+    private MaintenanceWindow? _window;
 
     private bool CanSave => !string.IsNullOrWhiteSpace(_name) && (!IsDynamic || _rules.Any(r => !string.IsNullOrWhiteSpace(r.Value)));
 
@@ -89,6 +93,7 @@
             _name = Collection.Name;
             _description = Collection.Description;
             _matchAll = Collection.MatchAll;
+            _window = Collection.MaintenanceWindow;
             // Kopien bearbeiten, damit "Abbrechen" nichts an der angezeigten Liste verändert.
             _rules = Collection.Rules.Select(r => new CollectionRule { Field = r.Field, Operator = r.Operator, Value = r.Value, Value2 = r.Value2 }).ToList();
         }
@@ -110,7 +115,8 @@
     {
         try
         {
-            await CollectionService.SaveAsync(Collection?.Id, _name, _description, IsDynamic, _matchAll, _rules);
+            var saved = await CollectionService.SaveAsync(Collection?.Id, _name, _description, IsDynamic, _matchAll, _rules);
+            await Maintenance.SetAsync(saved.Id, _window);
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)

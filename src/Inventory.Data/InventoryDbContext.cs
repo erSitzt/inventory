@@ -64,6 +64,9 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.Property(c => c.Name).UseCollation("NOCASE").HasMaxLength(200);
             e.HasIndex(c => c.Name).IsUnique();
             e.HasMany(c => c.Members).WithMany(c => c.Collections).UsingEntity("CollectionMembers");
+            e.Property(c => c.MaintenanceWindow).HasConversion(
+                window => window == null ? null : JsonSerializer.Serialize(window, JsonSerializerOptions.Default),
+                json => json == null ? null : JsonSerializer.Deserialize<MaintenanceWindow>(json, JsonSerializerOptions.Default));
             e.Property(c => c.Rules)
                 .HasConversion(
                     rules => JsonSerializer.Serialize(rules, JsonSerializerOptions.Default),

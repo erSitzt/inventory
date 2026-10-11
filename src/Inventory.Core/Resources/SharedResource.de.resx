@@ -470,6 +470,9 @@
   <data name="Default credentials changed" xml:space="preserve">
     <value>Standard-Zugangsdaten geändert</value>
   </data>
+  <data name="Default maintenance window" xml:space="preserve">
+    <value>Standard-Wartungsfenster</value>
+  </data>
   <data name="Default transport" xml:space="preserve">
     <value>Standard-Transport</value>
   </data>
@@ -545,8 +548,14 @@
   <data name="Deployments" xml:space="preserve">
     <value>Deployments</value>
   </data>
+  <data name='Deployments and schedules with the option "Only within the maintenance window" run on a computer only while its window is open; otherwise the computer waits (at most 8 days). Collections can have windows of their own. The default window below applies to all computers that are in no such collection. Remote commands and scans are never held back.' xml:space="preserve">
+    <value>Deployments und Zeitpläne mit der Option „Nur im Wartungsfenster“ laufen auf einem Rechner nur, solange sein Fenster offen ist; sonst wartet der Rechner (höchstens 8 Tage). Sammlungen können eigene Fenster haben. Das Standardfenster unten gilt für alle Rechner, die in keiner solchen Sammlung sind. Fernbefehle und Scans werden nie zurückgehalten.</value>
+  </data>
   <data name="Deployments are still running. Please wait until they have finished." xml:space="preserve">
     <value>Es laufen noch Deployments. Bitte warten, bis sie beendet sind.</value>
+  </data>
+  <data name="Deployments that respect maintenance windows run on the members only during this period. A computer in several collections may run as soon as one of their windows is open." xml:space="preserve">
+    <value>Deployments, die Wartungsfenster beachten, laufen auf den Mitgliedern nur in diesem Zeitraum. Ein Rechner in mehreren Sammlungen darf laufen, sobald eines ihrer Fenster offen ist.</value>
   </data>
   <data name="Description" xml:space="preserve">
     <value>Beschreibung</value>
@@ -760,6 +769,9 @@
   </data>
   <data name="Free" xml:space="preserve">
     <value>Frei</value>
+  </data>
+  <data name="From" xml:space="preserve">
+    <value>Von</value>
   </data>
   <data name="from an earlier scan, user not logged on" xml:space="preserve">
     <value>aus früherem Scan, Benutzer nicht angemeldet</value>
@@ -1018,6 +1030,9 @@
   </data>
   <data name="MAC address" xml:space="preserve">
     <value>MAC-Adresse</value>
+  </data>
+  <data name="Maintenance window" xml:space="preserve">
+    <value>Wartungsfenster</value>
   </data>
   <data name="Make default" xml:space="preserve">
     <value>Als Standard</value>
@@ -1321,6 +1336,9 @@
   </data>
   <data name="Only the first {0} matches – refine the search to see more." xml:space="preserve">
     <value>Nur die ersten {0} Treffer – Suche verfeinern, um weitere zu sehen.</value>
+  </data>
+  <data name="Only within the maintenance window (computers outside wait until it opens)" xml:space="preserve">
+    <value>Nur im Wartungsfenster (Rechner außerhalb warten, bis es beginnt)</value>
   </data>
   <data name="Open package" xml:space="preserve">
     <value>Paket öffnen</value>
@@ -1721,6 +1739,9 @@
   <data name="Runs on the target computer as Local System." xml:space="preserve">
     <value>Läuft auf dem Zielrechner als Lokales System.</value>
   </data>
+  <data name="Runs past midnight into the following day." xml:space="preserve">
+    <value>Reicht über Mitternacht in den folgenden Tag.</value>
+  </data>
   <data name="Runs silently with /qn /norestart automatically." xml:space="preserve">
     <value>Läuft automatisch still mit /qn /norestart.</value>
   </data>
@@ -1822,6 +1843,9 @@
   </data>
   <data name="Select all" xml:space="preserve">
     <value>Alle auswählen</value>
+  </data>
+  <data name="Select at least one weekday." xml:space="preserve">
+    <value>Mindestens einen Wochentag wählen.</value>
   </data>
   <data name="Selects all computers of the collection (as of now)." xml:space="preserve">
     <value>Wählt alle Rechner der Sammlung aus (Stand jetzt).</value>
@@ -2084,6 +2108,9 @@
   <data name="The list shows a base selection of common programs; the search additionally finds all other programs from winget." xml:space="preserve">
     <value>Die Liste zeigt eine Grundauswahl gängiger Programme; die Suche findet zusätzlich alle weiteren Programme aus winget.</value>
   </data>
+  <data name="The maintenance window did not open before the deadline expired" xml:space="preserve">
+    <value>Das Wartungsfenster hat sich bis zum Ablauf der Frist nicht geöffnet</value>
+  </data>
   <data name="The next run deletes {0}{1}." xml:space="preserve">
     <value>Der nächste Lauf löscht {0}{1}.</value>
   </data>
@@ -2131,6 +2158,9 @@
   </data>
   <data name="The update to {0} is running. The service restarts shortly; reload this page afterwards." xml:space="preserve">
     <value>Die Aktualisierung auf {0} läuft. Der Dienst startet gleich neu; diese Seite danach neu laden.</value>
+  </data>
+  <data name="The whole day on the selected weekdays." xml:space="preserve">
+    <value>An den gewählten Wochentagen ganztägig.</value>
   </data>
   <data name="The winget repository only lists the current version." xml:space="preserve">
     <value>Im winget-Repository ist nur die aktuelle Version geführt.</value>
@@ -2246,6 +2276,9 @@
   <data name="unreachable" xml:space="preserve">
     <value>nicht erreichbar</value>
   </data>
+  <data name="Until" xml:space="preserve">
+    <value>Bis</value>
+  </data>
   <data name="Update" xml:space="preserve">
     <value>Aktualisieren</value>
   </data>
@@ -2360,11 +2393,20 @@
   <data name="waiting for computer" xml:space="preserve">
     <value>wartet auf Rechner</value>
   </data>
+  <data name="waiting for maintenance window" xml:space="preserve">
+    <value>wartet auf Wartungsfenster</value>
+  </data>
   <data name="waiting for offline computers" xml:space="preserve">
     <value>wartet auf Offline-Rechner</value>
   </data>
   <data name="waiting for restart" xml:space="preserve">
     <value>wartet auf Neustart</value>
+  </data>
+  <data name="Waiting for the maintenance window" xml:space="preserve">
+    <value>Wartet auf das Wartungsfenster</value>
+  </data>
+  <data name="Waiting for the maintenance window (opens {0})" xml:space="preserve">
+    <value>Wartet auf das Wartungsfenster (beginnt {0})</value>
   </data>
   <data name="Website" xml:space="preserve">
     <value>Webseite</value>
@@ -2470,6 +2512,9 @@
   </data>
   <data name="{0} computers are restarting; the remaining steps follow automatically" xml:space="preserve">
     <value>{0} Rechner starten neu; die restlichen Schritte folgen automatisch</value>
+  </data>
+  <data name="{0} computers are waiting for their maintenance window" xml:space="preserve">
+    <value>{0} Rechner warten auf ihr Wartungsfenster</value>
   </data>
   <data name="{0} computers checked, {1} online" xml:space="preserve">
     <value>{0} Rechner geprüft, {1} online</value>

@@ -51,12 +51,17 @@ public enum TargetStatus
     WaitingReboot = 6,
     /// <summary>Die Erkennung des Pakets traf schon vor dem ersten Schritt zu; es wurde nichts ausgeführt.</summary>
     AlreadyInstalled = 7,
+    /// <summary>Das Wartungsfenster des Rechners ist geschlossen; das Ziel startet, sobald es beginnt.</summary>
+    WaitingWindow = 8,
 }
 
 public static class TargetStatusExtensions
 {
     /// <summary>Das Paket ist auf dem Rechner vorhanden: gerade installiert oder schon vorher da.</summary>
     public static bool IsSuccess(this TargetStatus status) => status is TargetStatus.Succeeded or TargetStatus.AlreadyInstalled;
+
+    /// <summary>Noch nicht entschieden: das Ziel wartet auf den Rechner, einen Neustart oder sein Wartungsfenster.</summary>
+    public static bool IsWaiting(this TargetStatus status) => status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot or TargetStatus.WaitingWindow;
 }
 
 /// <summary>Ausführung eines Pakets auf einer Menge von Rechnern.</summary>
@@ -68,8 +73,12 @@ public class Deployment
     public required string PackageName { get; set; }
     public string? PackageVersion { get; set; }
     public bool ScanAfter { get; set; }
-    /// <summary>Gesetzt = Offline-Rechner werden bis zu diesem Zeitpunkt nachgeholt.</summary>
+    /// <summary>Bis zu diesem Zeitpunkt werden wartende Ziele (Rechner offline, Wartungsfenster geschlossen) nachgeholt.</summary>
     public DateTime? RetryUntilUtc { get; set; }
+    /// <summary>Nicht erreichbare Rechner warten, statt sofort fehlzuschlagen.</summary>
+    public bool RetryOffline { get; set; }
+    /// <summary>Rechner außerhalb ihres Wartungsfensters warten, bis es beginnt.</summary>
+    public bool RespectMaintenanceWindow { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? FinishedUtc { get; set; }
     public List<DeploymentTarget> Targets { get; set; } = [];

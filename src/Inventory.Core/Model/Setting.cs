@@ -13,6 +13,8 @@ public static class SettingKeys
     public const string SkipTargetNameCheck = "SkipTargetNameCheck";
     /// <summary>So viele Minuten darf ein Rechner nach einem Neustart-Schritt brauchen, bis er wieder erreichbar ist.</summary>
     public const string RebootWaitMinutes = "Deployment.RebootWaitMinutes";
+    /// <summary>Wartungsfenster (JSON) für Rechner, die in keiner Sammlung mit eigenem Fenster sind; leer = keine Einschränkung.</summary>
+    public const string MaintenanceDefaultWindow = "Maintenance.DefaultWindow";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>

@@ -12,6 +12,8 @@ public class Collection
     public List<CollectionRule> Rules { get; set; } = [];
     /// <summary>Nur für statische Sammlungen.</summary>
     public List<Computer> Members { get; set; } = [];
+    /// <summary>Gesetzt = Deployments, die Wartungsfenster beachten, laufen auf den Mitgliedern nur in diesem Zeitraum.</summary>
+    public MaintenanceWindow? MaintenanceWindow { get; set; }
 }
 
 public enum RuleField

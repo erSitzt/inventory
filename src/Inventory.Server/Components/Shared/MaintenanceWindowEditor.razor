@@ -1,0 +1,55 @@
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+
+@* Wochentage und Uhrzeit eines Wartungsfensters; Value = null bedeutet "kein Fenster". *@
+<MudStack Spacing="2">
+    <MudSwitch T="bool" Value="@(Value is not null)" ValueChanged="ToggleAsync" Color="Color.Primary" Label="@Label" />
+    @if (Value is not null)
+    {
+        <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+            @foreach (var day in Display.WeekDays)
+            {
+                var bit = 1 << (int)day;
+                <MudChip T="string" Color="@((Value.DaysOfWeek & bit) != 0 ? Color.Primary : Color.Default)" OnClick="@(() => ToggleDayAsync(bit))">@Display.Day(day)</MudChip>
+            }
+        </MudStack>
+        <MudStack Row="true" Spacing="3">
+            <MudTimePicker Time="Value.From" TimeChanged="@(t => SetAsync(w => w.From = t ?? w.From))" Label="@L["From"]" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" />
+            <MudTimePicker Time="Value.To" TimeChanged="@(t => SetAsync(w => w.To = t ?? w.To))" Label="@L["Until"]" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" />
+        </MudStack>
+        <MudText Typo="Typo.caption">
+            @if ((Value.DaysOfWeek & 0x7F) == 0)
+            {
+                <span>@L["Select at least one weekday."]</span>
+            }
+            else if (Value.From == Value.To)
+            {
+                <span>@L["The whole day on the selected weekdays."]</span>
+            }
+            else if (Value.From > Value.To)
+            {
+                <span>@L["Runs past midnight into the following day."]</span>
+            }
+        </MudText>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public MaintenanceWindow? Value { get; set; }
+    [Parameter] public EventCallback<MaintenanceWindow?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "";
+
+    // Vorschlag: werktags nachts.
+    private Task ToggleAsync(bool enabled) =>
+        ValueChanged.InvokeAsync(enabled ? new MaintenanceWindow { DaysOfWeek = 0b0111110, From = new TimeSpan(19, 0, 0), To = new TimeSpan(6, 0, 0) } : null);
+
+    private Task ToggleDayAsync(int bit) => SetAsync(w => w.DaysOfWeek ^= bit);
+
+    private Task SetAsync(Action<MaintenanceWindow> change)
+    {
+        // Neue Instanz, damit auch der Datenbankkontext die Änderung bemerkt.
+        var copy = new MaintenanceWindow { DaysOfWeek = Value!.DaysOfWeek, From = Value.From, To = Value.To };
+        change(copy);
+        return ValueChanged.InvokeAsync(copy);
+    }
+}

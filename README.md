@@ -19,6 +19,9 @@ credentials. The user interface is available in English and German; translations
 - **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
   embedded package – each with conditions and error handling; steps after a reboot continue automatically once the
   computer is back
+- **Maintenance windows**: weekdays and time of day per collection plus a default window; deployments and schedules
+  with the option "only within the maintenance window" hold back computers whose window is closed and start them
+  when it opens
 - **Uninstall**: a step type that removes a program by name or MSI product code – silently for MSI, Inno Setup and
   NSIS setups and for programs with a registered silent command – and checks that it is really gone; the software
   overview offers "Uninstall …" for the computers that have a program
@@ -347,7 +350,7 @@ addresses require the same sign-in as the rest of the API.
 | Computers | create, query, delete, check reachability, inventory scan, installed software, RDP file, run command or PowerShell script |
 | Packages | list, create, change, delete; add, change, move and delete steps; upload and delete files (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); set the detection (`detection`, `verifyAfterInstall`) and read name, version and product code of an uploaded MSI (`…/api/packages/<id>/msi/setup.msi`) |
 | Deployments | start, list, query progress per computer, cancel |
-| Collections | list, create, change, delete; add and remove members of static collections |
+| Collections | list, create, change, delete; add and remove members of static collections; maintenance window per collection (`maintenanceWindow`) and the default window (`/api/settings/maintenance-window`) |
 | Schedules | list, create, change, delete, run now |
 | Reports | computers and software as CSV or JSON |
 

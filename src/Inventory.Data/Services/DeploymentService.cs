@@ -11,13 +11,16 @@ using Microsoft.Extensions.Localization;
 namespace Inventory.Data.Services;
 
 /// <summary>Legt Deployments an, führt sie im Hintergrund aus und hält den Live-Stand laufender Ziele bereit.</summary>
-public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null)
+public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null, MaintenanceService? maintenance = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+    private readonly MaintenanceService _maintenance = maintenance ?? new MaintenanceService(dbFactory, new CollectionService(dbFactory), new SettingsService(dbFactory));
 
 
     private const int MaxParallelTargets = 16;
     /// <summary>So lange werden Offline-Rechner nachgeholt, bevor das Ziel als fehlgeschlagen gilt.</summary>
     public static readonly TimeSpan RetryWindow = TimeSpan.FromDays(3);
+    /// <summary>Frist für Ziele, die auf ihr Wartungsfenster warten: auch ein Fenster, das nur einmal je Woche öffnet, muss hineinpassen.</summary>
+    public static readonly TimeSpan WindowWait = TimeSpan.FromDays(8);
     private string WaitingText => L["Computer unreachable – will be retried as soon as it is online"];
 
     // Über alle Deployments hinweg begrenzt, damit mehrere gleichzeitige Deployments Server und Netz nicht überlasten.
@@ -67,7 +70,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
     /// <summary>Legt das Deployment an und startet es im Hintergrund.</summary>
     /// <exception cref="InvalidOperationException">Das Paket lässt sich nicht ausführen (z. B. keine Schritte).</exception>
-    public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, bool scanAfter, bool retryOffline = false, CancellationToken ct = default)
+    /// <param name="respectWindow">Rechner außerhalb ihres Wartungsfensters warten, bis es beginnt (höchstens <see cref="WindowWait"/>).</param>
+    public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, bool scanAfter, bool retryOffline = false, CancellationToken ct = default, bool respectWindow = false)
     {
         var built = await BuildAsync(packageId, scanAfter, ct);
 
@@ -82,7 +86,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             deployment = new Deployment
             {
                 PackageId = packageId, PackageName = package.Name, PackageVersion = package.Version, ScanAfter = scanAfter,
-                RetryUntilUtc = retryOffline ? DateTime.UtcNow + RetryWindow : null,
+                RetryUntilUtc = respectWindow ? DateTime.UtcNow + WindowWait : retryOffline ? DateTime.UtcNow + RetryWindow : null,
+                RetryOffline = retryOffline, RespectMaintenanceWindow = respectWindow,
                 Targets = computers.Select(c => new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.Queued }).ToList(),
             };
             db.Deployments.Add(deployment);
@@ -113,15 +118,16 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     {
         if (_running.TryGetValue(deploymentId, out var cts))
             cts.Cancel();
-        await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot))
+        await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId
+                && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot || t.Status == TargetStatus.WaitingWindow))
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, "Abgebrochen")
                 .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
         Changed?.Invoke(deploymentId);
     }
 
     /// <summary>
-    /// Holt Ziele nach, die auf einen Offline-Rechner warten: wer jetzt erreichbar ist, wird ausgeführt;
-    /// ist die Frist abgelaufen, gilt das Ziel als fehlgeschlagen. Wird regelmäßig vom Zeitplaner aufgerufen.
+    /// Holt wartende Ziele nach: Offline-Rechner, die jetzt erreichbar sind, und Rechner, deren Wartungsfenster jetzt offen ist.
+    /// Ist die Frist abgelaufen, gilt das Ziel als fehlgeschlagen. Wird regelmäßig vom Zeitplaner aufgerufen.
     /// </summary>
     public async Task<int> RetryWaitingAsync(CancellationToken ct = default)
     {
@@ -129,8 +135,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
             waiting = await db.Deployments.AsNoTracking()
-                .Include(d => d.Targets.Where(t => t.Status == TargetStatus.WaitingOffline))
-                .Where(d => d.Targets.Any(t => t.Status == TargetStatus.WaitingOffline))
+                .Include(d => d.Targets.Where(t => t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingWindow))
+                .Where(d => d.Targets.Any(t => t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingWindow))
                 .ToListAsync(ct);
         }
 
@@ -141,15 +147,21 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             var ready = new List<DeploymentTarget>();
             if (!expired)
             {
+                var closed = deployment.RespectMaintenanceWindow
+                    ? await _maintenance.ClosedAsync([.. deployment.Targets.Where(t => t.ComputerId is not null).Select(t => t.ComputerId!.Value)], ct)
+                    : [];
                 foreach (var target in deployment.Targets)
                 {
-                    if (await IsReachableAsync(target.ComputerName, ct))
+                    if (target.ComputerId is { } id && closed.ContainsKey(id))
+                        continue;
+                    // Wer auf sein Fenster gewartet hat, wird beim Start ohnehin auf Erreichbarkeit geprüft.
+                    if (target.Status == TargetStatus.WaitingWindow || await IsReachableAsync(target.ComputerName, ct))
                         ready.Add(target);
                 }
             }
 
             BuiltJob? built = null;
-            string? failure = expired ? L["Computer was unreachable until the deadline expired"].Value : null;
+            string? failure = null;
             if (ready.Count > 0)
             {
                 try
@@ -164,16 +176,22 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 }
             }
 
-            if (failure is not null)
+            if (expired || failure is not null)
             {
-                await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.WaitingOffline)
-                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, failure)
-                        .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+                var offline = failure ?? L["Computer was unreachable until the deadline expired"].Value;
+                var window = failure ?? L["The maintenance window did not open before the deadline expired"].Value;
+                await UpdateAsync(async db =>
+                {
+                    await db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.WaitingOffline)
+                        .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, offline).SetProperty(t => t.FinishedUtc, DateTime.UtcNow));
+                    await db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.WaitingWindow)
+                        .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, window).SetProperty(t => t.FinishedUtc, DateTime.UtcNow));
+                });
                 Changed?.Invoke(deployment.Id);
             }
             else if (built is not null)
             {
-                Launch(deployment, ready, built, checkOnline: false);
+                Launch(deployment, ready, built, checkOnline: deployment.RetryOffline);
                 started += ready.Count;
             }
         }
@@ -262,7 +280,12 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     {
         try
         {
-            await Task.WhenAll(targets.Select(target => RunTargetAsync(deployment, target, built, checkOnline, cts.Token)));
+            // Einmal für alle Ziele: die Mitgliedschaft in dynamischen Sammlungen auszuwerten ist zu teuer für jeden Rechner einzeln.
+            // Eine Fortsetzung nach einem Neustart wartet nicht: ein halb installiertes Paket wäre schlimmer als ein überzogenes Fenster.
+            var closed = deployment.RespectMaintenanceWindow
+                ? await _maintenance.ClosedAsync([.. targets.Where(t => t.ComputerId is not null && t.Status != TargetStatus.WaitingReboot).Select(t => t.ComputerId!.Value)])
+                : [];
+            await Task.WhenAll(targets.Select(target => RunTargetAsync(deployment, target, built, checkOnline, closed, cts.Token)));
         }
         finally
         {
@@ -274,7 +297,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         }
     }
 
-    private async Task RunTargetAsync(Deployment deployment, DeploymentTarget target, BuiltJob built, bool checkOnline, CancellationToken ct)
+    private async Task RunTargetAsync(Deployment deployment, DeploymentTarget target, BuiltJob built, bool checkOnline, Dictionary<int, DateTime?> closed, CancellationToken ct)
     {
         var status = TargetStatus.Failed;
         string? error = null;
@@ -287,6 +310,14 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         DateTime? bootTime = target.BootTimeUtc;
         try
         {
+            if (target.ComputerId is { } windowId && closed.TryGetValue(windowId, out var opens))
+            {
+                status = TargetStatus.WaitingWindow;
+                error = opens is { } opensAt
+                    ? L["Waiting for the maintenance window (opens {0})", opensAt.ToString("yyyy-MM-dd HH:mm")]
+                    : L["Waiting for the maintenance window"];
+                return;
+            }
             await _slots.WaitAsync(ct);
             started = true;
             if (checkOnline && !await IsReachableAsync(target.ComputerName, ct))
@@ -383,7 +414,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                     stored.RebootUtc ??= DateTime.UtcNow;
                 else
                     stored.RebootUtc = null;
-                stored.FinishedUtc = status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot ? null : DateTime.UtcNow;
+                stored.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
                 await db.SaveChangesAsync();
             });
             Changed?.Invoke(deployment.Id);

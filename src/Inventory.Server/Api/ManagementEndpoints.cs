@@ -24,17 +24,18 @@ public static class ManagementEndpoints
     public sealed record PackageDetailDto(int Id, string Name, string? Version, string? Description, DateTime ModifiedUtc, string? CatalogId,
         List<StepDto> Steps, List<FileDto> Files, StepConditions? Detection, bool VerifyAfterInstall);
 
-    public sealed record CollectionRequest(string Name, string? Description, bool IsDynamic, bool MatchAll = true, List<CollectionRule>? Rules = null);
+    public sealed record CollectionRequest(string Name, string? Description, bool IsDynamic, bool MatchAll = true, List<CollectionRule>? Rules = null, MaintenanceWindow? MaintenanceWindow = null);
 
-    public sealed record CollectionDto(int Id, string Name, string? Description, bool IsDynamic, bool MatchAll, List<CollectionRule> Rules, int Computers);
+    public sealed record CollectionDto(int Id, string Name, string? Description, bool IsDynamic, bool MatchAll, List<CollectionRule> Rules, int Computers, MaintenanceWindow? MaintenanceWindow = null);
 
-    public sealed record CollectionDetailDto(int Id, string Name, string? Description, bool IsDynamic, bool MatchAll, List<CollectionRule> Rules, List<int> ComputerIds);
+    public sealed record CollectionDetailDto(int Id, string Name, string? Description, bool IsDynamic, bool MatchAll, List<CollectionRule> Rules, List<int> ComputerIds, MaintenanceWindow? MaintenanceWindow = null);
 
     public sealed record ScheduleRequest(string Name, ScheduleAction Action, ScheduleTrigger Trigger, bool Enabled = true, int? PackageId = null, int? CollectionId = null,
-        bool ScanAfter = true, bool RetryOffline = true, DateTime? StartLocal = null, int IntervalMinutes = 60, TimeSpan? TimeOfDay = null, int DaysOfWeek = 0);
+        bool ScanAfter = true, bool RetryOffline = true, DateTime? StartLocal = null, int IntervalMinutes = 60, TimeSpan? TimeOfDay = null, int DaysOfWeek = 0,
+        bool RespectMaintenanceWindow = true);
 
     public sealed record ScheduleDto(int Id, string Name, bool Enabled, ScheduleAction Action, int? PackageId, int? CollectionId, bool ScanAfter, bool RetryOffline,
-        ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult);
+        ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult, bool RespectMaintenanceWindow);
 
     public sealed record DeploymentSummaryDto(int Id, int? PackageId, string PackageName, string? PackageVersion, DateTime CreatedUtc, DateTime? FinishedUtc,
         int Targets, int Succeeded, int AlreadyInstalled, int Failed, int Waiting);
@@ -142,7 +143,7 @@ public static class ManagementEndpoints
             (await service.ListAsync(Math.Clamp(take ?? 50, 1, 500), ct)).Select(d => new DeploymentSummaryDto(d.Id, d.PackageId, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc,
                 d.Targets.Count, d.Targets.Count(t => t.Status == TargetStatus.Succeeded), d.Targets.Count(t => t.Status == TargetStatus.AlreadyInstalled),
                 d.Targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled),
-                d.Targets.Count(t => t.Status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot))))
+                d.Targets.Count(t => t.Status.IsWaiting()))))
             .WithSummary("Recent deployments").WithDescription("Newest first; query parameter take (default 50, at most 500).");
 
         deployments.MapPost("{id:int}/cancel", async (int id, DeploymentService service, AuditService audit, HttpContext http, CancellationToken ct) =>
@@ -154,31 +155,45 @@ public static class ManagementEndpoints
             return Results.NoContent();
         }).WithSummary("Cancel deployment").WithDescription("Stops running targets and drops targets waiting for an offline computer or a restart.").Produces(204).Produces(404);
 
+        var maintenanceDefault = app.MapGroup("/api/settings/maintenance-window").WithTags("Settings").AddEndpointFilter(MapErrors);
+
+        maintenanceDefault.MapGet("", async (MaintenanceService service, CancellationToken ct) => Results.Json(await service.GetDefaultAsync(ct)))
+            .WithSummary("Default maintenance window").WithDescription("Applies to computers that are in no collection with a window of its own; null = no restriction.").Produces<MaintenanceWindow>();
+
+        maintenanceDefault.MapPut("", async (MaintenanceWindow? window, MaintenanceService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            await service.SetDefaultAsync(window, ct);
+            await audit.LogAsync(User(http), "Default maintenance window changed via API", "", ct);
+            return Results.Json(await service.GetDefaultAsync(ct));
+        }).WithSummary("Set default maintenance window").WithDescription("Body: a window ({daysOfWeek, from, to}) or null to remove it.").Produces<MaintenanceWindow>();
+
         var collections = app.MapGroup("/api/collections").WithTags("Collections").AddEndpointFilter(MapErrors);
 
         collections.MapGet("", async (CollectionService service, CancellationToken ct) =>
-            (await service.ListAsync(ct)).Select(s => new CollectionDto(s.Collection.Id, s.Collection.Name, s.Collection.Description, s.Collection.IsDynamic, s.Collection.MatchAll, s.Collection.Rules, s.Count)))
+            (await service.ListAsync(ct)).Select(s => new CollectionDto(s.Collection.Id, s.Collection.Name, s.Collection.Description, s.Collection.IsDynamic, s.Collection.MatchAll, s.Collection.Rules, s.Count, s.Collection.MaintenanceWindow)))
             .WithSummary("All collections");
 
         collections.MapGet("{id:int}", async (int id, CollectionService service, CancellationToken ct) =>
             await service.GetAsync(id, ct) is { } c
-                ? Results.Ok(new CollectionDetailDto(c.Id, c.Name, c.Description, c.IsDynamic, c.MatchAll, c.Rules, [.. (await service.GetMemberIdsAsync(id, ct)).Order()]))
+                ? Results.Ok(new CollectionDetailDto(c.Id, c.Name, c.Description, c.IsDynamic, c.MatchAll, c.Rules, [.. (await service.GetMemberIdsAsync(id, ct)).Order()], c.MaintenanceWindow))
                 : Results.NotFound())
             .WithSummary("One collection").WithDescription("Includes the IDs of the computers that currently belong to it (rules evaluated now for dynamic collections).").Produces<CollectionDetailDto>().Produces(404);
 
-        collections.MapPost("", async (CollectionRequest request, CollectionService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        collections.MapPost("", async (CollectionRequest request, CollectionService service, MaintenanceService maintenance, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             var c = await service.SaveAsync(null, request.Name, request.Description, request.IsDynamic, request.MatchAll, request.Rules ?? [], ct);
+            await maintenance.SetAsync(c.Id, request.MaintenanceWindow, ct);
             await audit.LogAsync(User(http), "Collection created via API", c.Name, ct);
-            return Results.Created($"/api/collections/{c.Id}", new CollectionDto(c.Id, c.Name, c.Description, c.IsDynamic, c.MatchAll, c.Rules, 0));
-        }).WithSummary("Create collection").WithDescription("Static (members assigned explicitly) or dynamic (rules). matchAll: true = all rules must apply, false = at least one.").Produces<CollectionDto>(201).Produces(400);
+            return Results.Created($"/api/collections/{c.Id}", new CollectionDto(c.Id, c.Name, c.Description, c.IsDynamic, c.MatchAll, c.Rules, 0, MaintenanceService.Normalize(request.MaintenanceWindow)));
+        }).WithSummary("Create collection").WithDescription("Static (members assigned explicitly) or dynamic (rules). matchAll: true = all rules must apply, false = at least one. maintenanceWindow (optional): daysOfWeek as bit mask (bit 0 = Sunday … bit 6 = Saturday), from and to as local server time (\"19:00:00\"); to before from = past midnight.").Produces<CollectionDto>(201).Produces(400);
 
-        collections.MapPut("{id:int}", async (int id, CollectionRequest request, CollectionService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        collections.MapPut("{id:int}", async (int id, CollectionRequest request, CollectionService service, MaintenanceService maintenance, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             var c = await service.SaveAsync(id, request.Name, request.Description, request.IsDynamic, request.MatchAll, request.Rules ?? [], ct);
+            await maintenance.SetAsync(id, request.MaintenanceWindow, ct);
             await audit.LogAsync(User(http), "Collection changed via API", c.Name, ct);
-            return Results.Ok(new CollectionDto(c.Id, c.Name, c.Description, c.IsDynamic, c.MatchAll, c.Rules, (await service.GetMemberIdsAsync(id, ct)).Count));
-        }).WithSummary("Change collection").WithDescription("Name, description, matchAll and rules; whether a collection is dynamic cannot be changed afterwards.").Produces<CollectionDto>().Produces(404);
+            return Results.Ok(new CollectionDto(c.Id, c.Name, c.Description, c.IsDynamic, c.MatchAll, c.Rules, (await service.GetMemberIdsAsync(id, ct)).Count, MaintenanceService.Normalize(request.MaintenanceWindow)));
+        }).WithSummary("Change collection").WithDescription("Name, description, matchAll, rules and maintenanceWindow (omitting it removes the window); whether a collection is dynamic cannot be changed afterwards.").Produces<CollectionDto>().Produces(404);
 
         collections.MapDelete("{id:int}", async (int id, CollectionService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
@@ -249,7 +264,7 @@ public static class ManagementEndpoints
         [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall);
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
-        s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult);
+        s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow);
 
     private static Schedule Apply(Schedule s, ScheduleRequest r)
     {
@@ -264,6 +279,7 @@ public static class ManagementEndpoints
         (s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline) = (r.Name, r.Enabled, r.Action, r.PackageId, r.CollectionId, r.ScanAfter, r.RetryOffline);
         (s.Trigger, s.StartLocal, s.IntervalMinutes, s.DaysOfWeek) = (r.Trigger, r.StartLocal, Math.Max(r.IntervalMinutes, 1), r.DaysOfWeek);
         s.TimeOfDay = r.TimeOfDay ?? s.TimeOfDay;
+        s.RespectMaintenanceWindow = r.RespectMaintenanceWindow;
         return s;
     }
 

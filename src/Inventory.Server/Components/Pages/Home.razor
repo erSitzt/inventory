@@ -116,7 +116,7 @@
                 var ok = deployment.Targets.Count(t => t.Status == TargetStatus.Succeeded);
                 var present = deployment.Targets.Count(t => t.Status == TargetStatus.AlreadyInstalled);
                 var failed = deployment.Targets.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled);
-                var waiting = deployment.Targets.Count(t => t.Status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot);
+                var waiting = deployment.Targets.Count(t => t.Status.IsWaiting());
                 var running = deployment.FinishedUtc is null && deployment.Targets.Any(t => t.Status is TargetStatus.Running or TargetStatus.Queued);
                 <div class="deploy-row">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">

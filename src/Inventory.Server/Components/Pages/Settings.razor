@@ -3,6 +3,7 @@
 @inject SettingsService SettingsService
 @inject AdSyncService AdSync
 @inject HeartbeatService Heartbeat
+@inject MaintenanceService Maintenance
 @inject AgentService Agents
 @inject UpdateService Updates
 @inject CredentialService CredentialService
@@ -60,6 +61,16 @@
         {
             <MudAlert Severity="Severity.Warning">@L["Simulation mode: no real access to target computers takes place."]</MudAlert>
         }
+    </MudStack>
+</MudPaper>
+
+<MudPaper Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">@L["Maintenance window"]</MudText>
+        <MudText Typo="Typo.body2">
+            @L["Deployments and schedules with the option \"Only within the maintenance window\" run on a computer only while its window is open; otherwise the computer waits (at most 8 days). Collections can have windows of their own. The default window below applies to all computers that are in no such collection. Remote commands and scans are never held back."]
+        </MudText>
+        <MaintenanceWindowEditor Value="_defaultWindow" ValueChanged="SetDefaultWindowAsync" Label="@L["Default maintenance window"]" />
     </MudStack>
 </MudPaper>
 
@@ -413,8 +424,18 @@
     {
         await SettingsService.SetRebootWaitMinutesAsync(minutes);
         _rebootWait = await SettingsService.GetRebootWaitMinutesAsync();
+        _defaultWindow = await Maintenance.GetDefaultAsync();
         await Audit.LogAsync(L["Setting changed"], $"{L["Wait for restart (minutes)"]}: {_rebootWait}");
         Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private MaintenanceWindow? _defaultWindow;
+
+    private async Task SetDefaultWindowAsync(MaintenanceWindow? window)
+    {
+        _defaultWindow = window;
+        await Maintenance.SetDefaultAsync(window);
+        await Audit.LogAsync(L["Setting changed"], $"{L["Default maintenance window"]}: {Display.Window(window)}");
     }
 
     private async Task SetVerifyNameAsync(bool enabled)

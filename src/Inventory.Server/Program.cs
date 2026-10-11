@@ -83,6 +83,7 @@ builder.Services.AddSingleton<RemoteJobService>();
 builder.Services.AddSingleton<InventoryStore>();
 builder.Services.AddSingleton<ScanService>();
 builder.Services.AddSingleton<CollectionService>();
+builder.Services.AddSingleton<MaintenanceService>();
 builder.Services.AddSingleton(new PackageRepository(Path.Combine(dataDirectory, "repository")));
 builder.Services.AddSingleton<PackageService>();
 builder.Services.AddSingleton<DeploymentService>();

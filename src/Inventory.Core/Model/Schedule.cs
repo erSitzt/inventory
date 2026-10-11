@@ -26,6 +26,8 @@ public class Schedule
     public bool ScanAfter { get; set; } = true;
     /// <summary>Bei Deployments: Offline-Rechner nachholen, sobald sie erreichbar sind.</summary>
     public bool RetryOffline { get; set; } = true;
+    /// <summary>Bei Deployments: Rechner außerhalb ihres Wartungsfensters warten, bis es beginnt.</summary>
+    public bool RespectMaintenanceWindow { get; set; } = true;
     /// <summary>null = alle Rechner.</summary>
     public int? CollectionId { get; set; }
     public Collection? Collection { get; set; }

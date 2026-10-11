@@ -30,6 +30,9 @@
                 </MudChip>
             </CellTemplate>
         </TemplateColumn>
+        <TemplateColumn Title="@L["Maintenance window"]" Sortable="false">
+            <CellTemplate>@(context.Item.Collection.MaintenanceWindow is { } window ? Display.Window(window) : "")</CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="c => c.Count" Title="@L["Computers"]" />
         <TemplateColumn Title="@L["Rules / description"]">
             <CellTemplate>

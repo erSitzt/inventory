@@ -406,6 +406,73 @@ public sealed class PackageTests : IDisposable
         Assert.Equal(TargetStatus.Succeeded, target.Status);
     }
 
+    [Fact]
+    public async Task Outside_the_maintenance_window_a_target_waits_and_runs_once_the_window_opens()
+    {
+        var package = await _packages.SaveAsync(null, "Nachts", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Installieren"), null);
+        var computers = await _computers.ImportAsync("pc-01 pc-02");
+        var collections = new CollectionService(_db);
+        var maintenance = new MaintenanceService(_db, collections, new SettingsService(_db));
+        var office = await collections.SaveAsync(null, "Büro", null, false, true, []);
+        await collections.AddMembersAsync(office.Id, [computers[0].Id]);
+        // Ein Fenster, das in zwei Stunden beginnt, ist jetzt geschlossen; pc-02 ist in keiner Sammlung und ohne Standardfenster frei.
+        var soon = DateTime.Now.AddHours(2);
+        await maintenance.SetAsync(office.Id, new MaintenanceWindow { DaysOfWeek = 0x7F, From = new TimeSpan(soon.Hour, 0, 0), To = new TimeSpan((soon.Hour + 1) % 24, 0, 0) });
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        var first = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), false, respectWindow: true)).Id);
+        var waiting = first.Targets.Single(t => t.ComputerName == "pc-01");
+        Assert.Equal(TargetStatus.WaitingWindow, waiting.Status);
+        Assert.Contains("maintenance window", waiting.Error);
+        Assert.Null(waiting.FinishedUtc);
+        Assert.Equal(TargetStatus.Succeeded, first.Targets.Single(t => t.ComputerName == "pc-02").Status);
+
+        // Solange das Fenster zu ist, passiert nichts; ohne die Option läuft das Paket sofort.
+        Assert.Equal(0, await deployments.RetryWaitingAsync());
+        var direct = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computers[0].Id], false)).Id);
+        Assert.Equal(TargetStatus.Succeeded, direct.Targets[0].Status);
+
+        await maintenance.SetAsync(office.Id, new MaintenanceWindow { DaysOfWeek = 0x7F });
+        Assert.Equal(1, await deployments.RetryWaitingAsync());
+        var done = await WaitAsync(deployments, first.Id);
+        Assert.All(done.Targets, t => Assert.Equal(TargetStatus.Succeeded, t.Status));
+    }
+
+    [Fact]
+    public async Task The_default_window_applies_only_to_computers_without_a_window_of_their_own_and_waiting_ends_at_the_deadline()
+    {
+        var package = await _packages.SaveAsync(null, "Nachts", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Installieren"), null);
+        var computers = await _computers.ImportAsync("pc-01 pc-02");
+        var collections = new CollectionService(_db);
+        var maintenance = new MaintenanceService(_db, collections, new SettingsService(_db));
+        var always = await collections.SaveAsync(null, "Immer", null, false, true, []);
+        await collections.AddMembersAsync(always.Id, [computers[0].Id]);
+        await maintenance.SetAsync(always.Id, new MaintenanceWindow { DaysOfWeek = 0x7F });
+        var soon = DateTime.Now.AddHours(2);
+        await maintenance.SetDefaultAsync(new MaintenanceWindow { DaysOfWeek = 0x7F, From = new TimeSpan(soon.Hour, 0, 0), To = new TimeSpan((soon.Hour + 1) % 24, 0, 0) });
+        Assert.Equal([computers[1].Id], (await maintenance.ClosedAsync([.. computers.Select(c => c.Id)])).Keys);
+
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var started = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), false, respectWindow: true)).Id);
+        Assert.Equal([TargetStatus.Succeeded, TargetStatus.WaitingWindow], started.Targets.Select(t => t.Status));
+
+        await using (var db = _db.CreateDbContext())
+        {
+            db.Deployments.Single(d => d.Id == started.Id).RetryUntilUtc = DateTime.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+        await deployments.RetryWaitingAsync();
+        var expired = (await deployments.GetAsync(started.Id))!.Targets.Single(t => t.ComputerName == "pc-02");
+        Assert.Equal(TargetStatus.Failed, expired.Status);
+        Assert.Contains("maintenance window", expired.Error);
+
+        // Ein Fenster ohne Wochentag wäre nie offen und zählt als "kein Fenster".
+        await maintenance.SetDefaultAsync(new MaintenanceWindow { From = TimeSpan.FromHours(1), To = TimeSpan.FromHours(2) });
+        Assert.Null(await maintenance.GetDefaultAsync());
+    }
+
     /// <summary>Merkt sich die Manifeste; der erste Job endet mit einem Neustart, der zweite läuft durch.</summary>
     private sealed class RecordingTransport : IRemoteTransport
     {

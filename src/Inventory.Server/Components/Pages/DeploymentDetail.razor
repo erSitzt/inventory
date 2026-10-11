@@ -47,6 +47,10 @@
     {
         <span> · @L["Offline computers are retried until {0}", Display.LocalTime(_deployment.RetryUntilUtc)]</span>
     }
+    @if (_deployment.Targets.Any(t => t.Status == TargetStatus.WaitingWindow))
+    {
+        <span> · @L["{0} computers are waiting for their maintenance window", _deployment.Targets.Count(t => t.Status == TargetStatus.WaitingWindow)]</span>
+    }
     @if (_deployment.Targets.Any(t => t.Status == TargetStatus.WaitingReboot))
     {
         <span> · @L["{0} computers are restarting; the remaining steps follow automatically", _deployment.Targets.Count(t => t.Status == TargetStatus.WaitingReboot)]</span>
@@ -125,7 +129,7 @@
     private Timer? _liveRefresh;
 
     private bool Running => DeploymentService.IsRunning(Id);
-    private bool Waiting => _deployment!.Targets.Any(t => t.Status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot);
+    private bool Waiting => _deployment!.Targets.Any(t => t.Status.IsWaiting());
     private List<DeploymentTarget> FailedTargets =>
         _deployment!.Targets.Where(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled && t.ComputerId is not null).ToList();
 
@@ -164,7 +168,7 @@
     {
         try
         {
-            var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), _deployment.ScanAfter, _deployment.RetryUntilUtc is not null);
+            var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), _deployment.ScanAfter, _deployment.RetryOffline, respectWindow: _deployment.RespectMaintenanceWindow);
             await Audit.LogAsync(L["Deployment retried"], L["#{0} {1} on {2}", retry.Id, retry.PackageName, string.Join(", ", retry.Targets.Select(t => t.ComputerName))]);
             Navigation.NavigateTo($"deployments/{retry.Id}");
         }

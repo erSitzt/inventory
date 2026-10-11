@@ -108,6 +108,9 @@ namespace Inventory.Data.Migrations
                     b.Property<bool>("IsDynamic")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("MaintenanceWindow")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("MatchAll")
                         .HasColumnType("INTEGER");
 
@@ -608,6 +611,12 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("PackageVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("RespectMaintenanceWindow")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("RetryOffline")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("RetryUntilUtc")
                         .HasColumnType("TEXT");
 
@@ -821,6 +830,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("PackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("RespectMaintenanceWindow")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("RetryOffline")

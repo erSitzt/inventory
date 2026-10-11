@@ -131,6 +131,11 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         _ => step.Script.Split('\n')[0].Trim(),
     };
 
+    /// <summary>Wartungsfenster in einer Zeile, z. B. "Mo, Di 19:00–06:00".</summary>
+    public string Window(MaintenanceWindow? window) => window is null || (window.DaysOfWeek & 0x7F) == 0
+        ? T("none")
+        : $"{string.Join(", ", WeekDays.Where(d => (window.DaysOfWeek & (1 << (int)d)) != 0).Select(Day))} {window.From:hh\\:mm}–{window.To:hh\\:mm}";
+
     /// <summary>Kurzfassung einer Paket-Erkennung, z. B. für das Protokoll.</summary>
     public string Detection(StepConditions detection) => string.Join(", ", new[]
     {
@@ -167,6 +172,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.WaitingOffline => T("waiting for computer"),
         TargetStatus.WaitingReboot => T("restarting"),
         TargetStatus.AlreadyInstalled => T("already installed"),
+        TargetStatus.WaitingWindow => T("waiting for maintenance window"),
         _ => status.ToString(),
     };
 
@@ -179,6 +185,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.WaitingOffline => Color.Warning,
         TargetStatus.WaitingReboot => Color.Info,
         TargetStatus.AlreadyInstalled => Color.Success,
+        TargetStatus.WaitingWindow => Color.Warning,
         _ => Color.Default,
     };
 
