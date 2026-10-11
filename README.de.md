@@ -40,7 +40,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Ausführungskontext** je Schritt: als Lokales System oder in der Sitzung des angemeldeten Benutzers
 - **Fernzugriff** je Rechner: Remoteunterstützung anbieten, Sitzung spiegeln, Remotedesktop, TeamViewer/AnyDesk
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
-- **Zeitpläne**, Software-Übersicht, CSV-Export, Protokoll, tägliche Datensicherung, REST-API mit interaktiver Dokumentation
+- **Protokoll**: Anmeldungen, Befehle, Deployments und jede Änderung mit Benutzer, Rolle und Herkunft (Weboberfläche,
+  API, API-Token); Filter, CSV-Export und Aufbewahrungsfrist
+- **Zeitpläne**, Software-Übersicht, CSV-Export, tägliche Datensicherung, REST-API mit interaktiver Dokumentation
 
 ## Screenshots
 
@@ -375,6 +377,17 @@ curl -H "Authorization: Bearer inv_…" https://<server>:<port>/api/computers
 
 Mit aktiver Windows-Anmeldung geht weiterhin auch `curl --negotiate -u : …`.
 
+### Protokoll
+
+Jeder Eintrag hält den Benutzer, dessen Rolle zu diesem Zeitpunkt und die Herkunft fest (Weboberfläche, API, API-Token,
+Agent oder Server). Anmeldungen, Abmeldungen und abgelehnte Anmeldungen stehen ebenfalls im Protokoll. Die direkte
+Windows-Anmeldung authentifiziert jede Verbindung neu; sie erzeugt deshalb je Benutzer einen Eintrag alle zehn Stunden
+statt einen pro Anfrage. Anfragen mit unbekanntem API-Token landen nicht im Protokoll, sondern im Server-Log.
+
+Einträge bleiben standardmäßig 730 Tage erhalten; die Frist steht unter *Einstellungen* (0 behält alles). Die Seite
+filtert nach Benutzer, Aktion, Zeitraum und Text und exportiert das Ergebnis als CSV – der Export selbst wird
+protokolliert.
+
 ### API
 
 Die REST-Schnittstelle ist unter `/api/docs` dokumentiert (interaktiv, mit Beispielaufrufen für curl und andere
@@ -390,6 +403,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 | Zeitpläne | auflisten, anlegen, ändern, löschen, sofort ausführen |
 | API-Tokens | auflisten, mit einer Rolle anlegen (das Geheimnis wird einmal gezeigt), löschen – nur Administratoren |
 | Berichte | Rechner und Software als CSV oder JSON |
+| Protokoll | Einträge als JSON (`/api/audit`) oder CSV (`/api/audit/export.csv`), gefiltert nach Benutzer, Aktion, Zeitraum und Text – Operatoren und Administratoren |
 
 Das Protokoll zwischen Agent und Server (`/api/agent/…`) ist nicht Teil der dokumentierten API.
 

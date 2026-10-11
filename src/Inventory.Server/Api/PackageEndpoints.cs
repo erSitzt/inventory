@@ -1,3 +1,4 @@
+using Inventory.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Inventory.Contracts;
 using Inventory.Core.Model;
@@ -55,7 +56,7 @@ public static class PackageEndpoints
                 var admin = (await authorization.AuthorizeAsync(http.User, Inventory.Server.Services.AccessControl.AdminPolicy)).Succeeded;
                 var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, new DeploymentOptions(request.ScanAfter, request.RetryOffline, request.RespectMaintenanceWindow,
                     request.MaxFailures, request.MaxFailurePercent, request.MaxParallel) { RequireApproved = !admin }, ct);
-                await audit.LogAsync(http.User.Identity?.Name ?? L["(API, not signed in)"], L["Deployment started via API"],
+                await audit.LogAsync(http.Actor(), L["Deployment started via API"],
                     L["#{0} {1} on {2}", deployment.Id, deployment.PackageName, string.Join(", ", deployment.Targets.Select(t => t.ComputerName))], ct);
                 return Results.Created($"/api/deployments/{deployment.Id}", ToDto(deployment));
             }

@@ -39,7 +39,9 @@ credentials. The user interface is available in English and German; translations
 - **Run context** per step: as Local System or in the session of the logged-on user
 - **Remote access** per computer: offer Remote Assistance, shadow a session, Remote Desktop, TeamViewer/AnyDesk
 - **Deployments** in parallel with live status, cancel, retry, and catching up on offline computers
-- **Schedules**, software overview, CSV export, audit log, daily backup, REST API with interactive docs
+- **Audit log**: sign-ins, commands, deployments and every change with user, role and source (web interface, API,
+  API token); filters, CSV export and a retention period
+- **Schedules**, software overview, CSV export, daily backup, REST API with interactive docs
 
 ## Screenshots
 
@@ -370,6 +372,16 @@ curl -H "Authorization: Bearer inv_…" https://<server>:<port>/api/computers
 
 With Windows sign-in enabled, `curl --negotiate -u : …` works as well.
 
+### Audit log
+
+Every entry records the user, the role at that moment and the source (web interface, API, API token, agent or server).
+Sign-ins, sign-outs and rejected sign-ins are logged as well. The direct Windows sign-in authenticates every connection
+anew, so it produces one entry per user every ten hours instead of one per request. Requests with an unknown API token
+are not written to the audit log (they appear in the server log).
+
+Entries are kept for 730 days by default; the period is set under *Settings* (0 keeps everything). The page filters by
+user, action, period and text and exports the result as CSV – the export itself is logged.
+
 ### API
 
 The REST interface is documented at `/api/docs` (interactive, with example calls for curl and other clients); the
@@ -385,6 +397,7 @@ addresses require the same sign-in as the rest of the API.
 | Schedules | list, create, change, delete, run now |
 | API tokens | list, create with a role (the secret is shown once), delete – administrators only |
 | Reports | computers and software as CSV or JSON |
+| Audit log | entries as JSON (`/api/audit`) or CSV (`/api/audit/export.csv`), filtered by user, action, period and text – operators and administrators |
 
 The protocol between agent and server (`/api/agent/…`) is not part of the documented API.
 

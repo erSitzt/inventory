@@ -121,8 +121,11 @@ public static class AccessControl
                         context.ProtocolMessage.Prompt = prompt;
                     return Task.CompletedTask;
                 };
-                o.Events.OnTokenValidated = context =>
+                o.Events.OnTokenValidated = async context =>
                 {
+                    var services = context.HttpContext.RequestServices;
+                    var signIns = services.GetRequiredService<SignInLog>();
+                    var L = services.GetRequiredService<IStringLocalizer<SharedResource>>();
                     var user = context.Principal!;
                     var name = user.FindFirst("preferred_username")?.Value ?? user.FindFirst("email")?.Value
                                ?? user.FindFirst("name")?.Value ?? user.FindFirst("sub")?.Value ?? "unbekannt";
@@ -131,13 +134,14 @@ public static class AccessControl
                     {
                         context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(AccessControl))
                             .LogWarning("OIDC sign-in rejected: {User} is not in any allowed group or role", name);
+                        await signIns.DeniedAsync(name, L["Sign-in denied"], options.Oidc.DisplayName);
                         context.HandleResponse();
                         context.Response.Redirect("/denied");
-                        return Task.CompletedTask;
+                        return;
                     }
                     // Nur das Nötige ins Sitzungs-Cookie: bei vielen Gruppen würde es sonst zu groß.
                     context.Principal = SessionPrincipal(name, "oidc", role);
-                    return Task.CompletedTask;
+                    await signIns.SignedInAsync(new AuditActor(name, role, AuditSource.Web), L["Signed in"], options.Oidc.DisplayName);
                 };
             });
         }
@@ -199,21 +203,30 @@ public static class AccessControl
                 """), "text/html; charset=utf-8")).AllowAnonymous();
 
             // Führt den Windows-Handshake einmal durch und stellt danach dasselbe Sitzungs-Cookie aus wie die OIDC-Anmeldung.
-            app.MapGet("/login/windows", async (HttpContext http, string? returnUrl) =>
+            app.MapGet("/login/windows", async (HttpContext http, string? returnUrl, SignInLog signIns, IStringLocalizer<SharedResource> L) =>
             {
                 var result = await http.AuthenticateAsync(NegotiateDefaults.AuthenticationScheme);
                 if (!result.Succeeded)
                     return Results.Challenge(null, [NegotiateDefaults.AuthenticationScheme]);
                 var role = options.RoleOf(result.Principal);
+                var name = result.Principal.Identity?.Name ?? "unknown";
                 if (role == AccessRole.None)
+                {
+                    await signIns.DeniedAsync(name, L["Sign-in denied"], "Windows");
                     return Results.Redirect("/denied");
-                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(result.Principal.Identity?.Name ?? "unknown", "windows", role));
+                }
+                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(name, "windows", role));
+                await signIns.SignedInAsync(new AuditActor(name, role, AuditSource.Web), L["Signed in"], "Windows");
                 return Results.Redirect(LocalUrl(returnUrl));
             }).AllowAnonymous();
         }
 
-        app.MapGet("/logout", async (HttpContext http, IStringLocalizer<SharedResource> L) =>
+        app.MapGet("/logout", async (HttpContext http, IStringLocalizer<SharedResource> L, SignInLog signIns) =>
         {
+            // Nur echte Sitzungen: der Aufruf ohne Anmeldung (z. B. ein zweites Mal) hinterlässt keinen Eintrag.
+            var session = await http.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (session is { Succeeded: true, Principal: { } principal })
+                await signIns.SignedOutAsync(AuditActors.Actor(principal, AuditSource.Web), L["Signed out"]);
             await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Results.Content(Page(L["Signed out"], $"""<p>{L["You are signed out."]}</p><a class="button" href="/">{L["Sign in again"]}</a><a class="button secondary" href="/login/oidc?switchAccount=true">{L["Sign in with another account"]}</a>"""), "text/html; charset=utf-8");
         }).AllowAnonymous();

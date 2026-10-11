@@ -71,6 +71,7 @@
         if (!await Access.DemandAdminAsync())
             return;
         await ComputerService.UpdateAsync(Computer.Id, _description, _transport, _credentialId);
+        await Audit.LogAsync(L["Computer changed"], Computer.Name);
         MudDialog.Close(DialogResult.Ok(true));
     }
 }

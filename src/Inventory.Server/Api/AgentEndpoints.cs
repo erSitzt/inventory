@@ -1,3 +1,6 @@
+using Inventory.Server.Services;
+using Inventory.Core.Model;
+using Inventory.Core;
 using Inventory.Contracts;
 using Inventory.Data.Services;
 using Inventory.Remoting;
@@ -26,7 +29,7 @@ public static class AgentEndpoints
             var key = request is null ? null : await agents.EnrollAsync(request, ct);
             if (key is null)
                 return Results.Unauthorized();
-            await audit.LogAsync("(Agent)", "Agent enrolled", $"{request!.HostName}, version {request.Version}, from {http.Connection.RemoteIpAddress}", ct);
+            await audit.LogAsync(new AuditActor("(Agent)", null, AuditSource.Agent), "Agent enrolled", $"{request!.HostName}, version {request.Version}, from {http.Connection.RemoteIpAddress}", ct);
             return Json(new AgentEnrollResponse { AgentKey = key });
         });
 

@@ -10,46 +10,122 @@
 
 <PageTitle>@L["Audit log"] – Inventory</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
     <MudText Typo="Typo.h5">@L["Audit log"]</MudText>
     <MudSpacer />
-    <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" Immediate="true"
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="@ExportUrl" Target="_blank">@L["Export as CSV"]</MudButton>
+</MudStack>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Class="mb-4">
+    <MudSelect T="string" Value="_user" ValueChanged="@(v => SetAsync(() => _user = v))" Label="@L["User"]" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width: 220px; max-width: 320px">
+        @foreach (var user in _users)
+        {
+            <MudSelectItem Value="@user">@user</MudSelectItem>
+        }
+    </MudSelect>
+    <MudSelect T="string" Value="_action" ValueChanged="@(v => SetAsync(() => _action = v))" Label="@L["Action"]" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width: 220px; max-width: 320px">
+        @foreach (var action in _actions)
+        {
+            <MudSelectItem Value="@action">@action</MudSelectItem>
+        }
+    </MudSelect>
+    <MudDateRangePicker DateRange="_range" DateRangeChanged="@(v => SetAsync(() => _range = v))" Label="@L["Period"]" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 260px" />
+    <MudTextField T="string" Value="_search" ValueChanged="@(v => SetAsync(() => _search = v))" Placeholder="@L["Search"]" Adornment="Adornment.Start" DebounceInterval="300" Clearable="true"
                   AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 280px" />
 </MudStack>
 
 <AutoRefresh OnTick="RefreshAsync" />
 
-<MudDataGrid T="AuditEntry" Items="_entries" Dense="true" Hover="true" SortMode="SortMode.None" RowsPerPage="50"
-             QuickFilter="@(e => string.IsNullOrWhiteSpace(_search) || $"{e.User} {e.Action} {e.Details}".Contains(_search, StringComparison.OrdinalIgnoreCase))">
+<MudDataGrid T="AuditEntry" Items="_entries" Dense="true" Hover="true" SortMode="SortMode.None" RowsPerPage="50">
     <Columns>
         <TemplateColumn Title="@L["Time"]" CellStyle="white-space: nowrap">
             <CellTemplate>@Display.LocalTime(context.Item.TimeUtc)</CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="e => e.User" Title="@L["User"]" />
+        <TemplateColumn Title="@L["User"]">
+            <CellTemplate>
+                @context.Item.User
+                @if (context.Item.Role is { } role)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block">@Display.Role(role)</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Source"]" CellStyle="white-space: nowrap">
+            <CellTemplate>@Display.Source(context.Item.Source)</CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="e => e.Action" Title="@L["Action"]" />
-        <TemplateColumn Title="Details" CellStyle="word-break: break-word">
+        <TemplateColumn Title="@L["Details"]" CellStyle="word-break: break-word">
             <CellTemplate><AuditDetails Text="@context.Item.Details" Action="@context.Item.Action" Map="_links" /></CellTemplate>
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
-        <MudText Class="pa-4">@L["No entries yet. Commands, deployments, scans and changes to credentials, packages, schedules and settings are logged."]</MudText>
+        <MudText Class="pa-4">@(Filter is null
+            ? L["No entries yet. Sign-ins, commands, deployments, scans and changes to credentials, packages, collections, schedules and settings are logged."]
+            : L["No entries match the filter."])</MudText>
     </NoRecordsContent>
     <PagerContent>
         <MudDataGridPager T="AuditEntry" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
     </PagerContent>
 </MudDataGrid>
+@if (_entries.Count >= MaxShown)
+{
+    <MudText Typo="Typo.caption" Class="mt-2">@L["Showing the latest {0} entries. Narrow the filter or use the export for everything.", MaxShown]</MudText>
+}
 
 @code {
+    private const int MaxShown = 1000;
+
     private List<AuditEntry> _entries = [];
-    private string _search = "";
+    private List<string> _users = [];
+    private List<string> _actions = [];
+    private string? _user;
+    private string? _action;
+    private string? _search;
+    private DateRange? _range;
 
     private long _latest;
     private AuditLinkMap? _links;
 
+    /// <summary>null, solange nichts eingegrenzt ist. Das Ende des Zeitraums schließt den gewählten Tag ein.</summary>
+    private AuditFilter? Filter => string.IsNullOrWhiteSpace(_user) && string.IsNullOrWhiteSpace(_action) && string.IsNullOrWhiteSpace(_search) && _range?.Start is null && _range?.End is null
+        ? null
+        : new AuditFilter(_user, _action, _range?.Start?.Date.ToUniversalTime(), _range?.End?.Date.AddDays(1).ToUniversalTime(), _search);
+
+    private string ExportUrl
+    {
+        get
+        {
+            var query = new List<string>();
+            void Add(string name, string? value)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                    query.Add($"{name}={Uri.EscapeDataString(value)}");
+            }
+            Add("user", _user);
+            Add("action", _action);
+            Add("q", _search);
+            Add("from", _range?.Start?.Date.ToUniversalTime().ToString("o"));
+            Add("to", _range?.End?.Date.AddDays(1).ToUniversalTime().ToString("o"));
+            return "api/audit/export.csv" + (query.Count == 0 ? "" : "?" + string.Join("&", query));
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _latest = await AuditService.LatestIdAsync();
-        _entries = await AuditService.ListAsync();
+        await LoadAsync();
+    }
+
+    private async Task SetAsync(Action change)
+    {
+        change();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _entries = await AuditService.ListAsync(MaxShown, filter: Filter);
+        (_users, _actions) = await AuditService.FilterValuesAsync();
         _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
     }
 
@@ -59,7 +135,6 @@
         if (latest == _latest)
             return;
         _latest = latest;
-        _entries = await AuditService.ListAsync();
-        _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
+        await LoadAsync();
     }
 }

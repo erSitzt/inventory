@@ -274,7 +274,10 @@
             return;
         try
         {
+            var before = $"{_package!.Name} {_package.Version}".Trim();
             await PackageService.SaveAsync(Id, _name, _version, _description);
+            var after = $"{_name.Trim()} {_version?.Trim()}".Trim();
+            await Audit.LogAsync(L["Package changed"], before == after ? after : $"{before} → {after}");
             Snackbar.Add(L["Saved."], Severity.Success);
             await ReloadAsync();
         }
@@ -376,6 +379,7 @@
         if (!await Access.DemandAdminAsync())
             return;
         await PackageService.MoveStepAsync(Id, step.Id, direction);
+        await Audit.LogAsync(L["Package step moved"], $"{_package!.Name}: {step.Definition.Name}");
         await ReloadAsync();
     }
 

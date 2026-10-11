@@ -3,6 +3,7 @@
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
 @inject Access Access
+@inject Auditor Audit
 
 <MudDialog>
     <DialogContent>
@@ -120,6 +121,10 @@
         {
             var saved = await CollectionService.SaveAsync(Collection?.Id, _name, _description, IsDynamic, _matchAll, _rules);
             await Maintenance.SetAsync(saved.Id, _window);
+            var kind = IsDynamic ? L["dynamic, {0} rules", _rules.Count(r => !string.IsNullOrWhiteSpace(r.Value))] : L["static"];
+            var renamed = Collection is not null && !string.Equals(Collection.Name, saved.Name, StringComparison.Ordinal) ? $"{Collection.Name} → " : "";
+            await Audit.LogAsync(Collection is null ? L["Collection created"] : L["Collection changed"],
+                $"{renamed}{saved.Name} ({kind}, {L["Maintenance window"]}: {Display.Window(_window)})");
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)

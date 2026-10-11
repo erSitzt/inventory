@@ -52,6 +52,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         });
 
         modelBuilder.Entity<InventoryChange>().HasIndex(c => c.TimeUtc);
+        modelBuilder.Entity<AuditEntry>().HasIndex(e => e.TimeUtc);
 
         modelBuilder.Entity<Credential>(e =>
         {

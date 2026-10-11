@@ -87,6 +87,12 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("Details")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("Role")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("TimeUtc")
                         .HasColumnType("TEXT");
 
@@ -95,6 +101,8 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TimeUtc");
 
                     b.ToTable("AuditEntries");
                 });

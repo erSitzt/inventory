@@ -44,6 +44,8 @@
                          HelperText="@L["Across all deployments. A deployment can set a lower limit of its own."]" />
         <MudNumericField T="int" Value="_rebootWait" ValueChanged="SetRebootWaitAsync" Min="5" Max="1440" Label="@L["Wait for restart (minutes)"]" Variant="Variant.Outlined"
                          HelperText="@L["How long a computer may take to come back after a restart step. After that the deployment counts as failed for this computer."]" />
+        <MudNumericField T="int" Value="_auditDays" ValueChanged="SetAuditDaysAsync" Min="0" Max="@Inventory.Data.Services.SettingsService.MaxAuditRetentionDays" Label="@L["Keep audit log entries (days)"]" Variant="Variant.Outlined"
+                         HelperText="@L["Older entries are removed once a day. 0 keeps everything."]" />
         <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="@L["Data directory"]" Variant="Variant.Outlined" ReadOnly="true"
                       HelperText="@L["Database, keys, package files and daily backups (subfolder backups, 14 copies). Configurable via Inventory:DataDirectory."]" />
         <MudText Typo="Typo.body2">
@@ -276,7 +278,7 @@
         _updateBusy = true;
         try
         {
-            var error = await Updates.ApplyAsync(await Audit.UserNameAsync());
+            var error = await Updates.ApplyAsync(await Audit.ActorAsync());
             _updateMessage = error ?? L["The update to {0} is running. The service restarts shortly; reload this page afterwards.", Updates.Latest?.Version];
             _updateSeverity = error is null ? Severity.Info : Severity.Error;
         }
@@ -436,6 +438,16 @@
         Snackbar.Add(L["Saved."], Severity.Success);
     }
 
+    private int _auditDays = Inventory.Data.Services.SettingsService.DefaultAuditRetentionDays;
+
+    private async Task SetAuditDaysAsync(int days)
+    {
+        await SettingsService.SetAuditRetentionDaysAsync(days);
+        _auditDays = await SettingsService.GetAuditRetentionDaysAsync();
+        await Audit.LogAsync(L["Setting changed"], $"{L["Keep audit log entries (days)"]}: {(_auditDays == 0 ? L["unlimited"] : _auditDays)}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
     private bool _autoApprove;
 
     private async Task SetAutoApproveAsync(bool enabled)
@@ -488,6 +500,7 @@
         _defaultWindow = await Maintenance.GetDefaultAsync();
         _maxParallel = await SettingsService.GetMaxParallelTargetsAsync();
         _autoApprove = await SettingsService.GetAutoApproveLibraryUpdatesAsync();
+        _auditDays = await SettingsService.GetAuditRetentionDaysAsync();
         await LoadAdAsync();
         await LoadHeartbeatAsync();
         await LoadUpdateAsync();

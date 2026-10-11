@@ -74,6 +74,7 @@
         try
         {
             var package = await PackageService.SaveAsync(null, name, null, null);
+            await Audit.LogAsync(L["Package created"], package.Name);
             Navigation.NavigateTo($"packages/{package.Id}");
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)

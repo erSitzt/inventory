@@ -98,7 +98,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
                 await computers.DeleteAsync(plan.DeleteIds, ct);
                 result += ", " + L["{0} deleted", plan.DeleteIds.Count];
                 if (audit is not null)
-                    await audit.LogAsync(L["(automatic)"], L["Computers deleted (no longer in AD)"], string.Join(", ", preview.DeleteNames!), ct);
+                    await audit.LogAsync(AuditActor.System(L["(automatic)"]), L["Computers deleted (no longer in AD)"], string.Join(", ", preview.DeleteNames!), ct);
             }
         }
         catch (RemoteException ex)

@@ -5,6 +5,7 @@
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
 @inject Access Access
+@inject Auditor Audit
 
 <PageTitle>@L["Collections"] – Inventory</PageTitle>
 
@@ -96,6 +97,7 @@
         if (confirmed != true)
             return;
         await CollectionService.DeleteAsync(collection.Id);
+        await Audit.LogAsync(L["Collection deleted"], collection.Name);
         Snackbar.Add(L["Collection deleted."], Severity.Success);
         _collections = await CollectionService.ListAsync();
     }
