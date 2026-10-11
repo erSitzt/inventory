@@ -19,6 +19,8 @@ public static class SettingKeys
     public const string MaxParallelTargets = "Deployment.MaxParallelTargets";
     /// <summary>"True" = automatisch übernommene Bibliotheks-Updates behalten die Freigabe des Pakets.</summary>
     public const string AutoApproveLibraryUpdates = "Packages.AutoApproveLibraryUpdates";
+    /// <summary>Protokolleinträge werden so viele Tage aufbewahrt; "0" = unbegrenzt.</summary>
+    public const string AuditRetentionDays = "Audit.RetentionDays";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>

@@ -1,3 +1,4 @@
+using Inventory.Core.Model;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -96,7 +97,7 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
     }
 
     /// <summary>Lädt das Setup, prüft es, sichert die Datenbank und startet die Installation. Liefert eine Fehlermeldung oder null.</summary>
-    public async Task<string?> ApplyAsync(string user, CancellationToken ct = default)
+    public async Task<string?> ApplyAsync(AuditActor user, CancellationToken ct = default)
     {
         if (!await _lock.WaitAsync(0, ct))
             return L["An update is already running."];
@@ -127,7 +128,7 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
 
             await backups.BackupAsync(ct);
             var log = Path.Combine(options.UpdatesDirectory, $"setup-{release.Version}.log");
-            await File.WriteAllTextAsync(MarkerPath, JsonSerializer.Serialize(new Marker(options.CurrentVersion, release.Version, log, time.GetUtcNow().UtcDateTime, user)), ct);
+            await File.WriteAllTextAsync(MarkerPath, JsonSerializer.Serialize(new Marker(options.CurrentVersion, release.Version, log, time.GetUtcNow().UtcDateTime, user.User)), ct);
             await settings.SetAsync(AttemptedKey, release.Version, ct);
             await audit.LogAsync(user, L["Update started"], $"{options.CurrentVersion} → {release.Version}", ct);
             options.Launch(setup, log);
@@ -154,7 +155,7 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
         // Jede Version nur einmal automatisch versuchen: ein fehlschlagendes Setup soll nicht jede Nacht erneut laufen.
         if (await settings.GetAsync(AttemptedKey, ct) == Latest!.Version)
             return false;
-        return await ApplyAsync("(automatisch)", ct) is null;
+        return await ApplyAsync(AuditActor.System("(automatisch)"), ct) is null;
     }
 
     /// <summary>
@@ -186,13 +187,13 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
         Installing = false;
         if (SemVer.Compare(options.CurrentVersion, marker.To) == 0)
         {
-            await audit.LogAsync(marker.User, L["Update completed"], $"{marker.From} → {marker.To}", ct);
+            await audit.LogAsync(new AuditActor(marker.User, null, AuditSource.System), L["Update completed"], $"{marker.From} → {marker.To}", ct);
         }
         else
         {
             var tail = File.Exists(marker.Log) ? string.Join(" | ", (await File.ReadAllLinesAsync(marker.Log, ct)).TakeLast(6)) : L["no setup log available"].Value;
             LastError = L["The update to {0} failed; {1} keeps running. Setup log: {2}", marker.To, options.CurrentVersion, marker.Log];
-            await audit.LogAsync(marker.User, L["Update failed"], $"{marker.From} → {marker.To}: {tail}", ct);
+            await audit.LogAsync(new AuditActor(marker.User, null, AuditSource.System), L["Update failed"], $"{marker.From} → {marker.To}: {tail}", ct);
         }
         Changed?.Invoke();
     }

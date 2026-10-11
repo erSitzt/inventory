@@ -490,6 +490,7 @@
         if (!await Access.DemandAdminAsync())
             return;
         var added = await CollectionService.AddMembersAsync(collection.Id, _selected.Select(c => c.Id));
+        await Audit.LogAsync(L["Collection members added"], $"{collection.Name}: {string.Join(", ", _selected.Select(c => c.Name))}");
         Snackbar.Add(L["{0} computers added to \"{1}\".", added, collection.Name], Severity.Success);
         await ReloadAsync();
     }
@@ -499,6 +500,7 @@
         if (!await Access.DemandAdminAsync())
             return;
         var removed = await CollectionService.RemoveMembersAsync(_activeCollection!.Id, _selected.Select(c => c.Id));
+        await Audit.LogAsync(L["Collection members removed"], $"{_activeCollection.Name}: {string.Join(", ", _selected.Select(c => c.Name))}");
         Snackbar.Add(L["{0} computers removed from \"{1}\".", removed, _activeCollection.Name], Severity.Success);
         await ReloadAsync();
     }

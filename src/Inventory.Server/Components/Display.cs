@@ -139,6 +139,16 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         _ => T("none"),
     };
 
+    public string Source(AuditSource source) => source switch
+    {
+        AuditSource.Web => T("Web interface"),
+        AuditSource.Api => "API",
+        AuditSource.ApiToken => T("API token"),
+        AuditSource.Agent => T("Agent"),
+        AuditSource.System => T("Server"),
+        _ => "",
+    };
+
     public string RoleHint(AccessRole role) => role switch
     {
         AccessRole.Admin => T("Everything, including packages, credentials, settings and commands on target computers."),

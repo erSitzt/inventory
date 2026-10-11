@@ -48,6 +48,16 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
     public Task SetMaxParallelTargetsAsync(int value, CancellationToken ct = default) =>
         SetAsync(SettingKeys.MaxParallelTargets, Math.Clamp(value, 1, 128).ToString(), ct);
 
+    public const int DefaultAuditRetentionDays = 730;
+    public const int MaxAuditRetentionDays = 3650;
+
+    /// <summary>Aufbewahrungsfrist des Protokolls in Tagen; 0 = unbegrenzt.</summary>
+    public async Task<int> GetAuditRetentionDaysAsync(CancellationToken ct = default) =>
+        int.TryParse(await GetAsync(SettingKeys.AuditRetentionDays, ct), out var days) && days >= 0 ? Math.Min(days, MaxAuditRetentionDays) : DefaultAuditRetentionDays;
+
+    public Task SetAuditRetentionDaysAsync(int days, CancellationToken ct = default) =>
+        SetAsync(SettingKeys.AuditRetentionDays, Math.Clamp(days, 0, MaxAuditRetentionDays).ToString(), ct);
+
     public const int DefaultRebootWaitMinutes = 30;
 
     /// <summary>Wartefrist nach einem Neustart-Schritt; danach gilt das Ziel als fehlgeschlagen.</summary>

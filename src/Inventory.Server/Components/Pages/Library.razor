@@ -236,14 +236,14 @@
         var version = choice.Version ?? item.Entry.Version;
         await RunAsync(L["Downloading {0} {1} from the vendor …", item.Entry.Name, version], async () =>
         {
-            await Catalog.ImportAsync(item.Entry.Id, choice.AutoUpdate, choice.CreateCollection, await Audit.UserNameAsync(), choice.Version);
+            await Catalog.ImportAsync(item.Entry.Id, choice.AutoUpdate, choice.CreateCollection, await Audit.ActorAsync(), choice.Version);
             Snackbar.Add(L["{0} {1} imported.", item.Entry.Name, version], Severity.Success);
         });
     }
 
     private Task UpdateAsync(CatalogItem item) => RunAsync(L["Downloading {0} {1} from the vendor …", item.Entry.Name, item.Entry.Version], async () =>
     {
-        await Catalog.UpdateAsync(item.Package!.Id, await Audit.UserNameAsync());
+        await Catalog.UpdateAsync(item.Package!.Id, await Audit.ActorAsync());
         Snackbar.Add(L["{0} updated to {1}.", item.Package.Name, item.Entry.Version], Severity.Success);
     });
 

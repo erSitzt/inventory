@@ -77,7 +77,7 @@ public static class ManagementEndpoints
                 await service.DeleteAsync(package.Id, CancellationToken.None);
                 throw;
             }
-            await audit.LogAsync(User(http), "Package created via API", $"{package.Name} ({request.Steps?.Count ?? 0} steps)", ct);
+            await audit.LogAsync(http.Actor(), "Package created via API", $"{package.Name} ({request.Steps?.Count ?? 0} steps)", ct);
             return Results.Created($"/api/packages/{package.Id}", ToDetail((await service.GetAsync(package.Id, ct))!, service));
         }).WithSummary("Create package").WithDescription("Creates a package, optionally with its steps. Step types: Command, PowerShell, Install, Uninstall (softwareName or productCode, optional arguments), FileCopy, Service, Sleep, Reboot, InventoryScan. Optional per step: retries and retryDelaySeconds, minFreeDiskMb, closeProcesses (process names) with closeProcessesWarnSeconds and closeProcessesMessage. Files are uploaded separately with PUT /api/packages/{id}/files/{path}. `detection` tells the runner how to recognise that the package is already installed (softwareInstalled with optional softwareMinVersion, msiProductCode, fileExists, registryKeyExists); such computers finish as AlreadyInstalled without running a step. With `verifyAfterInstall` the detection must also hold after the last step.")
             .Produces<PackageDetailDto>(201).Produces(400);
@@ -86,7 +86,7 @@ public static class ManagementEndpoints
         {
             await service.SaveAsync(id, request.Name, request.Version, request.Description, ct);
             await service.SaveDetectionAsync(id, request.Detection, request.VerifyAfterInstall, ct);
-            await audit.LogAsync(User(http), "Package changed via API", request.Name, ct);
+            await audit.LogAsync(http.Actor(), "Package changed via API", request.Name, ct);
             return Results.Ok(ToDetail((await service.GetAsync(id, ct))!, service));
         }).WithSummary("Change package header").WithDescription("Changes name, version, description and the detection (`detection`, `verifyAfterInstall`; omitting `detection` removes it). Steps are managed through the step endpoints; a `steps` array here is ignored.").Produces<PackageDetailDto>().Produces(404);
 
@@ -95,28 +95,28 @@ public static class ManagementEndpoints
             if (await service.GetAsync(id, ct) is not { } package)
                 return Results.NotFound();
             await service.DeleteAsync(id, ct);
-            await audit.LogAsync(User(http), "Package deleted via API", package.Name, ct);
+            await audit.LogAsync(http.Actor(), "Package deleted via API", package.Name, ct);
             return Results.NoContent();
         }).WithSummary("Delete package").WithDescription("Deletes the package including its files. Past deployments stay in the history.").Produces(204).Produces(404);
 
         packages.MapPost("{id:int}/steps", async (int id, StepRequest request, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             await service.SaveStepAsync(id, null, request.Definition, request.NestedPackageId, ct);
-            await audit.LogAsync(User(http), "Package step created via API", $"Package {id}: {request.Definition.Name}", ct);
+            await audit.LogAsync(http.Actor(), "Package step created via API", $"Package {id}: {request.Definition.Name}", ct);
             return Results.Ok(ToDetail((await service.GetAsync(id, ct))!, service));
         }).WithSummary("Add step").WithDescription("Appends a step to the package.").Produces<PackageDetailDto>().Produces(400).Produces(404);
 
         packages.MapPut("{id:int}/steps/{stepId:int}", async (int id, int stepId, StepRequest request, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             await service.SaveStepAsync(id, stepId, request.Definition, request.NestedPackageId, ct);
-            await audit.LogAsync(User(http), "Package step changed via API", $"Package {id}: {request.Definition.Name}", ct);
+            await audit.LogAsync(http.Actor(), "Package step changed via API", $"Package {id}: {request.Definition.Name}", ct);
             return Results.Ok(ToDetail((await service.GetAsync(id, ct))!, service));
         }).WithSummary("Change step").Produces<PackageDetailDto>().Produces(400).Produces(404);
 
         packages.MapDelete("{id:int}/steps/{stepId:int}", async (int id, int stepId, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             await service.DeleteStepAsync(id, stepId, ct);
-            await audit.LogAsync(User(http), "Package step deleted via API", $"Package {id}: step {stepId}", ct);
+            await audit.LogAsync(http.Actor(), "Package step deleted via API", $"Package {id}: step {stepId}", ct);
             return Results.NoContent();
         }).WithSummary("Delete step").Produces(204);
 
@@ -130,7 +130,7 @@ public static class ManagementEndpoints
         {
             await service.ApproveAsync(id, User(http), ct);
             var package = (await service.GetAsync(id, ct))!;
-            await audit.LogAsync(User(http), "Package approved via API", $"{package.Name} {package.Version}".Trim(), ct);
+            await audit.LogAsync(http.Actor(), "Package approved via API", $"{package.Name} {package.Version}".Trim(), ct);
             return Results.Ok(ToDetail(package, service));
         }).WithSummary("Approve package").WithDescription("Releases the package for deployment by operators and schedules. Every later change to steps, detection or files withdraws the approval.")
             .Produces<PackageDetailDto>().Produces(400).Produces(404);
@@ -140,7 +140,7 @@ public static class ManagementEndpoints
             if (await service.GetAsync(id, ct) is not { } package)
                 return Results.NotFound();
             await service.RevokeApprovalAsync(id, ct);
-            await audit.LogAsync(User(http), "Package approval withdrawn via API", package.Name, ct);
+            await audit.LogAsync(http.Actor(), "Package approval withdrawn via API", package.Name, ct);
             return Results.NoContent();
         }).WithSummary("Withdraw approval").Produces(204).Produces(404);
 
@@ -160,7 +160,7 @@ public static class ManagementEndpoints
                 return Results.NotFound();
             await service.RevokeApprovalAsync(id, ct);
             service.Repository.Delete(id, path);
-            await audit.LogAsync(User(http), "Package file deleted via API", $"{package.Name}: {path}", ct);
+            await audit.LogAsync(http.Actor(), "Package file deleted via API", $"{package.Name}: {path}", ct);
             return Results.NoContent();
         }).WithSummary("Delete file").Produces(204).Produces(400).Produces(404);
 
@@ -178,7 +178,7 @@ public static class ManagementEndpoints
             if (await service.GetAsync(id, ct) is not { } deployment)
                 return Results.NotFound();
             await service.CancelAsync(id);
-            await audit.LogAsync(User(http), "Deployment cancelled via API", $"#{id} {deployment.PackageName}", ct);
+            await audit.LogAsync(http.Actor(), "Deployment cancelled via API", $"#{id} {deployment.PackageName}", ct);
             return Results.NoContent();
         }).WithSummary("Cancel deployment").WithDescription("Stops running targets and drops targets waiting for an offline computer or a restart.").Produces(204).Produces(404);
 
@@ -198,7 +198,7 @@ public static class ManagementEndpoints
             if (request.ValidDays is <= 0)
                 throw new ArgumentException("validDays must be positive; omit it for a token without expiry");
             var secret = await service.CreateAsync(request.Name, User(http), request.ValidDays is { } days ? DateTime.UtcNow.AddDays(days) : null, ct, request.Role);
-            await audit.LogAsync(User(http), "API token created via API", $"{request.Name.Trim()} ({request.Role})", ct);
+            await audit.LogAsync(http.Actor(), "API token created via API", $"{request.Name.Trim()} ({request.Role})", ct);
             return Results.Ok(new TokenCreatedDto(secret));
         }).WithSummary("Create API token").WithDescription("role: Viewer (read only), Operator (also scan, deploy, cancel, remote access) or Admin. validDays: omit for an unlimited token. The secret is returned once and cannot be retrieved later.")
             .Produces<TokenCreatedDto>().Produces(400);
@@ -206,7 +206,7 @@ public static class ManagementEndpoints
         tokens.MapDelete("{id:int}", async (int id, ApiTokenService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             await service.DeleteAsync(id, ct);
-            await audit.LogAsync(User(http), "API token deleted via API", $"Token {id}", ct);
+            await audit.LogAsync(http.Actor(), "API token deleted via API", $"Token {id}", ct);
             return Results.NoContent();
         }).WithSummary("Delete API token").Produces(204);
 
@@ -218,7 +218,7 @@ public static class ManagementEndpoints
         maintenanceDefault.MapPut("", async (MaintenanceWindow? window, MaintenanceService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             await service.SetDefaultAsync(window, ct);
-            await audit.LogAsync(User(http), "Default maintenance window changed via API", "", ct);
+            await audit.LogAsync(http.Actor(), "Default maintenance window changed via API", "", ct);
             return Results.Json(await service.GetDefaultAsync(ct));
         }).WithSummary("Set default maintenance window").WithDescription("Body: a window ({daysOfWeek, from, to}) or null to remove it.").Produces<MaintenanceWindow>();
 
@@ -240,7 +240,7 @@ public static class ManagementEndpoints
                 throw new ArgumentException("name is required");
             var c = await service.SaveAsync(null, request.Name, request.Description, request.IsDynamic, request.MatchAll, request.Rules ?? [], ct);
             await maintenance.SetAsync(c.Id, request.MaintenanceWindow, ct);
-            await audit.LogAsync(User(http), "Collection created via API", c.Name, ct);
+            await audit.LogAsync(http.Actor(), "Collection created via API", c.Name, ct);
             return Results.Created($"/api/collections/{c.Id}", new CollectionDto(c.Id, c.Name, c.Description, c.IsDynamic, c.MatchAll, c.Rules, 0, MaintenanceService.Normalize(request.MaintenanceWindow)));
         }).WithSummary("Create collection").WithDescription("Static (members assigned explicitly) or dynamic (rules). matchAll: true = all rules must apply, false = at least one. maintenanceWindow (optional): daysOfWeek as bit mask (bit 0 = Sunday … bit 6 = Saturday), from and to as local server time (\"19:00:00\"); to before from = past midnight.").Produces<CollectionDto>(201).Produces(400);
 
@@ -250,7 +250,7 @@ public static class ManagementEndpoints
                 throw new ArgumentException("name is required");
             var c = await service.SaveAsync(id, request.Name, request.Description, request.IsDynamic, request.MatchAll, request.Rules ?? [], ct);
             await maintenance.SetAsync(id, request.MaintenanceWindow, ct);
-            await audit.LogAsync(User(http), "Collection changed via API", c.Name, ct);
+            await audit.LogAsync(http.Actor(), "Collection changed via API", c.Name, ct);
             return Results.Ok(new CollectionDto(c.Id, c.Name, c.Description, c.IsDynamic, c.MatchAll, c.Rules, (await service.GetMemberIdsAsync(id, ct)).Count, MaintenanceService.Normalize(request.MaintenanceWindow)));
         }).WithSummary("Change collection").WithDescription("Name, description, matchAll, rules and maintenanceWindow (omitting it removes the window); whether a collection is dynamic cannot be changed afterwards.").Produces<CollectionDto>().Produces(404);
 
@@ -259,21 +259,21 @@ public static class ManagementEndpoints
             if (await service.GetAsync(id, ct) is not { } c)
                 return Results.NotFound();
             await service.DeleteAsync(id, ct);
-            await audit.LogAsync(User(http), "Collection deleted via API", c.Name, ct);
+            await audit.LogAsync(http.Actor(), "Collection deleted via API", c.Name, ct);
             return Results.NoContent();
         }).WithSummary("Delete collection").WithDescription("The computers themselves are kept.").Produces(204).Produces(404);
 
         collections.MapPost("{id:int}/members", async (int id, int[] computerIds, CollectionService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             var added = await service.AddMembersAsync(id, computerIds, ct);
-            await audit.LogAsync(User(http), "Collection members added via API", $"Collection {id}: {added} computers", ct);
+            await audit.LogAsync(http.Actor(), "Collection members added via API", $"Collection {id}: {added} computers", ct);
             return Results.Ok(new ResultDto($"{added} added"));
         }).WithSummary("Add members").WithDescription("Body: JSON array of computer IDs. Static collections only.");
 
         collections.MapDelete("{id:int}/members", async (int id, [Microsoft.AspNetCore.Mvc.FromBody] int[] computerIds, CollectionService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             var removed = await service.RemoveMembersAsync(id, computerIds, ct);
-            await audit.LogAsync(User(http), "Collection members removed via API", $"Collection {id}: {removed} computers", ct);
+            await audit.LogAsync(http.Actor(), "Collection members removed via API", $"Collection {id}: {removed} computers", ct);
             return Results.Ok(new ResultDto($"{removed} removed"));
         }).WithSummary("Remove members").WithDescription("Body: JSON array of computer IDs.");
 
@@ -286,7 +286,7 @@ public static class ManagementEndpoints
         {
             var schedule = Apply(new Schedule { Name = request.Name }, request);
             await service.SaveAsync(schedule, ct);
-            await audit.LogAsync(User(http), "Schedule created via API", schedule.Name, ct);
+            await audit.LogAsync(http.Actor(), "Schedule created via API", schedule.Name, ct);
             return Results.Created($"/api/schedules/{schedule.Id}", ToDto(schedule));
         }).WithSummary("Create schedule").WithDescription("action: Scan or Deploy (needs packageId). trigger: Once (startLocal), Interval (intervalMinutes), Daily (timeOfDay) or Weekly (timeOfDay + daysOfWeek bitmask, bit n = day n with Sunday = 0). collectionId null = all computers. Times are server local time.")
             .Produces<ScheduleDto>(201).Produces(400);
@@ -296,20 +296,20 @@ public static class ManagementEndpoints
             if ((await service.ListAsync(ct)).FirstOrDefault(s => s.Id == id) is not { } existing)
                 return Results.NotFound();
             await service.SaveAsync(Apply(existing, request), ct);
-            await audit.LogAsync(User(http), "Schedule changed via API", existing.Name, ct);
+            await audit.LogAsync(http.Actor(), "Schedule changed via API", existing.Name, ct);
             return Results.Ok(ToDto(existing));
         }).WithSummary("Change schedule").Produces<ScheduleDto>().Produces(404);
 
         schedules.MapDelete("{id:int}", async (int id, ScheduleService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             await service.DeleteAsync(id, ct);
-            await audit.LogAsync(User(http), "Schedule deleted via API", $"Schedule {id}", ct);
+            await audit.LogAsync(http.Actor(), "Schedule deleted via API", $"Schedule {id}", ct);
             return Results.NoContent();
         }).WithSummary("Delete schedule").Produces(204);
 
         schedules.MapPost("{id:int}/run", async (int id, ScheduleService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
-            await audit.LogAsync(User(http), "Schedule started via API", $"Schedule {id}", ct);
+            await audit.LogAsync(http.Actor(), "Schedule started via API", $"Schedule {id}", ct);
             return Results.Ok(new ResultDto(await service.RunNowAsync(id, ct)));
         }).WithSummary("Run schedule now").WithDescription("Runs the schedule immediately without changing its regular rhythm.");
 

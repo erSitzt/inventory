@@ -197,6 +197,9 @@
   <data name="any" xml:space="preserve">
     <value>beliebig</value>
   </data>
+  <data name="API token" xml:space="preserve">
+    <value>API-Token</value>
+  </data>
   <data name="API token created" xml:space="preserve">
     <value>API-Token angelegt</value>
   </data>
@@ -260,6 +263,9 @@
   <data name="Audit log" xml:space="preserve">
     <value>Protokoll</value>
   </data>
+  <data name="Audit log exported" xml:space="preserve">
+    <value>Protokoll exportiert</value>
+  </data>
   <data name="Automatic update: {0}" xml:space="preserve">
     <value>Automatische Aktualisierung: {0}</value>
   </data>
@@ -317,8 +323,23 @@
   <data name="Collection" xml:space="preserve">
     <value>Sammlung</value>
   </data>
+  <data name="Collection changed" xml:space="preserve">
+    <value>Sammlung geändert</value>
+  </data>
+  <data name="Collection created" xml:space="preserve">
+    <value>Sammlung angelegt</value>
+  </data>
+  <data name="Collection deleted" xml:space="preserve">
+    <value>Sammlung gelöscht</value>
+  </data>
   <data name="Collection deleted." xml:space="preserve">
     <value>Sammlung gelöscht.</value>
+  </data>
+  <data name="Collection members added" xml:space="preserve">
+    <value>Rechner zur Sammlung hinzugefügt</value>
+  </data>
+  <data name="Collection members removed" xml:space="preserve">
+    <value>Rechner aus Sammlung entfernt</value>
   </data>
   <data name="Collection {0} not found" xml:space="preserve">
     <value>Sammlung {0} nicht gefunden</value>
@@ -349,6 +370,9 @@
   </data>
   <data name="Computer" xml:space="preserve">
     <value>Rechner</value>
+  </data>
+  <data name="Computer changed" xml:space="preserve">
+    <value>Rechner geändert</value>
   </data>
   <data name="Computer name" xml:space="preserve">
     <value>Rechnername</value>
@@ -596,6 +620,9 @@
   <data name="Destination on the computer" xml:space="preserve">
     <value>Ziel auf dem Rechner</value>
   </data>
+  <data name="Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
   <data name="Detection" xml:space="preserve">
     <value>Erkennung</value>
   </data>
@@ -659,6 +686,9 @@
   <data name="Dynamic collections are re-evaluated on every run." xml:space="preserve">
     <value>Dynamische Sammlungen werden bei jedem Lauf neu ausgewertet.</value>
   </data>
+  <data name="dynamic, {0} rules" xml:space="preserve">
+    <value>dynamisch, {0} Regeln</value>
+  </data>
   <data name="E.g. %ProgramData%\Company\ – a trailing \ means folder. Existing files are overwritten." xml:space="preserve">
     <value>Z. B. %ProgramData%\Firma\ – ein abschließender \ bedeutet Ordner. Vorhandene Dateien werden überschrieben.</value>
   </data>
@@ -718,6 +748,9 @@
   </data>
   <data name="expired" xml:space="preserve">
     <value>abgelaufen</value>
+  </data>
+  <data name="Export as CSV" xml:space="preserve">
+    <value>Als CSV exportieren</value>
   </data>
   <data name="failed" xml:space="preserve">
     <value>fehlgeschlagen</value>
@@ -958,6 +991,9 @@
   </data>
   <data name='Keep and mark as "not in AD"' xml:space="preserve">
     <value>Behalten und als „nicht im AD“ kennzeichnen</value>
+  </data>
+  <data name="Keep audit log entries (days)" xml:space="preserve">
+    <value>Protokolleinträge aufbewahren (Tage)</value>
   </data>
   <data name="Keep the approval when library packages update automatically" xml:space="preserve">
     <value>Freigabe behalten, wenn Bibliothekspakete sich automatisch aktualisieren</value>
@@ -1226,11 +1262,14 @@
   <data name="No deployments yet. A package can be deployed here or directly from the package or computer list." xml:space="preserve">
     <value>Noch keine Deployments. Ein Paket lässt sich hier oder direkt aus der Paket- bzw. Rechnerliste bereitstellen.</value>
   </data>
+  <data name="No entries match the filter." xml:space="preserve">
+    <value>Kein Eintrag passt zum Filter.</value>
+  </data>
   <data name="No entries yet." xml:space="preserve">
     <value>Noch keine Einträge.</value>
   </data>
-  <data name="No entries yet. Commands, deployments, scans and changes to credentials, packages, schedules and settings are logged." xml:space="preserve">
-    <value>Noch keine Einträge. Protokolliert werden Befehle, Deployments, Scans sowie Änderungen an Zugangsdaten, Paketen, Zeitplänen und Einstellungen.</value>
+  <data name="No entries yet. Sign-ins, commands, deployments, scans and changes to credentials, packages, collections, schedules and settings are logged." xml:space="preserve">
+    <value>Noch keine Einträge. Protokolliert werden Anmeldungen, Befehle, Deployments, Scans sowie Änderungen an Zugangsdaten, Paketen, Sammlungen, Zeitplänen und Einstellungen.</value>
   </data>
   <data name="No files." xml:space="preserve">
     <value>Keine Dateien.</value>
@@ -1349,6 +1388,9 @@
   <data name="Offline computers are retried until {0}" xml:space="preserve">
     <value>Offline-Rechner werden bis {0} nachgeholt</value>
   </data>
+  <data name="Older entries are removed once a day. 0 keeps everything." xml:space="preserve">
+    <value>Ältere Einträge werden einmal täglich entfernt. 0 behält alles.</value>
+  </data>
   <data name="older version" xml:space="preserve">
     <value>ältere Version</value>
   </data>
@@ -1451,6 +1493,9 @@
   <data name="Package auto-update changed" xml:space="preserve">
     <value>Paket-Automatik geändert</value>
   </data>
+  <data name="Package changed" xml:space="preserve">
+    <value>Paket geändert</value>
+  </data>
   <data name="Package created" xml:space="preserve">
     <value>Paket angelegt</value>
   </data>
@@ -1486,6 +1531,9 @@
   </data>
   <data name="Package step deleted" xml:space="preserve">
     <value>Paketschritt gelöscht</value>
+  </data>
+  <data name="Package step moved" xml:space="preserve">
+    <value>Paketschritt verschoben</value>
   </data>
   <data name="Package update failed" xml:space="preserve">
     <value>Paket-Aktualisierung fehlgeschlagen</value>
@@ -1540,6 +1588,9 @@
   </data>
   <data name="Per user" xml:space="preserve">
     <value>Pro Benutzer</value>
+  </data>
+  <data name="Period" xml:space="preserve">
+    <value>Zeitraum</value>
   </data>
   <data name="Please choose how to sign in." xml:space="preserve">
     <value>Bitte einen Anmeldeweg wählen.</value>
@@ -1955,6 +2006,9 @@
   <data name="Serial number" xml:space="preserve">
     <value>Seriennummer</value>
   </data>
+  <data name="Server" xml:space="preserve">
+    <value>Server</value>
+  </data>
   <data name="Server address for agents: {0}" xml:space="preserve">
     <value>Server-Adresse für Agenten: {0}</value>
   </data>
@@ -2009,6 +2063,9 @@
   <data name="Show the computer's sessions" xml:space="preserve">
     <value>Sitzungen des Rechners anzeigen</value>
   </data>
+  <data name="Showing the latest {0} entries. Narrow the filter or use the export for everything." xml:space="preserve">
+    <value>Angezeigt werden die jüngsten {0} Einträge. Für alles den Filter eingrenzen oder den Export nutzen.</value>
+  </data>
   <data name="Sign in" xml:space="preserve">
     <value>Anmelden</value>
   </data>
@@ -2021,6 +2078,9 @@
   <data name="Sign out" xml:space="preserve">
     <value>Abmelden</value>
   </data>
+  <data name="Sign-in denied" xml:space="preserve">
+    <value>Anmeldung abgelehnt</value>
+  </data>
   <data name="Sign-in is disabled: anyone who can reach this address can run commands on the target computers with the stored credentials." xml:space="preserve">
     <value>Die Anmeldung ist abgeschaltet: Jeder, der diese Adresse erreicht, kann mit den hinterlegten Zugangsdaten Befehle auf den Zielrechnern ausführen.</value>
   </data>
@@ -2029,6 +2089,9 @@
   </data>
   <data name="Signature: {0} from {1}" xml:space="preserve">
     <value>Signatur: {0} vom {1}</value>
+  </data>
+  <data name="Signed in" xml:space="preserve">
+    <value>Angemeldet</value>
   </data>
   <data name="Signed out" xml:space="preserve">
     <value>Abgemeldet</value>
@@ -2536,6 +2599,9 @@
   </data>
   <data name="Warn users before (seconds)" xml:space="preserve">
     <value>Benutzer vorher warnen (Sekunden)</value>
+  </data>
+  <data name="Web interface" xml:space="preserve">
+    <value>Weboberfläche</value>
   </data>
   <data name="Website" xml:space="preserve">
     <value>Webseite</value>

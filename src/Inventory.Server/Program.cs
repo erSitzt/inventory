@@ -92,6 +92,7 @@ builder.Services.AddSingleton<AdSyncService>();
 builder.Services.AddSingleton<HeartbeatService>();
 builder.Services.AddSingleton<ReportService>();
 builder.Services.AddSingleton<AuditService>();
+builder.Services.AddSingleton<SignInLog>();
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System));
 builder.Services.AddScoped<Auditor>();
 builder.Services.AddScoped<Access>();
@@ -187,6 +188,8 @@ if (!app.Environment.IsDevelopment())
 app.UseRequestLocalization();
 if (options.AuthenticationEnabled)
     app.UseAuthentication();
+if (options.ResolveWindowsAuthentication())
+    app.UseMiddleware<WindowsSignInAuditMiddleware>();
 app.UseAuthorization();
 // Nur für die Oberfläche: API-Aufrufer (Skripte, Agenten) brauchen den echten Statuscode. Der Agent meldet sich
 // z. B. bei 401 neu an; die Fehlerseite würde daraus bei POST-Anfragen ein 400 machen.

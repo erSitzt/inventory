@@ -1,3 +1,4 @@
+using Inventory.Server.Services;
 using Inventory.Contracts;
 using Inventory.Core;
 using Inventory.Core.Model;
@@ -65,13 +66,13 @@ public static class ComputerEndpoints
         {
             if (await computers.GetAsync(id, ct) is not { } computer)
                 return Results.NotFound();
-            await audit.LogAsync(http.User.Identity?.Name ?? L["(not signed in)"], L["Remote access: Remote Desktop"], computer.Name, ct);
+            await audit.LogAsync(http.Actor(), L["Remote access: Remote Desktop"], computer.Name, ct);
             return Results.File(System.Text.Encoding.ASCII.GetBytes(RemoteAccessLinks.RdpFile(computer.Name)), "application/x-rdp", $"{computer.Name}.rdp");
         }).RequireOperator().WithSummary("RDP file").WithDescription("Connection file for Remote Desktop Connection; the download is logged.").Produces(404);
 
         group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
         {
-            await audit.LogAsync(http.User.Identity?.Name ?? L["(API, not signed in)"], L["Remote command via API ({0})", request.Type], $"{L["Computer"]} {id}: {request.Script}", ct);
+            await audit.LogAsync(http.Actor(), L["Remote command via API ({0})", request.Type], $"{L["Computer"]} {id}: {request.Script}", ct);
             var job = new JobManifest
             {
                 Steps = [new JobStep { Name = L["Command"], Type = request.Type, Script = request.Script, TimeoutSeconds = request.TimeoutSeconds ?? 600, RunAs = request.RunAs }],
