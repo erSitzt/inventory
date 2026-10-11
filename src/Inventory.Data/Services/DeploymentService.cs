@@ -202,6 +202,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                     await db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.WaitingWindow)
                         .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, window).SetProperty(t => t.FinishedUtc, DateTime.UtcNow));
                 });
+                await CheckFailureLimitAsync(deployment);
                 Changed?.Invoke(deployment.Id);
             }
             else if (built is not null)
@@ -246,6 +247,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                     await UpdateAsync(db => db.DeploymentTargets.Where(t => t.Id == target.Id)
                         .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, timeout)
                             .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+                    await CheckFailureLimitAsync(deployment);
                     Changed?.Invoke(deployment.Id);
                 }
                 else if (await IsReachableAsync(target.ComputerName, ct))
@@ -269,6 +271,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.WaitingReboot)
                     .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, failure)
                         .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+                await CheckFailureLimitAsync(deployment);
                 Changed?.Invoke(deployment.Id);
                 continue;
             }
@@ -323,7 +326,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     /// </summary>
     private async Task CheckFailureLimitAsync(Deployment deployment)
     {
-        if ((deployment.MaxFailures ?? deployment.MaxFailurePercent) is null || _stopped.ContainsKey(deployment.Id))
+        // Auch Ziele, die an einer Frist scheitern (Rechner blieb offline, Fenster öffnete nicht, Neustart kam nicht zurück), zählen mit.
+        if ((deployment.MaxFailures ?? deployment.MaxFailurePercent) is null || deployment.StopReason is not null || _stopped.ContainsKey(deployment.Id))
             return;
         await using var db = await dbFactory.CreateDbContextAsync();
         var failed = await db.DeploymentTargets.CountAsync(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.Failed);
@@ -372,7 +376,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             started = true;
             // Erst jetzt prüfen: die Grenze kann erreicht worden sein, während dieses Ziel auf einen freien Platz gewartet hat.
             // Eine Fortsetzung nach einem Neustart läuft trotzdem zu Ende.
-            if (resumeFrom == 0 && _stopped.TryGetValue(deployment.Id, out var stopReason))
+            if (resumeFrom == 0 && (_stopped.TryGetValue(deployment.Id, out var stopReason) || (stopReason = deployment.StopReason) is not null))
             {
                 status = TargetStatus.Cancelled;
                 error = stopReason;
@@ -457,9 +461,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         }
         finally
         {
-            if (started)
-                _slots.Exit();
             _live.TryRemove(target.Id, out _);
+            try
+            {
             await UpdateAsync(async db =>
             {
                 var stored = await db.DeploymentTargets.FirstAsync(t => t.Id == target.Id);
@@ -477,9 +481,15 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             });
             if (status == TargetStatus.Failed)
                 await CheckFailureLimitAsync(deployment);
-            // Erst nach der Prüfung freigeben, damit das nächste Ziel dieses Deployments die erreichte Grenze schon sieht.
-            if (ownTaken)
-                own!.Release();
+            }
+            finally
+            {
+                // Erst nach der Prüfung freigeben, damit das nächste Ziel die erreichte Grenze schon sieht – auch wenn das Speichern scheitert.
+                if (started)
+                    _slots.Exit();
+                if (ownTaken)
+                    own!.Release();
+            }
             Changed?.Invoke(deployment.Id);
         }
     }

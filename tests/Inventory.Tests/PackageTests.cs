@@ -535,6 +535,29 @@ public sealed class PackageTests : IDisposable
         Assert.Equal(0, await deployments.RetryWaitingAsync());
     }
 
+    [Fact]
+    public async Task A_computer_that_never_comes_online_counts_as_a_failure_for_the_limit()
+    {
+        var package = await _packages.SaveAsync(null, "Später", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Setup"), null);
+        var computers = await _computers.ImportAsync("pc-01 pc-02");
+        _probe.Offline.Add("pc-01");
+        _probe.Offline.Add("pc-02");
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var waiting = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), new DeploymentOptions(false, RetryOffline: true, MaxFailures: 2))).Id);
+        Assert.All(waiting.Targets, t => Assert.Equal(TargetStatus.WaitingOffline, t.Status));
+
+        await using (var db = _db.CreateDbContext())
+        {
+            db.Deployments.Single(d => d.Id == waiting.Id).RetryUntilUtc = DateTime.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+        await deployments.RetryWaitingAsync();
+        var expired = (await deployments.GetAsync(waiting.Id))!;
+        Assert.All(expired.Targets, t => Assert.Equal(TargetStatus.Failed, t.Status));
+        Assert.Contains("2 of 2", expired.StopReason);
+    }
+
     [Theory]
     [InlineData(null, null, 50, 50, false)]
     [InlineData(3, null, 2, 2, false)]

@@ -33,6 +33,8 @@ public class ParallelGateTests
         var cancelled = gate.EnterAsync(cts.Token);
         cts.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cancelled);
+        // Wer schon abgebrochen ist, bekommt auch bei freiem Platz keinen.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new ParallelGate(5).EnterAsync(cts.Token));
 
         // Zwei laufen noch bei Grenze 1: erst wenn beide fertig sind, darf der nächste hinein.
         var next = gate.EnterAsync(default);

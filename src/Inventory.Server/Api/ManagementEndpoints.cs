@@ -32,7 +32,7 @@ public static class ManagementEndpoints
 
     public sealed record ScheduleRequest(string Name, ScheduleAction Action, ScheduleTrigger Trigger, bool Enabled = true, int? PackageId = null, int? CollectionId = null,
         bool ScanAfter = true, bool RetryOffline = true, DateTime? StartLocal = null, int IntervalMinutes = 60, TimeSpan? TimeOfDay = null, int DaysOfWeek = 0,
-        bool RespectMaintenanceWindow = true, int? MaxFailures = null, int? MaxFailurePercent = 10, int? MaxParallel = null);
+        bool RespectMaintenanceWindow = true, int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null);
 
     public sealed record ScheduleDto(int Id, string Name, bool Enabled, ScheduleAction Action, int? PackageId, int? CollectionId, bool ScanAfter, bool RetryOffline,
         ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult, bool RespectMaintenanceWindow,

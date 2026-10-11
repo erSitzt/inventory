@@ -24,6 +24,8 @@ internal sealed class ParallelGate(int limit)
 
     public async Task EnterAsync(CancellationToken ct)
     {
+        // Wie bei einem Semaphor: wer schon abgebrochen ist, bekommt keinen Platz mehr.
+        ct.ThrowIfCancellationRequested();
         TaskCompletionSource waiter;
         lock (_sync)
         {
@@ -35,7 +37,7 @@ internal sealed class ParallelGate(int limit)
             waiter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _waiting.AddLast(waiter);
         }
-        await using var registration = ct.Register(() =>
+        using var registration = ct.Register(() =>
         {
             // Nur wer noch wartet, wird abgebrochen; ein schon vergebener Platz bleibt vergeben und wird regulär freigegeben.
             lock (_sync)
