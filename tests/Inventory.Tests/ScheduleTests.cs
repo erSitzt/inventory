@@ -193,6 +193,70 @@ public class ScheduleTests
     }
 
     [Fact]
+    public async Task Ad_sync_stores_ou_groups_description_and_last_logon_and_keeps_them_when_the_account_disappears()
+    {
+        using var db = new TestDb();
+        var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var logon = new DateTime(2026, 9, 20, 8, 0, 0, DateTimeKind.Utc);
+        var laptop = new DirectoryComputer("PC-01", null, null, "Empfang", DistinguishedName: @"CN=PC-01,OU=Laptops,OU=Clients\, Nord,DC=corp,DC=example",
+            Groups: ["Pilot-Updates", "VPN"], LastLogonUtc: logon);
+        var directory = new FakeDirectory { Computers = [laptop, new DirectoryComputer("PC-02", null, null, null, DistinguishedName: "CN=PC-02,CN=Computers,DC=corp,DC=example")] };
+        var sync = new AdSyncService(directory, new SettingsService(db), new CredentialService(db, new ReversingProtector()), computers, clock);
+        await sync.SaveSettingsAsync(true, null, null, null, 24);
+        // Schon der Lauf, der den Rechner anlegt, trägt die Angaben ein.
+        await sync.SyncAsync();
+
+        var first = (await computers.ListAsync()).Single(c => c.Name == "PC-01");
+        Assert.Equal(@"OU=Laptops,OU=Clients\, Nord,DC=corp,DC=example", first.DirectoryPath);
+        Assert.Equal("Clients, Nord/Laptops", first.DirectoryOu);
+        Assert.Equal(["Pilot-Updates", "VPN"], first.DirectoryGroupNames);
+        Assert.Equal("Empfang", first.DirectoryDescription);
+        Assert.Equal(logon, first.DirectoryLastLogonUtc);
+        Assert.Equal("Computers", (await computers.ListAsync()).Single(c => c.Name == "PC-02").DirectoryOu);
+
+        static bool Matches(RuleField field, RuleOperator op, string value, Computer computer) =>
+            CollectionEvaluator.Matches(new CollectionRule { Field = field, Operator = op, Value = value }, computer);
+        Assert.True(Matches(RuleField.DirectoryOu, RuleOperator.Contains, "laptops", first));
+        Assert.True(Matches(RuleField.DirectoryOu, RuleOperator.Equals, "Clients, Nord/Laptops", first));
+        Assert.True(Matches(RuleField.DirectoryOu, RuleOperator.StartsWith, "OU=Laptops,", first));
+        Assert.True(Matches(RuleField.DirectoryOu, RuleOperator.NotContains, "Server", first));
+        Assert.True(Matches(RuleField.DirectoryGroup, RuleOperator.Equals, "vpn", first));
+        Assert.True(Matches(RuleField.DirectoryGroup, RuleOperator.NotEquals, "Kiosk", first));
+        Assert.False(Matches(RuleField.DirectoryGroup, RuleOperator.NotEquals, "VPN", first));
+        Assert.True(Matches(RuleField.DirectoryDescription, RuleOperator.Contains, "empf", first));
+        Assert.False(Matches(RuleField.DaysSinceDirectoryLogon, RuleOperator.GreaterOrEqual, "0", new Computer { Name = "x" }));
+
+        // Verschoben und aus einer Gruppe entfernt: der nächste Lauf zieht nach.
+        directory.Computers = [laptop with { DistinguishedName = "CN=PC-01,OU=Desktops,DC=corp,DC=example", Groups = ["VPN"] }, directory.Computers[1]];
+        await sync.SyncAsync();
+        first = (await computers.ListAsync()).Single(c => c.Name == "PC-01");
+        Assert.Equal("Desktops", first.DirectoryOu);
+        Assert.Equal(["VPN"], first.DirectoryGroupNames);
+
+        // Fehlt das Konto, bleibt stehen, was zuletzt bekannt war.
+        directory.Computers = [directory.Computers[1]];
+        await sync.SyncAsync();
+        first = (await computers.ListAsync()).Single(c => c.Name == "PC-01");
+        Assert.True(first.MissingInDirectory);
+        Assert.Equal("Desktops", first.DirectoryOu);
+    }
+
+    [Theory]
+    [InlineData("CN=PC-01,OU=Laptops,OU=Clients,DC=corp,DC=example", "OU=Laptops,OU=Clients,DC=corp,DC=example", "Clients/Laptops")]
+    [InlineData("CN=PC-01,DC=corp,DC=example", "DC=corp,DC=example", "")]
+    [InlineData(null, null, null)]
+    public void Distinguished_names_are_split_into_container_and_readable_path(string? dn, string? parent, string? path)
+    {
+        Assert.Equal(parent, DirectoryNames.Parent(dn));
+        Assert.Equal(path, DirectoryNames.Path(DirectoryNames.Parent(dn)));
+        Assert.Equal(@"Vertrieb, Nord", DirectoryNames.CommonName(@"CN=Vertrieb\, Nord,OU=Groups,DC=corp,DC=example"));
+        // Dieselben Zeichen als Hex-Maskierung, auch für Umlaute (zwei Bytes in UTF-8).
+        Assert.Equal("Ops, EMEA", DirectoryNames.CommonName(@"CN=Ops\2C EMEA,OU=Groups,DC=corp,DC=example"));
+        Assert.Equal("Büro/Süd", DirectoryNames.Path(@"OU=S\C3\BCd,OU=B\C3\BCro,DC=corp,DC=example"));
+    }
+
+    [Fact]
     public async Task Heartbeat_probes_only_computers_without_name_issues_and_respects_the_interval()
     {
         using var db = new TestDb();

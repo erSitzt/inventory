@@ -10,7 +10,7 @@ public sealed class LdapDirectorySource : IDirectorySource
     // Bit 2 in userAccountControl: das Konto ist deaktiviert.
     private const int AccountDisabled = 2;
     private const int PageSize = 500;
-    private static readonly string[] Attributes = ["name", "dNSHostName", "operatingSystem", "description", "userAccountControl"];
+    private static readonly string[] Attributes = ["name", "dNSHostName", "operatingSystem", "description", "userAccountControl", "distinguishedName", "memberOf", "lastLogonTimestamp"];
 
     public Task<List<DirectoryComputer>> GetComputersAsync(DirectoryQuery query, CancellationToken ct = default) =>
         Task.Run(() => Search(query, ct), ct);
@@ -55,7 +55,10 @@ public sealed class LdapDirectorySource : IDirectorySource
                     {
                         if (Value(entry, "name") is { } name)
                             result[name] = new DirectoryComputer(name, Value(entry, "dNSHostName"), Value(entry, "operatingSystem"), Value(entry, "description"),
-                                Enabled: !int.TryParse(Value(entry, "userAccountControl"), out var control) || (control & AccountDisabled) == 0);
+                                Enabled: !int.TryParse(Value(entry, "userAccountControl"), out var control) || (control & AccountDisabled) == 0,
+                                DistinguishedName: Value(entry, "distinguishedName") ?? entry.DistinguishedName,
+                                Groups: Values(entry, "memberOf").Select(Inventory.Core.DirectoryNames.CommonName).Order(StringComparer.OrdinalIgnoreCase).ToList(),
+                                LastLogonUtc: FileTime(Value(entry, "lastLogonTimestamp")));
                     }
                     paging.Cookie = response.Controls.OfType<PageResultResponseControl>().FirstOrDefault()?.Cookie ?? [];
                 } while (paging.Cookie.Length > 0);
@@ -79,6 +82,13 @@ public sealed class LdapDirectorySource : IDirectorySource
             ? context
             : throw new RemoteException("The domain could not be determined; please specify a search root (OU).");
     }
+
+    private static IEnumerable<string> Values(SearchResultEntry entry, string attribute) =>
+        entry.Attributes[attribute] is { } values ? values.GetValues(typeof(string)).Cast<string>() : [];
+
+    /// <summary>lastLogonTimestamp zählt 100-Nanosekunden-Schritte seit 1601; 0 = noch nie angemeldet.</summary>
+    private static DateTime? FileTime(string? value) =>
+        long.TryParse(value, out var ticks) && ticks > 0 && ticks < DateTime.MaxValue.ToFileTimeUtc() ? DateTime.FromFileTimeUtc(ticks) : null;
 
     private static string? Value(SearchResultEntry entry, string attribute) =>
         entry.Attributes[attribute] is { Count: > 0 } values && values[0] is string text && text.Length > 0 ? text : null;

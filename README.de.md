@@ -207,6 +207,11 @@ Die Synchronisation (*Einstellungen → Active Directory*) legt Computerkonten a
 
 - **Deaktivierte Computerkonten ausschließen** (Standard: an): deaktivierte Konten werden nicht angelegt; ist ein
   vorhandener Rechner im Verzeichnis deaktiviert, gilt er als nicht mehr gefunden.
+- **Angaben aus dem Verzeichnis**: jeder Lauf speichert auch die Organisationseinheit, die Gruppen, in denen das
+  Computerkonto direkt Mitglied ist, seine Beschreibung und seine letzte Anmeldung an der Domäne (das Verzeichnis
+  gleicht diesen Wert nur etwa alle zwei Wochen ab). Sie stehen auf der Rechnerseite und im CSV-Export und lassen sich
+  als Regeln für Sammlungen verwenden, z. B. „AD-Organisationseinheit enthält Laptops“ oder „AD-Gruppe ist gleich
+  Pilot-Updates“.
 - **Nicht mehr gefundene Rechner** werden als „nicht im AD“ gekennzeichnet (Filter in der Rechnerliste, Regelfeld für
   dynamische Sammlungen). Wahlweise löscht die Synchronisation sie, nachdem sie eine einstellbare Frist lang
   ununterbrochen gefehlt haben – samt Inventardaten und Verlauf.

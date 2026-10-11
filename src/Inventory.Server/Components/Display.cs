@@ -66,6 +66,10 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         RuleField.PendingSecurityUpdates => T("Pending security updates (count)"),
         RuleField.Hotfix => T("Hotfix installed (KB number)"),
         RuleField.PendingUpdate => T("Pending update (KB number or title)"),
+        RuleField.DirectoryOu => T("AD organizational unit"),
+        RuleField.DirectoryGroup => T("AD group (direct member)"),
+        RuleField.DaysSinceDirectoryLogon => T("Days since last AD logon"),
+        RuleField.DirectoryDescription => T("AD description"),
         RuleField.Online => T("Online"),
         RuleField.Scanned => T("Scanned"),
         RuleField.OsName => T("Operating system"),
@@ -98,7 +102,8 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
             or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
             or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
             or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated => [RuleOperator.Equals],
-        RuleField.PendingUpdates or RuleField.PendingSecurityUpdates or RuleField.DaysSinceUpdate or RuleField.BuiltinAdminPasswordAgeDays => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
+        RuleField.PendingUpdates or RuleField.PendingSecurityUpdates or RuleField.DaysSinceUpdate or RuleField.BuiltinAdminPasswordAgeDays
+            or RuleField.DaysSinceDirectoryLogon => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
         RuleField.MemoryGb => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals],
         RuleField.OsVersion => [RuleOperator.StartsWith, RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals, RuleOperator.Contains],
         RuleField.Hotfix => [RuleOperator.Equals, RuleOperator.NotEquals],

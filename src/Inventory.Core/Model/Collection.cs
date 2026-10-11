@@ -55,6 +55,13 @@ public enum RuleField
     Hotfix = 119,
     /// <summary>Ausstehendes Update (KB-Nummer oder Titel); verneint = steht nicht aus.</summary>
     PendingUpdate = 120,
+    /// <summary>Organisationseinheit des Computerkontos: lesbarer Pfad ("Clients/Laptops") oder Distinguished Name.</summary>
+    DirectoryOu = 121,
+    /// <summary>Gruppe, in der das Computerkonto direkt Mitglied ist.</summary>
+    DirectoryGroup = 122,
+    /// <summary>Tage seit der letzten Anmeldung des Computerkontos an der Domäne.</summary>
+    DaysSinceDirectoryLogon = 123,
+    DirectoryDescription = 124,
     Online = 1,
     Scanned,
     OsName,

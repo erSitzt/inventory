@@ -199,6 +199,10 @@ The synchronization (*Settings → Active Directory*) creates computers from com
 
 - **Exclude disabled computer accounts** (default: on): disabled accounts are not created; if an existing computer is
   disabled in the directory, it counts as no longer found.
+- **Directory facts**: every run also stores the organizational unit, the groups the computer account is a direct
+  member of, its description and its last logon to the domain (the directory only replicates that value about every
+  two weeks). They appear on the computer page and in the CSV export and can be used as collection rules, e.g.
+  "AD organizational unit contains Laptops" or "AD group equals Pilot-Updates".
 - **Computers no longer found** are marked "not in AD" (filter in the computer list, rule field for dynamic
   collections). Optionally the synchronization deletes them after they have been missing continuously for a
   configurable grace period – including inventory data and history.
