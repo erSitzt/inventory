@@ -92,8 +92,50 @@ public static partial class InventoryDiff
         Set("Local administrator",
             previous.LocalAdmins.Select(a => (a.Name, (string?)null)),
             current.LocalAdmins.Select(a => (a.Name, (string?)null)));
+
+        if (current.Hardware is { } hardware)
+        {
+            // Wie beim Sicherheitsstatus: der erste Scan mit Hardware-Details ist die Ausgangslage.
+            void Known(string category, string item, string? oldValue, string? newValue)
+            {
+                if (oldValue is not null && newValue is not null && !string.Equals(oldValue, newValue, StringComparison.OrdinalIgnoreCase))
+                    Add(category, ChangeKind.Changed, item, oldValue, newValue);
+            }
+            static string? OnOff(bool? value) => value is null ? null : value.Value ? "on" : "off";
+            static string? Tpm(bool? present, bool? ready) => present switch { null => null, false => "none", true => ready == true ? "ready" : "not ready" };
+            static string? Module(string? manufacturer, string? partNumber, long capacityBytes) =>
+                string.Join(" ", new[] { Gigabytes(capacityBytes), manufacturer, partNumber }.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+            Known("System", "Firmware", previous.FirmwareType, hardware.FirmwareType);
+            Known("System", "BIOS date", previous.BiosDateUtc?.ToString("yyyy-MM-dd"), hardware.BiosDateUtc?.ToString("yyyy-MM-dd"));
+            Known("System", "Graphics", previous.Gpu, hardware.Gpus.Count == 0 ? null : string.Join(", ", hardware.Gpus.Select(g => g.Name)));
+            Known("Security", "Secure Boot", OnOff(previous.SecureBoot), OnOff(hardware.SecureBoot));
+            Known("Security", "TPM", Tpm(previous.TpmPresent, previous.TpmReady), Tpm(hardware.TpmPresent, hardware.TpmReady));
+
+            // Listen nur vergleichen, wenn der vorige Scan sie schon erfasst hat; sonst wäre alles "neu".
+            if (previous.HardwareScanUtc is not null)
+            {
+                Set("Memory module",
+                    previous.MemoryModules.Select(m => (m.Slot, Module(m.Manufacturer, m.PartNumber, m.CapacityBytes))),
+                    hardware.MemoryModules.Select(m => (m.Slot, Module(m.Manufacturer, m.PartNumber, m.CapacityBytes))));
+                Set("Physical disk",
+                    previous.PhysicalDisks.Select(d => (DiskKey(d.Model, d.SerialNumber), d.Health)),
+                    hardware.PhysicalDisks.Select(d => (DiskKey(d.Model, d.SerialNumber), d.Health)));
+                Set("BitLocker",
+                    previous.Volumes.Select(v => (v.Drive, OnOff(v.Protected))),
+                    hardware.Volumes.Select(v => (v.Drive, OnOff(v.Protected))));
+                // Monitore fehlen hier bewusst: Notebooks wechseln sie mit jedem Arbeitsplatz.
+                Set("Printer",
+                    previous.Printers.Select(p => (p.Name, p.Port)),
+                    hardware.Printers.Select(p => (p.Name, p.Port)));
+            }
+        }
         return MergeUpdates(changes);
     }
+
+    /// <summary>Modell plus Seriennummer: zwei gleiche Geräte bleiben unterscheidbar, ein Tausch wird sichtbar.</summary>
+    private static string DiskKey(string model, string? serialNumber) =>
+        string.IsNullOrWhiteSpace(serialNumber) ? model : $"{model} ({serialNumber})";
 
     /// <summary>
     /// Viele Programme tragen die Version im Namen; ein Update erscheint dann als "entfernt" plus "neu". Solche Paare

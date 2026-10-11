@@ -35,6 +35,16 @@ namespace Inventory.Runner
             Section(data, "Windows Update", () => ReadWindowsUpdate(data.Security));
             data.RemoteAccess = new RemoteAccessInfo();
             Section(data, "Fernzugriff", () => ReadRemoteAccess(data.RemoteAccess));
+            var hardware = data.Hardware = new HardwareInfo();
+            Section(data, "Gehäuse und Firmware", HardwareAreas.Firmware, () => ReadFirmware(hardware));
+            Section(data, "TPM", HardwareAreas.Tpm, () => ReadTpm(hardware));
+            Section(data, "Grafik", HardwareAreas.Graphics, () => ReadGraphics(hardware));
+            Section(data, "Speichermodule", HardwareAreas.Memory, () => ReadMemoryModules(hardware));
+            Section(data, "Physische Datenträger", HardwareAreas.Disks, () => ReadPhysicalDisks(hardware));
+            Section(data, "BitLocker", HardwareAreas.Volumes, () => ReadVolumeEncryption(hardware));
+            Section(data, "Akku", HardwareAreas.Battery, () => ReadBattery(hardware));
+            Section(data, "Monitore", HardwareAreas.Monitors, () => ReadMonitors(hardware));
+            Section(data, "Drucker", HardwareAreas.Printers, () => ReadPrinters(hardware));
             return data;
         }
 
@@ -47,6 +57,20 @@ namespace Inventory.Runner
             catch (Exception ex)
             {
                 data.Warnings.Add($"{name}: {ex.Message}");
+            }
+        }
+
+        /// <summary>Wie <see cref="Section(InventoryData, string, Action)"/>, merkt aber zusätzlich den Bereich als nicht gelesen vor.</summary>
+        private static void Section(InventoryData data, string name, string area, Action read)
+        {
+            try
+            {
+                read();
+            }
+            catch (Exception ex)
+            {
+                data.Warnings.Add($"{name}: {ex.Message}");
+                data.Hardware?.Failed.Add(area);
             }
         }
 
@@ -313,6 +337,323 @@ namespace Inventory.Runner
             }
         }
 
+        private static void ReadFirmware(HardwareInfo hardware)
+        {
+            foreach (var o in Query("SELECT ChassisTypes FROM Win32_SystemEnclosure"))
+            {
+                if (o["ChassisTypes"] is ushort[] types && types.Length > 0 && hardware.ChassisType == null)
+                    hardware.ChassisType = types[0];
+            }
+            foreach (var o in Query("SELECT ReleaseDate FROM Win32_BIOS"))
+                hardware.BiosDateUtc = Date(o, "ReleaseDate");
+
+            // FIRMWARE_TYPE: 1 = BIOS, 2 = UEFI.
+            if (GetFirmwareType(out var firmware))
+                hardware.FirmwareType = firmware == 2 ? "UEFI" : firmware == 1 ? "BIOS" : null;
+
+            using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+            {
+                using (var state = hklm.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\SecureBoot\State"))
+                {
+                    if (state?.GetValue("UEFISecureBootEnabled") is int enabled)
+                        hardware.SecureBoot = enabled != 0;
+                    else if (hardware.FirmwareType == "BIOS")
+                        hardware.SecureBoot = false;
+                }
+            }
+        }
+
+        private static void ReadTpm(HardwareInfo hardware)
+        {
+            List<ManagementBaseObject> rows;
+            try
+            {
+                rows = Query(@"root\cimv2\Security\MicrosoftTpm", "SELECT * FROM Win32_Tpm");
+            }
+            catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace || ex.ErrorCode == ManagementStatus.InvalidClass)
+            {
+                // Ohne den TPM-Anbieter (manche Server-Installationen) lässt sich nichts sagen.
+                return;
+            }
+            hardware.TpmPresent = rows.Count > 0;
+            foreach (var o in rows)
+            {
+                // SpecVersion: "2.0, 0, 1.59" – vorn steht die Version der Spezifikation.
+                hardware.TpmVersion = Text(o, "SpecVersion")?.Split(',')[0].Trim();
+                hardware.TpmReady = Flag(o, "IsEnabled_InitialValue") == true && Flag(o, "IsActivated_InitialValue") == true && Flag(o, "IsOwned_InitialValue") == true;
+            }
+        }
+
+        private static void ReadGraphics(HardwareInfo hardware)
+        {
+            foreach (var o in Query("SELECT Name, DriverVersion FROM Win32_VideoController"))
+            {
+                var name = Text(o, "Name");
+                // Fernwartungsprogramme und RDP-Sitzungen melden eigene Anzeigetreiber; das sind keine Grafikkarten.
+                if (name != null && (name.IndexOf("Mirror Driver", StringComparison.OrdinalIgnoreCase) >= 0 || name.IndexOf("Remote Display", StringComparison.OrdinalIgnoreCase) >= 0))
+                    continue;
+                if (name != null && hardware.Gpus.All(g => g.Name != name))
+                    hardware.Gpus.Add(new GpuItem { Name = name, DriverVersion = Text(o, "DriverVersion") });
+            }
+        }
+
+        private static void ReadMemoryModules(HardwareInfo hardware)
+        {
+            var slots = 0;
+            foreach (var o in Query("SELECT MemoryDevices FROM Win32_PhysicalMemoryArray"))
+                slots += (int)Number(o, "MemoryDevices");
+            hardware.MemorySlots = slots > 0 ? slots : (int?)null;
+
+            foreach (var o in Query("SELECT DeviceLocator, Manufacturer, PartNumber, SerialNumber, Capacity, Speed, ConfiguredClockSpeed, SMBIOSMemoryType FROM Win32_PhysicalMemory"))
+            {
+                // Speed ist die Nenngeschwindigkeit des Moduls, ConfiguredClockSpeed die tatsächlich eingestellte.
+                var speed = (int)Number(o, "ConfiguredClockSpeed");
+                if (speed == 0)
+                    speed = (int)Number(o, "Speed");
+                hardware.MemoryModules.Add(new MemoryModuleItem
+                {
+                    Slot = Text(o, "DeviceLocator") ?? "",
+                    Manufacturer = Text(o, "Manufacturer"),
+                    PartNumber = Text(o, "PartNumber"),
+                    SerialNumber = Text(o, "SerialNumber"),
+                    CapacityBytes = Number(o, "Capacity"),
+                    SpeedMhz = speed > 0 ? speed : (int?)null,
+                    Type = MemoryType((int)Number(o, "SMBIOSMemoryType")),
+                });
+            }
+        }
+
+        private static string? MemoryType(int smbiosType)
+        {
+            switch (smbiosType)
+            {
+                case 20: return "DDR";
+                case 21: return "DDR2";
+                case 24: return "DDR3";
+                case 26: return "DDR4";
+                case 27: return "LPDDR";
+                case 28: return "LPDDR2";
+                case 29: return "LPDDR3";
+                case 30: return "LPDDR4";
+                case 34: return "DDR5";
+                case 35: return "LPDDR5";
+                default: return null;
+            }
+        }
+
+        private static void ReadPhysicalDisks(HardwareInfo hardware)
+        {
+            try
+            {
+                foreach (var o in Query(@"root\Microsoft\Windows\Storage", "SELECT FriendlyName, SerialNumber, MediaType, BusType, Size, HealthStatus FROM MSFT_PhysicalDisk"))
+                {
+                    var media = (int)Number(o, "MediaType");
+                    var health = o["HealthStatus"] == null ? -1 : Convert.ToInt32(o["HealthStatus"]);
+                    hardware.PhysicalDisks.Add(new PhysicalDiskItem
+                    {
+                        Model = Text(o, "FriendlyName") ?? "",
+                        SerialNumber = Text(o, "SerialNumber"),
+                        MediaType = media == 4 ? "SSD" : media == 3 ? "HDD" : null,
+                        BusType = BusType((int)Number(o, "BusType")),
+                        SizeBytes = Number(o, "Size"),
+                        Health = health == 0 ? "Healthy" : health == 1 ? "Warning" : health == 2 ? "Unhealthy" : null,
+                    });
+                }
+            }
+            catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace || ex.ErrorCode == ManagementStatus.InvalidClass)
+            {
+                // Ohne die Speicherverwaltungs-API bleibt die klassische Klasse: kein SSD/HDD, kein Zustand.
+                foreach (var o in Query("SELECT Model, SerialNumber, Size, InterfaceType FROM Win32_DiskDrive"))
+                {
+                    hardware.PhysicalDisks.Add(new PhysicalDiskItem
+                    {
+                        Model = Text(o, "Model") ?? "",
+                        SerialNumber = Text(o, "SerialNumber"),
+                        BusType = Text(o, "InterfaceType"),
+                        SizeBytes = Number(o, "Size"),
+                    });
+                }
+            }
+        }
+
+        private static string? BusType(int busType)
+        {
+            switch (busType)
+            {
+                case 1: return "SCSI";
+                case 3: return "ATA";
+                case 7: return "USB";
+                case 8: return "RAID";
+                case 9: return "iSCSI";
+                case 10: return "SAS";
+                case 11: return "SATA";
+                case 12: return "SD";
+                case 13: return "MMC";
+                case 14:
+                case 15: return "Virtual";
+                case 16: return "Storage Spaces";
+                case 17: return "NVMe";
+                default: return null;
+            }
+        }
+
+        private static void ReadVolumeEncryption(HardwareInfo hardware)
+        {
+            List<ManagementBaseObject> rows;
+            try
+            {
+                rows = Query(@"root\cimv2\Security\MicrosoftVolumeEncryption", "SELECT * FROM Win32_EncryptableVolume");
+            }
+            catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace || ex.ErrorCode == ManagementStatus.InvalidClass)
+            {
+                // BitLocker ist nicht installiert (Server ohne das Feature, Home-Editionen ohne Geräteverschlüsselung).
+                return;
+            }
+            foreach (var o in rows)
+            {
+                var drive = Text(o, "DriveLetter");
+                if (drive == null)
+                    continue;
+                // ProtectionStatus: 0 = aus, 1 = an, 2 = unbekannt (Laufwerk gesperrt).
+                var protection = o["ProtectionStatus"] == null ? 2 : Convert.ToInt32(o["ProtectionStatus"]);
+                var item = new VolumeEncryptionItem { Drive = drive, Protected = protection == 2 ? (bool?)null : protection == 1 };
+                try
+                {
+                    if (o is ManagementObject volume)
+                    {
+                        using (var status = volume.InvokeMethod("GetConversionStatus", null, null))
+                        {
+                            if (status?["EncryptionPercentage"] != null)
+                                item.EncryptedPercent = Convert.ToInt32(status["EncryptionPercentage"]);
+                        }
+                        using (var method = volume.InvokeMethod("GetEncryptionMethod", null, null))
+                        {
+                            if (method?["EncryptionMethod"] != null)
+                                item.Method = EncryptionMethod(Convert.ToInt32(method["EncryptionMethod"]));
+                        }
+                    }
+                }
+                catch (Exception ex) when (ex is ManagementException || ex is COMException)
+                {
+                    // Der Schutzstatus allein ist schon eine Aussage.
+                }
+                hardware.Volumes.Add(item);
+            }
+            hardware.Volumes = hardware.Volumes.OrderBy(v => v.Drive, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private static string? EncryptionMethod(int method)
+        {
+            switch (method)
+            {
+                case 1: return "AES 128 (Diffuser)";
+                case 2: return "AES 256 (Diffuser)";
+                case 3: return "AES 128";
+                case 4: return "AES 256";
+                case 5: return "Hardware";
+                case 6: return "XTS-AES 128";
+                case 7: return "XTS-AES 256";
+                default: return null;
+            }
+        }
+
+        private static void ReadBattery(HardwareInfo hardware)
+        {
+            hardware.BatteryPresent = Query("SELECT DeviceID FROM Win32_Battery").Count > 0;
+            if (hardware.BatteryPresent != true)
+                return;
+            try
+            {
+                long designed = 0, full = 0;
+                foreach (var o in Query(@"root\wmi", "SELECT DesignedCapacity FROM BatteryStaticData"))
+                    designed += Number(o, "DesignedCapacity");
+                foreach (var o in Query(@"root\wmi", "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity"))
+                    full += Number(o, "FullChargedCapacity");
+                if (designed > 0 && full > 0)
+                    hardware.BatteryHealthPercent = (int)Math.Min(100, Math.Round(100d * full / designed));
+                foreach (var o in Query(@"root\wmi", "SELECT CycleCount FROM BatteryCycleCount"))
+                {
+                    var cycles = (int)Number(o, "CycleCount");
+                    if (cycles > 0)
+                        hardware.BatteryCycleCount = Math.Max(hardware.BatteryCycleCount ?? 0, cycles);
+                }
+            }
+            catch (ManagementException)
+            {
+                // Nicht jeder Akkutreiber liefert die Kapazitäten; dass ein Akku da ist, bleibt bekannt.
+            }
+        }
+
+        private static void ReadMonitors(HardwareInfo hardware)
+        {
+            List<ManagementBaseObject> rows;
+            try
+            {
+                rows = Query(@"root\wmi", "SELECT ManufacturerName, UserFriendlyName, ProductCodeID, SerialNumberID, YearOfManufacture FROM WmiMonitorID");
+            }
+            catch (ManagementException)
+            {
+                // "Nicht unterstützt", wenn kein Monitor mit EDID angeschlossen ist (Server, virtuelle Maschinen).
+                return;
+            }
+            foreach (var o in rows)
+            {
+                var manufacturer = Chars(o, "ManufacturerName");
+                var year = (int)Number(o, "YearOfManufacture");
+                var serial = Chars(o, "SerialNumberID");
+                hardware.Monitors.Add(new MonitorItem
+                {
+                    Manufacturer = manufacturer,
+                    // Eingebaute Displays haben oft keinen Namen, nur Hersteller- und Produktkennung.
+                    Model = Chars(o, "UserFriendlyName") ?? (manufacturer + Chars(o, "ProductCodeID")),
+                    SerialNumber = serial == "0" ? null : serial,
+                    Year = year > 1990 ? year : (int?)null,
+                });
+            }
+        }
+
+        private static void ReadPrinters(HardwareInfo hardware)
+        {
+            // Sichtbar sind die für den ganzen Rechner eingerichteten Drucker; Verbindungen einzelner Benutzer nicht.
+            foreach (var o in Query("SELECT Name, DriverName, PortName, Network, Shared FROM Win32_Printer"))
+            {
+                var name = Text(o, "Name");
+                var port = Text(o, "PortName");
+                if (name == null || IsVirtualPrinter(name, port))
+                    continue;
+                hardware.Printers.Add(new PrinterItem
+                {
+                    Name = name,
+                    Driver = Text(o, "DriverName"),
+                    Port = port,
+                    Network = o["Network"] is bool network && network,
+                    Shared = o["Shared"] is bool shared && shared,
+                });
+            }
+            hardware.Printers = hardware.Printers.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>"Microsoft Print to PDF", XPS, Fax und OneNote hat jeder Rechner; sie sagen nichts aus.</summary>
+        private static bool IsVirtualPrinter(string name, string? port)
+        {
+            foreach (var virtualPort in new[] { "PORTPROMPT:", "SHRFAX:", "XPSPort:", "nul:" })
+            {
+                if (string.Equals(port, virtualPort, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return name.StartsWith("OneNote", StringComparison.OrdinalIgnoreCase)
+                   || (port != null && port.StartsWith("Microsoft.Office.OneNote", StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>WMI liefert EDID-Texte als Zeichencodes mit Nullen am Ende.</summary>
+        private static string? Chars(ManagementBaseObject o, string property)
+        {
+            if (!(o[property] is ushort[] codes))
+                return null;
+            var text = new string(codes.TakeWhile(c => c != 0).Select(c => (char)c).ToArray()).Trim();
+            return text.Length == 0 ? null : text;
+        }
+
         private static void ReadFirewall(SecurityStatus status)
         {
             // Maßgeblich ist der "ActiveStore" (MSFT_NetFirewallProfile mit PolicyStore=ActiveStore): der wirksame Zustand
@@ -534,6 +875,10 @@ namespace Inventory.Runner
 
         [DllImport("netapi32.dll")]
         private static extern int NetApiBufferFree(IntPtr buffer);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetFirmwareType(out int firmwareType);
 
         private static List<ManagementBaseObject> Query(string wql) => Query(@"root\cimv2", wql);
 

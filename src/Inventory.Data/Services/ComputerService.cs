@@ -33,6 +33,7 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
             .Include(c => c.Credential).Include(c => c.Software).Include(c => c.Hotfixes).Include(c => c.Disks)
             .Include(c => c.NetworkAdapters).Include(c => c.Services).Include(c => c.Collections)
             .Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
+            .Include(c => c.MemoryModules).Include(c => c.PhysicalDisks).Include(c => c.Volumes).Include(c => c.Monitors).Include(c => c.Printers)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 

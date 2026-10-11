@@ -114,6 +114,122 @@ else if (_computer.ReverseDnsMismatch)
         </MudGrid>
     </MudTabPanel>
 
+    <MudTabPanel Text="@L["Hardware"]">
+        @if (_computer.HardwareScanUtc is null)
+        {
+            <MudText Color="Color.Secondary">@L["Not captured yet. Hardware details are read with the next scan; computers with an agent need the current agent version first."]</MudText>
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                        <tbody>
+                            @Row(L["Device type"], Display.Chassis(_computer))
+                            @Row(L["Firmware"], _computer.FirmwareType)
+                            @Row(L["BIOS date"], _computer.BiosDateUtc?.ToString("d"))
+                            @Row(L["Graphics"], _computer.Gpu)
+                            @Row(L["Memory slots"], _computer.MemorySlots is null ? null : L["{0} of {1} used", _computer.MemoryModules.Count, _computer.MemorySlots])
+                            @Row(L["Battery"], _computer.BatteryPresent switch
+                            {
+                                null => null,
+                                false => L["none"],
+                                true when _computer.BatteryHealthPercent is null => L["present"],
+                                true when _computer.BatteryCycleCount is null => L["{0} % of the original capacity", _computer.BatteryHealthPercent],
+                                true => L["{0} % of the original capacity, {1} charge cycles", _computer.BatteryHealthPercent, _computer.BatteryCycleCount],
+                            })
+                        </tbody>
+                    </MudSimpleTable>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4" Outlined="true">
+                        <MudText Typo="Typo.h6" Class="mb-2">@L["Platform security"]</MudText>
+                        @StatusRow("Secure Boot", _computer.SecureBoot)
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                            <MudText Typo="Typo.body2" Style="flex: 1">TPM</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_computer.TpmPresent is null ? Color.Default : _computer.TpmReady == true ? Color.Success : Color.Warning)">
+                                @(_computer.TpmPresent switch
+                                {
+                                    null => L["unknown"],
+                                    false => L["none"],
+                                    true => $"{_computer.TpmVersion} – {(_computer.TpmReady == true ? L["ready"] : L["not ready"])}".TrimStart(' ', '–'),
+                                })
+                            </MudChip>
+                        </MudStack>
+                        @foreach (var volume in _computer.Volumes)
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                                <MudText Typo="Typo.body2" Style="flex: 1">
+                                    BitLocker @volume.Drive@(volume.Method is null ? "" : $" ({volume.Method})")@(volume.EncryptedPercent is > 0 and < 100 ? ", " + L["{0} % encrypted", volume.EncryptedPercent] : "")
+                                </MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@Display.OnOffColor(volume.Protected)">@Display.OnOff(volume.Protected)</MudChip>
+                            </MudStack>
+                        }
+                        @if (_computer.Volumes.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["BitLocker: no volume reported."]</MudText>
+                        }
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Memory modules"]</MudText>
+                    <MudDataGrid T="ComputerMemoryModule" Items="_computer.MemoryModules" Dense="true" Hover="true" SortMode="SortMode.None">
+                        <Columns>
+                            <PropertyColumn Property="m => m.Slot" Title="@L["Slot"]" />
+                            <TemplateColumn Title="@L["Size"]"><CellTemplate>@Display.Bytes(context.Item.CapacityBytes)</CellTemplate></TemplateColumn>
+                            <TemplateColumn Title="@L["Type"]"><CellTemplate>@context.Item.Type@(context.Item.SpeedMhz is null ? "" : $" {context.Item.SpeedMhz} MHz")</CellTemplate></TemplateColumn>
+                            <PropertyColumn Property="m => m.Manufacturer" Title="@L["Manufacturer"]" />
+                            <PropertyColumn Property="m => m.PartNumber" Title="@L["Part number"]" />
+                            <PropertyColumn Property="m => m.SerialNumber" Title="@L["Serial number"]" />
+                        </Columns>
+                    </MudDataGrid>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Physical disks"]</MudText>
+                    <MudDataGrid T="ComputerPhysicalDisk" Items="_computer.PhysicalDisks" Dense="true" Hover="true" SortMode="SortMode.None">
+                        <Columns>
+                            <PropertyColumn Property="d => d.Model" Title="@L["Model"]" />
+                            <TemplateColumn Title="@L["Type"]"><CellTemplate>@string.Join(" ", new[] { context.Item.MediaType, context.Item.BusType }.Where(v => v is not null))</CellTemplate></TemplateColumn>
+                            <TemplateColumn Title="@L["Size"]"><CellTemplate>@Display.Bytes(context.Item.SizeBytes)</CellTemplate></TemplateColumn>
+                            <PropertyColumn Property="d => d.SerialNumber" Title="@L["Serial number"]" />
+                            <TemplateColumn Title="@L["State"]">
+                                <CellTemplate>
+                                    @if (context.Item.Health is not null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="@Display.HealthColor(context.Item.Health)">@L[context.Item.Health]</MudChip>
+                                    }
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                    </MudDataGrid>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Monitors"]</MudText>
+                    <MudDataGrid T="ComputerMonitor" Items="_computer.Monitors" Dense="true" Hover="true" SortMode="SortMode.None">
+                        <Columns>
+                            <PropertyColumn Property="m => m.Manufacturer" Title="@L["Manufacturer"]" />
+                            <PropertyColumn Property="m => m.Model" Title="@L["Model"]" />
+                            <PropertyColumn Property="m => m.SerialNumber" Title="@L["Serial number"]" />
+                            <PropertyColumn Property="m => m.Year" Title="@L["Year"]" />
+                        </Columns>
+                    </MudDataGrid>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@L["Printers"]</MudText>
+                    <MudDataGrid T="ComputerPrinter" Items="_computer.Printers" Dense="true" Hover="true" SortMode="SortMode.None">
+                        <Columns>
+                            <PropertyColumn Property="p => p.Name" Title="@L["Name"]" />
+                            <PropertyColumn Property="p => p.Driver" Title="@L["Driver"]" />
+                            <PropertyColumn Property="p => p.Port" Title="@L["Port"]" />
+                            <TemplateColumn Title="@L["Shared"]"><CellTemplate>@Display.YesNo(context.Item.Shared)</CellTemplate></TemplateColumn>
+                        </Columns>
+                    </MudDataGrid>
+                    <MudText Typo="Typo.caption">@L["Printers set up for the whole computer; connections of individual users are not visible to the scan."]</MudText>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
     <MudTabPanel Text="@($"{L["Software"]} ({_computer.Software.Count})")">
         <MudTextField @bind-Value="_softwareSearch" Placeholder="@L["Search software"]" Adornment="Adornment.Start" Immediate="true" Class="mb-2"
                       AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />

@@ -37,12 +37,15 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         var computer = await db.Computers.AsSplitQuery()
                            .Include(c => c.Software).Include(c => c.Hotfixes).Include(c => c.Disks).Include(c => c.NetworkAdapters)
                            .Include(c => c.Services).Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
+                           .Include(c => c.MemoryModules).Include(c => c.PhysicalDisks).Include(c => c.Volumes).Include(c => c.Monitors).Include(c => c.Printers)
                            .FirstOrDefaultAsync(c => c.Id == computerId, ct)
                        ?? throw new KeyNotFoundException(L["Computer {0} not found", computerId]);
 
         var now = DateTime.UtcNow;
         // Vor dem Vergleich: Programme abgemeldeter Benutzer sind nicht verschwunden, nur gerade nicht lesbar.
         PerUserSoftware.CarryOver(computer.Software, data);
+        if (data.Hardware is not null)
+            HardwareCarryOver.Apply(computer, data.Hardware);
         db.InventoryChanges.AddRange(InventoryDiff.Compare(computer, data, now));
         db.ChangeTracker.Entries().Where(e => e.Entity is not Computer and not InventoryChange).ToList().ForEach(e => e.State = EntityState.Detached);
         computer.LastScanUtc = now;
@@ -148,10 +151,62 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             ComputerId = computerId, Name = a.Name, IsGroup = a.IsGroup, Sid = a.Sid,
         }));
 
+        // Ältere Runner liefern keine Hardware-Details: den vorhandenen Stand dann stehen lassen statt ihn zu leeren.
+        if (data.Hardware is { } hardware)
+        {
+            computer.ChassisType = hardware.ChassisType;
+            computer.FirmwareType = hardware.FirmwareType;
+            computer.SecureBoot = hardware.SecureBoot;
+            computer.BiosDateUtc = hardware.BiosDateUtc;
+            computer.TpmPresent = hardware.TpmPresent;
+            computer.TpmVersion = hardware.TpmVersion;
+            computer.TpmReady = hardware.TpmReady;
+            computer.Gpu = hardware.Gpus.Count == 0 ? null : string.Join(", ", hardware.Gpus.Select(g => g.Name));
+            computer.MemorySlots = hardware.MemorySlots;
+            computer.BatteryPresent = hardware.BatteryPresent;
+            computer.BatteryHealthPercent = hardware.BatteryHealthPercent;
+            computer.BatteryCycleCount = hardware.BatteryCycleCount;
+            computer.SystemDriveProtected = SystemDrive(hardware.Volumes)?.Protected;
+            computer.HardwareScanUtc = now;
+
+            await db.MemoryModules.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            await db.PhysicalDisks.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            await db.Volumes.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            await db.Monitors.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            await db.Printers.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+
+            db.MemoryModules.AddRange(hardware.MemoryModules.Select(m => new ComputerMemoryModule
+            {
+                ComputerId = computerId, Slot = m.Slot, Manufacturer = m.Manufacturer, PartNumber = m.PartNumber, SerialNumber = m.SerialNumber,
+                CapacityBytes = m.CapacityBytes, SpeedMhz = m.SpeedMhz, Type = m.Type,
+            }));
+            db.PhysicalDisks.AddRange(hardware.PhysicalDisks.Select(d => new ComputerPhysicalDisk
+            {
+                ComputerId = computerId, Model = d.Model, SerialNumber = d.SerialNumber, MediaType = d.MediaType, BusType = d.BusType,
+                SizeBytes = d.SizeBytes, Health = d.Health,
+            }));
+            db.Volumes.AddRange(hardware.Volumes.Select(v => new ComputerVolumeEncryption
+            {
+                ComputerId = computerId, Drive = v.Drive, Protected = v.Protected, EncryptedPercent = v.EncryptedPercent, Method = v.Method,
+            }));
+            db.Monitors.AddRange(hardware.Monitors.Select(m => new ComputerMonitor
+            {
+                ComputerId = computerId, Manufacturer = MonitorVendors.Name(m.Manufacturer), Model = m.Model, SerialNumber = m.SerialNumber, Year = m.Year,
+            }));
+            db.Printers.AddRange(hardware.Printers.Select(p => new ComputerPrinter
+            {
+                ComputerId = computerId, Name = p.Name, Driver = p.Driver, Port = p.Port, Network = p.Network, Shared = p.Shared,
+            }));
+        }
+
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return computer.NameMismatch;
     }
+
+    /// <summary>Das Laufwerk, auf dem Windows liegt; Scans nennen es nicht eigens, in der Praxis ist es C:.</summary>
+    private static VolumeEncryptionItem? SystemDrive(List<VolumeEncryptionItem> volumes) =>
+        volumes.FirstOrDefault(v => v.Drive.StartsWith("C", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Änderungen eines Rechners (computerId gesetzt) oder aller Rechner, neueste zuerst.</summary>
     public async Task<List<(InventoryChange Change, string Computer)>> ChangesAsync(int? computerId = null, int take = 1000, CancellationToken ct = default)

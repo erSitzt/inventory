@@ -41,6 +41,9 @@ namespace Inventory.Contracts
         /// <summary>Angaben für den Fernzugriff; null bei Runnern, die das noch nicht erfassen.</summary>
         public RemoteAccessInfo? RemoteAccess { get; set; }
 
+        /// <summary>Hardware-Details und Plattformsicherheit; null bei Runnern, die das noch nicht erfassen.</summary>
+        public HardwareInfo? Hardware { get; set; }
+
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
         /// <summary>
@@ -173,5 +176,116 @@ namespace Inventory.Contracts
         public int? SessionId { get; set; }
         public string? TeamViewerId { get; set; }
         public string? AnyDeskId { get; set; }
+    }
+
+    /// <summary>Werte sind null bzw. Listen leer, wenn sie sich auf dem Rechner nicht ermitteln ließen.</summary>
+    public sealed class HardwareInfo
+    {
+        /// <summary>
+        /// Bereiche (Konstanten aus <see cref="HardwareAreas"/>), die sich bei diesem Scan nicht lesen ließen. Ihre Werte sind
+        /// leer, aber nicht "nicht vorhanden": der Server behält dafür den vorigen Stand.
+        /// </summary>
+        public List<string> Failed { get; set; } = new List<string>();
+
+        /// <summary>Gehäusetyp laut SMBIOS (Win32_SystemEnclosure.ChassisTypes, erster Eintrag), z. B. 3 = Desktop, 10 = Notebook.</summary>
+        public int? ChassisType { get; set; }
+        /// <summary>"UEFI" oder "BIOS".</summary>
+        public string? FirmwareType { get; set; }
+        public bool? SecureBoot { get; set; }
+        public DateTime? BiosDateUtc { get; set; }
+
+        public bool? TpmPresent { get; set; }
+        /// <summary>Spezifikationsversion, z. B. "2.0".</summary>
+        public string? TpmVersion { get; set; }
+        /// <summary>Eingeschaltet, aktiviert und in Besitz genommen.</summary>
+        public bool? TpmReady { get; set; }
+
+        public List<GpuItem> Gpus { get; set; } = new List<GpuItem>();
+        /// <summary>Anzahl der Speichersteckplätze der Hauptplatine.</summary>
+        public int? MemorySlots { get; set; }
+        public List<MemoryModuleItem> MemoryModules { get; set; } = new List<MemoryModuleItem>();
+        public List<PhysicalDiskItem> PhysicalDisks { get; set; } = new List<PhysicalDiskItem>();
+        public List<VolumeEncryptionItem> Volumes { get; set; } = new List<VolumeEncryptionItem>();
+        public List<MonitorItem> Monitors { get; set; } = new List<MonitorItem>();
+        public List<PrinterItem> Printers { get; set; } = new List<PrinterItem>();
+
+        /// <summary>false = kein Akku verbaut.</summary>
+        public bool? BatteryPresent { get; set; }
+        /// <summary>Volle Ladung im Verhältnis zur Kapazität im Neuzustand, in Prozent.</summary>
+        public int? BatteryHealthPercent { get; set; }
+        public int? BatteryCycleCount { get; set; }
+    }
+
+    public static class HardwareAreas
+    {
+        public const string Firmware = "Firmware";
+        public const string Tpm = "Tpm";
+        public const string Graphics = "Graphics";
+        public const string Memory = "Memory";
+        public const string Disks = "Disks";
+        public const string Volumes = "Volumes";
+        public const string Battery = "Battery";
+        public const string Monitors = "Monitors";
+        public const string Printers = "Printers";
+    }
+
+    public sealed class GpuItem
+    {
+        public string Name { get; set; } = "";
+        public string? DriverVersion { get; set; }
+    }
+
+    public sealed class MemoryModuleItem
+    {
+        /// <summary>Bezeichnung des Steckplatzes, z. B. "DIMM 1".</summary>
+        public string Slot { get; set; } = "";
+        public string? Manufacturer { get; set; }
+        public string? PartNumber { get; set; }
+        public string? SerialNumber { get; set; }
+        public long CapacityBytes { get; set; }
+        public int? SpeedMhz { get; set; }
+        /// <summary>Z. B. "DDR4".</summary>
+        public string? Type { get; set; }
+    }
+
+    public sealed class PhysicalDiskItem
+    {
+        public string Model { get; set; } = "";
+        public string? SerialNumber { get; set; }
+        /// <summary>"SSD", "HDD" oder null, wenn Windows es nicht weiß.</summary>
+        public string? MediaType { get; set; }
+        /// <summary>Anschluss, z. B. "NVMe", "SATA", "USB".</summary>
+        public string? BusType { get; set; }
+        public long SizeBytes { get; set; }
+        /// <summary>"Healthy", "Warning" oder "Unhealthy".</summary>
+        public string? Health { get; set; }
+    }
+
+    public sealed class VolumeEncryptionItem
+    {
+        public string Drive { get; set; } = "";
+        /// <summary>BitLocker-Schutz ist eingeschaltet; null = Zustand unbekannt (z. B. gesperrtes Laufwerk).</summary>
+        public bool? Protected { get; set; }
+        /// <summary>Anteil der verschlüsselten Daten in Prozent.</summary>
+        public int? EncryptedPercent { get; set; }
+        /// <summary>Z. B. "XTS-AES 256".</summary>
+        public string? Method { get; set; }
+    }
+
+    public sealed class MonitorItem
+    {
+        public string? Manufacturer { get; set; }
+        public string Model { get; set; } = "";
+        public string? SerialNumber { get; set; }
+        public int? Year { get; set; }
+    }
+
+    public sealed class PrinterItem
+    {
+        public string Name { get; set; } = "";
+        public string? Driver { get; set; }
+        public string? Port { get; set; }
+        public bool Network { get; set; }
+        public bool Shared { get; set; }
     }
 }

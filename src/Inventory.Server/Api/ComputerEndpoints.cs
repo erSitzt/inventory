@@ -13,6 +13,21 @@ public static class ComputerEndpoints
         DateTime? LastSeenUtc, DateTime? LastScanUtc, string? LastScanError, TransportKind? Transport, int? CredentialId,
         string? ReportedName, string? ReverseDnsName, bool NameMismatch, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser);
 
+    public sealed record HardwareDto(string DeviceType, string? FirmwareType, bool? SecureBoot, DateTime? BiosDateUtc, bool? TpmPresent, string? TpmVersion, bool? TpmReady,
+        string? Gpu, int? MemorySlots, bool? BatteryPresent, int? BatteryHealthPercent, int? BatteryCycleCount,
+        IEnumerable<MemoryModuleDto> MemoryModules, IEnumerable<PhysicalDiskDto> PhysicalDisks, IEnumerable<VolumeDto> Volumes,
+        IEnumerable<MonitorDto> Monitors, IEnumerable<PrinterDto> Printers);
+
+    public sealed record MemoryModuleDto(string Slot, string? Manufacturer, string? PartNumber, string? SerialNumber, long CapacityBytes, int? SpeedMhz, string? Type);
+
+    public sealed record PhysicalDiskDto(string Model, string? SerialNumber, string? MediaType, string? BusType, long SizeBytes, string? Health);
+
+    public sealed record VolumeDto(string Drive, bool? Protected, int? EncryptedPercent, string? Method);
+
+    public sealed record MonitorDto(string? Manufacturer, string Model, string? SerialNumber, int? Year);
+
+    public sealed record PrinterDto(string Name, string? Driver, string? Port, bool Network, bool Shared);
+
     public sealed record ImportRequest(string Names);
 
     public sealed record ProbeResponse(int Online);
@@ -60,6 +75,18 @@ public static class ComputerEndpoints
                 ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new SoftwareDto(s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser, s.CarriedOver)))
                 : Results.NotFound())
             .WithSummary("Installed software").WithDescription("perUser = installed in one user's profile only. carriedOver = kept from an earlier scan because that user was not logged on during the last scan.").Produces<IEnumerable<SoftwareDto>>().Produces(404);
+
+        group.MapGet("{id:int}/hardware", async (int id, ComputerService computers, CancellationToken ct) =>
+            await computers.GetDetailAsync(id, ct) is { } c
+                ? Results.Ok(new HardwareDto(Chassis.Kind(c.ChassisType, c.Model).ToString(), c.FirmwareType, c.SecureBoot, c.BiosDateUtc, c.TpmPresent, c.TpmVersion, c.TpmReady,
+                    c.Gpu, c.MemorySlots, c.BatteryPresent, c.BatteryHealthPercent, c.BatteryCycleCount,
+                    c.MemoryModules.Select(m => new MemoryModuleDto(m.Slot, m.Manufacturer, m.PartNumber, m.SerialNumber, m.CapacityBytes, m.SpeedMhz, m.Type)),
+                    c.PhysicalDisks.Select(d => new PhysicalDiskDto(d.Model, d.SerialNumber, d.MediaType, d.BusType, d.SizeBytes, d.Health)),
+                    c.Volumes.Select(v => new VolumeDto(v.Drive, v.Protected, v.EncryptedPercent, v.Method)),
+                    c.Monitors.Select(m => new MonitorDto(m.Manufacturer, m.Model, m.SerialNumber, m.Year)),
+                    c.Printers.Select(p => new PrinterDto(p.Name, p.Driver, p.Port, p.Network, p.Shared))))
+                : Results.NotFound())
+            .WithSummary("Hardware details").WithDescription("Chassis, firmware, Secure Boot, TPM, BitLocker per volume, memory modules, physical disks, monitors and printers from the last scan. deviceType: Unknown, Desktop, Laptop, Tablet, Server or VirtualMachine. Values are null when they could not be determined.").Produces<HardwareDto>().Produces(404);
 
         // Lädt eine .rdp-Datei; Windows öffnet sie direkt mit der Remotedesktopverbindung.
         group.MapGet("{id:int}/rdp", async (int id, ComputerService computers, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>

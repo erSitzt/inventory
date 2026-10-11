@@ -12,6 +12,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 
 - **Rechner** anlegen, aus dem Active Directory importieren, Erreichbarkeit prüfen – auf Wunsch regelmäßig per Heartbeat (Rechner mit Namensauffälligkeiten ausgenommen)
 - **Inventar-Scan**: System, Betriebssystem, Prozessor, Software, Hotfixes, Datenträger, Netzwerk, Dienste
+- **Hardware und Plattformsicherheit**: Gerätetyp (Desktop/Notebook/Server/virtuelle Maschine), UEFI und Secure Boot,
+  TPM, BitLocker je Laufwerk, Grafik, Speichermodule und freie Steckplätze, physische Datenträger mit Typ und Zustand,
+  Akkuzustand, Monitore und Drucker
 - **Sammlungen**: statisch oder dynamisch über Regeln (z. B. „Chrome installiert mit Version unter 141“)
 - **Remote-Befehl** (cmd/PowerShell) mit Live-Ausgabe
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
@@ -428,7 +431,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 
 | Bereich | Endpunkte |
 |---|---|
-| Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, Inventar-Scan, installierte Software, RDP-Datei, Befehl oder PowerShell-Skript ausführen |
+| Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, Inventar-Scan, installierte Software, Hardware-Details, RDP-Datei, Befehl oder PowerShell-Skript ausführen |
 | Pakete | auflisten, anlegen, ändern, löschen; Schritte hinzufügen, ändern, verschieben und löschen; Dateien hochladen und löschen (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); Erkennung festlegen (`detection`, `verifyAfterInstall`) und Name, Version und Produktcode einer hochgeladenen MSI lesen (`…/api/packages/<id>/msi/setup.msi`) |
 | Deployments | starten, auflisten, Fortschritt je Rechner abfragen, abbrechen |
 | Sammlungen | auflisten, anlegen, ändern, löschen; Mitglieder statischer Sammlungen hinzufügen und entfernen; Wartungsfenster je Sammlung (`maintenanceWindow`) und das Standardfenster (`/api/settings/maintenance-window`) |
