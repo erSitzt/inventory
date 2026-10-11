@@ -18,6 +18,11 @@ internal static class NativeMethods
     public const uint SERVICE_CONTROL_STOP = 1;
     public const uint SERVICE_STOPPED = 1;
 
+    public const uint SERVICE_NO_CHANGE = 0xFFFFFFFF;
+
+    public const int ERROR_SERVICE_ALREADY_RUNNING = 1056;
+    public const int ERROR_SERVICE_DOES_NOT_EXIST = 1060;
+    public const int ERROR_SERVICE_CANNOT_ACCEPT_CTRL = 1061;
     public const int ERROR_SERVICE_EXISTS = 1073;
 
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
@@ -35,7 +40,47 @@ internal static class NativeMethods
     public static extern ServiceHandle OpenServiceW(ServiceHandle scm, string serviceName, uint desiredAccess);
 
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    public static extern bool StartServiceW(ServiceHandle service, int argc, IntPtr argv);
+    public static extern bool StartServiceW(ServiceHandle service, int argc,
+        [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPWStr)] string[]? argv);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool QueryServiceConfigW(ServiceHandle service, IntPtr config, int size, out int needed);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool ChangeServiceConfigW(ServiceHandle service, uint serviceType, uint startType, uint errorControl, string? binaryPathName,
+        string? loadOrderGroup, IntPtr tagId, string? dependencies, string? serviceStartName, string? password, string? displayName);
+
+    /// <summary>Befehlszeile eines Dienstes, wie sie eingetragen ist (Umgebungsvariablen nicht aufgelöst); null, wenn die Abfrage scheitert.</summary>
+    public static string? BinaryPath(ServiceHandle service)
+    {
+        // Laut Dokumentation höchstens 8 KB.
+        const int size = 8192;
+        var buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            return QueryServiceConfigW(service, buffer, size, out _)
+                ? Marshal.PtrToStringUni(Marshal.PtrToStructure<QUERY_SERVICE_CONFIG>(buffer).lpBinaryPathName)
+                : null;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct QUERY_SERVICE_CONFIG
+    {
+        public uint dwServiceType;
+        public uint dwStartType;
+        public uint dwErrorControl;
+        public IntPtr lpBinaryPathName;
+        public IntPtr lpLoadOrderGroup;
+        public uint dwTagId;
+        public IntPtr lpDependencies;
+        public IntPtr lpServiceStartName;
+        public IntPtr lpDisplayName;
+    }
 
     [DllImport("advapi32.dll", SetLastError = true)]
     public static extern bool ControlService(ServiceHandle service, uint control, out SERVICE_STATUS status);

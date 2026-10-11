@@ -188,6 +188,9 @@
   <data name="AND" xml:space="preserve">
     <value>UND</value>
   </data>
+  <data name="Another job has been running on {0} for more than {1} minutes; this job was not started." xml:space="preserve">
+    <value>Auf {0} läuft seit über {1} Minuten ein anderer Job; dieser Job wurde nicht gestartet.</value>
+  </data>
   <data name="Antivirus" xml:space="preserve">
     <value>Virenschutz</value>
   </data>
@@ -703,6 +706,9 @@
   </data>
   <data name="Empty result from {0}" xml:space="preserve">
     <value>Leeres Ergebnis von {0}</value>
+  </data>
+  <data name="Endpoint protection often rates agentless access (a service started remotely, files copied to ADMIN$) as suspicious. Computers with the agent need neither; the README describes how to allow the rest narrowly." xml:space="preserve">
+    <value>Endpunktschutz wertet den agentenlosen Zugriff (aus der Ferne gestarteter Dienst, nach ADMIN$ kopierte Dateien) oft als verdächtig. Rechner mit Agent brauchen beides nicht; die README beschreibt, wie sich der Rest eng begrenzt freigeben lässt.</value>
   </data>
   <data name="Enrollment secret" xml:space="preserve">
     <value>Anmeldegeheimnis</value>
@@ -2027,8 +2033,14 @@
   <data name="Service on {0} could not be created: {1}" xml:space="preserve">
     <value>Dienst auf {0} konnte nicht angelegt werden: {1}</value>
   </data>
+  <data name="Service on {0} could not be opened: {1}" xml:space="preserve">
+    <value>Dienst auf {0} konnte nicht geöffnet werden: {1}</value>
+  </data>
   <data name="Service on {0} could not be started: {1}" xml:space="preserve">
     <value>Dienst auf {0} konnte nicht gestartet werden: {1}</value>
+  </data>
+  <data name="Service on {0} could not be updated: {1}" xml:space="preserve">
+    <value>Dienst auf {0} konnte nicht aktualisiert werden: {1}</value>
   </data>
   <data name="Services" xml:space="preserve">
     <value>Dienste</value>

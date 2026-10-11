@@ -23,6 +23,32 @@ public class TransportTests
         Assert.Equal((user, domain), SmbServiceTransport.SplitUsername(new NetworkCredential(input, "x"), "pc-01"));
     }
 
+    [Theory]
+    [InlineData("3f2a9c0d1b2e4f5a8b7c6d5e4f3a2b1c", true)]
+    [InlineData("job-01_A", true)]
+    [InlineData("", false)]
+    [InlineData(@"..\..\System32", false)]
+    [InlineData("C:\\Windows", false)]
+    [InlineData("a b", false)]
+    public void Runner_service_accepts_only_plain_job_ids(string value, bool expected) =>
+        Assert.Equal(expected, JobFiles.IsJobId(value));
+
+    [Theory]
+    [InlineData("\"C:\\WINDOWS\\Inventory\\Runner\\abc\\InventoryRunner.exe\" --service", true)]
+    [InlineData("\"%SystemRoot%\\Inventory\\Runner\\abc\\InventoryRunner.exe\" --service", true)]
+    [InlineData("\"D:\\Win\\inventory\\runner\\ABC\\inventoryrunner.exe\" --SERVICE", true)]
+    [InlineData("\"C:\\WINDOWS\\Inventory\\Runner\\old\\InventoryRunner.exe\" --service", false)]
+    [InlineData("\"C:\\WINDOWS\\Inventory\\Runner\\abc\\InventoryRunner.exe\" --service extra", false)]
+    [InlineData("C:\\WINDOWS\\Inventory\\Runner\\abc\\InventoryRunner.exe --service", false)]
+    [InlineData(null, false)]
+    public void Runner_service_is_only_reconfigured_when_it_points_elsewhere(string? registered, bool same) =>
+        Assert.Equal(same, Inventory.Remoting.Smb.SmbServiceTransport.SameRunner(registered,
+            "\"%SystemRoot%\\Inventory\\Runner\\abc\\InventoryRunner.exe\" --service"));
+
+    [Fact]
+    public void New_job_ids_are_valid_for_the_runner_service() =>
+        Assert.True(JobFiles.IsJobId(new JobManifest().JobId));
+
     [Fact]
     public void PumpProgress_reports_only_complete_lines_and_resumes_at_offset()
     {

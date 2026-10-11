@@ -157,5 +157,23 @@ namespace Inventory.Contracts
         public const string RemoteRoot = "Inventory";
         public const string RunnerFolder = "Runner";
         public const string JobsFolder = "Jobs";
+        /// <summary>
+        /// Fester Name des Dienstes, über den der SMB-Transport Jobs startet. Der Dienst bleibt auf dem Zielrechner bestehen
+        /// und bekommt die Job-ID beim Start übergeben; so entsteht nicht je Job ein neuer Dienst.
+        /// </summary>
+        public const string RunnerServiceName = "InventoryRunner";
+
+        /// <summary>Job-IDs sind zugleich Ordnernamen; alles andere wird abgelehnt.</summary>
+        public static bool IsJobId(string value)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length > 64)
+                return false;
+            foreach (var c in value)
+            {
+                if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9') && c != '-' && c != '_')
+                    return false;
+            }
+            return true;
+        }
     }
 }
