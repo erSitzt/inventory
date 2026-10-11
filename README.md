@@ -62,7 +62,11 @@ credentials. The user interface is available in English and German; translations
 - **Deployments** in parallel with live status, cancel, retry, and catching up on offline computers
 - **Audit log**: sign-ins, commands, deployments and every change with user, role and source (web interface, API,
   API token); filters, CSV export and a retention period
-- **Schedules**, software overview, CSV export, daily backup, REST API with interactive docs
+- **Schedules**: daily, weekly, monthly (a day of the month or e.g. "three days after the second Tuesday"), at fixed
+  intervals or once, optionally with an end date; a run missed while the server was off is caught up within a day or
+  skipped. **Required deployments** keep a collection supplied: every member gets the package once, computers that
+  join later follow automatically, and the schedule shows how many members already have it
+- Software overview, CSV export, daily backup, REST API with interactive docs
 
 ## Screenshots
 

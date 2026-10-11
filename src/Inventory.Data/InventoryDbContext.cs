@@ -117,6 +117,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
 
         modelBuilder.Entity<Deployment>(e =>
         {
+            e.HasOne<Schedule>().WithMany().HasForeignKey(d => d.ScheduleId).OnDelete(DeleteBehavior.SetNull);
             e.HasMany(d => d.Targets).WithOne().HasForeignKey(t => t.DeploymentId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Package>().WithMany().HasForeignKey(d => d.PackageId).OnDelete(DeleteBehavior.SetNull);
         });

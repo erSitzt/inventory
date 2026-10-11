@@ -65,7 +65,12 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
 - **Protokoll**: Anmeldungen, Befehle, Deployments und jede Änderung mit Benutzer, Rolle und Herkunft (Weboberfläche,
   API, API-Token); Filter, CSV-Export und Aufbewahrungsfrist
-- **Zeitpläne**, Software-Übersicht, CSV-Export, tägliche Datensicherung, REST-API mit interaktiver Dokumentation
+- **Zeitpläne**: täglich, wöchentlich, monatlich (ein Tag des Monats oder z. B. „drei Tage nach dem zweiten
+  Dienstag“), in festen Abständen oder einmalig, auf Wunsch mit Enddatum; ein Lauf, der wegen eines ausgeschalteten
+  Servers ausfiel, wird binnen eines Tages nachgeholt oder ausgelassen. **Pflicht-Verteilungen** halten eine Sammlung
+  versorgt: jedes Mitglied bekommt das Paket einmal, später hinzukommende Rechner folgen von selbst, und der Zeitplan
+  zeigt, wie viele Mitglieder es schon haben
+- Software-Übersicht, CSV-Export, tägliche Datensicherung, REST-API mit interaktiver Dokumentation
 
 ## Screenshots
 

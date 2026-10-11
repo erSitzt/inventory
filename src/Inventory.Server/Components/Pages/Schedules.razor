@@ -37,6 +37,16 @@
         <TemplateColumn Title="@L["Rhythm"]">
             <CellTemplate>@Display.Trigger(context.Item)</CellTemplate>
         </TemplateColumn>
+        <TemplateColumn Title="@L["Fulfilled"]">
+            <CellTemplate>
+                @if (_compliance.TryGetValue(context.Item.Id, out var state))
+                {
+                    <MudTooltip Text="@L["Members of the target on which the package succeeded through this schedule"]">
+                        <MudChip T="string" Size="Size.Small" Color="@(state.Members > 0 && state.Compliant == state.Members ? Color.Success : Color.Warning)">@state.Compliant / @state.Members</MudChip>
+                    </MudTooltip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
         <TemplateColumn Title="@L["Next run"]">
             <CellTemplate>
                 @if (!context.Item.Enabled)
@@ -78,9 +88,16 @@
 
 @code {
     private List<Schedule> _schedules = [];
+    private Dictionary<int, ScheduleService.Compliance> _compliance = [];
     private bool _busy;
 
-    protected override async Task OnInitializedAsync() => _schedules = await ScheduleService.ListAsync();
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _schedules = await ScheduleService.ListAsync();
+        _compliance = await ScheduleService.ComplianceAsync();
+    }
 
     private async Task EditAsync(Schedule? schedule)
     {
@@ -89,7 +106,7 @@
         var parameters = new DialogParameters<EditScheduleDialog> { { d => d.Schedule, schedule } };
         var dialog = await Dialogs.ShowAsync<EditScheduleDialog>(schedule?.Name ?? L["New schedule"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is { Canceled: false })
-            _schedules = await ScheduleService.ListAsync();
+            await ReloadAsync();
     }
 
     private async Task RunNowAsync(Schedule schedule)
@@ -102,7 +119,7 @@
             await Audit.LogAsync(L["Schedule started manually"], schedule.Name);
             var result = await ScheduleService.RunNowAsync(schedule.Id);
             Snackbar.Add($"{schedule.Name}: {result}", result.StartsWith(L["Error"]) ? Severity.Error : Severity.Success);
-            _schedules = await ScheduleService.ListAsync();
+            await ReloadAsync();
         }
         finally
         {

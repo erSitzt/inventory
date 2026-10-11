@@ -17,6 +17,8 @@ public sealed record DeploymentOptions(bool ScanAfter, bool RetryOffline = false
 {
     /// <summary>true = nur freigegebene Pakete; gilt für Operatoren und Zeitpläne, nicht für Administratoren.</summary>
     public bool RequireApproved { get; init; }
+    /// <summary>Der auslösende Zeitplan, damit sich später sagen lässt, auf welchen Rechnern er schon erfolgreich war.</summary>
+    public int? ScheduleId { get; init; }
 }
 
 public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null, MaintenanceService? maintenance = null)
@@ -112,6 +114,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 MaxFailures = options.MaxFailures is > 0 ? options.MaxFailures : null,
                 MaxFailurePercent = options.MaxFailurePercent is > 0 ? Math.Min(options.MaxFailurePercent.Value, 100) : null,
                 MaxParallel = options.MaxParallel is > 0 ? options.MaxParallel : null,
+                ScheduleId = options.ScheduleId,
                 Targets = computers.Select(c => new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.Queued }).ToList(),
             };
             db.Deployments.Add(deployment);

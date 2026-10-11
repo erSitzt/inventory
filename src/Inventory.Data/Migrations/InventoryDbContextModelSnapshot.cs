@@ -1017,12 +1017,17 @@ namespace Inventory.Data.Migrations
                     b.Property<bool>("ScanAfter")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("ScheduleId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("StopReason")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("PackageId");
+
+                    b.HasIndex("ScheduleId");
 
                     b.ToTable("Deployments");
                 });
@@ -1207,6 +1212,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int>("Action")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("CatchUpMissed")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("CollectionId")
                         .HasColumnType("INTEGER");
 
@@ -1215,6 +1223,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<bool>("Enabled")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("EndLocal")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("IntervalMinutes")
                         .HasColumnType("INTEGER");
@@ -1234,6 +1245,18 @@ namespace Inventory.Data.Migrations
                     b.Property<int?>("MaxParallel")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("MonthDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MonthOffsetDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MonthWeek")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MonthWeekday")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1242,6 +1265,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("PackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RecheckDays")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("RespectMaintenanceWindow")
@@ -1449,6 +1475,11 @@ namespace Inventory.Data.Migrations
                     b.HasOne("Inventory.Core.Model.Package", null)
                         .WithMany()
                         .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Inventory.Core.Model.Schedule", null)
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 

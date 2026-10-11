@@ -45,18 +45,110 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
             due = await db.Schedules.Where(s => s.Enabled && s.NextRunUtc != null && s.NextRunUtc <= now).ToListAsync(ct);
 
+        // Nur beim ersten Durchlauf nach dem Start kann ein Termin wegen eines ausgeschalteten Servers verpasst sein;
+        // danach bedeutet Verspätung nur, dass ein früherer Lauf lange gedauert hat.
+        var afterDowntime = !_checkedSinceStart;
+        _checkedSinceStart = true;
+
         foreach (var schedule in due)
         {
+            var late = now - schedule.NextRunUtc!.Value;
+            var missed = afterDowntime && schedule.Trigger is ScheduleTrigger.Daily or ScheduleTrigger.Weekly or ScheduleTrigger.Monthly
+                         && late > (schedule.CatchUpMissed ? CatchUpLimit : MissedAfter);
+            if (missed)
+            {
+                schedule.LastResult = L["Missed: the server was not running at {0}", TimeZoneInfo.ConvertTimeFromUtc(schedule.NextRunUtc.Value, time.LocalTimeZone).ToString("g")];
+                schedule.NextRunUtc = NextUtc(schedule);
+                await StoreAsync(schedule, ct);
+                continue;
+            }
+
             // Erst den nächsten Termin festschreiben: ein Absturz mitten im Lauf darf nicht zur Endlosschleife werden.
             schedule.LastRunUtc = now;
             schedule.NextRunUtc = NextUtc(schedule);
-            schedule.LastResult = L["running"];
-            await StoreAsync(schedule, ct);
+            // Die Pflicht-Verteilung läuft alle paar Minuten und tut meist nichts: der Zwischenstand wäre nur Flackern.
+            if (schedule.Trigger != ScheduleTrigger.OnMembership)
+            {
+                schedule.LastResult = L["running"];
+                await StoreAsync(schedule, ct);
+            }
 
             schedule.LastResult = await RunAsync(schedule, ct);
             await StoreAsync(schedule, ct);
         }
         return due.Count;
+    }
+
+    private bool _checkedSinceStart;
+
+    /// <summary>Ein verpasster Lauf wird höchstens so lange nachgeholt.</summary>
+    public static readonly TimeSpan CatchUpLimit = TimeSpan.FromHours(24);
+    /// <summary>Ohne Nachholen gilt ein Lauf nach dieser Verspätung als verpasst.</summary>
+    public static readonly TimeSpan MissedAfter = TimeSpan.FromHours(1);
+    /// <summary>Eine Pflicht-Verteilung startet je Durchlauf höchstens so viele Rechner und versucht einen fehlgeschlagenen erst nach dieser Frist erneut.</summary>
+    public const int MembershipBatch = 50;
+    public static readonly TimeSpan MembershipRetryAfter = TimeSpan.FromHours(24);
+
+    /// <param name="Compliant">Mitglieder, auf denen das Paket über diesen Zeitplan erfolgreich war.</param>
+    /// <param name="Members">Rechner im Ziel des Zeitplans.</param>
+    public sealed record Compliance(int Compliant, int Members);
+
+    /// <summary>Stand der Pflicht-Verteilungen, je Zeitplan.</summary>
+    public async Task<Dictionary<int, Compliance>> ComplianceAsync(CancellationToken ct = default)
+    {
+        var result = new Dictionary<int, Compliance>();
+        foreach (var schedule in (await ListAsync(ct)).Where(s => s.Trigger == ScheduleTrigger.OnMembership))
+        {
+            var state = await MembershipStateAsync(schedule, ct);
+            result[schedule.Id] = new Compliance(state.Compliant.Count, state.Members.Count);
+        }
+        return result;
+    }
+
+    private sealed record MembershipState(List<int> Members, HashSet<int> Compliant, List<int> Due);
+
+    /// <summary>Wer zum Ziel gehört, wo das Paket schon erfolgreich war und wer jetzt an der Reihe ist.</summary>
+    private async Task<MembershipState> MembershipStateAsync(Schedule schedule, CancellationToken ct)
+    {
+        var members = await TargetIdsAsync(schedule, ct);
+        var now = time.GetUtcNow().UtcDateTime;
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var targets = await db.DeploymentTargets.AsNoTracking()
+            .Join(db.Deployments.Where(d => d.ScheduleId == schedule.Id), t => t.DeploymentId, d => d.Id, (t, d) => t)
+            .Where(t => t.ComputerId != null)
+            .Select(t => new { t.Id, ComputerId = t.ComputerId!.Value, t.Status, t.FinishedUtc })
+            .ToListAsync(ct);
+        // Je Rechner zählt der jüngste Versuch.
+        var latest = targets.GroupBy(t => t.ComputerId).ToDictionary(g => g.Key, g => g.MaxBy(t => t.Id)!);
+        var compliant = new HashSet<int>();
+        var due = new List<int>();
+        foreach (var id in members)
+        {
+            if (!latest.TryGetValue(id, out var last))
+            {
+                due.Add(id);
+            }
+            else if (last.Status.IsSuccess())
+            {
+                compliant.Add(id);
+                if (schedule.RecheckDays > 0 && last.FinishedUtc is { } finished && now - finished >= TimeSpan.FromDays(schedule.RecheckDays))
+                    due.Add(id);
+            }
+            else if (last.Status is TargetStatus.Failed or TargetStatus.Cancelled && (last.FinishedUtc is not { } failed || now - failed >= MembershipRetryAfter))
+            {
+                due.Add(id);
+            }
+            // Alles andere läuft oder wartet noch (offline, Neustart, Wartungsfenster).
+        }
+        return new MembershipState(members, compliant, due);
+    }
+
+    private async Task<List<int>> TargetIdsAsync(Schedule schedule, CancellationToken ct)
+    {
+        if (schedule.CollectionId is { } collectionId)
+            return [.. await collections.GetMemberIdsAsync(collectionId, ct)];
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Computers.Select(c => c.Id).ToListAsync(ct);
     }
 
     /// <summary>Führt den Zeitplan sofort aus, ohne den regulären Rhythmus zu verändern.</summary>
@@ -75,16 +167,10 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
     {
         try
         {
-            List<int> ids;
-            if (schedule.CollectionId is { } collectionId)
-            {
-                ids = (await collections.GetMemberIdsAsync(collectionId, ct)).ToList();
-            }
-            else
-            {
-                await using var db = await dbFactory.CreateDbContextAsync(ct);
-                ids = await db.Computers.Select(c => c.Id).ToListAsync(ct);
-            }
+            if (schedule.Trigger == ScheduleTrigger.OnMembership)
+                return await RunMembershipAsync(schedule, ct);
+
+            var ids = await TargetIdsAsync(schedule, ct);
             if (ids.Count == 0)
                 return L["No computers in the collection"];
 
@@ -98,13 +184,28 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
             if (schedule.PackageId is not { } packageId)
                 return L["No package selected"];
             var deployment = await deployments.StartAsync(packageId, ids, new DeploymentOptions(schedule.ScanAfter, schedule.RetryOffline, schedule.RespectMaintenanceWindow,
-                schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true }, ct);
+                schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true, ScheduleId = schedule.Id }, ct);
             return L["Deployment #{0} started on {1} computers", deployment.Id, deployment.Targets.Count];
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
         {
             return $"Fehler: {ex.Message}";
         }
+    }
+
+    /// <summary>Startet das Paket auf den Mitgliedern, die es über diesen Zeitplan noch nicht (oder nicht mehr aktuell genug) erhalten haben.</summary>
+    private async Task<string> RunMembershipAsync(Schedule schedule, CancellationToken ct)
+    {
+        if (schedule.Action != ScheduleAction.Deploy || schedule.PackageId is not { } packageId)
+            return L["No package selected"];
+        var state = await MembershipStateAsync(schedule, ct);
+        var status = L["{0} of {1} computers have the package", state.Compliant.Count, state.Members.Count].Value;
+        if (state.Due.Count == 0)
+            return status;
+        var batch = state.Due.Take(MembershipBatch).ToList();
+        var deployment = await deployments.StartAsync(packageId, batch, new DeploymentOptions(schedule.ScanAfter, schedule.RetryOffline, schedule.RespectMaintenanceWindow,
+            schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true, ScheduleId = schedule.Id }, ct);
+        return $"{status} – {L["Deployment #{0} started on {1} computers", deployment.Id, deployment.Targets.Count]}";
     }
 
     private DateTime? NextUtc(Schedule schedule)

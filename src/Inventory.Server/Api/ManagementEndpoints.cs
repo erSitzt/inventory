@@ -33,11 +33,13 @@ public static class ManagementEndpoints
 
     public sealed record ScheduleRequest(string Name, ScheduleAction Action, ScheduleTrigger Trigger, bool Enabled = true, int? PackageId = null, int? CollectionId = null,
         bool ScanAfter = true, bool RetryOffline = true, DateTime? StartLocal = null, int IntervalMinutes = 60, TimeSpan? TimeOfDay = null, int DaysOfWeek = 0,
-        bool RespectMaintenanceWindow = true, int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null);
+        bool RespectMaintenanceWindow = true, int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null,
+        int MonthDay = 1, int MonthWeek = 2, int MonthWeekday = 2, int MonthOffsetDays = 0, DateTime? EndLocal = null, bool CatchUpMissed = true, int RecheckDays = 0);
 
     public sealed record ScheduleDto(int Id, string Name, bool Enabled, ScheduleAction Action, int? PackageId, int? CollectionId, bool ScanAfter, bool RetryOffline,
         ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult, bool RespectMaintenanceWindow,
-        int? MaxFailures, int? MaxFailurePercent, int? MaxParallel);
+        int? MaxFailures, int? MaxFailurePercent, int? MaxParallel,
+        int MonthDay = 1, int MonthWeek = 2, int MonthWeekday = 2, int MonthOffsetDays = 0, DateTime? EndLocal = null, bool CatchUpMissed = true, int RecheckDays = 0);
 
     public sealed record DeploymentSummaryDto(int Id, int? PackageId, string PackageName, string? PackageVersion, DateTime CreatedUtc, DateTime? FinishedUtc,
         int Targets, int Succeeded, int AlreadyInstalled, int Failed, int Waiting);
@@ -323,7 +325,8 @@ public static class ManagementEndpoints
         [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall, p.ApprovedBy, p.ApprovedUtc);
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
-        s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow, s.MaxFailures, s.MaxFailurePercent, s.MaxParallel);
+        s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow, s.MaxFailures, s.MaxFailurePercent, s.MaxParallel,
+        s.MonthDay, s.MonthWeek, s.MonthWeekday, s.MonthOffsetDays, s.EndLocal, s.CatchUpMissed, s.RecheckDays);
 
     private static Schedule Apply(Schedule s, ScheduleRequest r)
     {
@@ -335,6 +338,12 @@ public static class ManagementEndpoints
             throw new ArgumentException("daysOfWeek is required for trigger Weekly");
         if (r.Trigger == ScheduleTrigger.Once && r.StartLocal is null)
             throw new ArgumentException("startLocal is required for trigger Once");
+        if (r.Trigger == ScheduleTrigger.OnMembership && r.Action != ScheduleAction.Deploy)
+            throw new ArgumentException("trigger OnMembership requires action Deploy");
+        if (r.Trigger == ScheduleTrigger.Monthly && (r.MonthDay is < 0 or > 31 || r.MonthWeek is < 1 or > 5 || r.MonthWeekday is < 0 or > 6 || r.MonthOffsetDays is < 0 or > 27))
+            throw new ArgumentException("monthly: monthDay 0–31 (0 = use monthWeek 1–5 and monthWeekday 0–6), monthOffsetDays 0–27");
+        (s.MonthDay, s.MonthWeek, s.MonthWeekday, s.MonthOffsetDays) = (r.MonthDay, r.MonthWeek, r.MonthWeekday, r.MonthOffsetDays);
+        (s.EndLocal, s.CatchUpMissed, s.RecheckDays) = (r.EndLocal, r.CatchUpMissed, Math.Clamp(r.RecheckDays, 0, 365));
         (s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline) = (r.Name, r.Enabled, r.Action, r.PackageId, r.CollectionId, r.ScanAfter, r.RetryOffline);
         (s.Trigger, s.StartLocal, s.IntervalMinutes, s.DaysOfWeek) = (r.Trigger, r.StartLocal, Math.Max(r.IntervalMinutes, 1), r.DaysOfWeek);
         s.TimeOfDay = r.TimeOfDay ?? s.TimeOfDay;

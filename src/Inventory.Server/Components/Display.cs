@@ -431,6 +431,19 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         ScheduleTrigger.Interval => s.IntervalMinutes % 60 == 0 ? T("every {0} hours", s.IntervalMinutes / 60) : T("every {0} minutes", s.IntervalMinutes),
         ScheduleTrigger.Daily => T("daily at {0}", s.TimeOfDay.ToString(@"hh\:mm")),
         ScheduleTrigger.Weekly => T("{0} at {1}", string.Join(", ", WeekDays.Where(d => (s.DaysOfWeek & (1 << (int)d)) != 0).Select(Day)), s.TimeOfDay.ToString(@"hh\:mm")),
+        ScheduleTrigger.Monthly => T("monthly, {0} at {1}", MonthlyDay(s), s.TimeOfDay.ToString(@"hh\:mm")),
+        ScheduleTrigger.OnMembership => s.RecheckDays > 0 ? T("required for every member, checked again every {0} days", s.RecheckDays) : T("required for every member"),
         _ => s.Trigger.ToString(),
-    };
+    } + (s.EndLocal is { } end ? ", " + T("until {0}", end.ToString("d")) : "");
+
+    /// <summary>"am 15.", "am 2. Dienstag" oder "3 Tage nach dem 2. Dienstag".</summary>
+    private string MonthlyDay(Schedule s)
+    {
+        var day = s.MonthDay > 0
+            ? T("on day {0}", s.MonthDay)
+            : s.MonthWeek >= 5 ? T("on the last {0}", WeekdayName(s.MonthWeekday)) : T("on the {0}. {1}", s.MonthWeek, WeekdayName(s.MonthWeekday));
+        return s.MonthOffsetDays > 0 ? T("{0} days after: {1}", s.MonthOffsetDays, day) : day;
+    }
+
+    public string WeekdayName(int day) => CultureInfo.CurrentCulture.DateTimeFormat.GetDayName((DayOfWeek)(((day % 7) + 7) % 7));
 }
