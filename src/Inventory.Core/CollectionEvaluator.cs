@@ -7,16 +7,19 @@ namespace Inventory.Core;
 /// <summary>Wertet die Regeln dynamischer Sammlungen gegen einen Rechner (mit geladener Software) aus.</summary>
 public static class CollectionEvaluator
 {
-    public static bool Matches(Collection collection, Computer computer)
+    /// <param name="context">Die übrigen Sammlungen, für Regeln "Mitglied der Sammlung"; ohne sie passt eine solche Regel auf nichts.</param>
+    public static bool Matches(Collection collection, Computer computer, RuleContext? context = null) => Matches(collection, computer, context, 0);
+
+    internal static bool Matches(Collection collection, Computer computer, RuleContext? context, int depth)
     {
         if (collection.Rules.Count == 0)
             return false;
         return collection.MatchAll
-            ? collection.Rules.All(r => Matches(r, computer))
-            : collection.Rules.Any(r => Matches(r, computer));
+            ? collection.Rules.All(r => Matches(r, computer, context, depth))
+            : collection.Rules.Any(r => Matches(r, computer, context, depth));
     }
 
-    public static bool Matches(CollectionRule rule, Computer computer) => rule.Field switch
+    public static bool Matches(CollectionRule rule, Computer computer, RuleContext? context = null, int depth = 0) => rule.Field switch
     {
         RuleField.ComputerName => Text(rule, computer.Name),
         RuleField.NameMismatch => Flag(rule, computer.NameMismatch),
@@ -64,6 +67,26 @@ public static class CollectionEvaluator
         RuleField.InventoryNumber => Text(rule, computer.InventoryNumber),
         RuleField.PrimaryUser => Text(rule, computer.PrimaryUser),
         RuleField.WarrantyDaysLeft => Number(rule, computer.WarrantyDaysLeft(DateOnly.FromDateTime(DateTime.Now))),
+        RuleField.Domain => Text(rule, computer.Domain),
+        RuleField.SerialNumber => Text(rule, computer.SerialNumber),
+        RuleField.CpuName => Text(rule, computer.CpuName),
+        RuleField.OsArchitecture => Text(rule, computer.OsArchitecture),
+        RuleField.IpAddress => Text(rule, computer.IpAddress),
+        RuleField.FirmwareType => Text(rule, computer.FirmwareType),
+        RuleField.Gpu => Text(rule, computer.Gpu),
+        RuleField.DeviceType => computer.ChassisType is not null && Text(rule, Chassis.Kind(computer.ChassisType, computer.Model).ToString()),
+        RuleField.DiskFreeGb => Number(rule, computer.Disks.FirstOrDefault(d => d.Drive.StartsWith("C", StringComparison.OrdinalIgnoreCase)) is { } system
+            ? (int)(system.FreeBytes / (1L << 30)) : null),
+        RuleField.BatteryHealthPercent => Number(rule, computer.BatteryHealthPercent),
+        RuleField.DaysSinceBoot => Number(rule, computer.LastBootUtc is { } boot ? (int)(DateTime.UtcNow - boot).TotalDays : null),
+        RuleField.ScanAgeDays => Number(rule, computer.LastScanUtc is { } scan ? (int)(DateTime.UtcNow - scan).TotalDays : null),
+        RuleField.AgentPresent => Flag(rule, computer.AgentKeyHash is not null),
+        RuleField.SecureBoot => Known(rule, computer.SecureBoot),
+        RuleField.TpmReady => Known(rule, computer.TpmPresent == false ? false : computer.TpmReady),
+        RuleField.SystemDriveProtected => Known(rule, computer.SystemDriveProtected),
+        RuleField.DiskHealthProblem => Known(rule, computer.PhysicalDisks.Count == 0 ? null : computer.PhysicalDisks.Any(d => d.Health is not (null or "Healthy"))),
+        RuleField.Service => Service(rule, computer),
+        RuleField.InCollection => context is not null && context.InCollection(rule, computer, depth),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         _ => false,
     };
@@ -85,6 +108,17 @@ public static class CollectionEvaluator
         var found = computer.Software.Any(s =>
             Text(positive, s.Name)
             && (string.IsNullOrWhiteSpace(rule.Value2) || CompareVersions(s.Version, rule.Value2) < 0));
+        return negated ? !found : found;
+    }
+
+    /// <summary>Dienst mit diesem Namen (und optional diesem Zustand) vorhanden; verneint: keiner.</summary>
+    private static bool Service(CollectionRule rule, Computer computer)
+    {
+        var negated = rule.Operator is RuleOperator.NotContains or RuleOperator.NotEquals;
+        var positive = new CollectionRule { Operator = negated ? RuleOperator.Equals : rule.Operator, Value = rule.Value };
+        var found = computer.Services.Any(s =>
+            (Text(positive, s.Name) || Text(positive, s.DisplayName))
+            && (string.IsNullOrWhiteSpace(rule.Value2) || string.Equals(s.State, rule.Value2.Trim(), StringComparison.OrdinalIgnoreCase)));
         return negated ? !found : found;
     }
 
@@ -133,8 +167,9 @@ public static class CollectionEvaluator
         {
             RuleOperator.Contains => actual.Contains(value, StringComparison.OrdinalIgnoreCase),
             RuleOperator.NotContains => !actual.Contains(value, StringComparison.OrdinalIgnoreCase),
-            RuleOperator.Equals => actual.Equals(value, StringComparison.OrdinalIgnoreCase),
-            RuleOperator.NotEquals => !actual.Equals(value, StringComparison.OrdinalIgnoreCase),
+            // Ein * im Wert steht für beliebig viele Zeichen: "PC-*-01" oder "*laptop*".
+            RuleOperator.Equals => value.Contains('*') ? Wildcard(value, actual) : actual.Equals(value, StringComparison.OrdinalIgnoreCase),
+            RuleOperator.NotEquals => !(value.Contains('*') ? Wildcard(value, actual) : actual.Equals(value, StringComparison.OrdinalIgnoreCase)),
             RuleOperator.StartsWith => actual.StartsWith(value, StringComparison.OrdinalIgnoreCase),
             // Ohne Wert gibt es nichts zu vergleichen: ein nicht gescannter Rechner ist weder "kleiner" noch "größer".
             RuleOperator.LessThan => actual.Length > 0 && CompareVersions(actual, value) < 0,
@@ -143,5 +178,81 @@ public static class CollectionEvaluator
         };
     }
 
+    private static bool Wildcard(string pattern, string actual) =>
+        System.Text.RegularExpressions.Regex.IsMatch(actual, "^" + string.Join(".*", pattern.Split('*').Select(System.Text.RegularExpressions.Regex.Escape)) + "$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
+
+    /// <summary>Child-Tabellen des Rechners, die ein Feld zum Auswerten braucht.</summary>
+    public static IEnumerable<string> RequiredData(RuleField field) => field switch
+    {
+        RuleField.Software => [nameof(Computer.Software)],
+        RuleField.LocalAdmin => [nameof(Computer.LocalAdmins)],
+        RuleField.Hotfix => [nameof(Computer.Hotfixes)],
+        RuleField.PendingUpdate => [nameof(Computer.PendingUpdates)],
+        RuleField.Service => [nameof(Computer.Services)],
+        RuleField.DiskFreeGb => [nameof(Computer.Disks)],
+        RuleField.DiskHealthProblem => [nameof(Computer.PhysicalDisks)],
+        _ => [],
+    };
+
     public static int CompareVersions(string? left, string? right) => VersionComparer.Compare(left, right);
+
+}
+
+/// <summary>Alle Sammlungen, damit eine Regel auf die Mitgliedschaft in einer anderen Sammlung prüfen kann.</summary>
+/// <param name="collections">Mit geladenen Mitgliedern (für statische Sammlungen).</param>
+public sealed class RuleContext(IEnumerable<Collection> collections)
+{
+    /// <summary>So tief dürfen Sammlungen ineinander verweisen; das begrenzt auch den Schaden eines Kreises, den das Speichern nicht verhindert hat.</summary>
+    public const int MaxDepth = 3;
+
+    private readonly Dictionary<int, Collection> _byId = collections.ToDictionary(c => c.Id);
+    private readonly Dictionary<int, HashSet<int>> _staticMembers = [];
+
+    public Collection? Find(int id) => _byId.GetValueOrDefault(id);
+
+    internal bool InCollection(CollectionRule rule, Computer computer, int depth)
+    {
+        var negated = rule.Operator is RuleOperator.NotEquals or RuleOperator.NotContains;
+        // Eine gelöschte oder zu tief verschachtelte Sammlung hat keine Mitglieder; auch "nicht Mitglied" soll dann nicht alle treffen.
+        if (!int.TryParse(rule.Value.Trim(), out var id) || !_byId.TryGetValue(id, out var target) || (target.IsDynamic && depth >= MaxDepth))
+            return false;
+        bool member;
+        if (target.IsDynamic)
+        {
+            member = CollectionEvaluator.Matches(target, computer, this, depth + 1);
+        }
+        else
+        {
+            if (!_staticMembers.TryGetValue(id, out var members))
+                _staticMembers[id] = members = target.Members.Select(m => m.Id).ToHashSet();
+            member = members.Contains(computer.Id);
+        }
+        return negated ? !member : member;
+    }
+
+    /// <summary>Kennungen der Sammlungen, auf die diese Sammlung direkt verweist.</summary>
+    public static IEnumerable<int> References(Collection collection) =>
+        collection.Rules.Where(r => r.Field == RuleField.InCollection).Select(r => int.TryParse(r.Value.Trim(), out var id) ? id : 0).Where(id => id > 0).Distinct();
+
+    /// <summary>Länge der längsten Verweiskette ab dieser Sammlung; -1, wenn sie im Kreis führt.</summary>
+    public int Depth(Collection collection) => Depth(collection, []);
+
+    private int Depth(Collection collection, HashSet<int> path)
+    {
+        if (!path.Add(collection.Id))
+            return -1;
+        var deepest = 0;
+        foreach (var id in References(collection))
+        {
+            if (!_byId.TryGetValue(id, out var next))
+                continue;
+            var below = Depth(next, path);
+            if (below < 0)
+                return -1;
+            deepest = Math.Max(deepest, below + 1);
+        }
+        path.Remove(collection.Id);
+        return deepest;
+    }
 }

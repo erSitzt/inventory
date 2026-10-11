@@ -20,6 +20,9 @@
   <data name="(automatic)" xml:space="preserve">
     <value>(automatisch)</value>
   </data>
+  <data name="(deleted collection)" xml:space="preserve">
+    <value>(gelöschte Sammlung)</value>
+  </data>
   <data name="(domain)" xml:space="preserve">
     <value>(Domäne)</value>
   </data>
@@ -37,6 +40,9 @@
   </data>
   <data name="1 year" xml:space="preserve">
     <value>1 Jahr</value>
+  </data>
+  <data name="A collection cannot refer to itself." xml:space="preserve">
+    <value>Eine Sammlung kann nicht auf sich selbst verweisen.</value>
   </data>
   <data name='A collection named "{0}" already exists.' xml:space="preserve">
     <value>Es gibt bereits eine Sammlung mit dem Namen „{0}“.</value>
@@ -157,6 +163,9 @@
   </data>
   <data name="Agent installation started" xml:space="preserve">
     <value>Agent-Installation gestartet</value>
+  </data>
+  <data name="Agent installed" xml:space="preserve">
+    <value>Agent installiert</value>
   </data>
   <data name='Agent installed on {0} computers. They show as "Agent" as soon as the service reports in.' xml:space="preserve">
     <value>Agent auf {0} Rechnern installiert. Sie erscheinen als „Agent“, sobald sich der Dienst meldet.</value>
@@ -431,6 +440,9 @@
   <data name="Collections" xml:space="preserve">
     <value>Sammlungen</value>
   </data>
+  <data name="Collections may refer to each other at most {0} levels deep." xml:space="preserve">
+    <value>Sammlungen dürfen höchstens {0} Ebenen tief aufeinander verweisen.</value>
+  </data>
   <data name="Combination" xml:space="preserve">
     <value>Verknüpfung</value>
   </data>
@@ -619,6 +631,12 @@
   </data>
   <data name="Days since last AD logon" xml:space="preserve">
     <value>Tage seit der letzten AD-Anmeldung</value>
+  </data>
+  <data name="Days since last boot" xml:space="preserve">
+    <value>Tage seit dem letzten Start</value>
+  </data>
+  <data name="Days since last scan" xml:space="preserve">
+    <value>Tage seit dem letzten Scan</value>
   </data>
   <data name="Days since last update installation" xml:space="preserve">
     <value>Tage seit letzter Update-Installation</value>
@@ -974,6 +992,9 @@
   <data name="Free" xml:space="preserve">
     <value>Frei</value>
   </data>
+  <data name="Free space on the system drive (GB)" xml:space="preserve">
+    <value>Freier Platz auf dem Systemlaufwerk (GB)</value>
+  </data>
   <data name="From" xml:space="preserve">
     <value>Von</value>
   </data>
@@ -1327,6 +1348,9 @@
   </data>
   <data name="Member" xml:space="preserve">
     <value>Mitglied</value>
+  </data>
+  <data name="Member of collection" xml:space="preserve">
+    <value>Mitglied der Sammlung</value>
   </data>
   <data name="Memory" xml:space="preserve">
     <value>Arbeitsspeicher</value>
@@ -1883,6 +1907,9 @@
   <data name="Physical disk" xml:space="preserve">
     <value>Physischer Datenträger</value>
   </data>
+  <data name="Physical disk reports a problem" xml:space="preserve">
+    <value>Physischer Datenträger meldet ein Problem</value>
+  </data>
   <data name="Physical disks" xml:space="preserve">
     <value>Physische Datenträger</value>
   </data>
@@ -2336,6 +2363,9 @@
   <data name="Secure Boot" xml:space="preserve">
     <value>Secure Boot</value>
   </data>
+  <data name="Secure Boot on" xml:space="preserve">
+    <value>Secure Boot an</value>
+  </data>
   <data name="Security" xml:space="preserve">
     <value>Sicherheit</value>
   </data>
@@ -2573,6 +2603,9 @@
   <data name="Stop at failure rate (%)" xml:space="preserve">
     <value>Anhalten ab Fehlerquote (%)</value>
   </data>
+  <data name="stopped" xml:space="preserve">
+    <value>beendet</value>
+  </data>
   <data name="Stopped: {0} of {1} finished computers failed" xml:space="preserve">
     <value>Angehalten: {0} von {1} abgeschlossenen Rechnern fehlgeschlagen</value>
   </data>
@@ -2641,6 +2674,9 @@
   </data>
   <data name="The checksum of {0} does not match the release; the file was discarded." xml:space="preserve">
     <value>Die Prüfsumme von {0} stimmt nicht mit dem Release überein; die Datei wurde verworfen.</value>
+  </data>
+  <data name="The collection referenced by a rule does not exist (anymore)." xml:space="preserve">
+    <value>Die Sammlung, auf die eine Regel verweist, gibt es nicht (mehr).</value>
   </data>
   <data name="The computer account is disabled in Active Directory" xml:space="preserve">
     <value>Das Computerkonto ist im Active Directory deaktiviert</value>
@@ -2768,8 +2804,14 @@
   <data name="These entries are not part of the base selection and come unchanged from the winget manifests. The checksum secures the download, but only a test shows whether the silent parameters are right – try it on a single computer before deploying." xml:space="preserve">
     <value>Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download, aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.</value>
   </data>
+  <data name="These rules would make collections refer to each other in a circle." xml:space="preserve">
+    <value>Mit diesen Regeln würden Sammlungen im Kreis aufeinander verweisen.</value>
+  </data>
   <data name="This collection contains no computers." xml:space="preserve">
     <value>Diese Sammlung enthält keine Rechner.</value>
+  </data>
+  <data name="This collection is used in the rules of: {0}. Change those rules first." xml:space="preserve">
+    <value>Diese Sammlung wird in den Regeln von {0} verwendet. Bitte zuerst diese Regeln ändern.</value>
   </data>
   <data name="This computer does not exist (anymore)." xml:space="preserve">
     <value>Dieser Rechner existiert nicht (mehr).</value>
@@ -3125,6 +3167,9 @@
   <data name="Windows PowerShell 5.1, 64 bit. The script's exit code (exit N) decides about success." xml:space="preserve">
     <value>Windows PowerShell 5.1, 64 Bit. Der Exitcode des Skripts (exit N) entscheidet über Erfolg.</value>
   </data>
+  <data name="Windows service" xml:space="preserve">
+    <value>Windows-Dienst</value>
+  </data>
   <data name="Windows sign-in" xml:space="preserve">
     <value>Windows-Anmeldung</value>
   </data>
@@ -3145,6 +3190,9 @@
   </data>
   <data name="WinRM access to {0} failed: {1}" xml:space="preserve">
     <value>WinRM-Zugriff auf {0} fehlgeschlagen: {1}</value>
+  </data>
+  <data name='With "equals", a * in the value stands for any characters, e.g. PC-*-01. "Member of collection" lets you combine collections, up to {0} levels deep.' xml:space="preserve">
+    <value>Bei „ist gleich“ steht ein * im Wert für beliebige Zeichen, z. B. PC-*-01. Mit „Mitglied der Sammlung“ lassen sich Sammlungen kombinieren, bis zu {0} Ebenen tief.</value>
   </data>
   <data name="With agent" xml:space="preserve">
     <value>Mit Agent</value>

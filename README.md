@@ -29,7 +29,9 @@ credentials. The user interface is available in English and German; translations
 - **Hardware and platform security**: device type (desktop/laptop/server/virtual machine), UEFI and Secure Boot, TPM,
   BitLocker per volume, graphics, memory modules and free slots, physical disks with type and health, battery health,
   monitors and printers
-- **Collections**: static or dynamic via rules (e.g. "Chrome installed with version below 141")
+- **Collections**: static or dynamic via rules (e.g. "Chrome installed with version below 141"). Rules exist for
+  software, hardware, security state, updates, Active Directory, asset data, services, network and scan age; `*` works
+  as a wildcard with "equals", and "member of collection" combines collections (up to three levels deep)
 - **Remote command** (cmd/PowerShell) with live output
 - **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
   embedded package – each with conditions and error handling; steps after a reboot continue automatically once the

@@ -26,7 +26,7 @@
                 {
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                         <MudSelect T="RuleField" Value="rule.Field" ValueChanged="@(f => SetField(rule, f))" Label="@L["Field"]" Variant="Variant.Outlined" Margin="Margin.Dense">
-                            @foreach (var field in Enum.GetValues<RuleField>())
+                            @foreach (var field in Fields)
                             {
                                 <MudSelectItem T="RuleField" Value="field">@Display.Field(field)</MudSelectItem>
                             }
@@ -44,9 +44,34 @@
                                 <MudSelectItem T="string" Value="@("false")">@L["no"]</MudSelectItem>
                             </MudSelect>
                         }
+                        else if (rule.Field == RuleField.InCollection)
+                        {
+                            <MudSelect T="string" @bind-Value="rule.Value" Label="@L["Collection"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                @foreach (var other in _others)
+                                {
+                                    <MudSelectItem T="string" Value="@other.Id.ToString()">@other.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                        else if (rule.Field == RuleField.DeviceType)
+                        {
+                            <MudSelect T="string" @bind-Value="rule.Value" Label="@L["Value"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                @foreach (var kind in Enum.GetValues<ChassisKind>().Where(k => k != ChassisKind.Unknown))
+                                {
+                                    <MudSelectItem T="string" Value="@kind.ToString()">@L[Chassis.Label(kind)]</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
                         else
                         {
-                            <MudTextField @bind-Value="rule.Value" Label="@(rule.Field == RuleField.Software ? L["Program name"] : L["Value"])" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+                            <MudTextField @bind-Value="rule.Value" Label="@(rule.Field switch { RuleField.Software => L["Program name"], RuleField.Service => L["Service name"], _ => L["Value"] })" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+                        }
+                        @if (rule.Field == RuleField.Service && rule.Operator is not RuleOperator.NotEquals)
+                        {
+                            <MudSelect T="string" @bind-Value="rule.Value2" Label="@L["State"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["any"]">
+                                <MudSelectItem T="string" Value="@("Running")">@Display.ServiceState("Running")</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Stopped")">@Display.ServiceState("Stopped")</MudSelectItem>
+                            </MudSelect>
                         }
                         @if (rule.Field == RuleField.Software && rule.Operator is not (RuleOperator.NotContains or RuleOperator.NotEquals))
                         {
@@ -58,6 +83,7 @@
                 <div>
                     <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _rules.Add(new CollectionRule()))">@L["Add rule"]</MudButton>
                 </div>
+                <MudText Typo="Typo.caption">@L["With \"equals\", a * in the value stands for any characters, e.g. PC-*-01. \"Member of collection\" lets you combine collections, up to {0} levels deep.", RuleContext.MaxDepth]</MudText>
             }
             <MaintenanceWindowEditor @bind-Value="_window" Label="@L["Maintenance window"]" />
             <MudText Typo="Typo.caption">@L["Deployments that respect maintenance windows run on the members only during this period. A computer in several collections may run as soon as one of their windows is open."]</MudText>
@@ -85,6 +111,13 @@
     private List<CollectionRule> _rules = [];
     private string? _error;
     private MaintenanceWindow? _window;
+    private List<Collection> _others = [];
+
+    /// <summary>Nach Bezeichnung geordnet: bei dieser Zahl von Feldern findet man sie sonst nicht.</summary>
+    private IEnumerable<RuleField> Fields => Enum.GetValues<RuleField>().OrderBy(f => Display.Field(f), StringComparer.CurrentCultureIgnoreCase);
+
+    protected override async Task OnInitializedAsync() =>
+        _others = (await CollectionService.ListAsync()).Select(s => s.Collection).Where(c => c.Id != Collection?.Id).ToList();
 
     private bool CanSave => !string.IsNullOrWhiteSpace(_name) && (!IsDynamic || _rules.Any(r => !string.IsNullOrWhiteSpace(r.Value)));
 
@@ -130,6 +163,11 @@
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)
         {
             _error = L["A collection named \"{0}\" already exists.", _name.Trim()];
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Verweise auf andere Sammlungen: Kreis, zu tief oder nicht mehr vorhanden.
+            _error = ex.Message;
         }
     }
 }

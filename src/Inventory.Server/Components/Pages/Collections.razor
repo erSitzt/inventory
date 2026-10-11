@@ -71,7 +71,8 @@
 
     private string Describe(Collection collection) =>
         string.Join(collection.MatchAll ? $" {L["AND"]} " : $" {L["OR"]} ", collection.Rules.Select(r =>
-            $"{Display.Field(r.Field)} {Display.Operator(r.Operator)} „{r.Value}“" + (string.IsNullOrWhiteSpace(r.Value2) ? "" : $" (Version < {r.Value2})")));
+            $"{Display.Field(r.Field)} {Display.Operator(r.Operator)} „{Display.RuleValue(r, id => _collections.FirstOrDefault(c => c.Collection.Id == id)?.Collection.Name)}“"
+            + (r.Field == RuleField.Software && !string.IsNullOrWhiteSpace(r.Value2) ? $" (Version < {r.Value2})" : "")));
 
     private async Task EditAsync(Collection? collection, bool isDynamic)
     {
@@ -96,7 +97,16 @@
             L["Really delete \"{0}\"? The computers themselves are kept.", collection.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;
-        await CollectionService.DeleteAsync(collection.Id);
+        try
+        {
+            await CollectionService.DeleteAsync(collection.Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Eine andere Sammlung verweist in ihren Regeln auf diese.
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
         await Audit.LogAsync(L["Collection deleted"], collection.Name);
         Snackbar.Add(L["Collection deleted."], Severity.Success);
         _collections = await CollectionService.ListAsync();

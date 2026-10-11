@@ -70,6 +70,33 @@ public enum RuleField
     WarrantyDaysLeft = 129,
     PrimaryUser = 130,
     InventoryNumber = 131,
+    Domain = 132,
+    SerialNumber = 133,
+    CpuName = 134,
+    OsArchitecture = 135,
+    /// <summary>"beginnt mit 10.20." wählt ein Subnetz.</summary>
+    IpAddress = 136,
+    /// <summary>Freier Platz auf dem Systemlaufwerk in GB.</summary>
+    DiskFreeGb = 137,
+    DaysSinceBoot = 138,
+    /// <summary>Tage seit dem letzten erfolgreichen Scan.</summary>
+    ScanAgeDays = 139,
+    AgentPresent = 140,
+    /// <summary>Windows-Dienst nach Name; <see cref="CollectionRule.Value2"/> grenzt optional auf "Running" oder "Stopped" ein.</summary>
+    Service = 141,
+    /// <summary>Mitglied einer anderen Sammlung; der Wert ist deren Kennung.</summary>
+    InCollection = 142,
+    /// <summary>Geräteklasse: Desktop, Laptop, Tablet, Server oder VirtualMachine.</summary>
+    DeviceType = 143,
+    SecureBoot = 144,
+    TpmReady = 145,
+    /// <summary>BitLocker-Schutz des Systemlaufwerks ist eingeschaltet.</summary>
+    SystemDriveProtected = 146,
+    FirmwareType = 147,
+    Gpu = 148,
+    BatteryHealthPercent = 149,
+    /// <summary>Mindestens ein physischer Datenträger meldet einen anderen Zustand als "in Ordnung".</summary>
+    DiskHealthProblem = 150,
     Online = 1,
     Scanned,
     OsName,
