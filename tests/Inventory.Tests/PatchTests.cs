@@ -76,6 +76,29 @@ public class PatchTests
     }
 
     [Fact]
+    public async Task Titles_stored_before_the_details_existed_are_turned_into_entries_once()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var id = (await computers.ImportAsync("pc-01"))[0].Id;
+        await using (var context = db.CreateDbContext())
+        {
+            var computer = await context.Computers.FindAsync(id);
+            computer!.UpdatePendingCount = 2;
+            computer.UpdatePending = Cumulative.Title + "\n" + "Update for Microsoft Defender Antivirus antimalware platform";
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, await store.BackfillPendingUpdatesAsync());
+        Assert.Equal(0, await store.BackfillPendingUpdatesAsync());
+
+        var detail = (await computers.GetDetailAsync(id))!;
+        Assert.Equal(1, detail.UpdatePendingSecurityCount);
+        Assert.Equal(["KB5066835", null], detail.PendingUpdates.OrderBy(u => u.Title).Select(u => u.KbIds));
+    }
+
+    [Fact]
     public void Rules_match_hotfixes_pending_updates_and_the_security_count()
     {
         static bool Matches(RuleField field, RuleOperator op, string value, Computer computer) =>

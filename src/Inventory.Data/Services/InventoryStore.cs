@@ -227,6 +227,36 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         return computer.NameMismatch;
     }
 
+    /// <summary>
+    /// Einmalig nach dem Update des Servers: Rechner, deren letzter Scan nur die Titel der ausstehenden Updates gespeichert
+    /// hat, bekommen daraus ihre Einträge, damit die Update-Übersicht nicht erst nach dem nächsten Scan stimmt.
+    /// </summary>
+    /// <returns>Anzahl der ergänzten Rechner.</returns>
+    public async Task<int> BackfillPendingUpdatesAsync(CancellationToken ct = default)
+    {
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+            var computers = await db.Computers.Where(c => c.UpdatePendingCount != null && c.UpdatePendingSecurityCount == null).ToListAsync(ct);
+            foreach (var computer in computers)
+            {
+                var rows = PendingUpdateRows(computer.Id, new SecurityStatus
+                {
+                    UpdatePending = (computer.UpdatePending ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                })!;
+                db.PendingUpdates.AddRange(rows);
+                computer.UpdatePendingSecurityCount = rows.Count(u => u.IsSecurity);
+            }
+            await db.SaveChangesAsync(ct);
+            return computers.Count;
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
     /// <summary>Ausstehende Updates eines Scans; ältere Runner liefern nur Titel, aus denen die KB-Nummer gelesen wird.</summary>
     private static List<ComputerPendingUpdate>? PendingUpdateRows(int computerId, SecurityStatus security)
     {
