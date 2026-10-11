@@ -278,7 +278,7 @@
         _updateBusy = true;
         try
         {
-            var error = await Updates.ApplyAsync(await Audit.UserNameAsync());
+            var error = await Updates.ApplyAsync(await Audit.ActorAsync());
             _updateMessage = error ?? L["The update to {0} is running. The service restarts shortly; reload this page afterwards.", Updates.Latest?.Version];
             _updateSeverity = error is null ? Severity.Info : Severity.Error;
         }

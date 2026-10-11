@@ -34,11 +34,12 @@ public sealed class SignInLog(AuditService audit, TimeProvider time, ILogger<Sig
     /// <summary>Entspricht der Laufzeit des Sitzungs-Cookies.</summary>
     public static readonly TimeSpan Window = TimeSpan.FromHours(10);
     private const int MaxTracked = 10_000;
+    private readonly object _gate = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _seen = new(StringComparer.OrdinalIgnoreCase);
 
     public Task SignedInAsync(AuditActor actor, string action, string method) => WriteAsync(actor, action, method);
 
-    public Task DeniedAsync(string user, string action, string method) => WriteAsync(new AuditActor(user, null, AuditSource.Web), action, method);
+    public Task DeniedAsync(string user, string action, string method, AuditSource source = AuditSource.Web) => WriteAsync(new AuditActor(user, null, source), action, method);
 
     public Task SignedOutAsync(AuditActor actor, string action) => WriteAsync(actor, action, null);
 
@@ -47,18 +48,24 @@ public sealed class SignInLog(AuditService audit, TimeProvider time, ILogger<Sig
     {
         var now = time.GetUtcNow();
         var key = (allowed ? "+" : "-") + user;
+        // Der häufige Fall ohne Sperre; nur wer einen Eintrag schreiben will, prüft unter der Sperre erneut.
         if (_seen.TryGetValue(key, out var last) && now - last < Window)
             return false;
-        if (_seen.Count >= MaxTracked)
+        lock (_gate)
         {
-            foreach (var old in _seen.Where(p => now - p.Value >= Window).Select(p => p.Key).ToList())
-                _seen.TryRemove(old, out _);
-            // Lieber einen Eintrag zu wenig als unbegrenzt wachsender Speicher durch frei wählbare Namen.
-            if (_seen.Count >= MaxTracked)
+            if (_seen.TryGetValue(key, out last) && now - last < Window)
                 return false;
+            if (_seen.Count >= MaxTracked)
+            {
+                foreach (var old in _seen.Where(p => now - p.Value >= Window).Select(p => p.Key).ToList())
+                    _seen.TryRemove(old, out _);
+                // Lieber einen Eintrag zu wenig als unbegrenzt wachsender Speicher durch frei wählbare Namen.
+                if (_seen.Count >= MaxTracked)
+                    return false;
+            }
+            _seen[key] = now;
+            return true;
         }
-        _seen[key] = now;
-        return true;
     }
 
     private async Task WriteAsync(AuditActor actor, string action, string? details)
@@ -82,14 +89,16 @@ public sealed class WindowsSignInAuditMiddleware(RequestDelegate next, SignInLog
     {
         var user = http.User;
         // Anmeldungen mit Sitzungs-Cookie und API-Tokens tragen das Kennzeichen und werden an anderer Stelle bzw. gar nicht erfasst.
-        if (user.Identity is { IsAuthenticated: true, Name: { Length: > 0 } name } && !user.HasClaim(c => c.Type == AccessControl.AccessClaim))
+        // Die Anmeldeseite protokolliert ihre Windows-Anmeldung selbst (erlaubt wie abgelehnt).
+        if (user.Identity is { IsAuthenticated: true, Name: { Length: > 0 } name } && !user.HasClaim(c => c.Type == AccessControl.AccessClaim)
+            && !http.Request.Path.StartsWithSegments("/login"))
         {
             var role = AccessControl.RoleOf(user);
             if (log.FirstInWindow(name, role != AccessRole.None))
             {
                 var source = http.Request.Path.StartsWithSegments("/api") ? AuditSource.Api : AuditSource.Web;
                 if (role == AccessRole.None)
-                    await log.DeniedAsync(name, L["Sign-in denied"], "Windows");
+                    await log.DeniedAsync(name, L["Sign-in denied"], "Windows", source);
                 else
                     await log.SignedInAsync(new AuditActor(name, role, source), L["Signed in"], "Windows");
             }
