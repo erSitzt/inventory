@@ -36,13 +36,24 @@ namespace Inventory.Runner
                     return new Outcome { ExitCode = 1, Error = "Windows updates can only be installed as Local System (SMB transport or agent), not over WinRM." };
             }
 
+            // Eine Liste, aus der keine KB-Nummer zu lesen ist, darf nicht zu "alles installieren" werden.
+            if (step.UpdateKbIds.Count > 0 && step.UpdateKbIds.All(k => NormalizeKb(k).Length == 0))
+                return new Outcome { ExitCode = 1, Error = "The step names KB numbers, but none of them is valid: " + string.Join(", ", step.UpdateKbIds) };
+
             var outcome = new Outcome();
             var stop = false;
+            var detached = false;
+            // Nach Abbruch oder Zeitüberschreitung gehört der Fortschritts-Kanal nicht mehr diesem Schritt.
+            Action<string> report = line =>
+            {
+                if (!Volatile.Read(ref detached))
+                    say(line);
+            };
             var worker = new Thread(() =>
             {
                 try
                 {
-                    Install(step, say, () => Volatile.Read(ref stop), outcome);
+                    Install(step, report, () => Volatile.Read(ref stop), outcome);
                 }
                 catch (Exception ex)
                 {
@@ -72,6 +83,7 @@ namespace Inventory.Runner
             // das zu lange, läuft es im Hintergrund zu Ende; Windows selbst bleibt dabei in einem sauberen Zustand.
             Volatile.Write(ref stop, true);
             worker.Join(TimeSpan.FromMinutes(2));
+            Volatile.Write(ref detached, true);
             return new Outcome { ExitCode = 1, Error = interrupted };
         }
 
@@ -195,16 +207,21 @@ namespace Inventory.Runner
             return digits.Length == 0 ? "" : "KB" + digits;
         }
 
+        /// <summary>Registry-Schlüssel, deren bloßes Vorhandensein einen ausstehenden Neustart anzeigt; auch der Inventar-Scan wertet sie aus.</summary>
+        internal static readonly string[] RebootKeys =
+        {
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired",
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\PostRebootReporting",
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending",
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\PackagesPending",
+        };
+
         /// <summary>Steht ein Neustart aus? Der Update-Agent weiß es am verlässlichsten; die Registry-Schlüssel ergänzen das.</summary>
         public static bool PendingReboot()
         {
             using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
             {
-                foreach (var path in new[]
-                         {
-                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired",
-                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending",
-                         })
+                foreach (var path in RebootKeys)
                 {
                     using (var key = hklm.OpenSubKey(path))
                     {

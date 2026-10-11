@@ -93,6 +93,10 @@ namespace Inventory.Contracts
         public int UpdateMaxCount { get; set; }
         /// <summary>WindowsUpdate: nur diese KB-Nummern installieren; leer = alles, was die übrigen Einstellungen zulassen.</summary>
         public List<string> UpdateKbIds { get; set; } = new List<string>();
+        /// <summary>
+        /// Gilt wie angegeben, auch für lang laufende Schritt-Typen: die Oberfläche schlägt je Typ einen passenden Wert vor
+        /// (Install/Uninstall eine Stunde, WindowsUpdate zwei), über die API angelegte Schritte müssen ihn selbst setzen.
+        /// </summary>
         public int TimeoutSeconds { get; set; } = 600;
         /// <summary>Leer = Standard des Schritt-Typs (0, bei Install zusätzlich 3010 und 1641).</summary>
         public List<int> SuccessCodes { get; set; } = new List<int>();

@@ -133,8 +133,14 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         var name = L["Install update {0}", string.Join(", ", ids)].Value;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
-            if (await db.Packages.AsNoTracking().FirstOrDefaultAsync(p => p.Name == name, ct) is { } existing)
+            // Wiederverwendet wird, was genau diese Updates installiert, nicht was so heißt: der Name hängt von der Sprache ab
+            // und bleibt stehen, wenn jemand den Schritt ändert.
+            var candidates = await db.Packages.AsNoTracking().Include(p => p.Steps).Where(p => p.Steps.Count == 1).ToListAsync(ct);
+            if (candidates.FirstOrDefault(p => p.Steps[0] is { NestedPackageId: null, Definition: { Type: StepType.WindowsUpdate } step }
+                                               && step.UpdateKbIds.Order(StringComparer.OrdinalIgnoreCase).SequenceEqual(ids.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase)) is { } existing)
                 return (existing, false);
+            if (await db.Packages.AnyAsync(p => p.Name == name, ct))
+                name = $"{name} ({DateTime.Now:yyyy-MM-dd HH:mm})";
         }
         var package = await SaveAsync(null, name, null, null, ct);
         await SaveStepAsync(package.Id, null, new JobStep { Name = name, Type = StepType.WindowsUpdate, TimeoutSeconds = 7200, UpdateKbIds = ids }, null, ct);

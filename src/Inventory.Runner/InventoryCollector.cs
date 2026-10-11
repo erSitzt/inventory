@@ -930,13 +930,7 @@ namespace Inventory.Runner
                     status.UpdateServer = policy?.GetValue("WUServer") as string;
 
                 var reboot = false;
-                foreach (var path in new[]
-                         {
-                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired",
-                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\PostRebootReporting",
-                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending",
-                             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\PackagesPending",
-                         })
+                foreach (var path in WindowsUpdateInstaller.RebootKeys)
                 {
                     using (var key = hklm.OpenSubKey(path))
                         reboot |= key != null;

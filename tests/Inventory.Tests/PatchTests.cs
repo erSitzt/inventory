@@ -114,6 +114,15 @@ public class PatchTests
             Assert.False(createdAgain);
             Assert.Equal(package.Id, again.Id);
 
+            // Ändert jemand den Schritt, installiert das Paket etwas anderes und wird für diese Updates nicht mehr genommen.
+            var edited = (await packages.GetAsync(package.Id))!.Steps[0];
+            edited.Definition.UpdateKbIds = ["KB1234567"];
+            await packages.SaveStepAsync(package.Id, edited.Id, edited.Definition, null);
+            var (fresh, createdFresh) = await packages.EnsureUpdatePackageAsync("KB5066835, KB5066836");
+            Assert.True(createdFresh);
+            Assert.NotEqual(package.Id, fresh.Id);
+            package = fresh;
+
             var step = Assert.Single((await packages.GetAsync(package.Id))!.Steps).Definition;
             Assert.Equal(StepType.WindowsUpdate, step.Type);
             Assert.Equal(["KB5066835", "KB5066836"], step.UpdateKbIds);
