@@ -963,11 +963,36 @@ namespace Inventory.Runner
                     // statt Minuten und erzeugt keine Last auf WSUS oder Microsoft Update.
                     searcher.Online = false;
                     dynamic found = searcher.Search("IsInstalled=0 and IsHidden=0 and Type='Software'");
-                    var pending = new List<string>();
+                    var details = new List<UpdateItem>();
                     foreach (dynamic update in found.Updates)
-                        pending.Add((string)update.Title);
-                    pending.Sort(StringComparer.CurrentCultureIgnoreCase);
-                    status.UpdatePending = pending;
+                    {
+                        var item = new UpdateItem { Title = (string)update.Title };
+                        try
+                        {
+                            foreach (var kb in update.KBArticleIDs)
+                                item.KbIds.Add("KB" + (string)kb);
+                            foreach (dynamic category in update.Categories)
+                            {
+                                // Der Name der Kategorie ist übersetzt, ihre Kennung nicht; eine unbekannte Kennung bleibt deshalb leer.
+                                if ((string)category.Type == "UpdateClassification")
+                                    item.Classification = UpdateClassification((string)category.CategoryID);
+                            }
+                            var severity = (string)update.MsrcSeverity;
+                            item.Severity = string.IsNullOrWhiteSpace(severity) ? null : severity;
+                            item.IsDownloaded = (bool)update.IsDownloaded;
+                            item.SizeBytes = (long)(decimal)update.MaxDownloadSize;
+                        }
+                        catch (Exception ex) when (ex is COMException || ex is Microsoft.CSharp.RuntimeBinder.RuntimeBinderException || ex is InvalidCastException || ex is OverflowException)
+                        {
+                            // Der Titel allein ist schon eine Aussage; fehlende Einzelheiten bleiben leer.
+                        }
+                        details.Add(item);
+                        if (details.Count >= MaxPendingUpdates)
+                            break;
+                    }
+                    details.Sort((a, b) => StringComparer.CurrentCultureIgnoreCase.Compare(a.Title, b.Title));
+                    status.UpdatePendingDetails = details;
+                    status.UpdatePending = details.Select(d => d.Title).ToList();
                 }
                 catch (Exception ex)
                 {
@@ -985,6 +1010,28 @@ namespace Inventory.Runner
         }
 
         private static volatile string? UpdateError;
+
+        /// <summary>Mehr meldet ein Scan nicht; ein Rechner mit so vielen offenen Updates hat ohnehin ein anderes Problem.</summary>
+        private const int MaxPendingUpdates = 200;
+
+        /// <summary>Feste Kennungen der Update-Klassifizierungen von Microsoft Update und WSUS.</summary>
+        private static string? UpdateClassification(string categoryId)
+        {
+            switch (categoryId.ToUpperInvariant())
+            {
+                case "0FA1201D-4330-4FA8-8AE9-B877473B6441": return "Security Updates";
+                case "E6CF1350-C01B-414D-A61F-263D14D133B4": return "Critical Updates";
+                case "28BC880E-0592-4CBF-8F95-C79B17911D5F": return "Update Rollups";
+                case "CD5FFD1E-E932-4E3A-BF74-18BF0B1BBD83": return "Updates";
+                case "E0789628-CE08-4437-BE74-2495B842F43B": return "Definition Updates";
+                case "B54E7D24-7ADD-428F-8B75-90A396FA584F": return "Feature Packs";
+                case "68C5B0A3-D1A6-4553-AE49-01D3A7827828": return "Service Packs";
+                case "EBFC1FC5-71A4-4F7B-9ACA-3B9A503104A0": return "Drivers";
+                case "3689BDC8-B205-4AF4-8D4A-A63924C5E9D5": return "Upgrades";
+                case "B4832BD8-E735-4761-8DAF-37F882276DAB": return "Tools";
+                default: return null;
+            }
+        }
 
         private static DateTime? ComDate(object value) =>
             // Der Agent liefert 1899-12-30 (OLE-Nullwert), wenn es noch nie eine Suche bzw. Installation gab. Die Zeiten sind UTC.

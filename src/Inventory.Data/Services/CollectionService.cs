@@ -91,5 +91,5 @@ public sealed class CollectionService(IDbContextFactory<InventoryDbContext> dbFa
     }
 
     private static Task<List<Computer>> LoadForRulesAsync(InventoryDbContext db, CancellationToken ct) =>
-        db.Computers.AsNoTracking().Include(c => c.Software).Include(c => c.LocalAdmins).AsSplitQuery().ToListAsync(ct);
+        db.Computers.AsNoTracking().Include(c => c.Software).Include(c => c.LocalAdmins).Include(c => c.Hotfixes).Include(c => c.PendingUpdates).AsSplitQuery().ToListAsync(ct);
 }

@@ -412,13 +412,44 @@ else if (_computer.ReverseDnsMismatch)
                     <MudItem xs="12">
                         <MudText Typo="Typo.subtitle1" Class="mb-1">@L["Pending updates"]</MudText>
                         <MudText Typo="Typo.caption">@L["As of the computer's last search ({0}); the scan does not trigger a new search.", Display.LocalTime(_computer.UpdateLastSearchUtc)]</MudText>
-                        @* Reine Anzeige: ohne ReadOnly wirken die Einträge anklickbar, obwohl nichts dahinter liegt. *@
-                        <MudList T="string" Dense="true" ReadOnly="true">
-                            @foreach (var title in (_computer.UpdatePending ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries))
-                            {
-                                <MudListItem T="string" Icon="@Icons.Material.Filled.SystemUpdateAlt">@title</MudListItem>
-                            }
-                        </MudList>
+                        @if (_computer.PendingUpdates.Count > 0)
+                        {
+                            <MudDataGrid T="ComputerPendingUpdate" Items="@_computer.PendingUpdates.OrderByDescending(u => u.IsSecurity).ThenBy(u => u.Title)" Dense="true" Hover="true" SortMode="SortMode.None" Class="mt-2">
+                                <Columns>
+                                    <TemplateColumn Title="KB" CellStyle="white-space: nowrap">
+                                        <CellTemplate><MudLink Href="@($"updates?q={Uri.EscapeDataString(context.Item.Key)}")">@(context.Item.KbIds ?? "–")</MudLink></CellTemplate>
+                                    </TemplateColumn>
+                                    <PropertyColumn Property="u => u.Title" Title="@L["Update title"]" />
+                                    <TemplateColumn Title="@L["Classification"]">
+                                        <CellTemplate>@(context.Item.Classification is null ? "" : L[context.Item.Classification])</CellTemplate>
+                                    </TemplateColumn>
+                                    <TemplateColumn Title="@L["Severity"]">
+                                        <CellTemplate>
+                                            @if (context.Item.Severity is not null)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="@Display.SeverityColor(context.Item.Severity)">@L[context.Item.Severity]</MudChip>
+                                            }
+                                            else if (context.Item.IsSecurity)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["Security"]</MudChip>
+                                            }
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                    <TemplateColumn Title="@L["Downloaded"]"><CellTemplate>@Display.YesNo(context.Item.IsDownloaded)</CellTemplate></TemplateColumn>
+                                    <TemplateColumn Title="@L["Size"]"><CellTemplate>@(context.Item.SizeBytes > 0 ? Display.Bytes(context.Item.SizeBytes) : "")</CellTemplate></TemplateColumn>
+                                </Columns>
+                            </MudDataGrid>
+                        }
+                        else
+                        {
+                            @* Stand aus einem Scan vor der Erfassung der Einzelheiten: nur die Titel sind bekannt. *@
+                            <MudList T="string" Dense="true" ReadOnly="true">
+                                @foreach (var title in (_computer.UpdatePending ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                                {
+                                    <MudListItem T="string" Icon="@Icons.Material.Filled.SystemUpdateAlt">@title</MudListItem>
+                                }
+                            </MudList>
+                        }
                     </MudItem>
                 }
             </MudGrid>

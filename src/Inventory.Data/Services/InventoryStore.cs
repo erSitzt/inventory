@@ -106,8 +106,15 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.UpdateLastSearchUtc = security.UpdateLastSearchUtc;
             computer.UpdateLastInstallUtc = security.UpdateLastInstallUtc;
             computer.UpdateRebootRequired = security.UpdateRebootRequired;
-            computer.UpdatePendingCount = security.UpdatePending?.Count;
-            computer.UpdatePending = security.UpdatePending is null ? null : string.Join('\n', security.UpdatePending);
+            // null = der Update-Agent hat nicht geantwortet: der vorige Stand bleibt, statt als "nichts ausstehend" zu gelten.
+            if (PendingUpdateRows(computerId, security) is { } pendingUpdates)
+            {
+                computer.UpdatePendingCount = pendingUpdates.Count;
+                computer.UpdatePendingSecurityCount = pendingUpdates.Count(u => u.IsSecurity);
+                computer.UpdatePending = string.Join('\n', pendingUpdates.Select(u => u.Title));
+                await db.PendingUpdates.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+                db.PendingUpdates.AddRange(pendingUpdates);
+            }
             computer.UpdateServer = security.UpdateServer;
             if (security.Posture is { } posture)
             {
@@ -218,6 +225,54 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return computer.NameMismatch;
+    }
+
+    /// <summary>
+    /// Einmalig nach dem Update des Servers: Rechner, deren letzter Scan nur die Titel der ausstehenden Updates gespeichert
+    /// hat, bekommen daraus ihre Einträge, damit die Update-Übersicht nicht erst nach dem nächsten Scan stimmt.
+    /// </summary>
+    /// <returns>Anzahl der ergänzten Rechner.</returns>
+    public async Task<int> BackfillPendingUpdatesAsync(CancellationToken ct = default)
+    {
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+            var computers = await db.Computers.Where(c => c.UpdatePendingCount != null && c.UpdatePendingSecurityCount == null).ToListAsync(ct);
+            foreach (var computer in computers)
+            {
+                var rows = PendingUpdateRows(computer.Id, new SecurityStatus
+                {
+                    UpdatePending = (computer.UpdatePending ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                })!;
+                db.PendingUpdates.AddRange(rows);
+                computer.UpdatePendingSecurityCount = rows.Count(u => u.IsSecurity);
+            }
+            await db.SaveChangesAsync(ct);
+            return computers.Count;
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    /// <summary>Ausstehende Updates eines Scans; ältere Runner liefern nur Titel, aus denen die KB-Nummer gelesen wird.</summary>
+    private static List<ComputerPendingUpdate>? PendingUpdateRows(int computerId, SecurityStatus security)
+    {
+        if (security.UpdatePendingDetails is { } details)
+        {
+            return details.Select(u => new ComputerPendingUpdate
+            {
+                ComputerId = computerId, Title = u.Title, KbIds = u.KbIds.Count == 0 ? null : string.Join(", ", u.KbIds),
+                Classification = u.Classification, Severity = u.Severity, IsDownloaded = u.IsDownloaded, SizeBytes = u.SizeBytes,
+            }).ToList();
+        }
+        return security.UpdatePending?.Select(title => new ComputerPendingUpdate
+        {
+            ComputerId = computerId, Title = title,
+            KbIds = PendingUpdates.KbIdsFromTitle(title) is { Count: > 0 } ids ? string.Join(", ", ids) : null,
+        }).ToList();
     }
 
     /// <summary>Das Laufwerk, auf dem Windows liegt; Scans nennen es nicht eigens, in der Praxis ist es C:.</summary>

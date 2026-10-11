@@ -170,11 +170,26 @@ namespace Inventory.Contracts
         public bool? UpdateRebootRequired { get; set; }
         /// <summary>Ausstehende Updates laut letzter Suche des Rechners (es wird keine neue Online-Suche ausgelöst).</summary>
         public List<string>? UpdatePending { get; set; }
+        /// <summary>Dieselben Updates mit KB-Nummern, Klassifizierung und Schweregrad; null bei Runnern, die das noch nicht erfassen.</summary>
+        public List<UpdateItem>? UpdatePendingDetails { get; set; }
         /// <summary>WSUS-Server aus der Richtlinie; leer = Microsoft Update.</summary>
         public string? UpdateServer { get; set; }
 
         /// <summary>Sicherheitsrelevante Einstellungen des Betriebssystems; null bei Runnern, die das noch nicht erfassen.</summary>
         public SecurityPosture? Posture { get; set; }
+    }
+
+    public sealed class UpdateItem
+    {
+        public string Title { get; set; } = "";
+        /// <summary>KB-Nummern mit Präfix, z. B. "KB5066835".</summary>
+        public List<string> KbIds { get; set; } = new List<string>();
+        /// <summary>Englische Bezeichnung der Klassifizierung, z. B. "Security Updates"; null, wenn unbekannt.</summary>
+        public string? Classification { get; set; }
+        /// <summary>Schweregrad laut MSRC: "Critical", "Important", "Moderate", "Low"; null, wenn keiner angegeben ist.</summary>
+        public string? Severity { get; set; }
+        public bool IsDownloaded { get; set; }
+        public long SizeBytes { get; set; }
     }
 
     /// <summary>Jeder Wert ist null, wenn er sich bei diesem Scan nicht ermitteln ließ; der Server behält dann den vorigen.</summary>

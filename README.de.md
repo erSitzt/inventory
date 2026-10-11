@@ -15,6 +15,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Systemkonfiguration**: Remotedesktop und Authentifizierung auf Netzwerkebene, Benutzerkontensteuerung, SMB 1,
   Credential Guard, Speicherintegrität, LSA-Schutz, vordefiniertes Administratorkonto (aktiv, Kennwortalter),
   Windows-Aktivierung, letzte Anmeldung und Kennwortalter lokaler Konten – alles auch als Regel für Sammlungen
+- **Updates**: ausstehende Updates je Rechner mit KB-Nummer, Klassifizierung und Schweregrad; Übersicht je Update
+  (auf welchen Rechnern es fehlt) und je Rechner (wer keine offenen Sicherheitsupdates hat), CSV-Export, Regeln für
+  Sammlungen auf installierte Hotfixes und ausstehende Updates
 - **Hardware und Plattformsicherheit**: Gerätetyp (Desktop/Notebook/Server/virtuelle Maschine), UEFI und Secure Boot,
   TPM, BitLocker je Laufwerk, Grafik, Speichermodule und freie Steckplätze, physische Datenträger mit Typ und Zustand,
   Akkuzustand, Monitore und Drucker

@@ -84,6 +84,26 @@ public class ComputerLocalAdmin
     public string? Sid { get; set; }
 }
 
+/// <summary>Update, das laut letzter Suche des Rechners noch nicht installiert ist.</summary>
+public class ComputerPendingUpdate
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public required string Title { get; set; }
+    /// <summary>KB-Nummern mit Präfix, durch Komma getrennt; null, wenn das Update keine nennt.</summary>
+    public string? KbIds { get; set; }
+    /// <summary>Englische Bezeichnung, z. B. "Security Updates"; null, wenn unbekannt.</summary>
+    public string? Classification { get; set; }
+    /// <summary>"Critical", "Important", "Moderate", "Low" oder null.</summary>
+    public string? Severity { get; set; }
+    public bool IsDownloaded { get; set; }
+    public long SizeBytes { get; set; }
+
+    /// <summary>Unter diesem Schlüssel wird dasselbe Update über Rechner hinweg zusammengefasst: die KB-Nummern, sonst der Titel.</summary>
+    public string Key => string.IsNullOrEmpty(KbIds) ? Title : KbIds;
+    public bool IsSecurity => PendingUpdates.IsSecurity(Classification, Severity, Title);
+}
+
 public class ComputerMemoryModule
 {
     public int Id { get; set; }
