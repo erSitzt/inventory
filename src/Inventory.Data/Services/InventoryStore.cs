@@ -44,6 +44,8 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         var now = DateTime.UtcNow;
         // Vor dem Vergleich: Programme abgemeldeter Benutzer sind nicht verschwunden, nur gerade nicht lesbar.
         PerUserSoftware.CarryOver(computer.Software, data);
+        if (data.Hardware is not null)
+            HardwareCarryOver.Apply(computer, data.Hardware);
         db.InventoryChanges.AddRange(InventoryDiff.Compare(computer, data, now));
         db.ChangeTracker.Entries().Where(e => e.Entity is not Computer and not InventoryChange).ToList().ForEach(e => e.State = EntityState.Detached);
         computer.LastScanUtc = now;
@@ -165,6 +167,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.BatteryHealthPercent = hardware.BatteryHealthPercent;
             computer.BatteryCycleCount = hardware.BatteryCycleCount;
             computer.SystemDriveProtected = SystemDrive(hardware.Volumes)?.Protected;
+            computer.HardwareScanUtc = now;
 
             await db.MemoryModules.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
             await db.PhysicalDisks.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);

@@ -98,6 +98,8 @@ public class Computer
     public string? UpdateServer { get; set; }
 
     // Hardware und Plattformsicherheit aus dem letzten Scan; null = nicht ermittelt
+    /// <summary>Wann zuletzt ein Scan Hardware-Details geliefert hat; null = noch nie (älterer Runner oder nicht gescannt).</summary>
+    public DateTime? HardwareScanUtc { get; set; }
     /// <summary>Gehäusetyp laut SMBIOS, siehe <see cref="Chassis"/>.</summary>
     public int? ChassisType { get; set; }
     /// <summary>"UEFI" oder "BIOS".</summary>

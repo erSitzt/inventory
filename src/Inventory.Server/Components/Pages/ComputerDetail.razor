@@ -115,7 +115,7 @@ else if (_computer.ReverseDnsMismatch)
     </MudTabPanel>
 
     <MudTabPanel Text="@L["Hardware"]">
-        @if (_computer.FirmwareType is null && _computer.ChassisType is null && _computer.MemoryModules.Count == 0 && _computer.PhysicalDisks.Count == 0)
+        @if (_computer.HardwareScanUtc is null)
         {
             <MudText Color="Color.Secondary">@L["Not captured yet. Hardware details are read with the next scan; computers with an agent need the current agent version first."]</MudText>
         }

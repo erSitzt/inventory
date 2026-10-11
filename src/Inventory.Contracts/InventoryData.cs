@@ -181,6 +181,12 @@ namespace Inventory.Contracts
     /// <summary>Werte sind null bzw. Listen leer, wenn sie sich auf dem Rechner nicht ermitteln ließen.</summary>
     public sealed class HardwareInfo
     {
+        /// <summary>
+        /// Bereiche (Konstanten aus <see cref="HardwareAreas"/>), die sich bei diesem Scan nicht lesen ließen. Ihre Werte sind
+        /// leer, aber nicht "nicht vorhanden": der Server behält dafür den vorigen Stand.
+        /// </summary>
+        public List<string> Failed { get; set; } = new List<string>();
+
         /// <summary>Gehäusetyp laut SMBIOS (Win32_SystemEnclosure.ChassisTypes, erster Eintrag), z. B. 3 = Desktop, 10 = Notebook.</summary>
         public int? ChassisType { get; set; }
         /// <summary>"UEFI" oder "BIOS".</summary>
@@ -208,6 +214,19 @@ namespace Inventory.Contracts
         /// <summary>Volle Ladung im Verhältnis zur Kapazität im Neuzustand, in Prozent.</summary>
         public int? BatteryHealthPercent { get; set; }
         public int? BatteryCycleCount { get; set; }
+    }
+
+    public static class HardwareAreas
+    {
+        public const string Firmware = "Firmware";
+        public const string Tpm = "Tpm";
+        public const string Graphics = "Graphics";
+        public const string Memory = "Memory";
+        public const string Disks = "Disks";
+        public const string Volumes = "Volumes";
+        public const string Battery = "Battery";
+        public const string Monitors = "Monitors";
+        public const string Printers = "Printers";
     }
 
     public sealed class GpuItem

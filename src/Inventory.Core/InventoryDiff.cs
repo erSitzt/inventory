@@ -102,6 +102,7 @@ public static partial class InventoryDiff
                     Add(category, ChangeKind.Changed, item, oldValue, newValue);
             }
             static string? OnOff(bool? value) => value is null ? null : value.Value ? "on" : "off";
+            static string? Tpm(bool? present, bool? ready) => present switch { null => null, false => "none", true => ready == true ? "ready" : "not ready" };
             static string? Module(string? manufacturer, string? partNumber, long capacityBytes) =>
                 string.Join(" ", new[] { Gigabytes(capacityBytes), manufacturer, partNumber }.Where(p => !string.IsNullOrWhiteSpace(p)));
 
@@ -109,11 +110,10 @@ public static partial class InventoryDiff
             Known("System", "BIOS date", previous.BiosDateUtc?.ToString("yyyy-MM-dd"), hardware.BiosDateUtc?.ToString("yyyy-MM-dd"));
             Known("System", "Graphics", previous.Gpu, hardware.Gpus.Count == 0 ? null : string.Join(", ", hardware.Gpus.Select(g => g.Name)));
             Known("Security", "Secure Boot", OnOff(previous.SecureBoot), OnOff(hardware.SecureBoot));
-            Known("Security", "TPM", previous.TpmReady is null ? null : previous.TpmReady.Value ? "ready" : "not ready",
-                hardware.TpmReady is null ? null : hardware.TpmReady.Value ? "ready" : "not ready");
+            Known("Security", "TPM", Tpm(previous.TpmPresent, previous.TpmReady), Tpm(hardware.TpmPresent, hardware.TpmReady));
 
             // Listen nur vergleichen, wenn der vorige Scan sie schon erfasst hat; sonst wäre alles "neu".
-            if (previous.FirmwareType is not null || previous.ChassisType is not null || previous.MemoryModules.Count > 0 || previous.PhysicalDisks.Count > 0)
+            if (previous.HardwareScanUtc is not null)
             {
                 Set("Memory module",
                     previous.MemoryModules.Select(m => (m.Slot, Module(m.Manufacturer, m.PartNumber, m.CapacityBytes))),

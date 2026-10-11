@@ -36,15 +36,15 @@ namespace Inventory.Runner
             data.RemoteAccess = new RemoteAccessInfo();
             Section(data, "Fernzugriff", () => ReadRemoteAccess(data.RemoteAccess));
             var hardware = data.Hardware = new HardwareInfo();
-            Section(data, "Gehäuse und Firmware", () => ReadFirmware(hardware));
-            Section(data, "TPM", () => ReadTpm(hardware));
-            Section(data, "Grafik", () => ReadGraphics(hardware));
-            Section(data, "Speichermodule", () => ReadMemoryModules(hardware));
-            Section(data, "Physische Datenträger", () => ReadPhysicalDisks(hardware));
-            Section(data, "BitLocker", () => ReadVolumeEncryption(hardware));
-            Section(data, "Akku", () => ReadBattery(hardware));
-            Section(data, "Monitore", () => ReadMonitors(hardware));
-            Section(data, "Drucker", () => ReadPrinters(hardware));
+            Section(data, "Gehäuse und Firmware", HardwareAreas.Firmware, () => ReadFirmware(hardware));
+            Section(data, "TPM", HardwareAreas.Tpm, () => ReadTpm(hardware));
+            Section(data, "Grafik", HardwareAreas.Graphics, () => ReadGraphics(hardware));
+            Section(data, "Speichermodule", HardwareAreas.Memory, () => ReadMemoryModules(hardware));
+            Section(data, "Physische Datenträger", HardwareAreas.Disks, () => ReadPhysicalDisks(hardware));
+            Section(data, "BitLocker", HardwareAreas.Volumes, () => ReadVolumeEncryption(hardware));
+            Section(data, "Akku", HardwareAreas.Battery, () => ReadBattery(hardware));
+            Section(data, "Monitore", HardwareAreas.Monitors, () => ReadMonitors(hardware));
+            Section(data, "Drucker", HardwareAreas.Printers, () => ReadPrinters(hardware));
             return data;
         }
 
@@ -57,6 +57,20 @@ namespace Inventory.Runner
             catch (Exception ex)
             {
                 data.Warnings.Add($"{name}: {ex.Message}");
+            }
+        }
+
+        /// <summary>Wie <see cref="Section(InventoryData, string, Action)"/>, merkt aber zusätzlich den Bereich als nicht gelesen vor.</summary>
+        private static void Section(InventoryData data, string name, string area, Action read)
+        {
+            try
+            {
+                read();
+            }
+            catch (Exception ex)
+            {
+                data.Warnings.Add($"{name}: {ex.Message}");
+                data.Hardware?.Failed.Add(area);
             }
         }
 

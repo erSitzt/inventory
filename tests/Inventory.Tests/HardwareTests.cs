@@ -88,6 +88,49 @@ public class HardwareTests
         ], changes);
     }
 
+    [Fact]
+    public async Task An_area_that_could_not_be_read_keeps_its_previous_values_and_is_no_change()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var id = (await computers.ImportAsync("pc-01"))[0].Id;
+        await store.SaveAsync(id, Scan());
+
+        // TPM, BitLocker und Drucker ließen sich nicht lesen; der Runner liefert dafür leere Werte.
+        await store.SaveAsync(id, Scan(h =>
+        {
+            h.TpmPresent = null; h.TpmVersion = null; h.TpmReady = null;
+            h.Volumes.Clear();
+            h.Printers.Clear();
+            h.Monitors.Clear();
+            h.Failed = [HardwareAreas.Tpm, HardwareAreas.Volumes, HardwareAreas.Printers];
+        }));
+
+        var detail = (await computers.GetDetailAsync(id))!;
+        Assert.True(detail.TpmReady);
+        Assert.Equal("2.0", detail.TpmVersion);
+        Assert.True(detail.SystemDriveProtected);
+        Assert.Equal(2, detail.Volumes.Count);
+        Assert.Single(detail.Printers);
+        // Monitore wurden gelesen und sind tatsächlich weg.
+        Assert.Empty(detail.Monitors);
+        Assert.Empty(await store.ChangesAsync(id));
+    }
+
+    [Fact]
+    public async Task A_tpm_that_disappears_is_recorded()
+    {
+        using var db = new TestDb();
+        var store = new InventoryStore(db);
+        var id = (await new ComputerService(db, new SimulatedHostProbe()).ImportAsync("pc-01"))[0].Id;
+        await store.SaveAsync(id, Scan());
+        await store.SaveAsync(id, Scan(h => { h.TpmPresent = false; h.TpmVersion = null; h.TpmReady = null; }));
+
+        var change = Assert.Single(await store.ChangesAsync(id)).Change;
+        Assert.Equal("TPM|ready|none", $"{change.Item}|{change.OldValue}|{change.NewValue}");
+    }
+
     [Theory]
     [InlineData(3, "OptiPlex 7090", ChassisKind.Desktop)]
     [InlineData(35, "ThinkCentre M70q", ChassisKind.Desktop)]

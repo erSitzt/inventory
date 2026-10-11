@@ -254,6 +254,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("Gpu")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("HardwareScanUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("IpAddress")
                         .HasColumnType("TEXT");
 
