@@ -80,6 +80,14 @@
                                     {
                                         <span> · @L["with condition"]</span>
                                     }
+                                    @if (step.NestedPackageId is null && step.Definition.Retries > 0)
+                                    {
+                                        <span> · @L["{0} retries", step.Definition.Retries]</span>
+                                    }
+                                    @if (step.NestedPackageId is null && step.Definition.CloseProcesses.Count > 0)
+                                    {
+                                        <span> · @L["closes {0}", string.Join(", ", step.Definition.CloseProcesses)]</span>
+                                    }
                                     @if (step.Definition.ContinueOnError)
                                     {
                                         <span> · @L["continue on error"]</span>
