@@ -4,6 +4,7 @@
 @inject IDialogService Dialogs
 @inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <PageTitle>@L["Software"] – Inventory</PageTitle>
 
@@ -137,6 +138,8 @@
     /// <summary>Legt bei Bedarf das Deinstallations-Paket für genau dieses Programm an und öffnet den Deploy-Dialog mit den betroffenen Rechnern.</summary>
     private async Task UninstallAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var (package, created) = await PackageService.EnsureUninstallPackageAsync(_selected!.Name, _selected.Name, null);
         if (created)
             await Audit.LogAsync(L["Package created"], package.Name);

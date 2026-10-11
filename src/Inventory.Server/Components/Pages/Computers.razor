@@ -12,6 +12,7 @@
 @inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject Access Access
 
 <PageTitle>@L["Computers"] – Inventory</PageTitle>
 
@@ -279,6 +280,8 @@
 
     private async Task AddAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var dialog = await Dialogs.ShowAsync<AddComputersDialog>(L["Add computers"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is { Canceled: false, Data: string text })
         {
@@ -323,6 +326,8 @@
 
     private async Task EditAsync(Computer computer)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var parameters = new DialogParameters<EditComputerDialog>
         {
             { d => d.Computer, computer },
@@ -335,6 +340,8 @@
 
     private async Task ScanAsync()
     {
+        if (!await Access.DemandOperatorAsync())
+            return;
         var ids = TargetIds();
         if (ids.Count == 0)
             return;
@@ -367,6 +374,8 @@
 
     private async Task ProbeAsync()
     {
+        if (!await Access.DemandOperatorAsync())
+            return;
         var ids = TargetIds();
         _busy = true;
         try
@@ -392,6 +401,8 @@
 
     private async Task InstallAgentAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         BuiltJob job;
         try
         {
@@ -434,6 +445,8 @@
     /// <summary>Richtet auf den gewählten (Admin-)PCs den Starter ein, der Fernzugriffe direkt aus der Oberfläche öffnet.</summary>
     private async Task InstallLauncherAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         BuiltJob job;
         try
         {
@@ -474,6 +487,8 @@
 
     private async Task AddToCollectionAsync(Collection collection)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var added = await CollectionService.AddMembersAsync(collection.Id, _selected.Select(c => c.Id));
         Snackbar.Add(L["{0} computers added to \"{1}\".", added, collection.Name], Severity.Success);
         await ReloadAsync();
@@ -481,6 +496,8 @@
 
     private async Task RemoveFromCollectionAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var removed = await CollectionService.RemoveMembersAsync(_activeCollection!.Id, _selected.Select(c => c.Id));
         Snackbar.Add(L["{0} computers removed from \"{1}\".", removed, _activeCollection.Name], Severity.Success);
         await ReloadAsync();
@@ -488,6 +505,8 @@
 
     private async Task DeleteAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var count = _selected.Count;
         var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete computers"],
             L["Really delete {0} computers including their inventory data? This cannot be undone.", count], yesText: L["Delete"], cancelText: L["Cancel"]);

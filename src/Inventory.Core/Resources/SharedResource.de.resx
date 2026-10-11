@@ -2579,6 +2579,9 @@
   <data name="Your account is not a member of any group that may use Inventory." xml:space="preserve">
     <value>Dein Konto gehört zu keiner Gruppe, die Inventory nutzen darf.</value>
   </data>
+  <data name="Your role does not allow this action." xml:space="preserve">
+    <value>Deine Rolle erlaubt diese Aktion nicht.</value>
+  </data>
   <data name="Your role does not allow this page." xml:space="preserve">
     <value>Deine Rolle erlaubt diese Seite nicht.</value>
   </data>

@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <MudDialog>
     <DialogContent>
@@ -95,6 +96,8 @@
 
     private async Task StartAsync()
     {
+        if (!await Access.DemandOperatorAsync())
+            return;
         _starting = true;
         try
         {

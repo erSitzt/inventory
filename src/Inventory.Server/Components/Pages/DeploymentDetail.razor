@@ -6,6 +6,7 @@
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <PageTitle>@L["Deployment"] – Inventory</PageTitle>
 
@@ -169,12 +170,16 @@
 
     private async Task CancelAsync()
     {
+        if (!await Access.DemandOperatorAsync())
+            return;
         await Audit.LogAsync(L["Deployment cancelled"], $"#{Id} {_deployment!.PackageName}");
         await DeploymentService.CancelAsync(Id);
     }
 
     private async Task RetryAsync()
     {
+        if (!await Access.DemandOperatorAsync())
+            return;
         try
         {
             var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), new DeploymentOptions(_deployment.ScanAfter, _deployment.RetryOffline, _deployment.RespectMaintenanceWindow,

@@ -5,6 +5,7 @@
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <PageTitle>@L["Schedules"] – Inventory</PageTitle>
 
@@ -83,6 +84,8 @@
 
     private async Task EditAsync(Schedule? schedule)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var parameters = new DialogParameters<EditScheduleDialog> { { d => d.Schedule, schedule } };
         var dialog = await Dialogs.ShowAsync<EditScheduleDialog>(schedule?.Name ?? L["New schedule"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is { Canceled: false })
@@ -91,6 +94,8 @@
 
     private async Task RunNowAsync(Schedule schedule)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         _busy = true;
         try
         {
@@ -107,6 +112,8 @@
 
     private async Task DeleteAsync(Schedule schedule)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete schedule"], L["Really delete \"{0}\"?", schedule.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;

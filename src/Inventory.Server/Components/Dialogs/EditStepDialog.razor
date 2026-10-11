@@ -2,6 +2,7 @@
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <MudDialog>
     <DialogContent>
@@ -327,6 +328,8 @@
 
     private async Task SaveAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var codes = new List<int>();
         _step.CloseProcesses = [.. _closeProcesses.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
         foreach (var part in _successCodes.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries))

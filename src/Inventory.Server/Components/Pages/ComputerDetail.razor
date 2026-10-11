@@ -8,6 +8,7 @@
 @inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject Access Access
 
 <PageTitle>@(_computer?.Name ?? L["Computer"]) – Inventory</PageTitle>
 
@@ -319,6 +320,8 @@ else if (_computer.ReverseDnsMismatch)
     /// <summary>Legt bei Bedarf das Deinstallations-Paket für dieses Programm an und öffnet den Deploy-Dialog für diesen Rechner.</summary>
     private async Task UninstallAsync(ComputerSoftware software)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var (package, created) = await PackageService.EnsureUninstallPackageAsync(software.Name, software.Name, null);
         if (created)
             await Audit.LogAsync(L["Package created"], package.Name);
@@ -356,6 +359,8 @@ else if (_computer.ReverseDnsMismatch)
 
     private async Task ScanAsync()
     {
+        if (!await Access.DemandOperatorAsync())
+            return;
         _scanning = true;
         try
         {
@@ -373,6 +378,8 @@ else if (_computer.ReverseDnsMismatch)
 
     private async Task RenameAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         try
         {
             var old = _computer!.Name;

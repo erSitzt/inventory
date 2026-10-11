@@ -94,6 +94,7 @@ builder.Services.AddSingleton<ReportService>();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System));
 builder.Services.AddScoped<Auditor>();
+builder.Services.AddScoped<Access>();
 builder.Services.AddSingleton<IReleaseSource>(new GitHubReleaseSource(new HttpClient { Timeout = TimeSpan.FromMinutes(15) }));
 builder.Services.AddSingleton(new UpdateOptions
 {

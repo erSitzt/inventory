@@ -4,6 +4,7 @@
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject Access Access
 
 <PageTitle>@L["Collections"] – Inventory</PageTitle>
 
@@ -73,6 +74,8 @@
 
     private async Task EditAsync(Collection? collection, bool isDynamic)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var parameters = new DialogParameters<EditCollectionDialog>
         {
             { d => d.Collection, collection },
@@ -86,6 +89,8 @@
 
     private async Task DeleteAsync(Collection collection)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete collection"],
             L["Really delete \"{0}\"? The computers themselves are kept.", collection.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)

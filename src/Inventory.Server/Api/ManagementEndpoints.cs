@@ -175,7 +175,10 @@ public static class ManagementEndpoints
                 throw new ArgumentException("name is required");
             if (request.Role is not (AccessRole.Viewer or AccessRole.Operator or AccessRole.Admin))
                 throw new ArgumentException("role must be Viewer, Operator or Admin");
-            var secret = await service.CreateAsync(request.Name, User(http), request.ValidDays is > 0 ? DateTime.UtcNow.AddDays(request.ValidDays.Value) : null, ct, request.Role);
+            // Ein versehentlich übergebener Wert von 0 oder darunter darf kein unbegrenzt gültiges Token ergeben.
+            if (request.ValidDays is <= 0)
+                throw new ArgumentException("validDays must be positive; omit it for a token without expiry");
+            var secret = await service.CreateAsync(request.Name, User(http), request.ValidDays is { } days ? DateTime.UtcNow.AddDays(days) : null, ct, request.Role);
             await audit.LogAsync(User(http), "API token created via API", $"{request.Name.Trim()} ({request.Role})", ct);
             return Results.Ok(new TokenCreatedDto(secret));
         }).WithSummary("Create API token").WithDescription("role: Viewer (read only), Operator (also scan, deploy, cancel, remote access) or Admin. validDays: omit for an unlimited token. The secret is returned once and cannot be retrieved later.")

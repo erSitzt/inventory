@@ -3,6 +3,7 @@
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <MudDialog>
     <DialogContent>
@@ -58,6 +59,8 @@
 
     private async Task ForgetAgentAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         await Agents.ForgetAsync(Computer.Id);
         await Audit.LogAsync(L["Agent forgotten"], Computer.Name);
         MudDialog.Close(DialogResult.Ok(true));
@@ -65,6 +68,8 @@
 
     private async Task SaveAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         await ComputerService.UpdateAsync(Computer.Id, _description, _transport, _credentialId);
         MudDialog.Close(DialogResult.Ok(true));
     }

@@ -2,6 +2,7 @@
 @inject MaintenanceService Maintenance
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <MudDialog>
     <DialogContent>
@@ -113,6 +114,8 @@
 
     private async Task SaveAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         try
         {
             var saved = await CollectionService.SaveAsync(Collection?.Id, _name, _description, IsDynamic, _matchAll, _rules);

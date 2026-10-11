@@ -4,6 +4,7 @@
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <MudDialog>
     <DialogContent>
@@ -112,6 +113,8 @@
 
     private async Task SaveAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         _s.TimeOfDay = _time ?? _s.TimeOfDay;
         if (_s.Trigger == ScheduleTrigger.Once)
         {

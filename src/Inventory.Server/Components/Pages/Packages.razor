@@ -6,6 +6,7 @@
 @inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject Access Access
 
 <PageTitle>@L["Packages"] – Inventory</PageTitle>
 
@@ -54,6 +55,8 @@
 
     private async Task CreateAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var dialog = await Dialogs.ShowAsync<NameDialog>(L["New package"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
         if (await dialog.Result is not { Canceled: false, Data: string name })
             return;
@@ -76,6 +79,8 @@
 
     private async Task DeleteAsync(Package package)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete package"],
             L["Really delete \"{0}\" including its files? Packages that embed it lose the corresponding step. Past deployments remain in the history.", package.Name],
             yesText: L["Delete"], cancelText: L["Cancel"]);
