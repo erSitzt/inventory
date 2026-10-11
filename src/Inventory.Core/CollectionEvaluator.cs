@@ -84,7 +84,9 @@ public static class CollectionEvaluator
         RuleField.SecureBoot => Known(rule, computer.SecureBoot),
         RuleField.TpmReady => Known(rule, computer.TpmPresent == false ? false : computer.TpmReady),
         RuleField.SystemDriveProtected => Known(rule, computer.SystemDriveProtected),
-        RuleField.DiskHealthProblem => Known(rule, computer.PhysicalDisks.Count == 0 ? null : computer.PhysicalDisks.Any(d => d.Health is not (null or "Healthy"))),
+        // Ein gemeldetes Problem zählt immer; "kein Problem" gilt nur, wenn jeder Datenträger seinen Zustand genannt hat.
+        RuleField.DiskHealthProblem => Known(rule, computer.PhysicalDisks.Any(d => d.Health is not (null or "Healthy")) ? true
+            : computer.PhysicalDisks.Count == 0 || computer.PhysicalDisks.Any(d => d.Health is null) ? null : false),
         RuleField.Service => Service(rule, computer),
         RuleField.InCollection => context is not null && context.InCollection(rule, computer, depth),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
@@ -116,9 +118,11 @@ public static class CollectionEvaluator
     {
         var negated = rule.Operator is RuleOperator.NotContains or RuleOperator.NotEquals;
         var positive = new CollectionRule { Operator = negated ? RuleOperator.Equals : rule.Operator, Value = rule.Value };
+        // Verneint heißt "kein solcher Dienst vorhanden"; ein Zustand hat dabei keine Bedeutung.
+        var state = negated || string.IsNullOrWhiteSpace(rule.Value2) ? null : rule.Value2.Trim();
         var found = computer.Services.Any(s =>
             (Text(positive, s.Name) || Text(positive, s.DisplayName))
-            && (string.IsNullOrWhiteSpace(rule.Value2) || string.Equals(s.State, rule.Value2.Trim(), StringComparison.OrdinalIgnoreCase)));
+            && (state is null || string.Equals(s.State, state, StringComparison.OrdinalIgnoreCase)));
         return negated ? !found : found;
     }
 
@@ -234,6 +238,22 @@ public sealed class RuleContext(IEnumerable<Collection> collections)
     /// <summary>Kennungen der Sammlungen, auf die diese Sammlung direkt verweist.</summary>
     public static IEnumerable<int> References(Collection collection) =>
         collection.Rules.Where(r => r.Field == RuleField.InCollection).Select(r => int.TryParse(r.Value.Trim(), out var id) ? id : 0).Where(id => id > 0).Distinct();
+
+    /// <summary>Die Sammlung selbst und alle, auf die sie direkt oder über andere verweist.</summary>
+    public List<Collection> Closure(Collection collection)
+    {
+        var result = new Dictionary<int, Collection> { [collection.Id] = collection };
+        var pending = new Queue<Collection>([collection]);
+        while (pending.Count > 0)
+        {
+            foreach (var id in References(pending.Dequeue()))
+            {
+                if (_byId.TryGetValue(id, out var next) && result.TryAdd(id, next))
+                    pending.Enqueue(next);
+            }
+        }
+        return [.. result.Values];
+    }
 
     /// <summary>Länge der längsten Verweiskette ab dieser Sammlung; -1, wenn sie im Kreis führt.</summary>
     public int Depth(Collection collection) => Depth(collection, []);

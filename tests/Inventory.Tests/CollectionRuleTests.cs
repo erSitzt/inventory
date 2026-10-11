@@ -72,6 +72,14 @@ public class CollectionRuleTests
         Assert.True(Matches(RuleField.Service, RuleOperator.Equals, "WinRM", computer, "Stopped"));
         Assert.True(Matches(RuleField.Service, RuleOperator.NotEquals, "Kiosk", computer));
         Assert.False(Matches(RuleField.Service, RuleOperator.NotEquals, "Spooler", computer));
+        // Verneint zählt nur, ob es den Dienst gibt; ein mitgeschickter Zustand ändert daran nichts.
+        Assert.False(Matches(RuleField.Service, RuleOperator.NotEquals, "Spooler", computer, "Stopped"));
+
+        // Datenträgerzustand: ein Problem zählt immer, "kein Problem" nur bei vollständig bekannten Zuständen.
+        var partly = new Computer { Name = "p", PhysicalDisks = [new ComputerPhysicalDisk { Model = "a", Health = "Healthy" }, new ComputerPhysicalDisk { Model = "b" }] };
+        Assert.False(Matches(RuleField.DiskHealthProblem, RuleOperator.Equals, "false", partly));
+        Assert.False(Matches(RuleField.DiskHealthProblem, RuleOperator.Equals, "true", partly));
+        Assert.True(Matches(RuleField.DiskHealthProblem, RuleOperator.Equals, "false", new Computer { Name = "ok", PhysicalDisks = [new ComputerPhysicalDisk { Model = "a", Health = "Healthy" }] }));
     }
 
     [Fact]

@@ -45,7 +45,8 @@ public sealed class CollectionService(IDbContextFactory<InventoryDbContext> dbFa
             ? await db.Collections.AsNoTracking().Include(c => c.Members).ToListAsync(ct)
             : [collection];
         var context = new RuleContext(all);
-        return (await LoadForRulesAsync(db, all.Where(c => c.IsDynamic), ct)).Where(c => CollectionEvaluator.Matches(collection, c, context)).Select(c => c.Id).ToHashSet();
+        // Geladen wird nur, was diese Sammlung und die von ihr genannten auswerten, nicht was irgendeine andere braucht.
+        return (await LoadForRulesAsync(db, context.Closure(collection).Where(c => c.IsDynamic), ct)).Where(c => CollectionEvaluator.Matches(collection, c, context)).Select(c => c.Id).ToHashSet();
     }
 
     public async Task<Collection> SaveAsync(int? id, string name, string? description, bool isDynamic, bool matchAll, List<CollectionRule> rules, CancellationToken ct = default)

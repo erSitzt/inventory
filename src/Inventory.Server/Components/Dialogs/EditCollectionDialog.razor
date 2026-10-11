@@ -31,7 +31,7 @@
                                 <MudSelectItem T="RuleField" Value="field">@Display.Field(field)</MudSelectItem>
                             }
                         </MudSelect>
-                        <MudSelect T="RuleOperator" @bind-Value="rule.Operator" Label="@L["Condition"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelect T="RuleOperator" Value="rule.Operator" ValueChanged="@(op => SetOperator(rule, op))" Label="@L["Condition"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                             @foreach (var op in Display.OperatorsFor(rule.Field))
                             {
                                 <MudSelectItem T="RuleOperator" Value="op">@Display.Operator(op)</MudSelectItem>
@@ -134,6 +134,14 @@
         }
         if (IsDynamic && _rules.Count == 0)
             _rules.Add(new CollectionRule { Field = RuleField.Software });
+    }
+
+    private static void SetOperator(CollectionRule rule, RuleOperator op)
+    {
+        rule.Operator = op;
+        // Der Zustand eines Dienstes wird nur bei den bejahenden Bedingungen angeboten und ausgewertet.
+        if (rule.Field == RuleField.Service && op == RuleOperator.NotEquals)
+            rule.Value2 = null;
     }
 
     private void SetField(CollectionRule rule, RuleField field)
