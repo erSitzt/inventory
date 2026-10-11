@@ -15,6 +15,8 @@ public static class SettingKeys
     public const string RebootWaitMinutes = "Deployment.RebootWaitMinutes";
     /// <summary>Wartungsfenster (JSON) für Rechner, die in keiner Sammlung mit eigenem Fenster sind; leer = keine Einschränkung.</summary>
     public const string MaintenanceDefaultWindow = "Maintenance.DefaultWindow";
+    /// <summary>So viele Rechner werden über alle Deployments hinweg gleichzeitig bedient.</summary>
+    public const string MaxParallelTargets = "Deployment.MaxParallelTargets";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>

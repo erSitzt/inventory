@@ -9,13 +9,14 @@ namespace Inventory.Server.Api;
 
 public static class PackageEndpoints
 {
-    public sealed record DeployRequest(int PackageId, int[] ComputerIds, bool ScanAfter, bool RetryOffline = false, bool RespectMaintenanceWindow = false);
+    public sealed record DeployRequest(int PackageId, int[] ComputerIds, bool ScanAfter, bool RetryOffline = false, bool RespectMaintenanceWindow = false,
+        int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null);
 
     public sealed record PackageDto(int Id, string Name, string? Version, string? Description, int Steps, DateTime ModifiedUtc);
 
     public sealed record TargetDto(int Id, int? ComputerId, string ComputerName, TargetStatus Status, string? Error, DateTime? StartedUtc, DateTime? FinishedUtc, List<StepResult> Steps);
 
-    public sealed record DeploymentDto(int Id, int? PackageId, string PackageName, string? PackageVersion, DateTime CreatedUtc, DateTime? FinishedUtc, IEnumerable<TargetDto> Targets);
+    public sealed record DeploymentDto(int Id, int? PackageId, string PackageName, string? PackageVersion, DateTime CreatedUtc, DateTime? FinishedUtc, IEnumerable<TargetDto> Targets, string? StopReason = null);
 
     public static IEndpointRouteBuilder MapPackageEndpoints(this IEndpointRouteBuilder app)
     {
@@ -45,7 +46,8 @@ public static class PackageEndpoints
         {
             try
             {
-                var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, request.ScanAfter, request.RetryOffline, ct, request.RespectMaintenanceWindow);
+                var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, new DeploymentOptions(request.ScanAfter, request.RetryOffline, request.RespectMaintenanceWindow,
+                    request.MaxFailures, request.MaxFailurePercent, request.MaxParallel), ct);
                 await audit.LogAsync(http.User.Identity?.Name ?? L["(API, not signed in)"], L["Deployment started via API"],
                     L["#{0} {1} on {2}", deployment.Id, deployment.PackageName, string.Join(", ", deployment.Targets.Select(t => t.ComputerName))], ct);
                 return Results.Created($"/api/deployments/{deployment.Id}", ToDto(deployment));
@@ -54,7 +56,7 @@ public static class PackageEndpoints
             {
                 return Results.BadRequest(ex.Message);
             }
-        }).WithTags("Deployments").WithSummary("Start deployment").WithDescription("Deploys the package to the computers and returns immediately; GET /api/deployments/{id} delivers the progress. ScanAfter: rescan inventory afterwards. RetryOffline: retry unreachable computers for up to 3 days. RespectMaintenanceWindow: computers outside their maintenance window wait until it opens (at most 8 days).")
+        }).WithTags("Deployments").WithSummary("Start deployment").WithDescription("Deploys the package to the computers and returns immediately; GET /api/deployments/{id} delivers the progress. ScanAfter: rescan inventory afterwards. RetryOffline: retry unreachable computers for up to 3 days. RespectMaintenanceWindow: computers outside their maintenance window wait until it opens (at most 8 days). MaxFailures / MaxFailurePercent: stop starting further computers once that many failed (the rate counts after five finished and two failed computers); MaxParallel: computers of this deployment running at once.")
             .Produces<DeploymentDto>(201).Produces(400);
 
         app.MapGet("/api/deployments/{id:int}", async (int id, DeploymentService deployments, CancellationToken ct) =>
@@ -65,5 +67,5 @@ public static class PackageEndpoints
     }
 
     private static DeploymentDto ToDto(Deployment d) => new(d.Id, d.PackageId, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc,
-        d.Targets.Select(t => new TargetDto(t.Id, t.ComputerId, t.ComputerName, t.Status, t.Error, t.StartedUtc, t.FinishedUtc, t.Steps)));
+        d.Targets.Select(t => new TargetDto(t.Id, t.ComputerId, t.ComputerName, t.Status, t.Error, t.StartedUtc, t.FinishedUtc, t.Steps)), d.StopReason);
 }

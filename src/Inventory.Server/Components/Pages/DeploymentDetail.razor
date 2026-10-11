@@ -57,6 +57,11 @@
     }
 </MudText>
 
+@if (_deployment.StopReason is not null)
+{
+    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-4">@_deployment.StopReason – @L["the remaining computers were not started."]</MudAlert>
+}
+
 @if (Running)
 {
     <MudProgressLinear Color="Color.Info" Value="@(100d * _deployment.Targets.Count(t => t.FinishedUtc is not null) / _deployment.Targets.Count)" Class="mb-4" />
@@ -168,7 +173,8 @@
     {
         try
         {
-            var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), _deployment.ScanAfter, _deployment.RetryOffline, respectWindow: _deployment.RespectMaintenanceWindow);
+            var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), new DeploymentOptions(_deployment.ScanAfter, _deployment.RetryOffline, _deployment.RespectMaintenanceWindow,
+                    _deployment.MaxFailures, _deployment.MaxFailurePercent, _deployment.MaxParallel));
             await Audit.LogAsync(L["Deployment retried"], L["#{0} {1} on {2}", retry.Id, retry.PackageName, string.Join(", ", retry.Targets.Select(t => t.ComputerName))]);
             Navigation.NavigateTo($"deployments/{retry.Id}");
         }

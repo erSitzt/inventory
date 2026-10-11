@@ -36,6 +36,7 @@
             <MudCheckBox T="bool" @bind-Value="_scanAfter" Label="@L["Rescan inventory afterwards"]" Dense="true" />
             <MudCheckBox T="bool" @bind-Value="_retryOffline" Label="@L["Retry offline computers once they are reachable (up to 3 days)"]" Dense="true" />
             <MudCheckBox T="bool" @bind-Value="_respectWindow" Label="@L["Only within the maintenance window (computers outside wait until it opens)"]" Dense="true" />
+            <DeploymentLimitsEditor @bind-MaxFailures="_maxFailures" @bind-MaxFailurePercent="_maxFailurePercent" @bind-MaxParallel="_maxParallel" />
             @if (_error is not null)
             {
                 <MudAlert Severity="Severity.Error">@_error</MudAlert>
@@ -67,6 +68,9 @@
     private bool _scanAfter = true;
     private bool _retryOffline;
     private bool _respectWindow;
+    private int? _maxFailures;
+    private int? _maxFailurePercent;
+    private int? _maxParallel;
     private bool _starting;
     private string? _error;
 
@@ -94,7 +98,8 @@
         _starting = true;
         try
         {
-            var deployment = await DeploymentService.StartAsync(_packageId!.Value, _targets.Select(c => c.Id), _scanAfter, _retryOffline, respectWindow: _respectWindow);
+            var deployment = await DeploymentService.StartAsync(_packageId!.Value, _targets.Select(c => c.Id),
+                new DeploymentOptions(_scanAfter, _retryOffline, _respectWindow, _maxFailures, _maxFailurePercent, _maxParallel));
             await Audit.LogAsync(L["Deployment started"], L["#{0} {1} on {2}", deployment.Id, $"{deployment.PackageName} {deployment.PackageVersion}", string.Join(", ", deployment.Targets.Select(t => t.ComputerName))]);
             MudDialog.Close(DialogResult.Ok(deployment.Id));
             Navigation.NavigateTo($"deployments/{deployment.Id}");

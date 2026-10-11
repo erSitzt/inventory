@@ -498,6 +498,78 @@ public sealed class PackageTests : IDisposable
         Assert.Empty(old.CloseProcesses);
     }
 
+    [Fact]
+    public async Task A_deployment_stops_starting_computers_once_the_failure_limit_is_reached()
+    {
+        var package = await _packages.SaveAsync(null, "Kaputt", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Setup mit Fehler"), null);
+        var computers = await _computers.ImportAsync("pc-01 pc-02 pc-03 pc-04 pc-05 pc-06");
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        // Einer nach dem anderen: nach dem zweiten Fehler starten die übrigen vier nicht mehr.
+        var done = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), new DeploymentOptions(false, MaxFailures: 2, MaxParallel: 1))).Id);
+        Assert.Equal(2, done.Targets.Count(t => t.Status == TargetStatus.Failed));
+        Assert.Equal(4, done.Targets.Count(t => t.Status == TargetStatus.Cancelled));
+        Assert.Contains("2 of 2", done.StopReason);
+        Assert.All(done.Targets.Where(t => t.Status == TargetStatus.Cancelled), t => Assert.Equal(done.StopReason, t.Error));
+
+        // Ohne Grenze laufen alle und scheitern alle.
+        var unlimited = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), false)).Id);
+        Assert.All(unlimited.Targets, t => Assert.Equal(TargetStatus.Failed, t.Status));
+        Assert.Null(unlimited.StopReason);
+    }
+
+    [Fact]
+    public async Task Reaching_the_limit_also_drops_computers_that_are_still_waiting_to_come_online()
+    {
+        var package = await _packages.SaveAsync(null, "Kaputt", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Setup mit Fehler"), null);
+        var computers = await _computers.ImportAsync("pc-01 pc-02");
+        _probe.Offline.Add("pc-02");
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+
+        var done = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), new DeploymentOptions(false, RetryOffline: true, MaxFailures: 1))).Id);
+        Assert.Equal(TargetStatus.Failed, done.Targets.Single(t => t.ComputerName == "pc-01").Status);
+        var later = (await deployments.GetAsync(done.Id))!.Targets.Single(t => t.ComputerName == "pc-02");
+        Assert.Equal(TargetStatus.Cancelled, later.Status);
+        Assert.Equal(0, await deployments.RetryWaitingAsync());
+    }
+
+    [Fact]
+    public async Task A_computer_that_never_comes_online_counts_as_a_failure_for_the_limit()
+    {
+        var package = await _packages.SaveAsync(null, "Später", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Setup"), null);
+        var computers = await _computers.ImportAsync("pc-01 pc-02");
+        _probe.Offline.Add("pc-01");
+        _probe.Offline.Add("pc-02");
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var waiting = await WaitAsync(deployments, (await deployments.StartAsync(package.Id, computers.Select(c => c.Id), new DeploymentOptions(false, RetryOffline: true, MaxFailures: 2))).Id);
+        Assert.All(waiting.Targets, t => Assert.Equal(TargetStatus.WaitingOffline, t.Status));
+
+        await using (var db = _db.CreateDbContext())
+        {
+            db.Deployments.Single(d => d.Id == waiting.Id).RetryUntilUtc = DateTime.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+        await deployments.RetryWaitingAsync();
+        var expired = (await deployments.GetAsync(waiting.Id))!;
+        Assert.All(expired.Targets, t => Assert.Equal(TargetStatus.Failed, t.Status));
+        Assert.Contains("2 of 2", expired.StopReason);
+    }
+
+    [Theory]
+    [InlineData(null, null, 50, 50, false)]
+    [InlineData(3, null, 2, 2, false)]
+    [InlineData(3, null, 3, 40, true)]
+    [InlineData(null, 10, 1, 4, false)]   // noch keine fünf abgeschlossen
+    [InlineData(null, 10, 1, 5, false)]   // ein einzelner Ausreißer hält nichts an
+    [InlineData(null, 10, 2, 5, true)]
+    [InlineData(null, 10, 2, 21, false)]  // 9,5 %
+    [InlineData(null, 10, 3, 30, true)]
+    public void The_failure_limit_counts_failures_or_a_rate_among_finished_computers(int? maxFailures, int? maxPercent, int failed, int finished, bool reached) =>
+        Assert.Equal(reached, DeploymentLimits.Reached(maxFailures, maxPercent, failed, finished));
+
     /// <summary>Merkt sich die Manifeste; der erste Job endet mit einem Neustart, der zweite läuft durch.</summary>
     private sealed class RecordingTransport : IRemoteTransport
     {

@@ -17,6 +17,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
   Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten; Schritte nach einem Neustart laufen
   automatisch weiter, sobald der Rechner wieder da ist
+- **Grenzen je Deployment**: nach einer Anzahl oder Quote von Fehlern keine weiteren Rechner mehr starten und
+  begrenzen, wie viele Rechner gleichzeitig laufen – so erreicht ein kaputtes Paket nicht alle Rechner, und die ersten
+  wirken als Pilotgruppe
 - **Robuste Schritte**: Wiederholungen mit Pause (automatisch, wenn gerade eine andere Installation läuft), Prüfung
   des freien Speicherplatzes vor dem Schritt und vorheriges Schließen benannter Programme – auf Wunsch nach einem
   Hinweis an den angemeldeten Benutzer

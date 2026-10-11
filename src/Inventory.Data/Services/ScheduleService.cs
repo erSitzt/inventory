@@ -97,7 +97,8 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
 
             if (schedule.PackageId is not { } packageId)
                 return L["No package selected"];
-            var deployment = await deployments.StartAsync(packageId, ids, schedule.ScanAfter, schedule.RetryOffline, ct, schedule.RespectMaintenanceWindow);
+            var deployment = await deployments.StartAsync(packageId, ids, new DeploymentOptions(schedule.ScanAfter, schedule.RetryOffline, schedule.RespectMaintenanceWindow,
+                schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel), ct);
             return L["Deployment #{0} started on {1} computers", deployment.Id, deployment.Targets.Count];
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)

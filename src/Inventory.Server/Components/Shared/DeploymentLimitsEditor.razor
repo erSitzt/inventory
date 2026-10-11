@@ -1,0 +1,30 @@
+@inject IStringLocalizer<SharedResource> L
+
+@* Fehlergrenzen und Parallelität eines Deployments; leere Felder bedeuten "keine Grenze". *@
+<MudExpansionPanels Elevation="0" Outlined="true">
+    <MudExpansionPanel Text="@(MaxFailures is > 0 || MaxFailurePercent is > 0 || MaxParallel is > 0 ? L["Limits (active)"] : L["Limits (none)"])">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudNumericField T="int?" Value="MaxFailures" ValueChanged="MaxFailuresChanged" Label="@L["Stop after failures"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="10000" Clearable="true" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField T="int?" Value="MaxFailurePercent" ValueChanged="MaxFailurePercentChanged" Label="@L["Stop at failure rate (%)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="100" Clearable="true" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField T="int?" Value="MaxParallel" ValueChanged="MaxParallelChanged" Label="@L["Computers at once"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="128" Clearable="true" />
+            </MudItem>
+        </MudGrid>
+        <MudText Typo="Typo.caption">
+            @L["When a limit is reached, no further computers are started; running ones finish. The failure rate counts once five computers have finished and at least two failed. With few computers at once, the first ones act as a pilot group."]
+        </MudText>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    [Parameter] public int? MaxFailures { get; set; }
+    [Parameter] public EventCallback<int?> MaxFailuresChanged { get; set; }
+    [Parameter] public int? MaxFailurePercent { get; set; }
+    [Parameter] public EventCallback<int?> MaxFailurePercentChanged { get; set; }
+    [Parameter] public int? MaxParallel { get; set; }
+    [Parameter] public EventCallback<int?> MaxParallelChanged { get; set; }
+}

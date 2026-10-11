@@ -34,6 +34,8 @@
         <MudText Typo="Typo.body2">
             @L["SMB + service needs the ADMIN$ share and the Service Control Manager (port 445); the job runs as Local System. WinRM needs PowerShell remoting enabled (port 5985); the job runs with the stored account."]
         </MudText>
+        <MudNumericField T="int" Value="_maxParallel" ValueChanged="SetMaxParallelAsync" Min="1" Max="128" Label="@L["Computers served at once"]" Variant="Variant.Outlined"
+                         HelperText="@L["Across all deployments. A deployment can set a lower limit of its own."]" />
         <MudNumericField T="int" Value="_rebootWait" ValueChanged="SetRebootWaitAsync" Min="5" Max="1440" Label="@L["Wait for restart (minutes)"]" Variant="Variant.Outlined"
                          HelperText="@L["How long a computer may take to come back after a restart step. After that the deployment counts as failed for this computer."]" />
         <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="@L["Data directory"]" Variant="Variant.Outlined" ReadOnly="true"
@@ -425,7 +427,18 @@
         await SettingsService.SetRebootWaitMinutesAsync(minutes);
         _rebootWait = await SettingsService.GetRebootWaitMinutesAsync();
         _defaultWindow = await Maintenance.GetDefaultAsync();
+        _maxParallel = await SettingsService.GetMaxParallelTargetsAsync();
         await Audit.LogAsync(L["Setting changed"], $"{L["Wait for restart (minutes)"]}: {_rebootWait}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private int _maxParallel = Inventory.Data.Services.SettingsService.DefaultMaxParallelTargets;
+
+    private async Task SetMaxParallelAsync(int value)
+    {
+        await SettingsService.SetMaxParallelTargetsAsync(value);
+        _maxParallel = await SettingsService.GetMaxParallelTargetsAsync();
+        await Audit.LogAsync(L["Setting changed"], $"{L["Computers served at once"]}: {_maxParallel}");
         Snackbar.Add(L["Saved."], Severity.Success);
     }
 
