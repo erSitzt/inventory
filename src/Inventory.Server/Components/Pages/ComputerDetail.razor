@@ -412,7 +412,8 @@ else if (_computer.ReverseDnsMismatch)
                     <MudItem xs="12">
                         <MudText Typo="Typo.subtitle1" Class="mb-1">@L["Pending updates"]</MudText>
                         <MudText Typo="Typo.caption">@L["As of the computer's last search ({0}); the scan does not trigger a new search.", Display.LocalTime(_computer.UpdateLastSearchUtc)]</MudText>
-                        <MudList T="string" Dense="true">
+                        @* Reine Anzeige: ohne ReadOnly wirken die Einträge anklickbar, obwohl nichts dahinter liegt. *@
+                        <MudList T="string" Dense="true" ReadOnly="true">
                             @foreach (var title in (_computer.UpdatePending ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries))
                             {
                                 <MudListItem T="string" Icon="@Icons.Material.Filled.SystemUpdateAlt">@title</MudListItem>
