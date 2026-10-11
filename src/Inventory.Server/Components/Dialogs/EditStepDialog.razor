@@ -99,6 +99,16 @@
                         <MudTextField @bind-Value="_step.Script" Label="@L["Message for logged-on users"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
                         <MudAlert Severity="Severity.Info" Dense="true">@L["Steps after the restart continue automatically once the computer is reachable again (within the wait time from the settings); the final inventory scan runs then as well."]</MudAlert>
                         break;
+                    case StepType.WindowsUpdate:
+                        <MudCheckBox T="bool" @bind-Value="_step.UpdateSecurityOnly" Label="@L["Only security and critical updates"]" Dense="true" Disabled="@(!string.IsNullOrWhiteSpace(_updateKbIds))" />
+                        <MudCheckBox T="bool" @bind-Value="_step.UpdateIncludeDrivers" Label="@L["Also drivers offered by Windows Update"]" Dense="true" />
+                        <MudTextField @bind-Value="_updateKbIds" Label="@L["Only these KB numbers"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" Placeholder="KB5066835, KB5044284"
+                                      HelperText="@L["Empty = everything the settings above allow. With KB numbers, only these updates are installed."]" />
+                        <MudNumericField T="int" @bind-Value="_step.UpdateMaxCount" Label="@L["At most this many updates per run"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="500" HelperText="@L["0 = all"]" />
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            @L["Updates come from the source configured on the computer (WSUS or Microsoft Update). The step does not restart the computer: add a \"Reboot\" step with the condition \"only if a restart is pending\" after it. Works via SMB + service or agent, not over WinRM."]
+                        </MudAlert>
+                        break;
                     case StepType.InventoryScan:
                         <MudText Typo="Typo.body2">@L["Re-captures the computer's hardware and software, e.g. after an installation."]</MudText>
                         break;
@@ -171,6 +181,12 @@
                                     <MudSelectItem T="bool?" Value="false">@L["only if nobody is logged on"]</MudSelectItem>
                                 </MudSelect>
                             </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="bool?" @bind-Value="_conditions.RebootPending" Label="@L["Restart pending"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["any"]">
+                                    <MudSelectItem T="bool?" Value="true">@L["only if a restart is pending"]</MudSelectItem>
+                                    <MudSelectItem T="bool?" Value="false">@L["only if no restart is pending"]</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
                         </MudGrid>
                     </MudExpansionPanel>
                     @if (Type is not (StepType.Sleep or StepType.Reboot or StepType.InventoryScan))
@@ -236,6 +252,7 @@
     private StepConditions _conditions = new();
     private string _successCodes = "";
     private string _closeProcesses = "";
+    private string _updateKbIds = "";
 
     private bool HasRobustness => _step.Retries > 0 || _step.MinFreeDiskMb > 0 || !string.IsNullOrWhiteSpace(_closeProcesses);
     private int? _nestedPackageId;
@@ -269,12 +286,13 @@
                 Type = Type,
                 Name = Nested ? "" : Display.Step(Type),
                 Seconds = Type switch { StepType.Sleep => 30, StepType.Reboot => 60, _ => 0 },
-                TimeoutSeconds = Type is StepType.Install or StepType.Uninstall ? 3600 : 600,
+                TimeoutSeconds = Type switch { StepType.WindowsUpdate => 7200, StepType.Install or StepType.Uninstall => 3600, _ => 600 },
             };
         }
         _conditions = _step.Conditions ?? new StepConditions();
         _successCodes = string.Join(", ", _step.SuccessCodes);
         _closeProcesses = string.Join(", ", _step.CloseProcesses);
+        _updateKbIds = string.Join(", ", _step.UpdateKbIds);
         if (Nested)
             _packages = (await PackageService.ListAsync()).Where(p => p.Id != PackageId).ToList();
         await DetectAsync();
@@ -342,6 +360,12 @@
             codes.Add(code);
         }
         _step.SuccessCodes = codes;
+        _step.UpdateKbIds = PendingUpdates.NormalizeKbIds(_updateKbIds);
+        if (_step.UpdateKbIds.Count == 0 && !string.IsNullOrWhiteSpace(_updateKbIds))
+        {
+            _error = L["\"{0}\" contains no KB number.", _updateKbIds.Trim()];
+            return;
+        }
         _step.Conditions = _conditions.IsEmpty ? null : _conditions;
         _step.Name = _step.Name.Trim();
 

@@ -123,6 +123,26 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         return (package, true);
     }
 
+    /// <summary>Paket, das genau diese Updates installiert; wird beim ersten Aufruf angelegt und danach wiederverwendet.</summary>
+    /// <param name="kbIds">KB-Nummern wie in <see cref="ComputerPendingUpdate.KbIds"/>, durch Komma getrennt.</param>
+    public async Task<(Package Package, bool Created)> EnsureUpdatePackageAsync(string kbIds, CancellationToken ct = default, string? approvedBy = null)
+    {
+        var ids = PendingUpdates.NormalizeKbIds(kbIds);
+        if (ids.Count == 0)
+            throw new InvalidOperationException(L["This update has no KB number and cannot be installed on its own."]);
+        var name = L["Install update {0}", string.Join(", ", ids)].Value;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            if (await db.Packages.AsNoTracking().FirstOrDefaultAsync(p => p.Name == name, ct) is { } existing)
+                return (existing, false);
+        }
+        var package = await SaveAsync(null, name, null, null, ct);
+        await SaveStepAsync(package.Id, null, new JobStep { Name = name, Type = StepType.WindowsUpdate, TimeoutSeconds = 7200, UpdateKbIds = ids }, null, ct);
+        if (approvedBy is not null)
+            await ApproveAsync(package.Id, approvedBy, ct);
+        return (package, true);
+    }
+
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

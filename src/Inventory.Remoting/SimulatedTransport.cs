@@ -95,6 +95,7 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
         StepType.Service => $"{step.ServiceAction} {step.ServiceName}",
         StepType.Uninstall => $"{step.ProductCode ?? step.SoftwareName} {step.Arguments}".Trim(),
         StepType.Sleep or StepType.Reboot => $"{step.Seconds} s",
+        StepType.WindowsUpdate => step.UpdateKbIds.Count > 0 ? string.Join(", ", step.UpdateKbIds) : step.UpdateSecurityOnly ? "security updates" : "all updates",
         _ => step.Script.Split('\n')[0].Trim(),
     };
 }

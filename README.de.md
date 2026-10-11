@@ -37,6 +37,11 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Wartungsfenster**: Wochentage und Uhrzeit je Sammlung sowie ein Standardfenster; Deployments und Zeitpläne mit
   der Option „Nur im Wartungsfenster“ halten Rechner zurück, deren Fenster geschlossen ist, und starten sie, sobald es
   beginnt
+- **Windows Update**: ein Schritt-Typ, der ausstehende Updates aus der auf dem Rechner eingestellten Quelle (WSUS
+  oder Microsoft Update) sucht, lädt und installiert – alle, nur Sicherheits- und kritische oder bestimmte KB-Nummern;
+  ein nachfolgender Schritt „Neustart“ lässt sich auf „nur wenn ein Neustart aussteht“ beschränken. Die
+  Update-Übersicht bietet „Installieren …“ für die Rechner, denen ein Update fehlt. Funktioniert über SMB + Dienst
+  oder Agent, nicht über WinRM
 - **Deinstallation**: ein Schritt-Typ, der ein Programm über Name oder MSI-Produktcode entfernt – still bei MSI-,
   Inno-Setup- und NSIS-Setups sowie bei Programmen mit eingetragenem stillen Befehl – und prüft, dass es wirklich weg
   ist; die Software-Übersicht bietet „Deinstallieren …“ für die Rechner an, die ein Programm haben

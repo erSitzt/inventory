@@ -65,6 +65,13 @@ namespace Inventory.Runner
                 if (loggedOn != expected)
                     return loggedOn ? "a user is logged on" : "no user is logged on";
             }
+
+            if (conditions.RebootPending is bool wanted)
+            {
+                var pending = WindowsUpdateInstaller.PendingReboot();
+                if (pending != wanted)
+                    return pending ? "a restart is pending" : "no restart is pending";
+            }
             return null;
         }
 

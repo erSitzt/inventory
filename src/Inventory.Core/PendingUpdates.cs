@@ -11,6 +11,13 @@ public static partial class PendingUpdates
     public static List<string> KbIdsFromTitle(string title) =>
         KbNumber().Matches(title).Select(m => m.Value.ToUpperInvariant()).Distinct().ToList();
 
+    /// <summary>Liest KB-Nummern aus einer Eingabe wie "KB5066835, 5044284" und vereinheitlicht die Schreibweise.</summary>
+    public static List<string> NormalizeKbIds(string? text) =>
+        (text ?? "").Split([',', ';', ' ', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => new string(part.Where(char.IsDigit).ToArray()))
+            .Where(digits => digits.Length is >= 6 and <= 8)
+            .Select(digits => "KB" + digits).Distinct().ToList();
+
     /// <summary>
     /// Sicherheitsrelevant sind Sicherheits- und kritische Updates sowie alles mit einem MSRC-Schweregrad. Ohne
     /// Klassifizierung (ältere Runner) entscheidet der Titel: kumulative und Sicherheitsupdates nennen sich so.

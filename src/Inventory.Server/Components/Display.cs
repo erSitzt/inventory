@@ -118,6 +118,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.Reboot => T("Reboot"),
         StepType.InventoryScan => T("Inventory scan"),
         StepType.Uninstall => T("Uninstall"),
+        StepType.WindowsUpdate => T("Windows Update"),
         _ => type.ToString(),
     };
 
@@ -132,8 +133,17 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.Reboot => Icons.Material.Filled.RestartAlt,
         StepType.InventoryScan => Icons.Material.Filled.ManageSearch,
         StepType.Uninstall => Icons.Material.Filled.DeleteSweep,
+        StepType.WindowsUpdate => Icons.Material.Filled.SystemUpdateAlt,
         _ => Icons.Material.Filled.PlayArrow,
     };
+
+    private string UpdateStepSummary(JobStep step)
+    {
+        if (step.UpdateKbIds.Count > 0)
+            return string.Join(", ", step.UpdateKbIds);
+        var scope = step.UpdateSecurityOnly ? T("security and critical updates") : T("all pending updates");
+        return step.UpdateIncludeDrivers ? T("{0}, including drivers", scope) : scope;
+    }
 
     /// <summary>Kurzbeschreibung dessen, was ein Schritt tut, für Listen.</summary>
     public string StepSummary(JobStep step) => step.Type switch
@@ -144,6 +154,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.Sleep => T("{0} seconds", step.Seconds),
         StepType.Reboot => step.Seconds > 0 ? T("after {0} seconds", step.Seconds) : T("immediately"),
         StepType.InventoryScan => "",
+        StepType.WindowsUpdate => UpdateStepSummary(step),
         StepType.Uninstall => $"{(string.IsNullOrWhiteSpace(step.ProductCode) ? step.SoftwareName : step.ProductCode)} {step.Arguments}".Trim(),
         _ => step.Script.Split('\n')[0].Trim(),
     };

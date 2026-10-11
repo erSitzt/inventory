@@ -20,6 +20,8 @@ namespace Inventory.Contracts
         Reboot,
         /// <summary>Installiertes Programm still deinstallieren (Name oder MSI-Produktcode); ist es nicht vorhanden, gilt der Schritt als erledigt.</summary>
         Uninstall = 8,
+        /// <summary>Ausstehende Windows-Updates suchen, laden und installieren; Exitcode 3010, wenn danach ein Neustart nötig ist.</summary>
+        WindowsUpdate = 9,
     }
 
     /// <summary>Unter welchem Konto ein Schritt auf dem Zielrechner läuft.</summary>
@@ -83,6 +85,14 @@ namespace Inventory.Contracts
         public ServiceAction ServiceAction { get; set; }
         /// <summary>Sleep: Wartezeit; Reboot: Verzögerung bis zum Neustart.</summary>
         public int Seconds { get; set; }
+        /// <summary>WindowsUpdate: nur Sicherheits- und kritische Updates sowie solche mit MSRC-Schweregrad.</summary>
+        public bool UpdateSecurityOnly { get; set; }
+        /// <summary>WindowsUpdate: auch Treiber, die Windows Update anbietet.</summary>
+        public bool UpdateIncludeDrivers { get; set; }
+        /// <summary>WindowsUpdate: höchstens so viele Updates je Lauf; 0 = alle.</summary>
+        public int UpdateMaxCount { get; set; }
+        /// <summary>WindowsUpdate: nur diese KB-Nummern installieren; leer = alles, was die übrigen Einstellungen zulassen.</summary>
+        public List<string> UpdateKbIds { get; set; } = new List<string>();
         public int TimeoutSeconds { get; set; } = 600;
         /// <summary>Leer = Standard des Schritt-Typs (0, bei Install zusätzlich 3010 und 1641).</summary>
         public List<int> SuccessCodes { get; set; } = new List<int>();
@@ -126,6 +136,8 @@ namespace Inventory.Contracts
         public string? RegistryKeyMissing { get; set; }
         /// <summary>true = nur wenn ein Benutzer angemeldet ist, false = nur wenn keiner angemeldet ist.</summary>
         public bool? UserLoggedOn { get; set; }
+        /// <summary>true = nur wenn ein Neustart aussteht (z. B. nach Updates), false = nur wenn keiner aussteht.</summary>
+        public bool? RebootPending { get; set; }
         /// <summary>
         /// Programm aus "Programme und Features": ohne * ein Teil des Anzeigenamens (ganze Wörter), mit * ein Muster für den ganzen Namen.
         /// </summary>
@@ -141,7 +153,7 @@ namespace Inventory.Contracts
         public bool IsEmpty =>
             string.IsNullOrWhiteSpace(MinOsVersion) && string.IsNullOrWhiteSpace(BelowOsVersion) && string.IsNullOrWhiteSpace(Architecture)
             && string.IsNullOrWhiteSpace(FileExists) && string.IsNullOrWhiteSpace(FileMissing)
-            && string.IsNullOrWhiteSpace(RegistryKeyExists) && string.IsNullOrWhiteSpace(RegistryKeyMissing) && UserLoggedOn == null
+            && string.IsNullOrWhiteSpace(RegistryKeyExists) && string.IsNullOrWhiteSpace(RegistryKeyMissing) && UserLoggedOn == null && RebootPending == null
             && string.IsNullOrWhiteSpace(SoftwareInstalled) && string.IsNullOrWhiteSpace(SoftwareMissing) && string.IsNullOrWhiteSpace(MsiProductCode);
     }
 
