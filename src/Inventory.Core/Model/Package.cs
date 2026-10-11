@@ -109,6 +109,8 @@ public class Deployment
     public int? MaxParallel { get; set; }
     /// <summary>Gesetzt, sobald eine Fehlergrenze erreicht war: weshalb die restlichen Rechner nicht mehr gestartet wurden.</summary>
     public string? StopReason { get; set; }
+    /// <summary>Der Zeitplan, der dieses Deployment gestartet hat; null = von Hand oder der Zeitplan ist gelöscht.</summary>
+    public int? ScheduleId { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? FinishedUtc { get; set; }
     public List<DeploymentTarget> Targets { get; set; } = [];

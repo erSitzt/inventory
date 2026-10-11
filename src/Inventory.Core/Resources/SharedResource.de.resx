@@ -35,6 +35,9 @@
   <data name="0 = close immediately" xml:space="preserve">
     <value>0 = sofort schließen</value>
   </data>
+  <data name="0 = never, otherwise at least {0} days. Useful when the package has a detection: it then only reinstalls where the program has disappeared." xml:space="preserve">
+    <value>0 = nie, sonst mindestens {0} Tage. Sinnvoll, wenn das Paket eine Erkennung hat: dann wird nur dort neu installiert, wo das Programm verschwunden ist.</value>
+  </data>
   <data name='1 open item – details under "Needs attention".' xml:space="preserve">
     <value>1 offener Punkt – Einzelheiten unter „Handlungsbedarf“.</value>
   </data>
@@ -629,6 +632,12 @@
   <data name="Date" xml:space="preserve">
     <value>Datum</value>
   </data>
+  <data name="Day of the month" xml:space="preserve">
+    <value>Tag des Monats</value>
+  </data>
+  <data name="Days later" xml:space="preserve">
+    <value>Tage später</value>
+  </data>
   <data name="Days since last AD logon" xml:space="preserve">
     <value>Tage seit der letzten AD-Anmeldung</value>
   </data>
@@ -833,6 +842,9 @@
   <data name="E.g. %ProgramData%\Company\ – a trailing \ means folder. Existing files are overwritten." xml:space="preserve">
     <value>Z. B. %ProgramData%\Firma\ – ein abschließender \ bedeutet Ordner. Vorhandene Dateien werden überschrieben.</value>
   </data>
+  <data name='E.g. 3 with "2. Tuesday": three days after the monthly Microsoft patch day.' xml:space="preserve">
+    <value>Z. B. 3 beim „2. Dienstag“: drei Tage nach dem monatlichen Patchday von Microsoft.</value>
+  </data>
   <data name="Edit" xml:space="preserve">
     <value>Bearbeiten</value>
   </data>
@@ -850,6 +862,9 @@
   </data>
   <data name="Endpoint protection often rates agentless access (a service started remotely, files copied to ADMIN$) as suspicious. Computers with the agent need neither; the README describes how to allow the rest narrowly." xml:space="preserve">
     <value>Endpunktschutz wertet den agentenlosen Zugriff (aus der Ferne gestarteter Dienst, nach ADMIN$ kopierte Dateien) oft als verdächtig. Rechner mit Agent brauchen beides nicht; die README beschreibt, wie sich der Rest eng begrenzt freigeben lässt.</value>
+  </data>
+  <data name="Ends on (optional)" xml:space="preserve">
+    <value>Endet am (optional)</value>
   </data>
   <data name="Enrollment secret" xml:space="preserve">
     <value>Anmeldegeheimnis</value>
@@ -874,6 +889,9 @@
   </data>
   <data name="every {0} minutes" xml:space="preserve">
     <value>alle {0} Minuten</value>
+  </data>
+  <data name="Every {0} minutes the server checks which members of the target have not received the package through this schedule yet and starts it there – also on computers that join the collection later. A computer on which it failed is tried again after a day. Maintenance windows and offline computers are handled as set above." xml:space="preserve">
+    <value>Alle {0} Minuten prüft der Server, welche Mitglieder des Ziels das Paket über diesen Zeitplan noch nicht erhalten haben, und startet es dort – auch auf Rechnern, die erst später in die Sammlung kommen. Ein Rechner, auf dem es fehlgeschlagen ist, wird nach einem Tag erneut versucht. Wartungsfenster und Offline-Rechner werden wie oben eingestellt behandelt.</value>
   </data>
   <data name="Everything, including packages, credentials, settings and commands on target computers." xml:space="preserve">
     <value>Alles, einschließlich Paketen, Zugangsdaten, Einstellungen und Befehlen auf Zielrechnern.</value>
@@ -1004,6 +1022,9 @@
   <data name="from winget search" xml:space="preserve">
     <value>aus der winget-Suche</value>
   </data>
+  <data name="Fulfilled" xml:space="preserve">
+    <value>Erfüllt</value>
+  </data>
   <data name="Full rights on the computer, but no access to a user's profile and settings." xml:space="preserve">
     <value>Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.</value>
   </data>
@@ -1055,6 +1076,9 @@
   <data name="If the program is not installed, the step counts as done. If the name matches more than three programs, nothing is uninstalled and the step fails." xml:space="preserve">
     <value>Ist das Programm nicht installiert, gilt der Schritt als erledigt. Trifft der Name mehr als drei Programme, wird nichts deinstalliert und der Schritt schlägt fehl.</value>
   </data>
+  <data name="If the server was off at the scheduled time: catch up when it is less than a day late" xml:space="preserve">
+    <value>War der Server zum geplanten Zeitpunkt aus: nachholen, wenn es weniger als einen Tag her ist</value>
+  </data>
   <data name="immediately" xml:space="preserve">
     <value>sofort</value>
   </data>
@@ -1084,6 +1108,9 @@
   </data>
   <data name="imported, up to date" xml:space="preserve">
     <value>importiert, aktuell</value>
+  </data>
+  <data name="In shorter months the last day." xml:space="preserve">
+    <value>In kürzeren Monaten der letzte Tag.</value>
   </data>
   <data name="inactive" xml:space="preserve">
     <value>inaktiv</value>
@@ -1192,6 +1219,9 @@
   </data>
   <data name="Laptop" xml:space="preserve">
     <value>Notebook</value>
+  </data>
+  <data name="last" xml:space="preserve">
+    <value>letzter</value>
   </data>
   <data name="last 24 hours" xml:space="preserve">
     <value>letzte 24 Stunden</value>
@@ -1352,6 +1382,9 @@
   <data name="Member of collection" xml:space="preserve">
     <value>Mitglied der Sammlung</value>
   </data>
+  <data name="Members of the target on which the package succeeded through this schedule" xml:space="preserve">
+    <value>Mitglieder des Ziels, auf denen das Paket über diesen Zeitplan erfolgreich war</value>
+  </data>
   <data name="Memory" xml:space="preserve">
     <value>Arbeitsspeicher</value>
   </data>
@@ -1382,6 +1415,9 @@
   <data name="Minimum Windows" xml:space="preserve">
     <value>Mindestens Windows</value>
   </data>
+  <data name="Missed: the server was not running at {0}" xml:space="preserve">
+    <value>Verpasst: der Server lief um {0} nicht</value>
+  </data>
   <data name="Missing on {0} computers" xml:space="preserve">
     <value>Fehlt auf {0} Rechnern</value>
   </data>
@@ -1399,6 +1435,12 @@
   </data>
   <data name="Monitors" xml:space="preserve">
     <value>Monitore</value>
+  </data>
+  <data name="Monthly" xml:space="preserve">
+    <value>Monatlich</value>
+  </data>
+  <data name="monthly, {0} at {1}" xml:space="preserve">
+    <value>monatlich, {0} um {1}</value>
   </data>
   <data name="More results from winget" xml:space="preserve">
     <value>Weitere Treffer aus winget</value>
@@ -1676,11 +1718,26 @@
   <data name="on" xml:space="preserve">
     <value>an</value>
   </data>
+  <data name="On a day of the month" xml:space="preserve">
+    <value>An einem Tag des Monats</value>
+  </data>
+  <data name="On a weekday of the month" xml:space="preserve">
+    <value>An einem Wochentag des Monats</value>
+  </data>
+  <data name="on day {0}" xml:space="preserve">
+    <value>am {0}.</value>
+  </data>
+  <data name="on the last {0}" xml:space="preserve">
+    <value>am letzten {0}</value>
+  </data>
   <data name="On the system drive. 0 = no check." xml:space="preserve">
     <value>Auf dem Systemlaufwerk. 0 = keine Prüfung.</value>
   </data>
   <data name="On the system drive. 0 = twice the size of the installer file." xml:space="preserve">
     <value>Auf dem Systemlaufwerk. 0 = das Doppelte der Installationsdatei.</value>
+  </data>
+  <data name="on the {0}. {1}" xml:space="preserve">
+    <value>am {0}. {1}</value>
   </data>
   <data name="on, every {0} min" xml:space="preserve">
     <value>an, alle {0} min</value>
@@ -2159,8 +2216,17 @@
   <data name="Reported name differs" xml:space="preserve">
     <value>Gemeldeter Name weicht ab</value>
   </data>
+  <data name="required for every member" xml:space="preserve">
+    <value>Pflicht für jedes Mitglied</value>
+  </data>
+  <data name="required for every member, checked again every {0} days" xml:space="preserve">
+    <value>Pflicht für jedes Mitglied, erneut nach {0} Tagen</value>
+  </data>
   <data name="Required free disk space (MB)" xml:space="preserve">
     <value>Benötigter freier Speicherplatz (MB)</value>
+  </data>
+  <data name="Required: every member of the target gets the package" xml:space="preserve">
+    <value>Pflicht: jedes Mitglied des Ziels bekommt das Paket</value>
   </data>
   <data name="Rescan inventory afterwards" xml:space="preserve">
     <value>Danach Inventar neu scannen</value>
@@ -2224,6 +2290,9 @@
   </data>
   <data name="Run" xml:space="preserve">
     <value>Ausführen</value>
+  </data>
+  <data name="Run again after (days)" xml:space="preserve">
+    <value>Erneut ausführen nach (Tagen)</value>
   </data>
   <data name="Run another package" xml:space="preserve">
     <value>Anderes Paket ausführen</value>
@@ -2936,6 +3005,9 @@
   <data name="Until" xml:space="preserve">
     <value>Bis</value>
   </data>
+  <data name="until {0}" xml:space="preserve">
+    <value>bis {0}</value>
+  </data>
   <data name="up to date" xml:space="preserve">
     <value>aktuell</value>
   </data>
@@ -3125,6 +3197,9 @@
   <data name="Website" xml:space="preserve">
     <value>Webseite</value>
   </data>
+  <data name="Weekday" xml:space="preserve">
+    <value>Wochentag</value>
+  </data>
   <data name="Weekly" xml:space="preserve">
     <value>Wöchentlich</value>
   </data>
@@ -3139,6 +3214,9 @@
   </data>
   <data name="When a limit is reached, no further computers are started; running ones finish. The failure rate counts once five computers have finished and at least two failed. With few computers at once, the first ones act as a pilot group." xml:space="preserve">
     <value>Ist eine Grenze erreicht, werden keine weiteren Rechner gestartet; laufende werden fertig. Die Fehlerquote zählt, sobald fünf Rechner abgeschlossen und mindestens zwei fehlgeschlagen sind. Mit wenigen Rechnern gleichzeitig wirken die ersten als Pilotgruppe.</value>
+  </data>
+  <data name="Which" xml:space="preserve">
+    <value>Welcher</value>
   </data>
   <data name="Windows activated" xml:space="preserve">
     <value>Windows aktiviert</value>
@@ -3305,6 +3383,9 @@
   <data name="{0} days" xml:space="preserve">
     <value>{0} Tage</value>
   </data>
+  <data name="{0} days after: {1}" xml:space="preserve">
+    <value>{0} Tage nach: {1}</value>
+  </data>
   <data name="{0} deleted" xml:space="preserve">
     <value>{0} gelöscht</value>
   </data>
@@ -3328,6 +3409,9 @@
   </data>
   <data name="{0} of {1} computers have no pending security updates." xml:space="preserve">
     <value>{0} von {1} Rechnern haben keine ausstehenden Sicherheitsupdates.</value>
+  </data>
+  <data name="{0} of {1} computers have the package" xml:space="preserve">
+    <value>{0} von {1} Rechnern haben das Paket</value>
   </data>
   <data name="{0} of {1} computers reachable." xml:space="preserve">
     <value>{0} von {1} Rechnern erreichbar.</value>

@@ -38,8 +38,13 @@
             <MudSelect T="ScheduleTrigger" @bind-Value="_s.Trigger" Label="@L["Rhythm"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                 <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Daily">@L["Daily"]</MudSelectItem>
                 <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Weekly">@L["Weekly"]</MudSelectItem>
+                <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Monthly">@L["Monthly"]</MudSelectItem>
                 <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Interval">@L["At fixed intervals"]</MudSelectItem>
                 <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Once">@L["Once"]</MudSelectItem>
+                @if (_s.Action == ScheduleAction.Deploy)
+                {
+                    <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.OnMembership">@L["Required: every member of the target gets the package"]</MudSelectItem>
+                }
             </MudSelect>
             @switch (_s.Trigger)
             {
@@ -56,6 +61,46 @@
                     </MudStack>
                     <MudTimePicker @bind-Time="_time" Label="@L["Time of day"]" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" />
                     break;
+                case ScheduleTrigger.Monthly:
+                    <MudRadioGroup T="bool" @bind-Value="_byWeekday">
+                        <MudRadio T="bool" Value="false">@L["On a day of the month"]</MudRadio>
+                        <MudRadio T="bool" Value="true">@L["On a weekday of the month"]</MudRadio>
+                    </MudRadioGroup>
+                    @if (_byWeekday)
+                    {
+                        <MudStack Row="true">
+                            <MudSelect T="int" @bind-Value="_s.MonthWeek" Label="@L["Which"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                @for (var week = 1; week <= 4; week++)
+                                {
+                                    var value = week;
+                                    <MudSelectItem T="int" Value="value">@($"{value}.")</MudSelectItem>
+                                }
+                                <MudSelectItem T="int" Value="5">@L["last"]</MudSelectItem>
+                            </MudSelect>
+                            <MudSelect T="int" @bind-Value="_s.MonthWeekday" Label="@L["Weekday"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                @foreach (var day in Display.WeekDays)
+                                {
+                                    <MudSelectItem T="int" Value="@((int)day)">@Display.WeekdayName((int)day)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudNumericField T="int" @bind-Value="_monthDay" Label="@L["Day of the month"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="31"
+                                         HelperText="@L["In shorter months the last day."]" />
+                    }
+                    <MudNumericField T="int" @bind-Value="_s.MonthOffsetDays" Label="@L["Days later"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="27"
+                                     HelperText="@L["E.g. 3 with \"2. Tuesday\": three days after the monthly Microsoft patch day."]" />
+                    <MudTimePicker @bind-Time="_time" Label="@L["Time of day"]" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" />
+                    break;
+                case ScheduleTrigger.OnMembership:
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        @L["Every {0} minutes the server checks which members of the target have not received the package through this schedule yet and starts it there – also on computers that join the collection later. A computer on which it failed is tried again after a day. Maintenance windows and offline computers are handled as set above.", ScheduleCalculator.MembershipCheckMinutes]
+                    </MudAlert>
+                    <MudNumericField T="int" @bind-Value="_s.RecheckDays" Label="@L["Run again after (days)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="365"
+                                     HelperText="@L["0 = never, otherwise at least {0} days. Useful when the package has a detection: it then only reinstalls where the program has disappeared.", ScheduleService.MinRecheckDays]" />
+                    break;
                 case ScheduleTrigger.Interval:
                     <MudNumericField T="int" @bind-Value="_s.IntervalMinutes" Label="@L["Interval (minutes)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="5" Max="43200" />
                     break;
@@ -65,6 +110,14 @@
                         <MudTimePicker @bind-Time="_time" Label="@L["Time of day"]" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" />
                     </MudStack>
                     break;
+            }
+            @if (_s.Trigger is ScheduleTrigger.Daily or ScheduleTrigger.Weekly or ScheduleTrigger.Monthly)
+            {
+                <MudCheckBox T="bool" @bind-Value="_s.CatchUpMissed" Label="@L["If the server was off at the scheduled time: catch up when it is less than a day late"]" Dense="true" />
+            }
+            @if (_s.Trigger != ScheduleTrigger.Once)
+            {
+                <MudDatePicker @bind-Date="_end" Label="@L["Ends on (optional)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Editable="true" />
             }
             <MudSwitch T="bool" @bind-Value="_s.Enabled" Color="Color.Primary" Label="@L["Active"]" />
         </MudStack>
@@ -83,13 +136,17 @@
     private Schedule _s = new() { Name = "", Trigger = ScheduleTrigger.Daily };
     private TimeSpan? _time = new TimeSpan(12, 0, 0);
     private DateTime? _date = DateTime.Today;
+    private DateTime? _end;
+    private bool _byWeekday;
+    private int _monthDay = 1;
     private List<Package> _packages = [];
     private List<CollectionSummary> _collections = [];
 
     private bool CanSave => !string.IsNullOrWhiteSpace(_s.Name)
         && (_s.Action == ScheduleAction.Scan || _s.PackageId is not null)
         && (_s.Trigger != ScheduleTrigger.Weekly || _s.DaysOfWeek != 0)
-        && (_s.Trigger == ScheduleTrigger.Interval || _time is not null)
+        && (_s.Trigger is ScheduleTrigger.Interval or ScheduleTrigger.OnMembership || _time is not null)
+        && (_s.Trigger != ScheduleTrigger.OnMembership || _s.Action == ScheduleAction.Deploy)
         && (_s.Trigger != ScheduleTrigger.Once || _date is not null);
 
     protected override async Task OnInitializedAsync()
@@ -106,7 +163,12 @@
             MaxFailures = Schedule.MaxFailures, MaxFailurePercent = Schedule.MaxFailurePercent, MaxParallel = Schedule.MaxParallel, CollectionId = Schedule.CollectionId, Trigger = Schedule.Trigger,
             StartLocal = Schedule.StartLocal, IntervalMinutes = Schedule.IntervalMinutes, TimeOfDay = Schedule.TimeOfDay, DaysOfWeek = Schedule.DaysOfWeek,
             LastRunUtc = Schedule.LastRunUtc, LastResult = Schedule.LastResult,
+            MonthDay = Schedule.MonthDay, MonthWeek = Schedule.MonthWeek, MonthWeekday = Schedule.MonthWeekday, MonthOffsetDays = Schedule.MonthOffsetDays,
+            EndLocal = Schedule.EndLocal, CatchUpMissed = Schedule.CatchUpMissed, RecheckDays = Schedule.RecheckDays,
         };
+        _byWeekday = Schedule.MonthDay <= 0;
+        _monthDay = Math.Max(Schedule.MonthDay, 1);
+        _end = Schedule.EndLocal?.Date;
         _time = Schedule.Trigger == ScheduleTrigger.Once ? Schedule.StartLocal?.TimeOfDay : Schedule.TimeOfDay;
         _date = Schedule.StartLocal?.Date ?? DateTime.Today;
     }
@@ -116,6 +178,9 @@
         if (!await Access.DemandAdminAsync())
             return;
         _s.TimeOfDay = _time ?? _s.TimeOfDay;
+        _s.MonthDay = _byWeekday ? 0 : _monthDay;
+        // Der letzte Tag zählt ganz mit.
+        _s.EndLocal = _s.Trigger == ScheduleTrigger.Once ? null : _end?.Date.AddDays(1).AddSeconds(-1);
         if (_s.Trigger == ScheduleTrigger.Once)
         {
             _s.StartLocal = _date!.Value.Date + _time!.Value;
@@ -126,6 +191,9 @@
         {
             _s.StartLocal = null;
         }
+        // Ein Zeitplan, der neu zur Pflicht-Verteilung wird, soll sofort prüfen statt erst nach dem nächsten Takt.
+        if (_s.Trigger == ScheduleTrigger.OnMembership && Schedule?.Trigger != ScheduleTrigger.OnMembership)
+            _s.LastRunUtc = null;
         await ScheduleService.SaveAsync(_s);
         await Audit.LogAsync(Schedule is null ? L["Schedule created"] : L["Schedule changed"], $"{_s.Name}: {Display.Trigger(_s)}{(_s.Enabled ? "" : ", " + L["disabled"])}");
         MudDialog.Close(DialogResult.Ok(true));
