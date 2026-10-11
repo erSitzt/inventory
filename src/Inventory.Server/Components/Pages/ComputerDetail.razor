@@ -1,5 +1,7 @@
 @page "/computers/{Id:int}"
 @inject ComputerService ComputerService
+@inject PackageService PackageService
+@inject IDialogService Dialogs
 @inject ScanService ScanService
 @inject InventoryStore Store
 @inject ISnackbar Snackbar
@@ -115,6 +117,13 @@ else if (_computer.ReverseDnsMismatch)
                 <PropertyColumn Property="s => s.InstallDate" Title="@L["Installed"]" />
                 <TemplateColumn Title="@L["Type"]" Sortable="false">
                     <CellTemplate>@(context.Item.Is64Bit ? "64 Bit" : "32 Bit")@(context.Item.PerUser ? ", " + L["per user"] : "")@(context.Item.CarriedOver ? " – " + L["from an earlier scan, user not logged on"] : "")</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
+                    <CellTemplate>
+                        <MudTooltip Text="@L["Uninstall …"]">
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" Size="Size.Small" aria-label="@L["Uninstall …"]" OnClick="@(() => UninstallAsync(context.Item))" />
+                        </MudTooltip>
+                    </CellTemplate>
                 </TemplateColumn>
             </Columns>
             <PagerContent>
@@ -297,6 +306,16 @@ else if (_computer.ReverseDnsMismatch)
 </MudTabs>
 
 @code {
+    /// <summary>Legt bei Bedarf das Deinstallations-Paket für dieses Programm an und öffnet den Deploy-Dialog für diesen Rechner.</summary>
+    private async Task UninstallAsync(ComputerSoftware software)
+    {
+        var (package, created) = await PackageService.EnsureUninstallPackageAsync(software.Name, software.Name, null);
+        if (created)
+            await Audit.LogAsync(L["Package created"], package.Name);
+        var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id }, { d => d.ComputerIds, new List<int> { _computer!.Id } } };
+        await Dialogs.ShowAsync<DeployDialog>(L["Deploy \"{0}\"", package.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+    }
+
     [Parameter] public int Id { get; set; }
 
     private Computer? _computer;
