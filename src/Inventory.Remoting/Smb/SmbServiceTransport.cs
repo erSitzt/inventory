@@ -17,8 +17,10 @@ using Microsoft.Extensions.Localization;
 namespace Inventory.Remoting.Smb;
 
 /// <summary>
-/// Agentenloser Zugriff wie bei PsExec: Runner und Job über ADMIN$ kopieren, per Service Control Manager
-/// als temporären Dienst (LocalSystem) starten, Fortschritt und Ergebnis über die Freigabe lesen, danach aufräumen.
+/// Agentenloser Zugriff über ADMIN$ und den Service Control Manager: Runner und Job kopieren, den Runner-Dienst
+/// (LocalSystem) mit der Job-ID starten, Fortschritt und Ergebnis über die Freigabe lesen, danach den Job aufräumen.
+/// Runner und Dienst bleiben auf dem Zielrechner bestehen: ein fester Dienstname und ein fester Ablageort lassen sich
+/// im Endpunktschutz gezielt freigeben, und es entsteht nicht bei jedem Job ein neuer Dienst.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<SharedResource>? localizer = null) : IRemoteTransport
@@ -28,6 +30,10 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
     /// <summary>So lange darf nach dem Ende des Dienstes das Ergebnis noch auf sich warten lassen.</summary>
     private static readonly TimeSpan ResultGrace = TimeSpan.FromSeconds(5);
+    /// <summary>Der Dienst führt einen Job nach dem anderen aus; so lange wartet ein Job höchstens auf den vorigen.</summary>
+    private static readonly TimeSpan BusyTimeout = TimeSpan.FromHours(2);
+    private static readonly TimeSpan BusyPollInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan OldRunnerAge = TimeSpan.FromDays(7);
 
     public TransportKind Kind => TransportKind.SmbService;
 
@@ -67,12 +73,11 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
     {
         var root = $@"\\{host}\ADMIN$\{JobFiles.RemoteRoot}";
         var jobDir = Path.Combine(root, JobFiles.JobsFolder, job.JobId);
-        var serviceName = "InventoryJob_" + job.JobId;
 
         try
         {
             EnsureRoot(root);
-            EnsureRunner(Path.Combine(root, JobFiles.RunnerFolder, runner.Hash));
+            EnsureRunner(Path.Combine(root, JobFiles.RunnerFolder), runner.Hash);
             Directory.CreateDirectory(jobDir);
             foreach (var file in files)
             {
@@ -95,6 +100,8 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         }
 
         ServiceHandle? service = null;
+        var started = false;
+        var finished = false;
         try
         {
             using var scm = OpenSCManagerW(host, null, SC_MANAGER_CONNECT | SC_MANAGER_CREATE_SERVICE);
@@ -106,27 +113,75 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
                     : L["Service control on {0} unreachable: {1}", host, L[Describe(error)]]);
             }
 
-            // %SystemRoot% wird vom Zielrechner aufgelöst; der Runner findet das Job-Verzeichnis über die ID selbst.
-            var binPath = $"\"%SystemRoot%\\{JobFiles.RemoteRoot}\\{JobFiles.RunnerFolder}\\{runner.Hash}\\{JobFiles.RunnerExe}\" {RunnerModes.Service} {job.JobId}";
-            service = CreateServiceW(scm, serviceName, "Inventory Job " + job.JobId, SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS,
-                SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, binPath, null, IntPtr.Zero, null, null, null);
-            if (service.IsInvalid)
-                throw new RemoteException(L["Service on {0} could not be created: {1}", host, L[Describe(Marshal.GetLastWin32Error())]]);
+            service = OpenRunnerService(scm, host);
+            StartRunner(service, host, job.JobId, ct);
+            started = true;
 
-            if (!StartServiceW(service, 0, IntPtr.Zero))
-                throw new RemoteException(L["Service on {0} could not be started: {1}", host, L[Describe(Marshal.GetLastWin32Error())]]);
-
-            return WaitForResult(host, jobDir, service, job, progress, ct);
+            var result = WaitForResult(host, jobDir, service, job, progress, ct);
+            finished = true;
+            return result;
         }
         finally
         {
-            if (service is { IsInvalid: false })
-            {
+            // Nur einen eigenen, nicht zu Ende gelaufenen Job anhalten: nach dem Ergebnis kann der Dienst schon den nächsten Job ausführen.
+            if (service is { IsInvalid: false } && started && !finished)
                 ControlService(service, SERVICE_CONTROL_STOP, out _);
-                DeleteService(service);
-                service.Dispose();
-            }
+            service?.Dispose();
             TryDeleteDirectory(jobDir);
+        }
+    }
+
+    /// <summary>Öffnet den Runner-Dienst; legt ihn beim ersten Mal an und stellt ihn nach einem Runner-Update auf die neue Ablage um.</summary>
+    private ServiceHandle OpenRunnerService(ServiceHandle scm, string host)
+    {
+        // %SystemRoot% wird vom Zielrechner aufgelöst; der Runner findet das Job-Verzeichnis über die ID selbst.
+        var binPath = $"\"%SystemRoot%\\{JobFiles.RemoteRoot}\\{JobFiles.RunnerFolder}\\{runner.Hash}\\{JobFiles.RunnerExe}\" {RunnerModes.Service}";
+        var service = OpenServiceW(scm, JobFiles.RunnerServiceName, SERVICE_ALL_ACCESS);
+        if (service.IsInvalid)
+        {
+            var error = Marshal.GetLastWin32Error();
+            service.Dispose();
+            if (error != ERROR_SERVICE_DOES_NOT_EXIST)
+                throw new RemoteException(L["Service on {0} could not be opened: {1}", host, L[Describe(error)]]);
+
+            service = CreateServiceW(scm, JobFiles.RunnerServiceName, "Inventory Runner", SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS,
+                SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, binPath, null, IntPtr.Zero, null, null, null);
+            if (service.IsInvalid)
+            {
+                error = Marshal.GetLastWin32Error();
+                service.Dispose();
+                // Ein gleichzeitig gestarteter Job war schneller.
+                if (error == ERROR_SERVICE_EXISTS)
+                    service = OpenServiceW(scm, JobFiles.RunnerServiceName, SERVICE_ALL_ACCESS);
+                if (service.IsInvalid)
+                    throw new RemoteException(L["Service on {0} could not be created: {1}", host, L[Describe(error)]]);
+            }
+            return service;
+        }
+
+        if (!string.Equals(BinaryPath(service), binPath, StringComparison.OrdinalIgnoreCase)
+            && !ChangeServiceConfigW(service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, binPath, null, IntPtr.Zero, null, null, null, null))
+        {
+            var error = Marshal.GetLastWin32Error();
+            service.Dispose();
+            throw new RemoteException(L["Service on {0} could not be updated: {1}", host, L[Describe(error)]]);
+        }
+        return service;
+    }
+
+    /// <summary>Startet den Dienst mit der Job-ID; läuft dort noch ein anderer Job, wird gewartet.</summary>
+    private void StartRunner(ServiceHandle service, string host, string jobId, CancellationToken ct)
+    {
+        var deadline = DateTime.UtcNow + BusyTimeout;
+        while (!StartServiceW(service, 1, [jobId]))
+        {
+            var error = Marshal.GetLastWin32Error();
+            if (error is not (ERROR_SERVICE_ALREADY_RUNNING or ERROR_SERVICE_CANNOT_ACCEPT_CTRL))
+                throw new RemoteException(L["Service on {0} could not be started: {1}", host, L[Describe(error)]]);
+            ct.ThrowIfCancellationRequested();
+            if (DateTime.UtcNow > deadline)
+                throw new RemoteException(L["Another job has been running on {0} for more than {1} minutes; this job was not started.", host, (int)BusyTimeout.TotalMinutes]);
+            Thread.Sleep(BusyPollInterval);
         }
     }
 
@@ -225,8 +280,9 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         new DirectoryInfo(root).Create(security);
     }
 
-    private void EnsureRunner(string runnerDir)
+    private void EnsureRunner(string runnersDir, string hash)
     {
+        var runnerDir = Path.Combine(runnersDir, hash);
         // Die Markerdatei entsteht zuletzt: ein abgebrochener Kopiervorgang wird beim nächsten Mal wiederholt.
         var marker = Path.Combine(runnerDir, ".complete");
         if (File.Exists(marker))
@@ -235,6 +291,34 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         foreach (var file in runner.Files)
             File.Copy(file, Path.Combine(runnerDir, Path.GetFileName(file)), overwrite: true);
         File.WriteAllText(marker, runner.Hash);
+        RemoveOldRunners(runnersDir, hash);
+    }
+
+    /// <summary>Räumt Runner früherer Versionen weg, damit auf dem Zielrechner nur eine ausführbare Fassung liegt.</summary>
+    private static void RemoveOldRunners(string runnersDir, string keep)
+    {
+        try
+        {
+            foreach (var old in Directory.GetDirectories(runnersDir))
+            {
+                if (string.Equals(Path.GetFileName(old), keep, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                // Frisch abgelegte Runner gehören womöglich einem zweiten Server anderer Version, der gerade einen Job startet.
+                if (DateTime.UtcNow - File.GetLastWriteTimeUtc(Path.Combine(old, ".complete")) < OldRunnerAge)
+                    continue;
+                try
+                {
+                    Directory.Delete(old, recursive: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Dort läuft noch ein Job; der nächste Versionswechsel räumt nach.
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     private static void TryDeleteDirectory(string path)

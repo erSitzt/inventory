@@ -25,6 +25,9 @@
             <MudSelectItem T="TransportKind" Value="TransportKind.SmbService">@Display.Transport(TransportKind.SmbService)</MudSelectItem>
             <MudSelectItem T="TransportKind" Value="TransportKind.WinRm">@Display.Transport(TransportKind.WinRm)</MudSelectItem>
         </MudSelect>
+        <MudText Typo="Typo.body2">
+            @L["Endpoint protection often rates agentless access (a service started remotely, files copied to ADMIN$) as suspicious. Computers with the agent need neither; the README describes how to allow the rest narrowly."]
+        </MudText>
         <MudSwitch T="bool" Value="_fallback" ValueChanged="SetFallbackAsync" Color="Color.Primary"
                    Label="@L["Try the other transport on delivery errors"]" />
         <MudSwitch T="bool" Value="_verifyName" ValueChanged="SetVerifyNameAsync" Color="Color.Primary"

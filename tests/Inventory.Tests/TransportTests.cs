@@ -23,6 +23,20 @@ public class TransportTests
         Assert.Equal((user, domain), SmbServiceTransport.SplitUsername(new NetworkCredential(input, "x"), "pc-01"));
     }
 
+    [Theory]
+    [InlineData("3f2a9c0d1b2e4f5a8b7c6d5e4f3a2b1c", true)]
+    [InlineData("job-01_A", true)]
+    [InlineData("", false)]
+    [InlineData(@"..\..\System32", false)]
+    [InlineData("C:\\Windows", false)]
+    [InlineData("a b", false)]
+    public void Runner_service_accepts_only_plain_job_ids(string value, bool expected) =>
+        Assert.Equal(expected, JobFiles.IsJobId(value));
+
+    [Fact]
+    public void New_job_ids_are_valid_for_the_runner_service() =>
+        Assert.True(JobFiles.IsJobId(new JobManifest().JobId));
+
     [Fact]
     public void PumpProgress_reports_only_complete_lines_and_resumes_at_offset()
     {

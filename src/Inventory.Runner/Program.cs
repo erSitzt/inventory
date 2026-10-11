@@ -16,6 +16,13 @@ namespace Inventory.Runner
                 return 0;
             }
 
+            if (args.Length == 1 && args[0] == RunnerModes.Service)
+            {
+                // Fest eingerichteter Dienst: die Job-ID kommt als Startargument vom Service Control Manager.
+                ServiceBase.Run(new RunnerService(ResolveJobDir));
+                return 0;
+            }
+
             if (args.Length == 2 && args[0] == RunnerModes.Service)
             {
                 ServiceBase.Run(new RunnerService(ResolveJobDir(args[1])));
@@ -42,7 +49,7 @@ namespace Inventory.Runner
                 return 0;
             }
 
-            Console.Error.WriteLine("Aufruf: InventoryRunner (--service|--console) <jobdir|job-id> | --agent | --agent-console | --version");
+            Console.Error.WriteLine("Usage: InventoryRunner --service [<jobdir|job-id>] | --console <jobdir|job-id> | --agent | --agent-console | --version");
             return 2;
         }
 

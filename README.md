@@ -64,8 +64,33 @@ How it gets there is decided by the transport – configurable globally and per 
 | WinRM | PowerShell remoting enabled, port 5985, PowerShell in full language mode | stored account |
 | Agent (optional) | service "Inventory Agent", outbound connection to the server | Local System |
 
-On the target computer `%SystemRoot%\Inventory` is created (SYSTEM and administrators only): the runner stays there,
-job directories and the temporary service are removed after every run.
+On the target computer `%SystemRoot%\Inventory` is created (SYSTEM and administrators only): the runner stays there
+under `Runner\<version hash>`, job directories under `Jobs` are removed after every run. The SMB transport registers
+the service `InventoryRunner` (manual start) once and starts it with the job ID for every job; the service ends when
+the job is done. One job runs at a time per computer – a second one waits for the first.
+
+To remove everything from a computer: `sc delete InventoryRunner` and delete `%SystemRoot%\Inventory`.
+
+### Endpoint protection
+
+Endpoint detection products tend to rate agentless administration as lateral movement, because it looks the same on
+the wire: files copied to `ADMIN$`, a service controlled remotely, PowerShell started by a service. Three things keep
+the security console quiet without hiding real attacks:
+
+1. **Prefer the agent** where alerts matter. It connects outbound and needs neither `ADMIN$` nor remote service
+   control. Select the computers and choose *Install agent*; only this one installation still uses the agentless way.
+2. **A stable footprint.** The service name (`InventoryRunner`), the path (`%SystemRoot%\Inventory\Runner\`) and the
+   file name (`InventoryRunner.exe`) never change, and the service is created once per computer instead of once per
+   job. The first job on a computer and the first one after a server update (new runner) can still raise an alert.
+3. **A narrow allow rule** in your product, scoped to all of: the Inventory server as the source device, the folder
+   `%SystemRoot%\Inventory\` and the service name `InventoryRunner`. In Microsoft Defender for Endpoint that is an
+   alert suppression rule created from one of the alerts, with these conditions. Do not suppress remote service
+   creation in general and do not exclude the folder from antivirus scanning – package files land there.
+
+The released binaries are not code-signed yet, so a rule by publisher certificate is not possible; that is planned
+together with signed updates (see the roadmap). PowerShell steps run as
+`powershell.exe -ExecutionPolicy Bypass -File <script in the job directory>`; rules that flag the bypass switch will
+keep reporting them.
 
 ### Agent
 

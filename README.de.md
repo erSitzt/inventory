@@ -66,8 +66,36 @@ Wie er dorthin kommt, bestimmt der Transport – einstellbar global und je Rechn
 
 | Agent (optional) | Dienst „Inventory Agent“, ausgehende Verbindung zum Server | Lokales System |
 
-Auf dem Zielrechner entsteht `%SystemRoot%\Inventory` (nur SYSTEM und Administratoren): der Runner bleibt dort
-liegen, Job-Verzeichnisse und der temporäre Dienst werden nach jedem Lauf entfernt.
+Auf dem Zielrechner entsteht `%SystemRoot%\Inventory` (nur SYSTEM und Administratoren): der Runner bleibt dort unter
+`Runner\<Versions-Hash>` liegen, Job-Verzeichnisse unter `Jobs` werden nach jedem Lauf entfernt. Der SMB-Transport
+richtet einmalig den Dienst `InventoryRunner` ein (Start manuell) und startet ihn für jeden Job mit der Job-ID; der
+Dienst endet, sobald der Job fertig ist. Je Rechner läuft ein Job zur Zeit – ein zweiter wartet auf den ersten.
+
+Um alles von einem Rechner zu entfernen: `sc delete InventoryRunner` und `%SystemRoot%\Inventory` löschen.
+
+### Endpunktschutz
+
+Endpunktschutz-Produkte werten agentenlose Administration gern als laterale Bewegung, denn auf der Leitung sieht sie
+genauso aus: Dateien nach `ADMIN$` kopiert, ein Dienst aus der Ferne gesteuert, PowerShell von einem Dienst gestartet.
+Drei Dinge halten die Sicherheitskonsole ruhig, ohne echte Angriffe zu verdecken:
+
+1. **Den Agenten bevorzugen**, wo Meldungen stören. Er verbindet sich ausgehend und braucht weder `ADMIN$` noch
+   Dienststeuerung aus der Ferne. Rechner auswählen und *Agent installieren* wählen; nur diese eine Installation läuft
+   noch über den agentenlosen Weg.
+2. **Ein fester Fußabdruck.** Dienstname (`InventoryRunner`), Pfad (`%SystemRoot%\Inventory\Runner\`) und Dateiname
+   (`InventoryRunner.exe`) ändern sich nie, und der Dienst wird einmal je Rechner angelegt statt einmal je Job. Der
+   erste Job auf einem Rechner und der erste nach einem Server-Update (neuer Runner) können weiterhin eine Meldung
+   auslösen.
+3. **Eine eng gefasste Freigabe** im eigenen Produkt, beschränkt auf alles zusammen: den Inventory-Server als
+   Quellgerät, den Ordner `%SystemRoot%\Inventory\` und den Dienstnamen `InventoryRunner`. In Microsoft Defender for
+   Endpoint ist das eine Regel zur Warnungsunterdrückung, angelegt aus einer der Meldungen, mit diesen Bedingungen.
+   Nicht das Anlegen von Diensten aus der Ferne allgemein unterdrücken und den Ordner nicht vom Virenscan ausnehmen –
+   dort landen Paketdateien.
+
+Die veröffentlichten Programmdateien sind noch nicht signiert, eine Regel nach Herausgeber-Zertifikat ist daher nicht
+möglich; das ist zusammen mit signierten Updates geplant (siehe Roadmap). PowerShell-Schritte laufen als
+`powershell.exe -ExecutionPolicy Bypass -File <Skript im Job-Verzeichnis>`; Regeln, die auf den Bypass-Schalter
+anspringen, melden sie weiterhin.
 
 ### Agent
 
