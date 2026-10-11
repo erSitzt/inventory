@@ -1,6 +1,7 @@
 @page "/computers/{Id:int}"
 @inject ComputerService ComputerService
 @inject PackageService PackageService
+@inject CredentialService CredentialService
 @inject IDialogService Dialogs
 @inject ScanService ScanService
 @inject InventoryStore Store
@@ -32,6 +33,7 @@
         <RemoteAccessMenu Computer="_computer" />
     </OperatorOnly>
     <AdminOnly>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="EditAsync">@L["Edit"]</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">@L["Run command"]</MudButton>
     </AdminOnly>
     <OperatorOnly>
@@ -87,6 +89,7 @@ else if (_computer.ReverseDnsMismatch)
                         @Row(L["Installed on"], Display.LocalTime(_computer.OsInstalledUtc))
                         @Row(L["Last boot"], Display.LocalTime(_computer.LastBootUtc))
                         @Row(L["Logged-on user"], _computer.LoggedOnUser)
+                        @Row(L["Primary user"], _computer.PrimaryUser)
                         @Row(L["Domain"], _computer.Domain)
                         @Row(L["IP address"], _computer.IpAddress)
                         @Row(L["Reverse DNS"], _computer.ReverseDnsName)
@@ -108,6 +111,14 @@ else if (_computer.ReverseDnsMismatch)
                         @Row(L["Collections"], string.Join(", ", _computer.Collections.Select(c => c.Name)))
                         @Row(L["Agent"], _computer.AgentKeyHash is null ? L["not installed"] : L["Version {0}, last contact {1}", _computer.AgentVersion, Display.LocalTime(_computer.AgentLastSeenUtc)])
                         @Row(L["Description"], _computer.Description)
+                        @Row(L["Owner"], _computer.Owner)
+                        @Row(L["Location"], _computer.Location)
+                        @Row(L["Cost center"], _computer.CostCenter)
+                        @Row(L["Inventory number"], _computer.InventoryNumber)
+                        @Row(L["Purchase date"], _computer.PurchaseDate?.ToString("d"))
+                        @Row(L["Warranty until"], _computer.WarrantyUntil is null ? null : $"{_computer.WarrantyUntil:d}{(_computer.WarrantyDaysLeft(DateOnly.FromDateTime(DateTime.Now)) < 0 ? " – " + L["expired"] : "")}")
+                        @Row(L["Tags"], _computer.Tags)
+                        @Row(L["Notes"], _computer.Notes)
                         @if (_computer.DirectorySeenUtc is not null)
                         {
                             @Row(L["AD organizational unit"], _computer.DirectoryOu)
@@ -493,6 +504,23 @@ else if (_computer.ReverseDnsMismatch)
         </MudGrid>
     </MudTabPanel>
 
+    <MudTabPanel Text="@($"{L["Profiles"]} ({_computer.UserProfiles.Count})")">
+        <MudText Typo="Typo.body2" Class="mb-2">
+            @L["Primary user: {0}.", _computer.PrimaryUser ?? "–"]
+            @L["That is who was logged on at the console on the most days during scans of the last {0} days; without such observations, the most recently used profile.", InventoryStore.PrimaryUserDays]
+        </MudText>
+        <MudDataGrid T="ComputerUserProfile" Items="@_computer.UserProfiles.OrderByDescending(p => p.LastUseUtc)" Dense="true" Hover="true" SortMode="SortMode.None">
+            <Columns>
+                <PropertyColumn Property="p => p.UserName" Title="@L["User"]" />
+                <TemplateColumn Title="@L["Last used"]"><CellTemplate>@(context.Item.LastUseUtc is null ? "–" : Display.LocalTime(context.Item.LastUseUtc))</CellTemplate></TemplateColumn>
+                <TemplateColumn Title="@L["Logged on during the scan"]"><CellTemplate>@(context.Item.Loaded ? L["yes"] : "")</CellTemplate></TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <MudText Class="pa-4">@L["Not captured yet. Profiles are read with the next scan."]</MudText>
+            </NoRecordsContent>
+        </MudDataGrid>
+    </MudTabPanel>
+
     <MudTabPanel Text="@($"{L["History"]} ({_changes.Count})")">
         @if (_changes.Count == 0)
         {
@@ -519,6 +547,16 @@ else if (_computer.ReverseDnsMismatch)
     }
 
     [Parameter] public int Id { get; set; }
+
+    private async Task EditAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var parameters = new DialogParameters<EditComputerDialog> { { d => d.Computer, _computer! }, { d => d.Credentials, await CredentialService.ListAsync() } };
+        var dialog = await Dialogs.ShowAsync<EditComputerDialog>(_computer!.Name, parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            _computer = await ComputerService.GetDetailAsync(Id);
+    }
 
     private Computer? _computer;
     private bool _loaded;

@@ -52,6 +52,9 @@ public sealed class DashboardStats
     public int WithPendingUpdates { get; init; }
     public int NameMismatch { get; init; }
     public int MissingInDirectory { get; init; }
+    /// <summary>Garantie läuft innerhalb von <see cref="WarrantyWarningDays"/> Tagen ab oder ist abgelaufen.</summary>
+    public int WarrantyEnding { get; init; }
+    public const int WarrantyWarningDays = 90;
     public int RunningDeployments { get; init; }
     public int WaitingOffline { get; init; }
     public int ChangesLast24h { get; init; }
@@ -150,6 +153,7 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
             WithPendingUpdates = computers.Count(c => c.UpdatePendingCount > 0),
             NameMismatch = computers.Count(c => c.NameMismatch),
             MissingInDirectory = computers.Count(c => c.MissingInDirectory),
+            WarrantyEnding = computers.Count(c => c.WarrantyDaysLeft(DateOnly.FromDateTime(DateTime.Now)) <= DashboardStats.WarrantyWarningDays),
             RunningDeployments = await db.Deployments.CountAsync(d => d.FinishedUtc == null && d.Targets.Any(t => t.Status == TargetStatus.Running || t.Status == TargetStatus.Queued), ct),
             WaitingOffline = await db.Deployments.Where(d => d.FinishedUtc == null).SelectMany(d => d.Targets).CountAsync(t => t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot, ct),
             ChangesLast24h = await db.InventoryChanges.CountAsync(c => c.TimeUtc >= dayAgo, ct),
@@ -171,7 +175,8 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
             L["Device type"], L["Firmware"], "Secure Boot", "TPM", L["TPM ready"], L["BitLocker (system drive)"], L["Graphics"], L["Battery health (%)"], L["BIOS date"],
             L["Remote Desktop"], L["Network level authentication"], L["User Account Control"], L["User Account Control level"], "SMB 1", "Credential Guard", L["Memory integrity"], L["LSA protection"],
             L["Built-in administrator account"], L["Built-in administrator: password age (days)"], L["Windows activated"],
-            L["AD organizational unit"], L["AD groups"], L["AD description"], L["Last AD logon (UTC)"]);
+            L["AD organizational unit"], L["AD groups"], L["AD description"], L["Last AD logon (UTC)"],
+            L["Primary user"], L["Owner"], L["Location"], L["Cost center"], L["Inventory number"], L["Purchase date"], L["Warranty until"], L["Tags"], L["Notes"]);
         foreach (var c in await db.Computers.AsNoTracking().OrderBy(c => c.Name).ToListAsync(ct))
         {
             Row(csv, c.Name, c.ReportedName, YesNo(c.IsOnline), c.IpAddress, c.OsName, c.OsVersion, c.OsRelease, c.Manufacturer, c.Model, c.SerialNumber,
@@ -186,7 +191,8 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
                 YesNo(c.RdpEnabled), YesNo(c.RdpNla), YesNo(c.UacEnabled), c.UacLevel is >= 0 and <= 3 ? L[InventoryDiff.UacLevels[c.UacLevel.Value]] : null,
                 YesNo(c.Smb1Enabled), YesNo(c.CredentialGuard), YesNo(c.MemoryIntegrity), YesNo(c.LsaProtection),
                 YesNo(c.BuiltinAdminEnabled), c.BuiltinAdminPasswordAgeDays?.ToString(), YesNo(c.WindowsActivated),
-                c.DirectoryOu, string.Join(", ", c.DirectoryGroupNames), c.DirectoryDescription, c.DirectoryLastLogonUtc?.ToString("yyyy-MM-dd HH:mm"));
+                c.DirectoryOu, string.Join(", ", c.DirectoryGroupNames), c.DirectoryDescription, c.DirectoryLastLogonUtc?.ToString("yyyy-MM-dd HH:mm"),
+                c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate?.ToString("yyyy-MM-dd"), c.WarrantyUntil?.ToString("yyyy-MM-dd"), c.Tags, c.Notes);
         }
         return csv.ToString();
     }

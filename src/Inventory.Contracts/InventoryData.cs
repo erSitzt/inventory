@@ -57,6 +57,10 @@ namespace Inventory.Contracts
     {
         public string Sid { get; set; } = "";
         public bool Loaded { get; set; }
+        /// <summary>DOMÄNE\\name; lässt sich die SID nicht auflösen, der Name des Profilordners. null bei Runnern, die das noch nicht erfassen.</summary>
+        public string? Name { get; set; }
+        /// <summary>Letzte Nutzung des Profils laut Windows.</summary>
+        public DateTime? LastUseUtc { get; set; }
     }
 
     public sealed class SoftwareItem

@@ -57,6 +57,13 @@ public static class CollectionEvaluator
         RuleField.DaysSinceDirectoryLogon => Text(rule, computer.DirectoryLastLogonUtc is { } logon
             ? ((int)(DateTime.UtcNow - logon).TotalDays).ToString(CultureInfo.InvariantCulture) : null),
         RuleField.DirectoryDescription => Text(rule, computer.DirectoryDescription),
+        RuleField.Tag => AnyOrNone(rule, computer.TagList),
+        RuleField.Location => Text(rule, computer.Location),
+        RuleField.Owner => Text(rule, computer.Owner),
+        RuleField.CostCenter => Text(rule, computer.CostCenter),
+        RuleField.InventoryNumber => Text(rule, computer.InventoryNumber),
+        RuleField.PrimaryUser => Text(rule, computer.PrimaryUser),
+        RuleField.WarrantyDaysLeft => Number(rule, computer.WarrantyDaysLeft(DateOnly.FromDateTime(DateTime.Now))),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         _ => false,
     };
@@ -96,6 +103,21 @@ public static class CollectionEvaluator
 
     /// <summary>Ein nicht ermittelter Wert passt auf keine Regel, weder auf "ja" noch auf "nein".</summary>
     private static bool Known(CollectionRule rule, bool? actual) => actual is { } value && Flag(rule, value);
+
+    /// <summary>Zahlenvergleich, der auch mit negativen Werten umgehen kann; ohne Wert passt nichts.</summary>
+    private static bool Number(CollectionRule rule, int? actual)
+    {
+        if (actual is not { } value || !int.TryParse(rule.Value.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var expected))
+            return false;
+        return rule.Operator switch
+        {
+            RuleOperator.LessThan => value < expected,
+            RuleOperator.GreaterOrEqual => value >= expected,
+            RuleOperator.Equals => value == expected,
+            RuleOperator.NotEquals => value != expected,
+            _ => false,
+        };
+    }
 
     private static bool Flag(CollectionRule rule, bool actual)
     {

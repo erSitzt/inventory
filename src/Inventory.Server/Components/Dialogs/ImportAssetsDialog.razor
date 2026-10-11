@@ -1,0 +1,87 @@
+@inject ComputerService ComputerService
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">
+                @L["Table with one row per computer; the first row names the columns. The computer is found by the column \"Name\". Recognised columns: {0}.", string.Join(", ", AssetCsv.Columns.Skip(1).Select(c => L[c].Value))]
+                @L["An empty cell leaves the value unchanged, \"-\" clears it. The easiest start is the computer CSV export: edit it in a spreadsheet and import it here."]
+            </MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudButton HtmlTag="label" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" for="asset-file">@L["Choose file"]</MudButton>
+                <InputFile id="asset-file" OnChange="LoadAsync" accept=".csv,.txt" hidden />
+                <MudText Typo="Typo.caption">@_fileName</MudText>
+            </MudStack>
+            <MudTextField @bind-Value="_csv" Label="@L["Or paste the table here"]" Variant="Variant.Outlined" Lines="8" Immediate="true" Style="font-family: monospace" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+            @if (_result is not null)
+            {
+                <MudAlert Severity="@(_result.Errors.Count > 0 || _result.UnknownNames.Count > 0 ? Severity.Warning : Severity.Success)">
+                    @L["{0} computers updated.", _result.Updated.Count]
+                    @if (_result.UnknownNames.Count > 0)
+                    {
+                        <div>@L["No computer with this name: {0}", string.Join(", ", _result.UnknownNames)]</div>
+                    }
+                    @foreach (var error in _result.Errors)
+                    {
+                        <div>@error</div>
+                    }
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Close(DialogResult.Ok(_result is not null)))">@L["Close"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@string.IsNullOrWhiteSpace(_csv)" OnClick="ImportAsync">@L["Import"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const long MaxFileBytes = 5 << 20;
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _csv = "";
+    private string? _fileName;
+    private string? _error;
+    private AssetImportResult? _result;
+
+    private async Task LoadAsync(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(MaxFileBytes));
+            _csv = await reader.ReadToEndAsync();
+            _fileName = e.File.Name;
+        }
+        catch (IOException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ImportAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _error = null;
+        _result = null;
+        try
+        {
+            _result = await ComputerService.ImportAssetsAsync(_csv);
+            if (_result.Updated.Count > 0)
+                await Audit.LogAsync(L["Asset data imported"], string.Join(", ", _result.Updated));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

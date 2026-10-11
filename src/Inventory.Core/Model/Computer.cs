@@ -27,6 +27,27 @@ public class Computer
     public string? AgentVersion { get; set; }
     public DateTime? AgentLastSeenUtc { get; set; }
 
+    // Von Hand gepflegte Bestandsangaben
+    public string? Owner { get; set; }
+    public string? Location { get; set; }
+    public string? CostCenter { get; set; }
+    public string? InventoryNumber { get; set; }
+    public DateOnly? PurchaseDate { get; set; }
+    public DateOnly? WarrantyUntil { get; set; }
+    /// <summary>Durch ", " getrennt, siehe <see cref="AssetTags"/>.</summary>
+    public string? Tags { get; set; }
+    public string? Notes { get; set; }
+    public IReadOnlyList<string> TagList => AssetTags.Parse(Tags);
+    /// <summary>Tage bis zum Ende der Garantie (negativ = abgelaufen); null, wenn kein Datum eingetragen ist.</summary>
+    public int? WarrantyDaysLeft(DateOnly today) => WarrantyUntil is { } until ? until.DayNumber - today.DayNumber : null;
+    public AssetData Asset => new(Owner, Location, CostCenter, InventoryNumber, PurchaseDate, WarrantyUntil, Tags, Notes);
+
+    /// <summary>
+    /// Wer das Gerät überwiegend nutzt: der Benutzer, der in den letzten 30 Tagen an den meisten Tagen bei einem Scan
+    /// angemeldet war; ohne solche Beobachtungen der mit dem zuletzt genutzten Profil.
+    /// </summary>
+    public string? PrimaryUser { get; set; }
+
     // Active Directory
     /// <summary>Wann die Synchronisation das Computerkonto zuletzt gefunden hat; null = nie, der Eintrag ist von Hand gepflegt.</summary>
     public DateTime? DirectorySeenUtc { get; set; }
@@ -176,6 +197,7 @@ public class Computer
     public List<ComputerLocalUser> LocalUsers { get; set; } = [];
     public List<ComputerLocalAdmin> LocalAdmins { get; set; } = [];
     public List<ComputerPendingUpdate> PendingUpdates { get; set; } = [];
+    public List<ComputerUserProfile> UserProfiles { get; set; } = [];
     public List<ComputerMemoryModule> MemoryModules { get; set; } = [];
     public List<ComputerPhysicalDisk> PhysicalDisks { get; set; } = [];
     public List<ComputerVolumeEncryption> Volumes { get; set; } = [];

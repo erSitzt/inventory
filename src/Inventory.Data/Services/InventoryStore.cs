@@ -174,6 +174,8 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             ComputerId = computerId, Name = a.Name, IsGroup = a.IsGroup, Sid = a.Sid,
         }));
 
+        await SaveUsersAsync(db, computer, data, now, ct);
+
         // Ältere Runner liefern keine Hardware-Details: den vorhandenen Stand dann stehen lassen statt ihn zu leeren.
         if (data.Hardware is { } hardware)
         {
@@ -225,6 +227,40 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return computer.NameMismatch;
+    }
+
+    /// <summary>Über diesen Zeitraum wird beobachtet, wer ein Gerät nutzt.</summary>
+    public const int PrimaryUserDays = 30;
+
+    /// <summary>Speichert die Benutzerprofile, merkt sich den gerade angemeldeten Benutzer und leitet daraus den Hauptbenutzer ab.</summary>
+    private static async Task SaveUsersAsync(InventoryDbContext db, Computer computer, InventoryData data, DateTime now, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(now);
+        var since = today.AddDays(-PrimaryUserDays);
+        await db.UserSightings.Where(s => s.ComputerId == computer.Id && s.Day < since).ExecuteDeleteAsync(ct);
+        var sightings = await db.UserSightings.Where(s => s.ComputerId == computer.Id).ToListAsync(ct);
+        if (!string.IsNullOrWhiteSpace(data.LoggedOnUser) && !sightings.Any(s => s.Day == today && string.Equals(s.UserName, data.LoggedOnUser, StringComparison.OrdinalIgnoreCase)))
+        {
+            var sighting = new ComputerUserSighting { ComputerId = computer.Id, UserName = data.LoggedOnUser.Trim(), Day = today };
+            db.UserSightings.Add(sighting);
+            sightings.Add(sighting);
+        }
+
+        // Ältere Runner nennen nur die SIDs: ohne Namen gibt es nichts anzuzeigen, der vorige Stand bleibt.
+        var named = data.UserProfiles?.Where(p => !string.IsNullOrWhiteSpace(p.Name)).ToList();
+        List<ComputerUserProfile>? profiles = null;
+        if (named is { Count: > 0 })
+        {
+            await db.UserProfiles.Where(x => x.ComputerId == computer.Id).ExecuteDeleteAsync(ct);
+            profiles = named.Select(p => new ComputerUserProfile { ComputerId = computer.Id, UserName = p.Name!, Sid = p.Sid, LastUseUtc = p.LastUseUtc, Loaded = p.Loaded }).ToList();
+            db.UserProfiles.AddRange(profiles);
+        }
+
+        var observed = sightings.GroupBy(s => s.UserName, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count()).ThenByDescending(g => g.Max(s => s.Day)).FirstOrDefault()?.Key;
+        computer.PrimaryUser = observed
+                               ?? profiles?.Where(p => p.LastUseUtc is not null).OrderByDescending(p => p.LastUseUtc).FirstOrDefault()?.UserName
+                               ?? computer.PrimaryUser;
     }
 
     /// <summary>

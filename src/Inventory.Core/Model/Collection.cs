@@ -62,6 +62,14 @@ public enum RuleField
     /// <summary>Tage seit der letzten Anmeldung des Computerkontos an der Domäne.</summary>
     DaysSinceDirectoryLogon = 123,
     DirectoryDescription = 124,
+    Tag = 125,
+    Location = 126,
+    Owner = 127,
+    CostCenter = 128,
+    /// <summary>Tage bis zum Ende der Garantie; negativ = abgelaufen.</summary>
+    WarrantyDaysLeft = 129,
+    PrimaryUser = 130,
+    InventoryNumber = 131,
     Online = 1,
     Scanned,
     OsName,

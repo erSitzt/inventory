@@ -19,6 +19,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ComputerWindowsService> Services => Set<ComputerWindowsService>();
     public DbSet<ComputerLocalUser> LocalUsers => Set<ComputerLocalUser>();
     public DbSet<ComputerLocalAdmin> LocalAdmins => Set<ComputerLocalAdmin>();
+    public DbSet<ComputerUserProfile> UserProfiles => Set<ComputerUserProfile>();
+    public DbSet<ComputerUserSighting> UserSightings => Set<ComputerUserSighting>();
     public DbSet<ComputerPendingUpdate> PendingUpdates => Set<ComputerPendingUpdate>();
     public DbSet<ComputerMemoryModule> MemoryModules => Set<ComputerMemoryModule>();
     public DbSet<ComputerPhysicalDisk> PhysicalDisks => Set<ComputerPhysicalDisk>();
@@ -36,6 +38,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<ComputerUserSighting>(e => e.HasIndex(s => new { s.ComputerId, s.UserName, s.Day }).IsUnique());
         modelBuilder.Entity<Computer>(e =>
         {
             e.Property(c => c.Name).UseCollation("NOCASE").HasMaxLength(253);
@@ -48,6 +51,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasMany(c => c.Services).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.LocalUsers).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.LocalAdmins).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.UserProfiles).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany<ComputerUserSighting>().WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.PendingUpdates).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.MemoryModules).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.PhysicalDisks).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);

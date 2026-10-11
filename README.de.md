@@ -18,6 +18,11 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Updates**: ausstehende Updates je Rechner mit KB-Nummer, Klassifizierung und Schweregrad; Übersicht je Update
   (auf welchen Rechnern es fehlt) und je Rechner (wer keine offenen Sicherheitsupdates hat), CSV-Export, Regeln für
   Sammlungen auf installierte Hotfixes und ausstehende Updates
+- **Bestandsdaten**: Zuständig, Standort, Kostenstelle, Inventarnummer, Kaufdatum, Garantieende, Tags und Notizen je
+  Rechner – gepflegt in der Oberfläche, über die API oder per Import einer CSV-Tabelle (der Rechner-Export lässt sich
+  bearbeiten und wieder einlesen); die Übersicht weist auf Garantien hin, die innerhalb von 90 Tagen enden
+- **Hauptbenutzer**: wer bei den Scans der letzten 30 Tage an den meisten Tagen an der Konsole angemeldet war, dazu
+  die Liste der Benutzerprofile je Rechner
 - **Hardware und Plattformsicherheit**: Gerätetyp (Desktop/Notebook/Server/virtuelle Maschine), UEFI und Secure Boot,
   TPM, BitLocker je Laufwerk, Grafik, Speichermodule und freie Steckplätze, physische Datenträger mit Typ und Zustand,
   Akkuzustand, Monitore und Drucker

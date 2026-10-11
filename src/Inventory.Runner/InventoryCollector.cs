@@ -22,6 +22,7 @@ namespace Inventory.Runner
             Section(data, "Betriebssystem", () => ReadOperatingSystem(data));
             Section(data, "Prozessor", () => ReadProcessor(data));
             Section(data, "Software", () => ReadSoftware(data));
+            Section(data, "Benutzerprofile", () => ReadUserProfiles(data));
             Section(data, "Hotfixes", () => ReadHotfixes(data));
             Section(data, "Datenträger", () => ReadDisks(data));
             Section(data, "Netzwerk", () => ReadNetwork(data));
@@ -201,6 +202,53 @@ namespace Inventory.Runner
                         });
                     }
                 }
+            }
+        }
+
+        /// <summary>Ergänzt die Profile aus der Software-Erfassung um Namen und letzte Nutzung.</summary>
+        private static void ReadUserProfiles(InventoryData data)
+        {
+            var profiles = data.UserProfiles ?? (data.UserProfiles = new List<UserProfileState>());
+            foreach (var o in Query("SELECT SID, LocalPath, LastUseTime, Loaded FROM Win32_UserProfile WHERE Special = FALSE"))
+            {
+                var sid = Text(o, "SID");
+                if (sid == null || !sid.StartsWith("S-1-5-21-", StringComparison.Ordinal))
+                    continue;
+                var profile = profiles.FirstOrDefault(p => string.Equals(p.Sid, sid, StringComparison.OrdinalIgnoreCase));
+                if (profile == null)
+                {
+                    profile = new UserProfileState { Sid = sid, Loaded = o["Loaded"] is bool loaded && loaded };
+                    profiles.Add(profile);
+                }
+                // Windows füllt LastUseTime nicht immer; dann sagt die letzte Änderung der Benutzer-Registry dasselbe aus.
+                profile.LastUseUtc = Date(o, "LastUseTime") ?? RegistryFileTime(Text(o, "LocalPath"));
+                profile.Name = AccountName(sid) ?? System.IO.Path.GetFileName((Text(o, "LocalPath") ?? "").TrimEnd('\\'));
+            }
+        }
+
+        private static DateTime? RegistryFileTime(string? profilePath)
+        {
+            try
+            {
+                var file = profilePath == null ? null : System.IO.Path.Combine(profilePath, "NTUSER.DAT");
+                return file != null && System.IO.File.Exists(file) ? System.IO.File.GetLastWriteTimeUtc(file) : (DateTime?)null;
+            }
+            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>null, wenn sich die SID nicht auflösen lässt (gelöschtes Konto, Domäne nicht erreichbar).</summary>
+        private static string? AccountName(string sid)
+        {
+            try
+            {
+                return new SecurityIdentifier(sid).Translate(typeof(NTAccount)).Value;
+            }
+            catch (Exception ex) when (ex is IdentityNotMappedException || ex is SystemException)
+            {
+                return null;
             }
         }
 
