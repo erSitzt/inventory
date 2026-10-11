@@ -322,7 +322,7 @@ else if (_computer.ReverseDnsMismatch)
     {
         if (!await Access.DemandAdminAsync())
             return;
-        var (package, created) = await PackageService.EnsureUninstallPackageAsync(software.Name, software.Name, null);
+        var (package, created) = await PackageService.EnsureUninstallPackageAsync(software.Name, software.Name, null, approvedBy: await Audit.UserNameAsync());
         if (created)
             await Audit.LogAsync(L["Package created"], package.Name);
         var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id }, { d => d.ComputerIds, new List<int> { _computer!.Id } } };

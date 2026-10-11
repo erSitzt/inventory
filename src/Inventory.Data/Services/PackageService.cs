@@ -54,6 +54,26 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         return package;
     }
 
+    /// <summary>Gibt das Paket zum Verteilen durch Operatoren und Zeitpläne frei.</summary>
+    /// <exception cref="InvalidOperationException">Ein Paket ohne Schritte lässt sich nicht freigeben.</exception>
+    public async Task ApproveAsync(int id, string user, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var package = await db.Packages.Include(p => p.Steps).FirstOrDefaultAsync(p => p.Id == id, ct) ?? throw new KeyNotFoundException(L["Package {0} not found", id]);
+        if (package.Steps.Count == 0)
+            throw new InvalidOperationException(L["The package contains no steps."]);
+        package.ApprovedBy = user;
+        package.ApprovedUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Hebt die Freigabe auf, z. B. weil sich Dateien des Pakets geändert haben.</summary>
+    public async Task RevokeApprovalAsync(int id, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await db.Packages.Where(p => p.Id == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.ApprovedBy, (string?)null).SetProperty(p => p.ApprovedUtc, (DateTime?)null), ct);
+    }
+
     /// <summary>Legt fest, woran ein bereits installiertes Paket erkannt wird; eine leere Erkennung schaltet sie ab.</summary>
     public async Task SaveDetectionAsync(int id, StepConditions? detection, bool verifyAfterInstall, CancellationToken ct = default)
     {
@@ -63,6 +83,8 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         // Ohne Erkennung gäbe es nichts zu prüfen.
         package.VerifyAfterInstall = verifyAfterInstall && package.Detection is not null;
         package.ModifiedUtc = DateTime.UtcNow;
+        package.ApprovedBy = null;
+        package.ApprovedUtc = null;
         await db.SaveChangesAsync(ct);
     }
 
@@ -70,7 +92,8 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     /// Liefert das Paket "Uninstall &lt;Name&gt;" mit einem Deinstallations-Schritt und legt es an, falls es noch fehlt.
     /// Ein vorhandenes Paket dieses Namens bleibt unverändert, damit eigene Anpassungen (Parameter, weitere Schritte) erhalten bleiben.
     /// </summary>
-    public async Task<(Package Package, bool Created)> EnsureUninstallPackageAsync(string label, string? softwareName, string? productCode, CancellationToken ct = default)
+    /// <param name="approvedBy">Gesetzt = ein neu angelegtes Paket ist sofort freigegeben (der Administrator hat es gerade bewusst erzeugt).</param>
+    public async Task<(Package Package, bool Created)> EnsureUninstallPackageAsync(string label, string? softwareName, string? productCode, CancellationToken ct = default, string? approvedBy = null)
     {
         var name = L["Uninstall {0}", label.Trim()].Value;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
@@ -85,6 +108,8 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
             SoftwareName = string.IsNullOrWhiteSpace(softwareName) ? null : softwareName.Trim(),
             ProductCode = string.IsNullOrWhiteSpace(productCode) ? null : productCode.Trim(),
         }, null, ct);
+        if (approvedBy is not null)
+            await ApproveAsync(package.Id, approvedBy, ct);
         return (package, true);
     }
 
@@ -212,6 +237,11 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     {
         var package = await db.Packages.FindAsync([packageId], ct);
         if (package is not null)
+        {
             package.ModifiedUtc = DateTime.UtcNow;
+            // Geänderte Schritte sind nicht mehr das, was freigegeben wurde.
+            package.ApprovedBy = null;
+            package.ApprovedUtc = null;
+        }
     }
 }

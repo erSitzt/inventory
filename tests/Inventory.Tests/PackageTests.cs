@@ -570,6 +570,39 @@ public sealed class PackageTests : IDisposable
     public void The_failure_limit_counts_failures_or_a_rate_among_finished_computers(int? maxFailures, int? maxPercent, int failed, int finished, bool reached) =>
         Assert.Equal(reached, DeploymentLimits.Reached(maxFailures, maxPercent, failed, finished));
 
+    [Fact]
+    public async Task Only_approved_packages_can_be_deployed_where_approval_is_required_and_every_change_withdraws_it()
+    {
+        var package = await _packages.SaveAsync(null, "Neu", "1.0", null);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _packages.ApproveAsync(package.Id, "anna"));
+        await _packages.SaveStepAsync(package.Id, null, Command("Installieren"), null);
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        var deployments = CreateDeployments(new SimulatedTransport(TransportKind.SmbService));
+        var strict = new DeploymentOptions(false) { RequireApproved = true };
+
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => deployments.StartAsync(package.Id, [computer.Id], strict));
+        Assert.Contains("not approved", refused.Message);
+        // Ein Administrator darf ein Paket in Arbeit trotzdem verteilen, etwa zum Testen.
+        Assert.Equal(TargetStatus.Succeeded, (await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], false)).Id)).Targets[0].Status);
+
+        await _packages.ApproveAsync(package.Id, "anna");
+        var approved = (await _packages.GetAsync(package.Id))!;
+        Assert.True(approved is { IsApproved: true, ApprovedBy: "anna" });
+        Assert.Equal(TargetStatus.Succeeded, (await WaitAsync(deployments, (await deployments.StartAsync(package.Id, [computer.Id], strict)).Id)).Targets[0].Status);
+
+        // Name und Beschreibung ändern nichts am Inhalt, Schritte und Erkennung schon.
+        await _packages.SaveAsync(package.Id, "Neu", "1.1", "Beschreibung");
+        Assert.True((await _packages.GetAsync(package.Id))!.IsApproved);
+        await _packages.SaveStepAsync(package.Id, null, Command("Aufräumen"), null);
+        Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+        await _packages.ApproveAsync(package.Id, "anna");
+        await _packages.SaveDetectionAsync(package.Id, new StepConditions { FileExists = "C:\\x" }, false);
+        Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+        await _packages.ApproveAsync(package.Id, "anna");
+        await _packages.MoveStepAsync(package.Id, (await _packages.GetAsync(package.Id))!.Steps[0].Id, 1);
+        Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+    }
+
     /// <summary>Merkt sich die Manifeste; der erste Job endet mit einem Neustart, der zweite läuft durch.</summary>
     private sealed class RecordingTransport : IRemoteTransport
     {

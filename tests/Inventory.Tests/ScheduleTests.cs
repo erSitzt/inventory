@@ -1,3 +1,4 @@
+using Inventory.Contracts;
 using System.Text;
 using Inventory.Core;
 using Inventory.Core.Abstractions;
@@ -78,6 +79,16 @@ public class ScheduleTests
 
         clock.Advance(TimeSpan.FromMinutes(61));
         Assert.Equal(1, await schedules.RunDueAsync());
+
+        // Ein Zeitplan verteilt nur freigegebene Pakete.
+        var packages = new PackageService(db, new PackageRepository(repoDir));
+        var package = await packages.SaveAsync(null, "In Arbeit", null, null);
+        await packages.SaveStepAsync(package.Id, null, new JobStep { Name = "Setup", Type = StepType.Command, Script = "echo" }, null);
+        var deploy = new Schedule { Name = "Verteilen", Action = ScheduleAction.Deploy, PackageId = package.Id, CollectionId = collection.Id, Trigger = ScheduleTrigger.Interval, IntervalMinutes = 60 };
+        await schedules.SaveAsync(deploy);
+        Assert.Contains("not approved", await schedules.RunNowAsync(deploy.Id));
+        await packages.ApproveAsync(package.Id, "anna");
+        Assert.Contains("started on 2 computers", await schedules.RunNowAsync(deploy.Id));
         Directory.Delete(repoDir, recursive: true);
     }
 

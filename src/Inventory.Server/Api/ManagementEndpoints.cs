@@ -23,7 +23,7 @@ public static class ManagementEndpoints
     public sealed record FileDto(string Path, long Size, DateTime ModifiedUtc);
 
     public sealed record PackageDetailDto(int Id, string Name, string? Version, string? Description, DateTime ModifiedUtc, string? CatalogId,
-        List<StepDto> Steps, List<FileDto> Files, StepConditions? Detection, bool VerifyAfterInstall);
+        List<StepDto> Steps, List<FileDto> Files, StepConditions? Detection, bool VerifyAfterInstall, string? ApprovedBy = null, DateTime? ApprovedUtc = null);
 
     public sealed record CollectionRequest(string Name, string? Description, bool IsDynamic, bool MatchAll = true, List<CollectionRule>? Rules = null, MaintenanceWindow? MaintenanceWindow = null);
 
@@ -126,6 +126,24 @@ public static class ManagementEndpoints
             return await service.GetAsync(id, ct) is { } package ? Results.Ok(ToDetail(package, service)) : Results.NotFound();
         }).WithSummary("Move step").WithDescription("Query parameter direction: -1 = one position up, 1 = one position down.").Produces<PackageDetailDto>().Produces(404);
 
+        packages.MapPost("{id:int}/approve", async (int id, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            await service.ApproveAsync(id, User(http), ct);
+            var package = (await service.GetAsync(id, ct))!;
+            await audit.LogAsync(User(http), "Package approved via API", $"{package.Name} {package.Version}".Trim(), ct);
+            return Results.Ok(ToDetail(package, service));
+        }).WithSummary("Approve package").WithDescription("Releases the package for deployment by operators and schedules. Every later change to steps, detection or files withdraws the approval.")
+            .Produces<PackageDetailDto>().Produces(400).Produces(404);
+
+        packages.MapDelete("{id:int}/approve", async (int id, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if (await service.GetAsync(id, ct) is not { } package)
+                return Results.NotFound();
+            await service.RevokeApprovalAsync(id, ct);
+            await audit.LogAsync(User(http), "Package approval withdrawn via API", package.Name, ct);
+            return Results.NoContent();
+        }).WithSummary("Withdraw approval").Produces(204).Produces(404);
+
         packages.MapGet("{id:int}/msi/{**path}", async (int id, string path, PackageService service, CancellationToken ct) =>
         {
             if (await service.GetAsync(id, ct) is null || !service.Repository.List(id).Any(f => f.RelativePath.Equals(path.Replace('/', '\\'), StringComparison.OrdinalIgnoreCase) || f.RelativePath.Equals(path, StringComparison.OrdinalIgnoreCase)))
@@ -141,6 +159,7 @@ public static class ManagementEndpoints
             if (await service.GetAsync(id, ct) is not { } package)
                 return Results.NotFound();
             service.Repository.Delete(id, path);
+            await service.RevokeApprovalAsync(id, ct);
             await audit.LogAsync(User(http), "Package file deleted via API", $"{package.Name}: {path}", ct);
             return Results.NoContent();
         }).WithSummary("Delete file").Produces(204).Produces(400).Produces(404);
@@ -301,7 +320,7 @@ public static class ManagementEndpoints
 
     private static PackageDetailDto ToDetail(Package p, PackageService service) => new(p.Id, p.Name, p.Version, p.Description, p.ModifiedUtc, p.CatalogId,
         [.. p.Steps.OrderBy(s => s.Order).Select(s => new StepDto(s.Id, s.Order, s.NestedPackageId, s.Definition))],
-        [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall);
+        [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall, p.ApprovedBy, p.ApprovedUtc);
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
         s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow, s.MaxFailures, s.MaxFailurePercent, s.MaxParallel);

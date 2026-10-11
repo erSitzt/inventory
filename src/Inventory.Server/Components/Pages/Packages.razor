@@ -27,6 +27,11 @@
         <TemplateColumn Title="@L["Steps"]" SortBy="p => p.Steps.Count">
             <CellTemplate>@context.Item.Steps.Count</CellTemplate>
         </TemplateColumn>
+        <TemplateColumn Title="@L["Approval"]" SortBy="p => p.IsApproved">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.Item.IsApproved ? Color.Success : Color.Warning)">@(context.Item.IsApproved ? L["approved"] : L["not approved"])</MudChip>
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="p => p.Description" Title="@L["Description"]" />
         <TemplateColumn Title="@L["Modified"]" SortBy="p => p.ModifiedUtc">
             <CellTemplate>@Display.LocalTime(context.Item.ModifiedUtc)</CellTemplate>
@@ -34,7 +39,7 @@
         <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
                 <OperatorOnly>
-                    <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(context.Item.Steps.Count == 0)"
+                    <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(context.Item.Steps.Count == 0 || (!context.Item.IsApproved && !_isAdmin))"
                                OnClick="@(() => DeployAsync(context.Item))">@L["Deploy"]</MudButton>
                 </OperatorOnly>
                 <AdminOnly>
@@ -51,7 +56,13 @@
 @code {
     private List<Package> _packages = [];
 
-    protected override async Task OnInitializedAsync() => _packages = await PackageService.ListAsync();
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isAdmin = await Access.IsAdminAsync();
+        _packages = await PackageService.ListAsync();
+    }
 
     private async Task CreateAsync()
     {

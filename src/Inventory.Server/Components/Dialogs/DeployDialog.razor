@@ -15,7 +15,7 @@
                 <MudSelect T="int?" @bind-Value="_packageId" Label="@L["Package"]" Variant="Variant.Outlined">
                     @foreach (var package in _packages)
                     {
-                        <MudSelectItem T="int?" Value="@package.Id">@package.Name @package.Version</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@package.Id">@package.Name @package.Version@(package.IsApproved ? "" : $" ({L["not approved"]})")</MudSelectItem>
                     }
                 </MudSelect>
             }
@@ -37,6 +37,10 @@
             <MudCheckBox T="bool" @bind-Value="_scanAfter" Label="@L["Rescan inventory afterwards"]" Dense="true" />
             <MudCheckBox T="bool" @bind-Value="_retryOffline" Label="@L["Retry offline computers once they are reachable (up to 3 days)"]" Dense="true" />
             <MudCheckBox T="bool" @bind-Value="_respectWindow" Label="@L["Only within the maintenance window (computers outside wait until it opens)"]" Dense="true" />
+            @if (_unapproved.Contains(_packageId ?? 0))
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@L["This package is not approved yet. As an administrator you can deploy it anyway, e.g. to test it."]</MudAlert>
+            }
             <DeploymentLimitsEditor @bind-MaxFailures="_maxFailures" @bind-MaxFailurePercent="_maxFailurePercent" @bind-MaxParallel="_maxParallel" />
             @if (_error is not null)
             {
@@ -73,13 +77,20 @@
     private int? _maxFailurePercent;
     private int? _maxParallel;
     private bool _starting;
+    private bool _isAdmin;
+    /// <summary>IDs der nicht freigegebenen Pakete, für den Hinweis an Administratoren.</summary>
+    private HashSet<int> _unapproved = [];
     private string? _error;
 
     protected override async Task OnInitializedAsync()
     {
         _packageId = PackageId;
+        _isAdmin = await Access.IsAdminAsync();
+        var all = await PackageService.ListAsync();
+        _unapproved = all.Where(p => !p.IsApproved).Select(p => p.Id).ToHashSet();
+        // Operatoren bekommen nur freigegebene Pakete angeboten.
         if (PackageId is null)
-            _packages = (await PackageService.ListAsync()).Where(p => p.Steps.Count > 0).ToList();
+            _packages = all.Where(p => p.Steps.Count > 0 && (_isAdmin || p.IsApproved)).ToList();
         _computers = await ComputerService.ListAsync();
         _collections = await CollectionService.ListAsync();
         _targets = _computers.Where(c => ComputerIds.Contains(c.Id)).ToList();
@@ -102,7 +113,7 @@
         try
         {
             var deployment = await DeploymentService.StartAsync(_packageId!.Value, _targets.Select(c => c.Id),
-                new DeploymentOptions(_scanAfter, _retryOffline, _respectWindow, _maxFailures, _maxFailurePercent, _maxParallel));
+                new DeploymentOptions(_scanAfter, _retryOffline, _respectWindow, _maxFailures, _maxFailurePercent, _maxParallel) { RequireApproved = !_isAdmin });
             await Audit.LogAsync(L["Deployment started"], L["#{0} {1} on {2}", deployment.Id, $"{deployment.PackageName} {deployment.PackageVersion}", string.Join(", ", deployment.Targets.Select(t => t.ComputerName))]);
             MudDialog.Close(DialogResult.Ok(deployment.Id));
             Navigation.NavigateTo($"deployments/{deployment.Id}");

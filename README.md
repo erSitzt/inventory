@@ -19,6 +19,8 @@ credentials. The user interface is available in English and German; translations
 - **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
   embedded package – each with conditions and error handling; steps after a reboot continue automatically once the
   computer is back
+- **Approval**: a package is "in progress" until an administrator approves it; operators and schedules deploy only
+  approved packages, and every change to steps, detection or files withdraws the approval
 - **Limits per deployment**: stop starting further computers after a number or a rate of failures, and limit how
   many computers run at once – so a broken package does not reach every computer and the first ones act as a pilot
 - **Robust steps**: retries with a pause (automatically when another installation is running), a free disk space
@@ -314,7 +316,7 @@ Every sign-in gets the highest role its groups grant; an account without any rol
 | Role | May |
 |---|---|
 | **Viewer** | see everything: computers, software, changes, deployments, packages, collections, schedules, reports |
-| **Operator** | additionally scan and check reachability, deploy existing packages, cancel and retry deployments, use remote access, read the audit log |
+| **Operator** | additionally scan and check reachability, deploy approved packages, cancel and retry deployments, use remote access, read the audit log |
 | **Administrator** | everything else: create and edit packages (they run as Local System on every computer), package library, uninstall, remote commands, collections, schedules, computers, credentials, API tokens, settings |
 
 Groups are configured per sign-in method (`Inventory:Roles:…` for Windows, `Inventory:Oidc:Roles:…` for OIDC). The

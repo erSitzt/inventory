@@ -221,6 +221,18 @@
   <data name="apply." xml:space="preserve">
     <value>zutreffen.</value>
   </data>
+  <data name="Approval" xml:space="preserve">
+    <value>Freigabe</value>
+  </data>
+  <data name="Approve" xml:space="preserve">
+    <value>Freigeben</value>
+  </data>
+  <data name="approved" xml:space="preserve">
+    <value>freigegeben</value>
+  </data>
+  <data name="Approved for deployment by {0} on {1}." xml:space="preserve">
+    <value>Zum Verteilen freigegeben von {0} am {1}.</value>
+  </data>
   <data name="Architecture" xml:space="preserve">
     <value>Architektur</value>
   </data>
@@ -947,6 +959,9 @@
   <data name='Keep and mark as "not in AD"' xml:space="preserve">
     <value>Behalten und als „nicht im AD“ kennzeichnen</value>
   </data>
+  <data name="Keep the approval when library packages update automatically" xml:space="preserve">
+    <value>Freigabe behalten, wenn Bibliothekspakete sich automatisch aktualisieren</value>
+  </data>
   <data name="Keep up to date automatically" xml:space="preserve">
     <value>Automatisch aktuell halten</value>
   </data>
@@ -1283,6 +1298,12 @@
   <data name="Not (anymore) in AD" xml:space="preserve">
     <value>Nicht (mehr) im AD</value>
   </data>
+  <data name="not approved" xml:space="preserve">
+    <value>nicht freigegeben</value>
+  </data>
+  <data name="Not approved: operators and schedules cannot deploy this package. Every change to steps, detection or files withdraws the approval." xml:space="preserve">
+    <value>Nicht freigegeben: Operatoren und Zeitpläne können dieses Paket nicht verteilen. Jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf.</value>
+  </data>
   <data name="Not captured yet. Firewall, antivirus and Windows Update are read with the next scan." xml:space="preserve">
     <value>Noch nicht erfasst. Firewall, Virenschutz und Windows Update werden beim nächsten Scan gelesen.</value>
   </data>
@@ -1397,6 +1418,9 @@
   <data name="Operator" xml:space="preserve">
     <value>Operator</value>
   </data>
+  <data name="Operators and schedules only deploy approved packages. If this is off, an automatically updated library package has to be approved again by an administrator before schedules deploy the new version." xml:space="preserve">
+    <value>Operatoren und Zeitpläne verteilen nur freigegebene Pakete. Ist dies aus, muss ein automatisch aktualisiertes Bibliothekspaket erst wieder von einem Administrator freigegeben werden, bevor Zeitpläne die neue Version verteilen.</value>
+  </data>
   <data name='Optional: a permanently installed agent fetches jobs over an outbound connection – useful for computers the server cannot reach directly (notebooks on the road, other networks). It is installed via "Computers → Actions → Install agent". After a server update the agents update themselves on their next request.' xml:space="preserve">
     <value>Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“. Nach einem Update des Servers aktualisieren sich die Agenten bei ihrer nächsten Anfrage selbst.</value>
   </data>
@@ -1417,6 +1441,12 @@
   </data>
   <data name='Package "{0}"' xml:space="preserve">
     <value>Paket „{0}“</value>
+  </data>
+  <data name="Package approval withdrawn" xml:space="preserve">
+    <value>Paket-Freigabe zurückgezogen</value>
+  </data>
+  <data name="Package approved" xml:space="preserve">
+    <value>Paket freigegeben</value>
   </data>
   <data name="Package auto-update changed" xml:space="preserve">
     <value>Paket-Automatik geändert</value>
@@ -2195,6 +2225,9 @@
   <data name="The output appears here as soon as a command runs." xml:space="preserve">
     <value>Die Ausgabe erscheint hier, sobald ein Befehl läuft.</value>
   </data>
+  <data name='The package "{0}" is not approved for deployment.' xml:space="preserve">
+    <value>Das Paket „{0}“ ist nicht zum Verteilen freigegeben.</value>
+  </data>
   <data name="The package contains no steps." xml:space="preserve">
     <value>Das Paket enthält keine Schritte.</value>
   </data>
@@ -2272,6 +2305,9 @@
   </data>
   <data name="This package does not exist (anymore)." xml:space="preserve">
     <value>Dieses Paket existiert nicht (mehr).</value>
+  </data>
+  <data name="This package is not approved yet. As an administrator you can deploy it anyway, e.g. to test it." xml:space="preserve">
+    <value>Dieses Paket ist noch nicht freigegeben. Als Administrator kannst du es trotzdem verteilen, etwa zum Testen.</value>
   </data>
   <data name="This package would then contain itself." xml:space="preserve">
     <value>Dieses Paket würde sich damit selbst enthalten.</value>
@@ -2563,6 +2599,9 @@
   </data>
   <data name="With verification the detection must also apply after the last step; otherwise the deployment fails for this computer even if every step reported success." xml:space="preserve">
     <value>Mit Prüfung muss die Erkennung auch nach dem letzten Schritt zutreffen; sonst schlägt das Deployment für diesen Rechner fehl, selbst wenn jeder Schritt Erfolg gemeldet hat.</value>
+  </data>
+  <data name="Withdraw approval" xml:space="preserve">
+    <value>Freigabe zurückziehen</value>
   </data>
   <data name="Without launcher: commands to copy" xml:space="preserve">
     <value>Ohne Starter: Befehle zum Kopieren</value>

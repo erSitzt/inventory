@@ -217,6 +217,8 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
             }
             await packages.SaveStepAsync(package.Id, null, InstallStep(entry), null, ct);
             await packages.SaveDetectionAsync(package.Id, Detection(entry), false, ct);
+            // Wer importiert, hat sich bewusst für dieses Paket entschieden.
+            await packages.ApproveAsync(package.Id, user, ct);
 
             int? collectionId = null;
             if (createCollection)
@@ -246,7 +248,8 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
 
     /// <summary>Hebt ein importiertes Paket auf die Version der Bibliothek: neues Setup, angepasster Schritt, mitwandernde Sammlung.</summary>
     /// <exception cref="RemoteException">Download fehlgeschlagen oder Prüfsumme falsch; das Paket bleibt unverändert.</exception>
-    public async Task<bool> UpdateAsync(int packageId, string user, CancellationToken ct = default)
+    /// <param name="automatic">true = unbeaufsichtigter Lauf; die Freigabe bleibt dann nur mit der Einstellung "Bibliotheks-Updates automatisch freigeben" erhalten.</param>
+    public async Task<bool> UpdateAsync(int packageId, string user, CancellationToken ct = default, bool automatic = false)
     {
         await _lock.WaitAsync(ct);
         try
@@ -280,6 +283,10 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
             if (package.CatalogCollectionId is { } collectionId && await collections.GetAsync(collectionId, ct) is { } collection)
                 await collections.SaveAsync(collectionId, collection.Name, collection.Description, true, collection.MatchAll, [OutdatedRule(entry)], ct);
 
+            // Die Schritte haben sich geändert, die Freigabe ist damit erloschen. Ein Administrator, der selbst aktualisiert,
+            // gibt die neue Version damit frei; unbeaufsichtigt entscheidet die Einstellung.
+            if (package.IsApproved && (!automatic || await AutoApproveAsync(ct)))
+                await packages.ApproveAsync(packageId, automatic ? package.ApprovedBy ?? user : user, ct);
             await audit.LogAsync(user, L["Package updated from library"], $"{package.Name}: {previous} → {entry.Version}", ct);
             return true;
         }
@@ -304,7 +311,7 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
         {
             try
             {
-                if (await UpdateAsync(item.Package!.Id, L["(automatic)"], ct))
+                if (await UpdateAsync(item.Package!.Id, L["(automatic)"], ct, automatic: true))
                     updated++;
             }
             catch (RemoteException ex)
@@ -340,6 +347,12 @@ public sealed class CatalogService(IDbContextFactory<InventoryDbContext> dbFacto
             if (File.Exists(temp))
                 File.Delete(temp);
         }
+    }
+
+    private async Task<bool> AutoApproveAsync(CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Settings.Where(s => s.Key == SettingKeys.AutoApproveLibraryUpdates).Select(s => s.Value).FirstOrDefaultAsync(ct) == bool.TrueString;
     }
 
     private JobStep InstallStep(CatalogEntry entry) => new()

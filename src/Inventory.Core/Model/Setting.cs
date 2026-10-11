@@ -17,6 +17,8 @@ public static class SettingKeys
     public const string MaintenanceDefaultWindow = "Maintenance.DefaultWindow";
     /// <summary>So viele Rechner werden über alle Deployments hinweg gleichzeitig bedient.</summary>
     public const string MaxParallelTargets = "Deployment.MaxParallelTargets";
+    /// <summary>"True" = automatisch übernommene Bibliotheks-Updates behalten die Freigabe des Pakets.</summary>
+    public const string AutoApproveLibraryUpdates = "Packages.AutoApproveLibraryUpdates";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>

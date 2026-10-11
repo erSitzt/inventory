@@ -13,7 +13,11 @@ namespace Inventory.Data.Services;
 /// <summary>Legt Deployments an, führt sie im Hintergrund aus und hält den Live-Stand laufender Ziele bereit.</summary>
 /// <summary>Einstellungen eines Deployments; die Grenzen sind optional (null = keine).</summary>
 public sealed record DeploymentOptions(bool ScanAfter, bool RetryOffline = false, bool RespectWindow = false,
-    int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null);
+    int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null)
+{
+    /// <summary>true = nur freigegebene Pakete; gilt für Operatoren und Zeitpläne, nicht für Administratoren.</summary>
+    public bool RequireApproved { get; init; }
+}
 
 public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null, MaintenanceService? maintenance = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
@@ -92,6 +96,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
             var package = await db.Packages.AsNoTracking().FirstAsync(p => p.Id == packageId, ct);
+            if (options.RequireApproved && !package.IsApproved)
+                throw new InvalidOperationException(L["The package \"{0}\" is not approved for deployment.", package.Name]);
             var computers = await db.Computers.AsNoTracking().Where(c => ids.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
             if (computers.Count == 0)
                 throw new InvalidOperationException(L["No target computers selected."]);

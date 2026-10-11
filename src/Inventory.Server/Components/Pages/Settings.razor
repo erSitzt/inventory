@@ -35,6 +35,11 @@
         <MudText Typo="Typo.body2">
             @L["SMB + service needs the ADMIN$ share and the Service Control Manager (port 445); the job runs as Local System. WinRM needs PowerShell remoting enabled (port 5985); the job runs with the stored account."]
         </MudText>
+        <MudSwitch T="bool" Value="_autoApprove" ValueChanged="SetAutoApproveAsync" Color="Color.Primary"
+                   Label="@L["Keep the approval when library packages update automatically"]" />
+        <MudText Typo="Typo.body2">
+            @L["Operators and schedules only deploy approved packages. If this is off, an automatically updated library package has to be approved again by an administrator before schedules deploy the new version."]
+        </MudText>
         <MudNumericField T="int" Value="_maxParallel" ValueChanged="SetMaxParallelAsync" Min="1" Max="128" Label="@L["Computers served at once"]" Variant="Variant.Outlined"
                          HelperText="@L["Across all deployments. A deployment can set a lower limit of its own."]" />
         <MudNumericField T="int" Value="_rebootWait" ValueChanged="SetRebootWaitAsync" Min="5" Max="1440" Label="@L["Wait for restart (minutes)"]" Variant="Variant.Outlined"
@@ -429,7 +434,18 @@
         _rebootWait = await SettingsService.GetRebootWaitMinutesAsync();
         _defaultWindow = await Maintenance.GetDefaultAsync();
         _maxParallel = await SettingsService.GetMaxParallelTargetsAsync();
+        _autoApprove = await SettingsService.GetAutoApproveLibraryUpdatesAsync();
         await Audit.LogAsync(L["Setting changed"], $"{L["Wait for restart (minutes)"]}: {_rebootWait}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private bool _autoApprove;
+
+    private async Task SetAutoApproveAsync(bool enabled)
+    {
+        _autoApprove = enabled;
+        await SettingsService.SetAutoApproveLibraryUpdatesAsync(enabled);
+        await Audit.LogAsync(L["Setting changed"], $"{L["Keep the approval when library packages update automatically"]}: {Display.OnOff(enabled)}");
         Snackbar.Add(L["Saved."], Severity.Success);
     }
 
