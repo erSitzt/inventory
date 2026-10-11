@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\Inventory.Core\Inventory.Core.csproj" />
     <ProjectReference Include="..\..\src\Inventory.Remoting\Inventory.Remoting.csproj" />
     <ProjectReference Include="..\..\src\Inventory.Data\Inventory.Data.csproj" />
+    <ProjectReference Include="..\..\src\Inventory.Server\Inventory.Server.csproj" />
   </ItemGroup>
 
 </Project>

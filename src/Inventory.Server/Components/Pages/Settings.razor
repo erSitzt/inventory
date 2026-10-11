@@ -1,4 +1,5 @@
 @page "/settings"
+@attribute [Authorize(Policy = AccessControl.AdminPolicy)]
 @using Microsoft.Extensions.Options
 @inject SettingsService SettingsService
 @inject AdSyncService AdSync
@@ -48,11 +49,11 @@
             }
             @if (Options.Value.ResolveWindowsAuthentication())
             {
-                <span>@L["Windows sign-in, allowed for {0}.", string.Join(", ", Options.Value.DescribeAllowedGroups())] </span>
+                <span>@L["Windows sign-in, allowed for {0}.", RoleLine(Options.Value.DescribeAllowedGroups(), InventoryOptions.Describe(Options.Value.Roles.Operator), InventoryOptions.Describe(Options.Value.Roles.Viewer))] </span>
             }
             @if (Options.Value.OidcEnabled)
             {
-                <span>@L["{0} ({1}), allowed for {2}.", Options.Value.Oidc.DisplayName, Options.Value.Oidc.ResolveAuthority(), string.Join(", ", Options.Value.Oidc.AllowedGroups)]</span>
+                <span>@L["{0} ({1}), allowed for {2}.", Options.Value.Oidc.DisplayName, Options.Value.Oidc.ResolveAuthority(), RoleLine(Options.Value.Oidc.AllowedGroups.Concat(Options.Value.Oidc.Roles.Admin), Options.Value.Oidc.Roles.Operator, Options.Value.Oidc.Roles.Viewer)]</span>
             }
         </MudText>
         @if (!Options.Value.AuthenticationEnabled && !Options.Value.ResolveSimulate())
@@ -441,6 +442,12 @@
         await Audit.LogAsync(L["Setting changed"], $"{L["Computers served at once"]}: {_maxParallel}");
         Snackbar.Add(L["Saved."], Severity.Success);
     }
+
+    /// <summary>Gruppen je Rolle in einer Zeile; Rollen ohne Gruppe entfallen.</summary>
+    private string RoleLine(IEnumerable<string> admins, IEnumerable<string> operators, IEnumerable<string> viewers) => string.Join("; ", new[]
+    {
+        (Role: AccessRole.Admin, Groups: admins), (Role: AccessRole.Operator, Groups: operators), (Role: AccessRole.Viewer, Groups: viewers),
+    }.Where(r => r.Groups.Any()).Select(r => $"{Display.Role(r.Role)}: {string.Join(", ", r.Groups)}"));
 
     private MaintenanceWindow? _defaultWindow;
 

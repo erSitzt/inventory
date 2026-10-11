@@ -3,17 +3,17 @@
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">@L["Overview"]</MudNavLink>
     <MudNavLink Href="computers" Icon="@Icons.Material.Filled.Computer">@L["Computers"]</MudNavLink>
-    <MudNavLink Href="run" Icon="@Icons.Material.Filled.Terminal">@L["Remote command"]</MudNavLink>
+    <AdminOnly><MudNavLink Href="run" Icon="@Icons.Material.Filled.Terminal">@L["Remote command"]</MudNavLink></AdminOnly>
     <MudNavLink Href="collections" Icon="@Icons.Material.Filled.Folder">@L["Collections"]</MudNavLink>
     <MudNavLink Href="packages" Icon="@Icons.Material.Filled.Inventory2">@L["Packages"]</MudNavLink>
-    <MudNavLink Href="library" Icon="@Icons.Material.Filled.LocalLibrary">@L["Package library"]</MudNavLink>
+    <AdminOnly><MudNavLink Href="library" Icon="@Icons.Material.Filled.LocalLibrary">@L["Package library"]</MudNavLink></AdminOnly>
     <MudNavLink Href="deployments" Icon="@Icons.Material.Filled.RocketLaunch">@L["Deployments"]</MudNavLink>
     <MudNavLink Href="schedules" Icon="@Icons.Material.Filled.Schedule">@L["Schedules"]</MudNavLink>
     <MudNavLink Href="software" Icon="@Icons.Material.Filled.Apps">@L["Software"]</MudNavLink>
     <MudNavLink Href="changes" Icon="@Icons.Material.Filled.Timeline">@L["Changes"]</MudNavLink>
-    <MudNavLink Href="credentials" Icon="@Icons.Material.Filled.Key">@L["Credentials"]</MudNavLink>
-    <MudNavLink Href="tokens" Icon="@Icons.Material.Filled.VpnKey">@L["API tokens"]</MudNavLink>
-    <MudNavLink Href="audit" Icon="@Icons.Material.Filled.History">@L["Audit log"]</MudNavLink>
-    <MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">@L["Settings"]</MudNavLink>
+    <AdminOnly><MudNavLink Href="credentials" Icon="@Icons.Material.Filled.Key">@L["Credentials"]</MudNavLink></AdminOnly>
+    <AdminOnly><MudNavLink Href="tokens" Icon="@Icons.Material.Filled.VpnKey">@L["API tokens"]</MudNavLink></AdminOnly>
+    <OperatorOnly><MudNavLink Href="audit" Icon="@Icons.Material.Filled.History">@L["Audit log"]</MudNavLink></OperatorOnly>
+    <AdminOnly><MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">@L["Settings"]</MudNavLink></AdminOnly>
 </MudNavMenu>
 <MudText Typo="Typo.caption" Class="pa-4" Style="color: var(--mud-palette-text-secondary)">Version @AppVersion.Current</MudText>

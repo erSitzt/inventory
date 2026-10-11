@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject UpdateService Updates
+@inject Display Display
 @inject IStringLocalizer<SharedResource> L
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
@@ -37,6 +38,10 @@
         <AuthorizeView>
             <Authorized>
                 <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
+                @if (AccessControl.RoleOf(context.User) is AccessRole.Viewer or AccessRole.Operator)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="color: inherit; border-color: currentColor">@Display.Role(AccessControl.RoleOf(context.User))</MudChip>
+                }
                 @if (context.User.HasClaim(c => c.Type == AccessControl.AccessClaim))
                 {
                     @* Nur bei Sitzungs-Anmeldung; die reine Windows-Anmeldung kennt kein Abmelden. *@

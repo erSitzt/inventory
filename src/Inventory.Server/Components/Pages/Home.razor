@@ -6,6 +6,7 @@
 @inject ScheduleService Schedules
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject Access Access
 
 <PageTitle>@L["Overview"] – Inventory</PageTitle>
 
@@ -38,7 +39,9 @@
             </MudText>
             <MudStack Row="true" Spacing="2" Class="mt-4" Wrap="Wrap.Wrap">
                 <MudButton Href="computers" Variant="Variant.Filled" Style="background: rgba(255,255,255,0.92); color: #312e81" StartIcon="@Icons.Material.Filled.Computer">@L["Computers"]</MudButton>
-                <MudButton Href="run" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.Terminal">@L["Run command"]</MudButton>
+                <AdminOnly>
+                    <MudButton Href="run" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.Terminal">@L["Run command"]</MudButton>
+                </AdminOnly>
                 <MudButton Href="deployments" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.RocketLaunch">@L["Deployment"]</MudButton>
             </MudStack>
         </div>
@@ -160,25 +163,27 @@
         </div>
     </MudItem>
 
-    <MudItem xs="12" lg="6">
-        <div class="dash-card">
-            <div class="title">
-                <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Primary" /> @L["Audit log"]
-                <MudSpacer /><MudLink Href="audit" Typo="Typo.caption">@L["All"]</MudLink>
-            </div>
-            @if (_stats.RecentAudit.Count == 0)
-            {
-                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["No entries yet."]</MudText>
-            }
-            @foreach (var entry in _stats.RecentAudit)
-            {
-                <div class="feed-row">
-                    <span class="time">@Display.LocalTime(entry.TimeUtc)</span>
-                    <span class="text"><b>@entry.Action</b>@if (!string.IsNullOrEmpty(entry.Details)) { <span> – <AuditDetails Text="@entry.Details" Action="@entry.Action" Map="_links" /></span> } <span style="color: var(--mud-palette-text-secondary)">(@entry.User)</span></span>
+    <OperatorOnly>
+        <MudItem xs="12" lg="6">
+            <div class="dash-card">
+                <div class="title">
+                    <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Primary" /> @L["Audit log"]
+                    <MudSpacer /><MudLink Href="audit" Typo="Typo.caption">@L["All"]</MudLink>
                 </div>
-            }
-        </div>
-    </MudItem>
+                @if (_stats.RecentAudit.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["No entries yet."]</MudText>
+                }
+                @foreach (var entry in _stats.RecentAudit)
+                {
+                    <div class="feed-row">
+                        <span class="time">@Display.LocalTime(entry.TimeUtc)</span>
+                        <span class="text"><b>@entry.Action</b>@if (!string.IsNullOrEmpty(entry.Details)) { <span> – <AuditDetails Text="@entry.Details" Action="@entry.Action" Map="_links" /></span> } <span style="color: var(--mud-palette-text-secondary)">(@entry.User)</span></span>
+                    </div>
+                }
+            </div>
+        </MudItem>
+    </OperatorOnly>
 </MudGrid>
 
 @code {
@@ -188,13 +193,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _stats = await Reports.DashboardAsync();
+        _stats = await Reports.DashboardAsync(includeAudit: await Access.IsOperatorAsync());
         _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
     }
 
     private async Task RefreshAsync()
     {
-        _stats = await Reports.DashboardAsync();
+        _stats = await Reports.DashboardAsync(includeAudit: await Access.IsOperatorAsync());
         _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
     }
 

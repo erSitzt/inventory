@@ -6,6 +6,7 @@
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <PageTitle>@(_package?.Name ?? L["Package"]) – Inventory</PageTitle>
 
@@ -22,7 +23,9 @@
     <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="packages" aria-label="@L["Back to the list"]" />
     <MudText Typo="Typo.h5">@_package.Name</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_package.Steps.Count == 0)" OnClick="DeployAsync">@L["Deploy"]</MudButton>
+    <OperatorOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_package.Steps.Count == 0)" OnClick="DeployAsync">@L["Deploy"]</MudButton>
+    </OperatorOnly>
 </MudStack>
 
 @if (_package.CatalogId is not null)
@@ -40,14 +43,16 @@
             <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
                 <MudText Typo="Typo.h6">@L["Steps"]</MudText>
                 <MudSpacer />
-                <MudMenu Label="@L["Add step"]" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
-                    @foreach (var type in AddableTypes)
-                    {
-                        <MudMenuItem Icon="@Display.StepIcon(type)" OnClick="@(() => EditStepAsync(null, type, false))">@Display.Step(type)</MudMenuItem>
-                    }
-                    <MudDivider />
-                    <MudMenuItem Icon="@Icons.Material.Filled.Inventory2" OnClick="@(() => EditStepAsync(null, StepType.Command, true))">@L["Run another package"]</MudMenuItem>
-                </MudMenu>
+                <AdminOnly>
+                    <MudMenu Label="@L["Add step"]" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
+                        @foreach (var type in AddableTypes)
+                        {
+                            <MudMenuItem Icon="@Display.StepIcon(type)" OnClick="@(() => EditStepAsync(null, type, false))">@Display.Step(type)</MudMenuItem>
+                        }
+                        <MudDivider />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Inventory2" OnClick="@(() => EditStepAsync(null, StepType.Command, true))">@L["Run another package"]</MudMenuItem>
+                    </MudMenu>
+                </AdminOnly>
             </MudStack>
 
             @if (_package.Steps.Count == 0)
@@ -94,10 +99,12 @@
                                     }
                                 </MudText>
                             </div>
-                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" aria-label="@L["Move up"]" Disabled="@(index == 0)" OnClick="@(() => MoveAsync(step, -1))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" aria-label="@L["Move down"]" Disabled="@(index == _package.Steps.Count - 1)" OnClick="@(() => MoveAsync(step, 1))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditStepAsync(step, step.Definition.Type, step.NestedPackageId is not null))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteStepAsync(step))" />
+                            <AdminOnly>
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" aria-label="@L["Move up"]" Disabled="@(index == 0)" OnClick="@(() => MoveAsync(step, -1))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" aria-label="@L["Move down"]" Disabled="@(index == _package.Steps.Count - 1)" OnClick="@(() => MoveAsync(step, 1))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditStepAsync(step, step.Definition.Type, step.NestedPackageId is not null))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteStepAsync(step))" />
+                            </AdminOnly>
                         </MudStack>
                     </MudListItem>
                 }
@@ -112,9 +119,11 @@
                 <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
                 <MudTextField @bind-Value="_version" Label="@L["Version"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 <MudTextField @bind-Value="_description" Label="@L["Description"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" />
-                <div>
-                    <MudButton Variant="Variant.Outlined" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="SaveHeaderAsync">@L["Save"]</MudButton>
-                </div>
+                <AdminOnly>
+                    <div>
+                        <MudButton Variant="Variant.Outlined" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="SaveHeaderAsync">@L["Save"]</MudButton>
+                    </div>
+                </AdminOnly>
             </MudStack>
         </MudPaper>
 
@@ -123,16 +132,18 @@
                 <MudText Typo="Typo.h6">@L["Detection"]</MudText>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(_package.Detection is null ? Color.Default : Color.Success)">@(_package.Detection is null ? L["off"] : L["active"])</MudChip>
                 <MudSpacer />
-                @if (MsiFiles.Count > 0)
-                {
-                    <MudMenu Label="@L["Fill from MSI"]" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Dense="true">
-                        @foreach (var file in MsiFiles)
-                        {
-                            <MudMenuItem OnClick="@(() => FillFromMsi(file, false))">@L["{0}: name and minimum version", file]</MudMenuItem>
-                            <MudMenuItem OnClick="@(() => FillFromMsi(file, true))">@L["{0}: product code (exactly this version)", file]</MudMenuItem>
-                        }
-                    </MudMenu>
-                }
+                <AdminOnly>
+                    @if (MsiFiles.Count > 0)
+                    {
+                        <MudMenu Label="@L["Fill from MSI"]" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Dense="true">
+                            @foreach (var file in MsiFiles)
+                            {
+                                <MudMenuItem OnClick="@(() => FillFromMsi(file, false))">@L["{0}: name and minimum version", file]</MudMenuItem>
+                                <MudMenuItem OnClick="@(() => FillFromMsi(file, true))">@L["{0}: product code (exactly this version)", file]</MudMenuItem>
+                            }
+                        </MudMenu>
+                    }
+                </AdminOnly>
             </MudStack>
             <MudText Typo="Typo.body2" Class="mb-3">
                 @L["If all conditions entered here apply, the package counts as already installed: the computer is skipped and reported as \"already installed\". Without detection the package always runs."]
@@ -149,13 +160,15 @@
                 <MudText Typo="Typo.caption">
                     @L["With verification the detection must also apply after the last step; otherwise the deployment fails for this computer even if every step reported success."]
                 </MudText>
-                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
-                    <MudButton Variant="Variant.Outlined" OnClick="SaveDetectionAsync">@L["Save"]</MudButton>
-                    @if (!string.IsNullOrWhiteSpace(_package.Detection?.SoftwareInstalled) || !string.IsNullOrWhiteSpace(_package.Detection?.MsiProductCode))
-                    {
-                        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.DeleteSweep" OnClick="CreateUninstallAsync">@L["Uninstall package"]</MudButton>
-                    }
-                </MudStack>
+                <AdminOnly>
+                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                        <MudButton Variant="Variant.Outlined" OnClick="SaveDetectionAsync">@L["Save"]</MudButton>
+                        @if (!string.IsNullOrWhiteSpace(_package.Detection?.SoftwareInstalled) || !string.IsNullOrWhiteSpace(_package.Detection?.MsiProductCode))
+                        {
+                            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.DeleteSweep" OnClick="CreateUninstallAsync">@L["Uninstall package"]</MudButton>
+                        }
+                    </MudStack>
+                </AdminOnly>
             </MudStack>
         </MudPaper>
 
@@ -163,10 +176,12 @@
             <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
                 <MudText Typo="Typo.h6">@L["Files"]</MudText>
                 <MudSpacer />
-                <MudButton HtmlTag="label" for="package-files" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="_uploading">
-                    @(_uploading ? _uploadText : L["Upload"])
-                </MudButton>
-                <InputFile id="package-files" OnChange="UploadAsync" multiple hidden />
+                <AdminOnly>
+                    <MudButton HtmlTag="label" for="package-files" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="_uploading">
+                        @(_uploading ? _uploadText : L["Upload"])
+                    </MudButton>
+                    <InputFile id="package-files" OnChange="UploadAsync" multiple hidden />
+                </AdminOnly>
             </MudStack>
             <MudText Typo="Typo.body2" Class="mb-2">
                 @L["All files of the package are copied to the target computer with every deployment. Large files can also be placed directly on the server:"] <code>@PackageService.Repository.DirectoryFor(Id)</code>
@@ -184,7 +199,9 @@
                             <tr>
                                 <td style="word-break: break-all">@file.RelativePath</td>
                                 <td style="white-space: nowrap; text-align: right">@Display.FileSize(file.Size)</td>
-                                <td style="width: 1%"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete file"]" OnClick="@(() => DeleteFile(file))" /></td>
+                                <AdminOnly>
+                                    <td style="width: 1%"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete file"]" OnClick="@(() => DeleteFile(file))" /></td>
+                                </AdminOnly>
                             </tr>
                         }
                     </tbody>
@@ -236,6 +253,8 @@
 
     private async Task SaveHeaderAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         try
         {
             await PackageService.SaveAsync(Id, _name, _version, _description);
@@ -257,6 +276,8 @@
 
     private async Task SaveDetectionAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         await PackageService.SaveDetectionAsync(Id, _detection, _verify);
         await Audit.LogAsync(L["Package detection changed"], $"{_package!.Name}: {(_detection.IsEmpty ? L["off"] : Display.Detection(_detection))}");
         Snackbar.Add(L["Saved."], Severity.Success);
@@ -267,6 +288,8 @@
     /// <summary>Gegenstück zum Paket: entfernt das Programm, das die Erkennung beschreibt.</summary>
     private async Task CreateUninstallAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var detection = _package!.Detection!;
         var (package, created) = await PackageService.EnsureUninstallPackageAsync(
             string.IsNullOrWhiteSpace(detection.SoftwareInstalled) ? _package.Name : detection.SoftwareInstalled, detection.SoftwareInstalled, detection.MsiProductCode);
@@ -296,6 +319,8 @@
 
     private async Task EditStepAsync(PackageStep? step, StepType type, bool nested)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var parameters = new DialogParameters<EditStepDialog>
         {
             { d => d.PackageId, Id },
@@ -312,12 +337,16 @@
 
     private async Task MoveAsync(PackageStep step, int direction)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         await PackageService.MoveStepAsync(Id, step.Id, direction);
         await ReloadAsync();
     }
 
     private async Task DeleteStepAsync(PackageStep step)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         await PackageService.DeleteStepAsync(Id, step.Id);
         await Audit.LogAsync(L["Package step deleted"], $"{_package!.Name}: {step.Definition.Name}");
         await ReloadAsync();
@@ -325,6 +354,8 @@
 
     private async Task UploadAsync(InputFileChangeEventArgs e)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         _uploading = true;
         try
         {
@@ -354,8 +385,10 @@
         }
     }
 
-    private void DeleteFile(Inventory.Data.RepositoryFile file)
+    private async Task DeleteFile(Inventory.Data.RepositoryFile file)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         PackageService.Repository.Delete(Id, file.RelativePath);
         _ = Audit.LogAsync(L["Package file deleted"], $"{_package!.Name}: {file.RelativePath}");
         _files = PackageService.Repository.List(Id);

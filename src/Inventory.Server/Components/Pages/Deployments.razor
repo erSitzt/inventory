@@ -10,7 +10,9 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
     <MudText Typo="Typo.h5">@L["Deployments"]</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick="DeployAsync">@L["Deploy package"]</MudButton>
+    <OperatorOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick="DeployAsync">@L["Deploy package"]</MudButton>
+    </OperatorOnly>
 </MudStack>
 
 <MudDataGrid T="Deployment" Items="_deployments" Dense="true" Hover="true" SortMode="SortMode.None">

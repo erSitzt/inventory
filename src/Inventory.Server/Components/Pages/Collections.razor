@@ -4,14 +4,17 @@
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject Access Access
 
 <PageTitle>@L["Collections"] – Inventory</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
     <MudText Typo="Typo.h5">@L["Collections"]</MudText>
     <MudSpacer />
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Folder" OnClick="@(() => EditAsync(null, false))">@L["Static collection"]</MudButton>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" OnClick="@(() => EditAsync(null, true))">@L["Dynamic collection"]</MudButton>
+    <AdminOnly>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Folder" OnClick="@(() => EditAsync(null, false))">@L["Static collection"]</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" OnClick="@(() => EditAsync(null, true))">@L["Dynamic collection"]</MudButton>
+    </AdminOnly>
 </MudStack>
 
 <MudText Typo="Typo.body2" Class="mb-4">
@@ -48,8 +51,10 @@
         </TemplateColumn>
         <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item.Collection, context.Item.Collection.IsDynamic))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item.Collection))" />
+                <AdminOnly>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item.Collection, context.Item.Collection.IsDynamic))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item.Collection))" />
+                </AdminOnly>
             </CellTemplate>
         </TemplateColumn>
     </Columns>
@@ -69,6 +74,8 @@
 
     private async Task EditAsync(Collection? collection, bool isDynamic)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var parameters = new DialogParameters<EditCollectionDialog>
         {
             { d => d.Collection, collection },
@@ -82,6 +89,8 @@
 
     private async Task DeleteAsync(Collection collection)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete collection"],
             L["Really delete \"{0}\"? The computers themselves are kept.", collection.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)

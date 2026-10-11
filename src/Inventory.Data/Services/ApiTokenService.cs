@@ -18,13 +18,14 @@ public sealed class ApiTokenService(IDbContextFactory<InventoryDbContext> dbFact
     }
 
     /// <summary>Legt ein Token an und liefert den Klartext. Er lässt sich danach nicht mehr abrufen.</summary>
-    public async Task<string> CreateAsync(string name, string createdBy, DateTime? expiresUtc, CancellationToken ct = default)
+    public async Task<string> CreateAsync(string name, string createdBy, DateTime? expiresUtc, CancellationToken ct = default, AccessRole role = AccessRole.Admin)
     {
         var token = TokenPrefix + Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         db.ApiTokens.Add(new ApiToken
         {
             Name = name.Trim(), TokenHash = Hash(token), Prefix = token[..(TokenPrefix.Length + 6)], CreatedBy = createdBy, ExpiresUtc = expiresUtc,
+            Role = role is AccessRole.Viewer or AccessRole.Operator ? role : AccessRole.Admin,
         });
         await db.SaveChangesAsync(ct);
         return token;

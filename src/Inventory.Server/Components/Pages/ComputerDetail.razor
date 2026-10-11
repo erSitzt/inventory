@@ -8,6 +8,7 @@
 @inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject Access Access
 
 <PageTitle>@(_computer?.Name ?? L["Computer"]) – Inventory</PageTitle>
 
@@ -27,11 +28,17 @@
     <MudText Typo="Typo.h5">@_computer.Name</MudText>
     <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : _computer.NameMismatch ? Color.Warning : Color.Default)">@(_computer.IsOnline ? L["online"] : _computer.NameMismatch ? L["unreachable"] : L["offline"])</MudChip>
     <MudSpacer />
-    <RemoteAccessMenu Computer="_computer" />
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">@L["Run command"]</MudButton>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_scanning" OnClick="ScanAsync">
-        @(_scanning ? L["Scanning …"] : L["Scan now"])
-    </MudButton>
+    <OperatorOnly>
+        <RemoteAccessMenu Computer="_computer" />
+    </OperatorOnly>
+    <AdminOnly>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">@L["Run command"]</MudButton>
+    </AdminOnly>
+    <OperatorOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_scanning" OnClick="ScanAsync">
+            @(_scanning ? L["Scanning …"] : L["Scan now"])
+        </MudButton>
+    </OperatorOnly>
 </MudStack>
 
 @if (_computer.NameMismatch)
@@ -39,7 +46,9 @@
     <MudAlert Severity="Severity.Warning" Class="mb-4">
         @L["Under the name {0} the computer {1} responds (address {2}). Probably a stale DNS entry or an alias (CNAME) points to this computer; existing inventory data belongs to {1}. Commands and deployments are not executed on this entry while the names differ. Scans still run – but they capture {1}, not {0}.", _computer.Name, _computer.ReportedName, _computer.IpAddress]
         <div class="mt-2">
-            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="RenameAsync">@L["Rename entry to {0}", _computer.ReportedName]</MudButton>
+            <AdminOnly>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="RenameAsync">@L["Rename entry to {0}", _computer.ReportedName]</MudButton>
+            </AdminOnly>
         </div>
     </MudAlert>
 }
@@ -120,9 +129,11 @@ else if (_computer.ReverseDnsMismatch)
                 </TemplateColumn>
                 <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
                     <CellTemplate>
-                        <MudTooltip Text="@L["Uninstall …"]">
-                            <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" Size="Size.Small" aria-label="@L["Uninstall …"]" OnClick="@(() => UninstallAsync(context.Item))" />
-                        </MudTooltip>
+                        <AdminOnly>
+                            <MudTooltip Text="@L["Uninstall …"]">
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" Size="Size.Small" aria-label="@L["Uninstall …"]" OnClick="@(() => UninstallAsync(context.Item))" />
+                            </MudTooltip>
+                        </AdminOnly>
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
@@ -309,6 +320,8 @@ else if (_computer.ReverseDnsMismatch)
     /// <summary>Legt bei Bedarf das Deinstallations-Paket für dieses Programm an und öffnet den Deploy-Dialog für diesen Rechner.</summary>
     private async Task UninstallAsync(ComputerSoftware software)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var (package, created) = await PackageService.EnsureUninstallPackageAsync(software.Name, software.Name, null);
         if (created)
             await Audit.LogAsync(L["Package created"], package.Name);
@@ -346,6 +359,8 @@ else if (_computer.ReverseDnsMismatch)
 
     private async Task ScanAsync()
     {
+        if (!await Access.DemandOperatorAsync())
+            return;
         _scanning = true;
         try
         {
@@ -363,6 +378,8 @@ else if (_computer.ReverseDnsMismatch)
 
     private async Task RenameAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         try
         {
             var old = _computer!.Name;

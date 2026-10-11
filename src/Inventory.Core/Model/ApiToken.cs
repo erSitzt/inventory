@@ -10,6 +10,8 @@ public class ApiToken
     /// <summary>Anfang des Tokens, um es in der Liste wiederzuerkennen.</summary>
     public required string Prefix { get; set; }
     public required string CreatedBy { get; set; }
+    /// <summary>Was das Token darf; Tokens aus der Zeit vor den Rollen sind Administrator-Tokens.</summary>
+    public AccessRole Role { get; set; } = AccessRole.Admin;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? ExpiresUtc { get; set; }
     public DateTime? LastUsedUtc { get; set; }

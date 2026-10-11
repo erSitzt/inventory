@@ -107,7 +107,8 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
         return computers.Select(c => new SoftwareInstall(c, c.Software.Any(s => !s.PerUser), c.Software.Any(s => s.PerUser), c.Software.Any(s => s.CarriedOver))).ToList();
     }
 
-    public async Task<DashboardStats> DashboardAsync(CancellationToken ct = default)
+    /// <param name="includeAudit">false = ohne die letzten Protokolleinträge (für Rollen, die das Protokoll nicht lesen dürfen).</param>
+    public async Task<DashboardStats> DashboardAsync(CancellationToken ct = default, bool includeAudit = true)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var computers = await db.Computers.AsNoTracking().ToListAsync(ct);
@@ -143,7 +144,7 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
             OperatingSystems = systems,
             RecentDeployments = recent,
             RecentChanges = InventoryDiff.MergeUpdates(recentChanges).Select(c => (c, names.GetValueOrDefault(c.ComputerId, "?"))).ToList(),
-            RecentAudit = await db.AuditEntries.AsNoTracking().OrderByDescending(e => e.Id).Take(6).ToListAsync(ct),
+            RecentAudit = includeAudit ? await db.AuditEntries.AsNoTracking().OrderByDescending(e => e.Id).Take(6).ToListAsync(ct) : [],
         };
     }
 

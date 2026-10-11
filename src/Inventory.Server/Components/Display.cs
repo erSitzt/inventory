@@ -131,6 +131,21 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         _ => step.Script.Split('\n')[0].Trim(),
     };
 
+    public string Role(AccessRole role) => role switch
+    {
+        AccessRole.Admin => T("Administrator"),
+        AccessRole.Operator => T("Operator"),
+        AccessRole.Viewer => T("Viewer"),
+        _ => T("none"),
+    };
+
+    public string RoleHint(AccessRole role) => role switch
+    {
+        AccessRole.Admin => T("Everything, including packages, credentials, settings and commands on target computers."),
+        AccessRole.Operator => T("View everything; scan, deploy existing packages, cancel and retry deployments, remote access."),
+        _ => T("View everything, change and run nothing."),
+    };
+
     /// <summary>Wartungsfenster in einer Zeile, z. B. "Mo, Di 19:00–06:00".</summary>
     public string Window(MaintenanceWindow? window) => window is null || (window.DaysOfWeek & 0x7F) == 0
         ? T("none")
