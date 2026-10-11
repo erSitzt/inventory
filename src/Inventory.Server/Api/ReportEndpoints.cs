@@ -24,6 +24,17 @@ public static class ReportEndpoints
         app.MapGet("/api/reports/software", async (ReportService reports, CancellationToken ct) => await reports.SoftwareAsync(ct))
             .WithTags("Reports").WithSummary("Software overview").WithDescription("Every combination of program and version with the number of computers it is installed on.");
 
+        app.MapGet("/api/reports/updates.csv", async (ReportService reports, CancellationToken ct) =>
+            Csv(await reports.PendingUpdatesCsvAsync(ct), "updates.csv"))
+            .WithTags("Reports").WithSummary("Pending updates as CSV").WithDescription("One row per computer and pending update, as of each computer's last own update search.").Produces<string>(200, "text/csv");
+
+        app.MapGet("/api/reports/updates", async (ReportService reports, CancellationToken ct) => (await reports.PatchComplianceAsync(ct)).Updates)
+            .WithTags("Reports").WithSummary("Pending updates overview").WithDescription("Every pending update with the number of computers that miss it. key = KB numbers, otherwise the title; isSecurity = security or critical update, or one with an MSRC severity.");
+
+        app.MapGet("/api/reports/updates/computers", async (string key, ReportService reports, CancellationToken ct) =>
+            (await reports.ComputersMissingUpdateAsync(key, ct)).Select(c => new { c.Id, c.Name, c.UpdateLastSearchUtc, c.UpdateLastInstallUtc }))
+            .WithTags("Reports").WithSummary("Computers missing an update").WithDescription("key as returned by the pending updates overview.");
+
         var audit = app.MapGroup("/api/audit").WithTags("Audit log").RequireOperator();
 
         audit.MapGet("", async (AuditService service, string? user, string? action, DateTime? from, DateTime? to, string? q, int? take, CancellationToken ct) =>

@@ -17,6 +17,9 @@ credentials. The user interface is available in English and German; translations
 - **System configuration**: Remote Desktop and network level authentication, User Account Control, SMB 1, Credential
   Guard, memory integrity, LSA protection, built-in administrator account (active, password age), Windows activation,
   last logon and password age of local accounts – all usable as collection rules
+- **Updates**: pending updates per computer with KB number, classification and severity; an overview per update
+  (which computers miss it) and per computer (who has no pending security updates), CSV export, collection rules for
+  installed hotfixes and pending updates
 - **Hardware and platform security**: device type (desktop/laptop/server/virtual machine), UEFI and Secure Boot, TPM,
   BitLocker per volume, graphics, memory modules and free slots, physical disks with type and health, battery health,
   monitors and printers

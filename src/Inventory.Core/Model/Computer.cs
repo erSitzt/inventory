@@ -93,6 +93,8 @@ public class Computer
     public DateTime? UpdateLastInstallUtc { get; set; }
     public bool? UpdateRebootRequired { get; set; }
     public int? UpdatePendingCount { get; set; }
+    /// <summary>Davon sicherheitsrelevant, siehe <see cref="Core.PendingUpdates.IsSecurity"/>.</summary>
+    public int? UpdatePendingSecurityCount { get; set; }
     /// <summary>Titel der ausstehenden Updates, einer je Zeile.</summary>
     public string? UpdatePending { get; set; }
     public string? UpdateServer { get; set; }
@@ -162,6 +164,7 @@ public class Computer
     public List<ComputerWindowsService> Services { get; set; } = [];
     public List<ComputerLocalUser> LocalUsers { get; set; } = [];
     public List<ComputerLocalAdmin> LocalAdmins { get; set; } = [];
+    public List<ComputerPendingUpdate> PendingUpdates { get; set; } = [];
     public List<ComputerMemoryModule> MemoryModules { get; set; } = [];
     public List<ComputerPhysicalDisk> PhysicalDisks { get; set; } = [];
     public List<ComputerVolumeEncryption> Volumes { get; set; } = [];

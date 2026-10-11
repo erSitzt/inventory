@@ -28,6 +28,8 @@ public static class ComputerEndpoints
 
     public sealed record PrinterDto(string Name, string? Driver, string? Port, bool Network, bool Shared);
 
+    public sealed record PendingUpdateDto(string Title, string? KbIds, string? Classification, string? Severity, bool IsSecurity, bool IsDownloaded, long SizeBytes);
+
     public sealed record ImportRequest(string Names);
 
     public sealed record ProbeResponse(int Online);
@@ -75,6 +77,12 @@ public static class ComputerEndpoints
                 ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new SoftwareDto(s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser, s.CarriedOver)))
                 : Results.NotFound())
             .WithSummary("Installed software").WithDescription("perUser = installed in one user's profile only. carriedOver = kept from an earlier scan because that user was not logged on during the last scan.").Produces<IEnumerable<SoftwareDto>>().Produces(404);
+
+        group.MapGet("{id:int}/updates", async (int id, ComputerService computers, CancellationToken ct) =>
+            await computers.GetDetailAsync(id, ct) is { } c
+                ? Results.Ok(c.PendingUpdates.OrderBy(u => u.Title).Select(u => new PendingUpdateDto(u.Title, u.KbIds, u.Classification, u.Severity, u.IsSecurity, u.IsDownloaded, u.SizeBytes)))
+                : Results.NotFound())
+            .WithSummary("Pending updates").WithDescription("Updates not yet installed, as of the computer's last own update search; the scan does not trigger a search.").Produces<IEnumerable<PendingUpdateDto>>().Produces(404);
 
         group.MapGet("{id:int}/hardware", async (int id, ComputerService computers, CancellationToken ct) =>
             await computers.GetDetailAsync(id, ct) is { } c

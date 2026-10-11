@@ -49,6 +49,12 @@ public enum RuleField
     NotActivated = 116,
     /// <summary>Speicherintegrität (HVCI) läuft.</summary>
     MemoryIntegrity = 117,
+    /// <summary>Anzahl ausstehender sicherheitsrelevanter Updates.</summary>
+    PendingSecurityUpdates = 118,
+    /// <summary>Installierter Hotfix (KB-Nummer); verneint = der Hotfix fehlt.</summary>
+    Hotfix = 119,
+    /// <summary>Ausstehendes Update (KB-Nummer oder Titel); verneint = steht nicht aus.</summary>
+    PendingUpdate = 120,
     Online = 1,
     Scanned,
     OsName,

@@ -389,6 +389,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int?>("UpdatePendingCount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("UpdatePendingSecurityCount")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool?>("UpdateRebootRequired")
                         .HasColumnType("INTEGER");
 
@@ -630,6 +633,41 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("ComputerId");
 
                     b.ToTable("NetworkAdapters");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerPendingUpdate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Classification")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDownloaded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("KbIds")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Severity")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("PendingUpdates");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.ComputerPhysicalDisk", b =>
@@ -1242,6 +1280,15 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerPendingUpdate", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("PendingUpdates")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerPhysicalDisk", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -1374,6 +1421,8 @@ namespace Inventory.Data.Migrations
                     b.Navigation("Monitors");
 
                     b.Navigation("NetworkAdapters");
+
+                    b.Navigation("PendingUpdates");
 
                     b.Navigation("PhysicalDisks");
 

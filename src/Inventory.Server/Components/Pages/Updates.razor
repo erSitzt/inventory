@@ -1,0 +1,144 @@
+@page "/updates"
+@inject ReportService Reports
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
+
+<PageTitle>@L["Updates"] – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">@L["Updates"]</MudText>
+    <MudSpacer />
+    <MudTextField @bind-Value="_search" Placeholder="@L["Search KB number, title or computer"]" Adornment="Adornment.Start" Immediate="true"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 320px" />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="api/reports/updates.csv" Target="_blank">@L["Pending updates (CSV)"]</MudButton>
+</MudStack>
+
+@if (_report is not null)
+{
+    <MudText Typo="Typo.body2" Class="mb-4">
+        @L["{0} of {1} computers have no pending security updates.", _report.Compliant, _report.Computers.Count]
+        @L["The numbers reflect each computer's last own update search at the time of its last scan; a scan does not trigger a search."]
+    </MudText>
+
+    <MudTabs Outlined="true" Border="true" TabPanelsClass="pt-4" ApplyEffectsToContainer="true">
+        <MudTabPanel Text="@($"{L["By update"]} ({_report.Updates.Count})")">
+            <MudGrid>
+                <MudItem xs="12" lg="@(_selected is null ? 12 : 8)">
+                    <MudDataGrid T="PendingUpdateSummary" Items="_report.Updates" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50"
+                                 QuickFilter="@(u => Matches(u.KbIds, u.Title))">
+                        <Columns>
+                            <TemplateColumn Title="KB" SortBy="u => u.KbIds" CellStyle="white-space: nowrap">
+                                <CellTemplate>@(context.Item.KbIds ?? "–")</CellTemplate>
+                            </TemplateColumn>
+                            <PropertyColumn Property="u => u.Title" Title="@L["Update title"]" />
+                            <TemplateColumn Title="@L["Classification"]" SortBy="u => u.Classification">
+                                <CellTemplate>@(context.Item.Classification is null ? "" : L[context.Item.Classification])</CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="@L["Severity"]" SortBy="u => u.Severity">
+                                <CellTemplate>
+                                    @if (context.Item.Severity is not null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="@Display.SeverityColor(context.Item.Severity)">@L[context.Item.Severity]</MudChip>
+                                    }
+                                    else if (context.Item.IsSecurity)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["Security"]</MudChip>
+                                    }
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="@L["Computers"]" SortBy="u => u.Computers">
+                                <CellTemplate><MudLink OnClick="@(() => SelectAsync(context.Item))">@context.Item.Computers</MudLink></CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                        <NoRecordsContent>
+                            <MudText Class="pa-4">@L["No pending updates recorded. Details are captured with the next scan of each computer."]</MudText>
+                        </NoRecordsContent>
+                        <PagerContent>
+                            <MudDataGridPager T="PendingUpdateSummary" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </MudItem>
+                @if (_selected is not null)
+                {
+                    <MudItem xs="12" lg="4">
+                        <MudPaper Class="pa-4" Outlined="true">
+                            <MudStack Row="true" AlignItems="AlignItems.Start">
+                                <div style="flex: 1">
+                                    <MudText Typo="Typo.h6">@(_selected.KbIds ?? _selected.Title)</MudText>
+                                    <MudText Typo="Typo.body2">@_selected.Title</MudText>
+                                    <MudText Typo="Typo.body2">@L["Missing on {0} computers", _computers.Count]</MudText>
+                                </div>
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _selected = null)" />
+                            </MudStack>
+                            <MudList T="string" Dense="true">
+                                @foreach (var computer in _computers)
+                                {
+                                    <MudListItem T="string" Href="@($"computers/{computer.Id}")">@computer.Name</MudListItem>
+                                }
+                            </MudList>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudTabPanel>
+        <MudTabPanel Text="@($"{L["By computer"]} ({_report.Computers.Count})")">
+            <MudDataGrid T="Computer" Items="_report.Computers" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50"
+                         QuickFilter="@(c => Matches(c.Name))">
+                <Columns>
+                    <TemplateColumn Title="@L["Computer"]" SortBy="c => c.Name">
+                        <CellTemplate><MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink></CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="@L["Status"]" SortBy="c => c.UpdatePendingSecurityCount">
+                        <CellTemplate>
+                            <MudChip T="string" Size="Size.Small" Color="@(context.Item.UpdatePendingSecurityCount > 0 ? Color.Warning : context.Item.UpdatePendingSecurityCount == 0 ? Color.Success : Color.Default)">
+                                @(context.Item.UpdatePendingSecurityCount switch { null => L["unknown"], 0 => L["up to date"], _ => L["security updates missing"] })
+                            </MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="c => c.UpdatePendingSecurityCount" Title="@L["Pending security updates"]" />
+                    <PropertyColumn Property="c => c.UpdatePendingCount" Title="@L["Pending updates"]" />
+                    <TemplateColumn Title="@L["Reboot pending"]" SortBy="c => c.UpdateRebootRequired">
+                        <CellTemplate>@(context.Item.UpdateRebootRequired == true ? L["yes"] : "")</CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="@L["Last installation"]" SortBy="c => c.UpdateLastInstallUtc">
+                        <CellTemplate>@Display.LocalTime(context.Item.UpdateLastInstallUtc)</CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="@L["Last search"]" SortBy="c => c.UpdateLastSearchUtc">
+                        <CellTemplate>@Display.LocalTime(context.Item.UpdateLastSearchUtc)</CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="Computer" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    /// <summary>Vorbelegung der Suche, z. B. aus dem Link einer KB-Nummer auf der Rechnerseite.</summary>
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+
+    private PatchCompliance? _report;
+    private PendingUpdateSummary? _selected;
+    private List<Computer> _computers = [];
+    private string _search = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _report = await Reports.PatchComplianceAsync();
+        _search = Query ?? "";
+        // Führt die Suche auf genau ein Update, zeigt die Seite gleich dessen Rechner.
+        if (Query is not null && _report.Updates.FirstOrDefault(u => string.Equals(u.Key, Query, StringComparison.OrdinalIgnoreCase)) is { } match)
+            await SelectAsync(match);
+    }
+
+    private bool Matches(params string?[] values) =>
+        string.IsNullOrWhiteSpace(_search) || values.Any(v => v?.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase) == true);
+
+    private async Task SelectAsync(PendingUpdateSummary update)
+    {
+        _selected = update;
+        _computers = await Reports.ComputersMissingUpdateAsync(update.Key);
+    }
+}

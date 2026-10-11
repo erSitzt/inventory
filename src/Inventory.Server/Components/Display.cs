@@ -63,6 +63,9 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         RuleField.BuiltinAdminEnabled => T("Built-in administrator account active"),
         RuleField.BuiltinAdminPasswordAgeDays => T("Built-in administrator: password age (days)"),
         RuleField.NotActivated => T("Windows not activated"),
+        RuleField.PendingSecurityUpdates => T("Pending security updates (count)"),
+        RuleField.Hotfix => T("Hotfix installed (KB number)"),
+        RuleField.PendingUpdate => T("Pending update (KB number or title)"),
         RuleField.Online => T("Online"),
         RuleField.Scanned => T("Scanned"),
         RuleField.OsName => T("Operating system"),
@@ -95,9 +98,11 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
             or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
             or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
             or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated => [RuleOperator.Equals],
-        RuleField.PendingUpdates or RuleField.DaysSinceUpdate or RuleField.BuiltinAdminPasswordAgeDays => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
+        RuleField.PendingUpdates or RuleField.PendingSecurityUpdates or RuleField.DaysSinceUpdate or RuleField.BuiltinAdminPasswordAgeDays => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
         RuleField.MemoryGb => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals],
         RuleField.OsVersion => [RuleOperator.StartsWith, RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals, RuleOperator.Contains],
+        RuleField.Hotfix => [RuleOperator.Equals, RuleOperator.NotEquals],
+        RuleField.PendingUpdate => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals],
         RuleField.Software or RuleField.LocalAdmin => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
         _ => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
     };
@@ -262,6 +267,8 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     };
 
     public string YesNo(bool value) => value ? T("yes") : T("no");
+
+    public Color SeverityColor(string? severity) => severity switch { "Critical" => Color.Error, "Important" => Color.Warning, null => Color.Default, _ => Color.Info };
 
     public string UacLevel(int? level) => level is >= 0 and <= 3 ? T(InventoryDiff.UacLevels[level.Value]) : T("unknown");
 

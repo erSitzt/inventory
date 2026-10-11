@@ -314,6 +314,12 @@
   <data name="Built-in administrator: password is {0} days old" xml:space="preserve">
     <value>Vordefinierter Administrator: Kennwort ist {0} Tage alt</value>
   </data>
+  <data name="By computer" xml:space="preserve">
+    <value>Nach Rechner</value>
+  </data>
+  <data name="By update" xml:space="preserve">
+    <value>Nach Update</value>
+  </data>
   <data name="by {0}" xml:space="preserve">
     <value>von {0}</value>
   </data>
@@ -349,6 +355,9 @@
   </data>
   <data name="Checks the reachability of all computers at fixed intervals so the online status in the computer list and on the overview stays current. Computers with name anomalies – a different computer responds under the name, or reverse DNS names another – are skipped until the discrepancy is resolved." xml:space="preserve">
     <value>Prüft in festen Abständen die Erreichbarkeit aller Rechner, damit der Online-Status in der Rechnerliste und auf der Übersicht aktuell bleibt. Rechner mit Namensauffälligkeiten – ein anderer Rechner antwortet unter dem Namen oder Reverse-DNS nennt einen anderen – werden übersprungen, bis die Abweichung geklärt ist.</value>
+  </data>
+  <data name="Classification" xml:space="preserve">
+    <value>Klassifizierung</value>
   </data>
   <data name="Close" xml:space="preserve">
     <value>Schließen</value>
@@ -539,6 +548,12 @@
   <data name="Credentials {0} not found" xml:space="preserve">
     <value>Zugangsdaten {0} nicht gefunden</value>
   </data>
+  <data name="Critical" xml:space="preserve">
+    <value>Kritisch</value>
+  </data>
+  <data name="Critical Updates" xml:space="preserve">
+    <value>Kritische Updates</value>
+  </data>
   <data name="current" xml:space="preserve">
     <value>aktuell</value>
   </data>
@@ -592,6 +607,9 @@
   </data>
   <data name="Defender tamper protection" xml:space="preserve">
     <value>Defender-Manipulationsschutz</value>
+  </data>
+  <data name="Definition Updates" xml:space="preserve">
+    <value>Definitionsupdates</value>
   </data>
   <data name="Delay (seconds)" xml:space="preserve">
     <value>Verzögerung (Sekunden)</value>
@@ -725,6 +743,9 @@
   <data name="Download InventoryLauncher.exe" xml:space="preserve">
     <value>InventoryLauncher.exe herunterladen</value>
   </data>
+  <data name="Downloaded" xml:space="preserve">
+    <value>Heruntergeladen</value>
+  </data>
   <data name="Downloading {0} {1} from the vendor …" xml:space="preserve">
     <value>Lade {0} {1} vom Hersteller …</value>
   </data>
@@ -732,6 +753,9 @@
     <value>Laufwerk</value>
   </data>
   <data name="Driver" xml:space="preserve">
+    <value>Treiber</value>
+  </data>
+  <data name="Drivers" xml:space="preserve">
     <value>Treiber</value>
   </data>
   <data name="dynamic" xml:space="preserve">
@@ -820,6 +844,9 @@
   </data>
   <data name="Fallback transport" xml:space="preserve">
     <value>Ausweich-Transport</value>
+  </data>
+  <data name="Feature Packs" xml:space="preserve">
+    <value>Feature Packs</value>
   </data>
   <data name="Feature update" xml:space="preserve">
     <value>Funktionsupdate</value>
@@ -944,6 +971,9 @@
   <data name="Hotfix" xml:space="preserve">
     <value>Hotfix</value>
   </data>
+  <data name="Hotfix installed (KB number)" xml:space="preserve">
+    <value>Hotfix installiert (KB-Nummer)</value>
+  </data>
   <data name="How long a computer may take to come back after a restart step. After that the deployment counts as failed for this computer." xml:space="preserve">
     <value>So lange darf ein Rechner nach einem Neustart-Schritt brauchen, bis er wieder erreichbar ist. Danach gilt das Deployment für diesen Rechner als fehlgeschlagen.</value>
   </data>
@@ -973,6 +1003,9 @@
   </data>
   <data name="Import {0}" xml:space="preserve">
     <value>{0} importieren</value>
+  </data>
+  <data name="Important" xml:space="preserve">
+    <value>Wichtig</value>
   </data>
   <data name="Imported from the" xml:space="preserve">
     <value>Importiert aus der</value>
@@ -1091,6 +1124,9 @@
   <data name="Last boot (UTC)" xml:space="preserve">
     <value>Letzter Start (UTC)</value>
   </data>
+  <data name="Last installation" xml:space="preserve">
+    <value>Letzte Installation</value>
+  </data>
   <data name="Last installation: {0}" xml:space="preserve">
     <value>Letzte Installation: {0}</value>
   </data>
@@ -1117,6 +1153,12 @@
   </data>
   <data name="Last scan failed: {0}" xml:space="preserve">
     <value>Letzter Scan fehlgeschlagen: {0}</value>
+  </data>
+  <data name="Last search" xml:space="preserve">
+    <value>Letzte Suche</value>
+  </data>
+  <data name="Last search (UTC)" xml:space="preserve">
+    <value>Letzte Suche (UTC)</value>
   </data>
   <data name="Last search: {0}" xml:space="preserve">
     <value>Letzte Suche: {0}</value>
@@ -1190,6 +1232,9 @@
   <data name="Logon failed – user name or password wrong, account locked or disabled" xml:space="preserve">
     <value>Anmeldung fehlgeschlagen – Benutzername oder Passwort falsch, Konto gesperrt oder deaktiviert</value>
   </data>
+  <data name="Low" xml:space="preserve">
+    <value>Niedrig</value>
+  </data>
   <data name="LSA protection" xml:space="preserve">
     <value>LSA-Schutz</value>
   </data>
@@ -1247,11 +1292,17 @@
   <data name="Minimum Windows" xml:space="preserve">
     <value>Mindestens Windows</value>
   </data>
+  <data name="Missing on {0} computers" xml:space="preserve">
+    <value>Fehlt auf {0} Rechnern</value>
+  </data>
   <data name="Mode" xml:space="preserve">
     <value>Betriebsart</value>
   </data>
   <data name="Model" xml:space="preserve">
     <value>Modell</value>
+  </data>
+  <data name="Moderate" xml:space="preserve">
+    <value>Mittel</value>
   </data>
   <data name="Modified" xml:space="preserve">
     <value>Geändert</value>
@@ -1405,6 +1456,9 @@
   </data>
   <data name="No packages yet. A package consists of one or more steps, e.g. installation, command and reboot." xml:space="preserve">
     <value>Noch keine Pakete vorhanden. Ein Paket besteht aus einem oder mehreren Schritten, z. B. Installation, Befehl und Neustart.</value>
+  </data>
+  <data name="No pending updates recorded. Details are captured with the next scan of each computer." xml:space="preserve">
+    <value>Keine ausstehenden Updates erfasst. Die Einzelheiten werden mit dem nächsten Scan jedes Rechners gelesen.</value>
   </data>
   <data name="No real-time antivirus" xml:space="preserve">
     <value>Kein Echtzeit-Virenschutz</value>
@@ -1706,11 +1760,23 @@
   <data name="Pause before a retry (seconds)" xml:space="preserve">
     <value>Pause vor einer Wiederholung (Sekunden)</value>
   </data>
+  <data name="Pending security updates" xml:space="preserve">
+    <value>Ausstehende Sicherheitsupdates</value>
+  </data>
+  <data name="Pending security updates (count)" xml:space="preserve">
+    <value>Ausstehende Sicherheitsupdates (Anzahl)</value>
+  </data>
+  <data name="Pending update (KB number or title)" xml:space="preserve">
+    <value>Ausstehendes Update (KB-Nummer oder Titel)</value>
+  </data>
   <data name="Pending updates" xml:space="preserve">
     <value>Ausstehende Updates</value>
   </data>
   <data name="Pending updates (count)" xml:space="preserve">
     <value>Ausstehende Updates (Anzahl)</value>
+  </data>
+  <data name="Pending updates (CSV)" xml:space="preserve">
+    <value>Ausstehende Updates (CSV)</value>
   </data>
   <data name="per user" xml:space="preserve">
     <value>pro Benutzer</value>
@@ -2138,6 +2204,9 @@
   <data name="Search index: {0} programs with an unattended installer" xml:space="preserve">
     <value>Suchindex: {0} Programme mit unbeaufsichtigt installierbarem Setup</value>
   </data>
+  <data name="Search KB number, title or computer" xml:space="preserve">
+    <value>KB-Nummer, Titel oder Rechner suchen</value>
+  </data>
   <data name="Search program or publisher" xml:space="preserve">
     <value>Programm oder Hersteller suchen</value>
   </data>
@@ -2158,6 +2227,15 @@
   </data>
   <data name="Security" xml:space="preserve">
     <value>Sicherheit</value>
+  </data>
+  <data name="Security Updates" xml:space="preserve">
+    <value>Sicherheitsupdates</value>
+  </data>
+  <data name="security updates missing" xml:space="preserve">
+    <value>Sicherheitsupdates fehlen</value>
+  </data>
+  <data name="Security-relevant" xml:space="preserve">
+    <value>Sicherheitsrelevant</value>
   </data>
   <data name="Select all" xml:space="preserve">
     <value>Alle auswählen</value>
@@ -2204,6 +2282,9 @@
   <data name="Service on {0} could not be updated: {1}" xml:space="preserve">
     <value>Dienst auf {0} konnte nicht aktualisiert werden: {1}</value>
   </data>
+  <data name="Service Packs" xml:space="preserve">
+    <value>Service Packs</value>
+  </data>
   <data name="Services" xml:space="preserve">
     <value>Dienste</value>
   </data>
@@ -2218,6 +2299,9 @@
   </data>
   <data name="Setup" xml:space="preserve">
     <value>Setup</value>
+  </data>
+  <data name="Severity" xml:space="preserve">
+    <value>Schweregrad</value>
   </data>
   <data name="Shadow session" xml:space="preserve">
     <value>Sitzung spiegeln</value>
@@ -2284,6 +2368,9 @@
   </data>
   <data name="Size" xml:space="preserve">
     <value>Größe</value>
+  </data>
+  <data name="Size (MB)" xml:space="preserve">
+    <value>Größe (MB)</value>
   </data>
   <data name="skipped" xml:space="preserve">
     <value>übersprungen</value>
@@ -2477,6 +2564,9 @@
   <data name="The next run deletes {0}{1}." xml:space="preserve">
     <value>Der nächste Lauf löscht {0}{1}.</value>
   </data>
+  <data name="The numbers reflect each computer's last own update search at the time of its last scan; a scan does not trigger a search." xml:space="preserve">
+    <value>Die Zahlen geben die letzte eigene Update-Suche jedes Rechners zum Zeitpunkt seines letzten Scans wieder; ein Scan löst keine Suche aus.</value>
+  </data>
   <data name="The output appears here as soon as a command runs." xml:space="preserve">
     <value>Die Ausgabe erscheint hier, sobald ein Befehl läuft.</value>
   </data>
@@ -2591,6 +2681,9 @@
   <data name="Token revoked." xml:space="preserve">
     <value>Token widerrufen.</value>
   </data>
+  <data name="Tools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
   <data name="TPM" xml:space="preserve">
     <value>TPM</value>
   </data>
@@ -2660,6 +2753,9 @@
   <data name="Until" xml:space="preserve">
     <value>Bis</value>
   </data>
+  <data name="up to date" xml:space="preserve">
+    <value>aktuell</value>
+  </data>
   <data name="Update" xml:space="preserve">
     <value>Aktualisieren</value>
   </data>
@@ -2675,8 +2771,14 @@
   <data name="Update now" xml:space="preserve">
     <value>Jetzt aktualisieren</value>
   </data>
+  <data name="Update Rollups" xml:space="preserve">
+    <value>Update-Rollups</value>
+  </data>
   <data name="Update started" xml:space="preserve">
     <value>Aktualisierung gestartet</value>
+  </data>
+  <data name="Update title" xml:space="preserve">
+    <value>Update</value>
   </data>
   <data name="updated" xml:space="preserve">
     <value>aktualisiert</value>
@@ -2686,6 +2788,9 @@
   </data>
   <data name="Updates pending" xml:space="preserve">
     <value>Updates ausstehend</value>
+  </data>
+  <data name="Upgrades" xml:space="preserve">
+    <value>Upgrades</value>
   </data>
   <data name="Upload" xml:space="preserve">
     <value>Hochladen</value>
@@ -3013,6 +3118,9 @@
   </data>
   <data name="{0} not in AD" xml:space="preserve">
     <value>{0} nicht im AD</value>
+  </data>
+  <data name="{0} of {1} computers have no pending security updates." xml:space="preserve">
+    <value>{0} von {1} Rechnern haben keine ausstehenden Sicherheitsupdates.</value>
   </data>
   <data name="{0} of {1} computers reachable." xml:space="preserve">
     <value>{0} von {1} Rechnern erreichbar.</value>

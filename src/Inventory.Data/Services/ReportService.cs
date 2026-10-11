@@ -20,6 +20,17 @@ public sealed record SoftwareGroup(string Name, string? Publisher, int Computers
     public bool PerUser => Versions.Any(v => v.PerUser > 0);
 }
 
+/// <summary>Ein ausstehendes Update über alle Rechner hinweg.</summary>
+/// <param name="Key">KB-Nummern, sonst der Titel; damit lassen sich die betroffenen Rechner abfragen.</param>
+public sealed record PendingUpdateSummary(string Key, string? KbIds, string Title, string? Classification, string? Severity, bool IsSecurity, int Computers);
+
+/// <summary>Patch-Stand: was wo aussteht und wie viele Rechner ohne offene Sicherheitsupdates sind.</summary>
+/// <param name="Computers">Alle Rechner, deren Update-Stand bekannt ist.</param>
+public sealed record PatchCompliance(List<PendingUpdateSummary> Updates, List<Computer> Computers)
+{
+    public int Compliant => Computers.Count(c => c.UpdatePendingSecurityCount == 0);
+}
+
 /// <summary>Kennzahlen der Übersichtsseite.</summary>
 public sealed class DashboardStats
 {
@@ -155,7 +166,7 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
         Row(csv, L["Name"], L["Reported name"], L["Online"], L["IP address"], L["Operating system"], L["Version"], L["Feature update"], L["Manufacturer"], L["Model"], L["Serial number"],
             L["Processor"], L["Memory (GB)"], L["User"], L["Last boot (UTC)"], L["Last scan (UTC)"], L["Description"],
             L["Firewall domain"], L["Firewall private"], L["Firewall public"], L["Defender real-time protection"], L["Defender signature (UTC)"], L["Antivirus"],
-            L["Last update installation (UTC)"], L["Pending updates"], L["Reboot pending"],
+            L["Last update installation (UTC)"], L["Pending updates"], L["Pending security updates"], L["Reboot pending"],
             L["Device type"], L["Firmware"], "Secure Boot", "TPM", L["TPM ready"], L["BitLocker (system drive)"], L["Graphics"], L["Battery health (%)"], L["BIOS date"],
             L["Remote Desktop"], L["Network level authentication"], L["User Account Control"], L["User Account Control level"], "SMB 1", "Credential Guard", L["Memory integrity"], L["LSA protection"],
             L["Built-in administrator account"], L["Built-in administrator: password age (days)"], L["Windows activated"]);
@@ -166,7 +177,7 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
                 c.LastBootUtc?.ToString("yyyy-MM-dd HH:mm"), c.LastScanUtc?.ToString("yyyy-MM-dd HH:mm"), c.Description,
                 YesNo(c.FirewallDomain), YesNo(c.FirewallPrivate), YesNo(c.FirewallPublic), YesNo(c.DefenderRealTime),
                 c.DefenderSignatureUpdatedUtc?.ToString("yyyy-MM-dd HH:mm"), c.AntivirusProducts,
-                c.UpdateLastInstallUtc?.ToString("yyyy-MM-dd HH:mm"), c.UpdatePendingCount?.ToString(), YesNo(c.UpdateRebootRequired),
+                c.UpdateLastInstallUtc?.ToString("yyyy-MM-dd HH:mm"), c.UpdatePendingCount?.ToString(), c.UpdatePendingSecurityCount?.ToString(), YesNo(c.UpdateRebootRequired),
                 c.ChassisType is null ? null : L[Chassis.Label(Chassis.Kind(c.ChassisType, c.Model))], c.FirmwareType, YesNo(c.SecureBoot),
                 c.TpmPresent == false ? L["none"] : c.TpmVersion, YesNo(c.TpmReady), YesNo(c.SystemDriveProtected), c.Gpu,
                 c.BatteryHealthPercent?.ToString(), c.BiosDateUtc?.ToString("yyyy-MM-dd"),
@@ -187,6 +198,47 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
         Row(csv, L["Computer"], L["Program"], L["Version"], L["Publisher"], L["Installed"], L["Architecture"], L["Per user"]);
         foreach (var r in rows)
             Row(csv, r.Computer, r.Name, r.Version, r.Publisher, r.InstallDate, r.Is64Bit ? "64 Bit" : "32 Bit", YesNo(r.PerUser));
+        return csv.ToString();
+    }
+
+    public async Task<PatchCompliance> PatchComplianceAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var rows = await db.PendingUpdates.AsNoTracking().ToListAsync(ct);
+        var updates = rows.GroupBy(u => u.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
+            {
+                // Ältere Runner kennen Klassifizierung und Schweregrad nicht: die vollständigste Meldung beschreibt das Update.
+                var best = g.OrderByDescending(u => u.Classification is not null).ThenByDescending(u => u.Severity is not null).First();
+                return new PendingUpdateSummary(g.Key, best.KbIds, best.Title, best.Classification, best.Severity, g.Any(u => u.IsSecurity), g.Select(u => u.ComputerId).Distinct().Count());
+            })
+            .OrderByDescending(u => u.IsSecurity).ThenByDescending(u => u.Computers).ThenBy(u => u.Title, StringComparer.OrdinalIgnoreCase).ToList();
+        var computers = await db.Computers.AsNoTracking().Where(c => c.UpdatePendingCount != null).OrderBy(c => c.Name).ToListAsync(ct);
+        return new PatchCompliance(updates, computers);
+    }
+
+    /// <param name="key"><see cref="PendingUpdateSummary.Key"/>.</param>
+    public async Task<List<Computer>> ComputersMissingUpdateAsync(string key, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var ids = await db.PendingUpdates.Where(u => u.KbIds == key || (u.KbIds == null && u.Title == key)).Select(u => u.ComputerId).Distinct().ToListAsync(ct);
+        return await db.Computers.AsNoTracking().Where(c => ids.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
+    }
+
+    public async Task<string> PendingUpdatesCsvAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var rows = await db.PendingUpdates.AsNoTracking()
+            .Join(db.Computers, u => u.ComputerId, c => c.Id, (u, c) => new { Computer = c.Name, c.UpdateLastSearchUtc, Update = u })
+            .OrderBy(r => r.Computer).ThenBy(r => r.Update.Title).ToListAsync(ct);
+        var csv = new StringBuilder();
+        Row(csv, L["Computer"], "KB", L["Update title"], L["Classification"], L["Severity"], L["Security-relevant"], L["Downloaded"], L["Size (MB)"], L["Last search (UTC)"]);
+        foreach (var r in rows)
+        {
+            Row(csv, r.Computer, r.Update.KbIds, r.Update.Title, r.Update.Classification is null ? null : L[r.Update.Classification], r.Update.Severity is null ? null : L[r.Update.Severity],
+                YesNo(r.Update.IsSecurity), YesNo(r.Update.IsDownloaded), r.Update.SizeBytes > 0 ? Math.Round(r.Update.SizeBytes / 1024d / 1024).ToString() : null,
+                r.UpdateLastSearchUtc?.ToString("yyyy-MM-dd HH:mm"));
+        }
         return csv.ToString();
     }
 

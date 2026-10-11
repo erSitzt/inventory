@@ -49,6 +49,9 @@ public static class CollectionEvaluator
         RuleField.BuiltinAdminEnabled => Known(rule, computer.BuiltinAdminEnabled),
         RuleField.BuiltinAdminPasswordAgeDays => Text(rule, computer.BuiltinAdminPasswordAgeDays?.ToString(CultureInfo.InvariantCulture)),
         RuleField.NotActivated => Known(rule, !computer.WindowsActivated),
+        RuleField.PendingSecurityUpdates => Text(rule, computer.UpdatePendingSecurityCount?.ToString(CultureInfo.InvariantCulture)),
+        RuleField.Hotfix => AnyOrNone(rule, computer.Hotfixes.Select(h => h.HotfixId)),
+        RuleField.PendingUpdate => AnyOrNone(rule, computer.PendingUpdates.SelectMany(u => new[] { u.Title }.Concat((u.KbIds ?? "").Split(", ", StringSplitOptions.RemoveEmptyEntries)))),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         _ => false,
     };
