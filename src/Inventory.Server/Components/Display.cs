@@ -77,6 +77,25 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         RuleField.InventoryNumber => T("Inventory number"),
         RuleField.PrimaryUser => T("Primary user"),
         RuleField.WarrantyDaysLeft => T("Warranty: days left"),
+        RuleField.Domain => T("Domain"),
+        RuleField.SerialNumber => T("Serial number"),
+        RuleField.CpuName => T("Processor"),
+        RuleField.OsArchitecture => T("Architecture"),
+        RuleField.IpAddress => T("IP address"),
+        RuleField.DiskFreeGb => T("Free space on the system drive (GB)"),
+        RuleField.DaysSinceBoot => T("Days since last boot"),
+        RuleField.ScanAgeDays => T("Days since last scan"),
+        RuleField.AgentPresent => T("Agent installed"),
+        RuleField.Service => T("Windows service"),
+        RuleField.InCollection => T("Member of collection"),
+        RuleField.DeviceType => T("Device type"),
+        RuleField.SecureBoot => T("Secure Boot on"),
+        RuleField.TpmReady => T("TPM ready"),
+        RuleField.SystemDriveProtected => T("BitLocker (system drive)"),
+        RuleField.FirmwareType => T("Firmware"),
+        RuleField.Gpu => T("Graphics"),
+        RuleField.BatteryHealthPercent => T("Battery health (%)"),
+        RuleField.DiskHealthProblem => T("Physical disk reports a problem"),
         RuleField.Online => T("Online"),
         RuleField.Scanned => T("Scanned"),
         RuleField.OsName => T("Operating system"),
@@ -108,7 +127,12 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
             or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
             or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
-            or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated => [RuleOperator.Equals],
+            or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
+            or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem => [RuleOperator.Equals],
+        RuleField.InCollection or RuleField.DeviceType => [RuleOperator.Equals, RuleOperator.NotEquals],
+        RuleField.DiskFreeGb or RuleField.BatteryHealthPercent or RuleField.DaysSinceBoot or RuleField.ScanAgeDays => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
+        RuleField.Service => [RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains],
+        RuleField.IpAddress => [RuleOperator.StartsWith, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains],
         RuleField.PendingUpdates or RuleField.PendingSecurityUpdates or RuleField.DaysSinceUpdate or RuleField.BuiltinAdminPasswordAgeDays
             or RuleField.DaysSinceDirectoryLogon => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
         RuleField.MemoryGb => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals],
@@ -276,7 +300,20 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     public bool IsFlag(RuleField field) => field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
         or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
         or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
-        or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated;
+        or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
+        or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem;
+
+    /// <summary>Der Wert einer Regel, wie er in Listen erscheint: Namen statt Kennungen, übersetzte feste Werte.</summary>
+    public string RuleValue(CollectionRule rule, Func<int, string?> collectionName) => rule.Field switch
+    {
+        RuleField.InCollection => int.TryParse(rule.Value, out var id) ? collectionName(id) ?? T("(deleted collection)") : rule.Value,
+        RuleField.DeviceType => Enum.TryParse<ChassisKind>(rule.Value, true, out var kind) ? T(Core.Chassis.Label(kind)) : rule.Value,
+        RuleField.Service when !string.IsNullOrWhiteSpace(rule.Value2) => $"{rule.Value} ({ServiceState(rule.Value2)})",
+        _ when IsFlag(rule.Field) => rule.Value.Trim().ToLowerInvariant() is "true" or "ja" or "1" ? T("yes") : T("no"),
+        _ => rule.Value,
+    };
+
+    public string ServiceState(string? state) => state switch { "Running" => T("running"), "Stopped" => T("stopped"), _ => state ?? "" };
 
     public string OnOff(bool? value) => value switch { true => T("on"), false => T("off"), null => T("unknown") };
 

@@ -27,7 +27,10 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Hardware und Plattformsicherheit**: Gerätetyp (Desktop/Notebook/Server/virtuelle Maschine), UEFI und Secure Boot,
   TPM, BitLocker je Laufwerk, Grafik, Speichermodule und freie Steckplätze, physische Datenträger mit Typ und Zustand,
   Akkuzustand, Monitore und Drucker
-- **Sammlungen**: statisch oder dynamisch über Regeln (z. B. „Chrome installiert mit Version unter 141“)
+- **Sammlungen**: statisch oder dynamisch über Regeln (z. B. „Chrome installiert mit Version unter 141“). Regeln gibt
+  es für Software, Hardware, Sicherheitszustand, Updates, Active Directory, Bestandsdaten, Dienste, Netzwerk und
+  Scan-Alter; `*` dient bei „ist gleich“ als Platzhalter, und „Mitglied der Sammlung“ kombiniert Sammlungen (bis zu
+  drei Ebenen tief)
 - **Remote-Befehl** (cmd/PowerShell) mit Live-Ausgabe
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
   Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten; Schritte nach einem Neustart laufen
