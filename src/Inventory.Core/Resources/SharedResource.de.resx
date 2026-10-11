@@ -119,6 +119,9 @@
   <data name="Agent disconnected" xml:space="preserve">
     <value>Agent getrennt</value>
   </data>
+  <data name="Agent forgotten" xml:space="preserve">
+    <value>Agent vergessen</value>
+  </data>
   <data name="Agent installation started" xml:space="preserve">
     <value>Agent-Installation gestartet</value>
   </data>
@@ -733,6 +736,9 @@
   </data>
   <data name="For {0} computers a different computer responds than listed – see the marker in the list." xml:space="preserve">
     <value>Bei {0} Rechnern antwortet ein anderer Rechner als eingetragen – siehe Markierung in der Liste.</value>
+  </data>
+  <data name="Forget agent" xml:space="preserve">
+    <value>Agent vergessen</value>
   </data>
   <data name="Free" xml:space="preserve">
     <value>Frei</value>
@@ -1555,6 +1561,9 @@
   </data>
   <data name="removed" xml:space="preserve">
     <value>entfernt</value>
+  </data>
+  <data name="Removes the agent's key on the server and resets the transport. Uninstall the service on the computer first (sc stop InventoryAgent, sc delete InventoryAgent), otherwise it enrolls again with the enrollment secret." xml:space="preserve">
+    <value>Verwirft den Schlüssel des Agenten auf dem Server und setzt den Transport zurück. Vorher den Dienst auf dem Rechner deinstallieren (sc stop InventoryAgent, sc delete InventoryAgent), sonst meldet er sich mit dem Anmeldegeheimnis neu an.</value>
   </data>
   <data name="Rename entry to {0}" xml:space="preserve">
     <value>Eintrag in {0} umbenennen</value>

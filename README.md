@@ -51,19 +51,65 @@ job directories and the temporary service are removed after every run.
 
 ### Agent
 
-For computers the server cannot reach directly (notebooks on the road, other networks) the same runner is available
-as a permanent service. It enrolls once with the enrollment secret, receives its own key and then continuously asks
-for jobs over HTTP(S). Setup:
+For computers the server cannot reach directly (notebooks on the road, other networks, no SMB/WinRM path) the same
+runner is available as a permanent Windows service. It only ever talks *to* the server – the server never connects to
+the agent.
 
-1. Under *Settings → Agents* enter the address under which the computers reach the server (HTTPS recommended).
+**How it works**
+
+| | |
+|---|---|
+| Service | `InventoryAgent` ("Inventory Agent"), runs as **Local System**, start type Automatic, recovery: restart after 5 s / 60 s / 5 min |
+| Files | `%ProgramFiles%\Inventory Agent` – the runner (`InventoryRunner.exe`, .NET Framework 4.8), `agent.json` (server URL + enrollment secret), `agent.key` (the agent's own key), `agent.version` (hash of the installed runner files), `agent.log`; the folder is readable by SYSTEM and administrators only |
+| Enrollment | On first start the agent sends the enrollment secret and its host name to `POST /api/agent/enroll`. The server checks the secret, creates the computer if unknown (matching by short name, so an entry under its FQDN is reused), generates a random 256-bit key, stores only its SHA-256 hash and returns the key once. The agent keeps it in `agent.key` and never sends the secret again. |
+| Authentication | Every further request carries the header `X-Agent-Key: <key>`. The server looks the hash up; a key it does not know (computer deleted, "Agent" removed) returns 401, the agent deletes `agent.key` and enrolls again with the secret. |
+| Polling | `POST /api/agent/poll` is a long poll: the server holds the request for up to 50 s and answers `204` if no job came in; the agent asks again immediately. A job is therefore picked up within a second, with one open HTTP request per computer instead of a steady stream. Every poll updates "last contact"; the UI shows the agent as connected while the last contact is less than 5 minutes old. |
+| Running a job | The job manifest arrives with the poll answer; package files are fetched one by one (`GET /api/agent/jobs/{id}/files/{n}`) into a per-job folder below the agent folder. The same `JobExecutor` as in agentless mode runs the steps as Local System (or in the logged-on user's session for steps configured that way). Progress lines are posted every second (`POST …/progress`), the result at the end (`POST …/result`, up to 64 MB for large scans), then the job folder is deleted. |
+| Timeouts | If no agent picks up a job within 2 minutes the server marks the target as unreachable (deployments with "retry offline" try again later). While a job runs, the server waits for the sum of the step timeouts plus a margin. |
+| Self-update | The poll request contains the hash of the installed runner files. If the server ships a different runner (after a server update), the answer is an update offer instead of a job: the agent downloads all files into a staging folder first, then swaps them (running files are renamed to `*.old`, cleaned up on the next start), writes the new hash and exits with code 3 – the service recovery restarts it with the new files within seconds. Queued jobs wait meanwhile. |
+| Errors | On any error (server unreachable, invalid answer) the agent logs to `agent.log` and retries after 30 s, indefinitely. |
+
+**What the communication needs**
+
+- **Direction and ports:** outbound only, from the client to the server address configured under *Settings → Agents*
+  (e.g. `https://inventory.example.local:5100`). No inbound port, no firewall rule and no SMB/WinRM on the client. The
+  server's port (default 5100) must be reachable from the client networks (firewall rule on the server; the setup can
+  create it).
+- **HTTPS:** strongly recommended – over this channel the agent receives commands it executes as Local System. The
+  agent uses the Windows certificate store; the server certificate must therefore be trusted by the client (internal
+  CA or a public certificate), there is no "accept any certificate" switch. TLS 1.2 is enforced. Kestrel HTTPS
+  configuration: see [Configuration](#configuration-cprogramdatainventoryappsettingsjson).
+- **Proxy:** the agent runs as Local System and uses the WinHTTP proxy settings of the machine (`netsh winhttp set
+  proxy …`), not a user's browser proxy. A direct route to the server is simplest.
+- **Name resolution:** the client must resolve the host name in the server address (DNS or `hosts`). The server does
+  not need to resolve the client at all.
+- **Enrollment secret:** shown under *Settings → Agents*; it is written into `agent.json` by the installation job.
+  *Renew secret* invalidates it for new enrollments only – already enrolled agents keep working with their keys.
+  Treat `agent.json` and `agent.key` like a password; they are the reason the agent folder is locked down.
+- **The agent interface ignores the user sign-in** (Windows/OIDC/API tokens): `/api/agent/*` authenticates with the
+  key alone and is the only part of the API that does.
+
+**Setup**
+
+1. Under *Settings → Agents* enter the address under which the computers reach the server (HTTPS recommended) and
+   save.
 2. Under *Computers* select the targets and choose *Actions → Install agent*. The installation itself runs agentless
-   (SMB or WinRM) into `%ProgramFiles%\Inventory Agent`.
-3. As soon as the service reports in, the computer is on transport "Agent"; this can be changed per computer.
+   (SMB or WinRM) and copies the runner, writes `agent.json` and `agent.version`, creates and starts the service.
+   Without an agentless path, copy the `agent` folder from the server (`<program folder>\runner`), add an `agent.json`
+   with `{"serverUrl": "https://…", "enrollmentToken": "…"}` and register the service manually:
+   `sc create InventoryAgent binPath= "\"C:\Program Files\Inventory Agent\InventoryRunner.exe\" --agent" start= auto`.
+3. As soon as the service has enrolled, the computer switches to transport "Agent" (visible as a green "Agent" chip).
+   Per computer the transport can be set back to SMB or WinRM; the agent keeps polling regardless.
 
-Agents update themselves: when the server ships newer runner files after an update, the agent downloads them on its
-next request, swaps them and restarts itself through the service recovery.
+**Removing an agent:** stop and delete the service on the computer (`sc stop InventoryAgent`, `sc delete
+InventoryAgent`, delete the folder), then choose *Forget agent* in *Edit computer* – that drops the key on the server
+and resets the transport. The other way round, the still-running agent would simply enroll again with the secret.
 
-Troubleshooting: `InventoryRunner.exe --agent-console` in the agent folder, log in `agent.log`.
+Agents update themselves after a server update (see above); nothing has to be redeployed.
+
+**Troubleshooting:** `agent.log` in the agent folder shows enrollment, errors and updates. Running
+`InventoryRunner.exe --agent-console` there (as administrator, with the service stopped) prints the same loop to the
+console. The server's audit log records every enrollment with host name, version and source address.
 
 ### Remote access
 

@@ -1,4 +1,6 @@
 @inject ComputerService ComputerService
+@inject AgentService Agents
+@inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
 
@@ -20,6 +22,16 @@
                     <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
                 }
             </MudSelect>
+            @if (Computer.AgentKeyHash is not null)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    @L["Agent {0}, last contact {1}", Computer.AgentVersion, Display.LocalTime(Computer.AgentLastSeenUtc)]
+                    <div class="mt-2">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="ForgetAgentAsync">@L["Forget agent"]</MudButton>
+                    </div>
+                    <MudText Typo="Typo.caption" Class="mt-1">@L["Removes the agent's key on the server and resets the transport. Uninstall the service on the computer first (sc stop InventoryAgent, sc delete InventoryAgent), otherwise it enrolls again with the enrollment secret."]</MudText>
+                </MudAlert>
+            }
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -42,6 +54,13 @@
         _description = Computer.Description;
         _transport = Computer.Transport;
         _credentialId = Computer.CredentialId;
+    }
+
+    private async Task ForgetAgentAsync()
+    {
+        await Agents.ForgetAsync(Computer.Id);
+        await Audit.LogAsync(L["Agent forgotten"], Computer.Name);
+        MudDialog.Close(DialogResult.Ok(true));
     }
 
     private async Task SaveAsync()
