@@ -11,12 +11,15 @@ using Microsoft.Extensions.Localization;
 namespace Inventory.Data.Services;
 
 /// <summary>Legt Deployments an, führt sie im Hintergrund aus und hält den Live-Stand laufender Ziele bereit.</summary>
+/// <summary>Einstellungen eines Deployments; die Grenzen sind optional (null = keine).</summary>
+public sealed record DeploymentOptions(bool ScanAfter, bool RetryOffline = false, bool RespectWindow = false,
+    int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null);
+
 public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null, MaintenanceService? maintenance = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
     private readonly MaintenanceService _maintenance = maintenance ?? new MaintenanceService(dbFactory, new CollectionService(dbFactory), new SettingsService(dbFactory));
 
 
-    private const int MaxParallelTargets = 16;
     /// <summary>So lange werden Offline-Rechner nachgeholt, bevor das Ziel als fehlgeschlagen gilt.</summary>
     public static readonly TimeSpan RetryWindow = TimeSpan.FromDays(3);
     /// <summary>Frist für Ziele, die auf ihr Wartungsfenster warten: auch ein Fenster, das nur einmal je Woche öffnet, muss hineinpassen.</summary>
@@ -24,7 +27,10 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     private string WaitingText => L["Computer unreachable – will be retried as soon as it is online"];
 
     // Über alle Deployments hinweg begrenzt, damit mehrere gleichzeitige Deployments Server und Netz nicht überlasten.
-    private readonly SemaphoreSlim _slots = new(MaxParallelTargets, MaxParallelTargets);
+    private readonly ParallelGate _slots = new(SettingsService.DefaultMaxParallelTargets);
+    private readonly SettingsService _settings = new(dbFactory);
+    /// <summary>Deployments, deren Fehlergrenze erreicht ist, mit dem Grund; ihre noch wartenden Ziele starten nicht mehr.</summary>
+    private readonly ConcurrentDictionary<int, string> _stopped = new();
     private readonly ConcurrentDictionary<int, CancellationTokenSource> _running = new();
     private readonly ConcurrentDictionary<int, LiveTarget> _live = new();
 
@@ -71,8 +77,14 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     /// <summary>Legt das Deployment an und startet es im Hintergrund.</summary>
     /// <exception cref="InvalidOperationException">Das Paket lässt sich nicht ausführen (z. B. keine Schritte).</exception>
     /// <param name="respectWindow">Rechner außerhalb ihres Wartungsfensters warten, bis es beginnt (höchstens <see cref="WindowWait"/>).</param>
-    public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, bool scanAfter, bool retryOffline = false, CancellationToken ct = default, bool respectWindow = false)
+    public Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, bool scanAfter, bool retryOffline = false, CancellationToken ct = default, bool respectWindow = false) =>
+        StartAsync(packageId, computerIds, new DeploymentOptions(scanAfter, retryOffline, respectWindow), ct);
+
+    /// <summary>Legt das Deployment an und startet es im Hintergrund.</summary>
+    /// <exception cref="InvalidOperationException">Das Paket lässt sich nicht ausführen (z. B. keine Schritte).</exception>
+    public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, DeploymentOptions options, CancellationToken ct = default)
     {
+        var (scanAfter, retryOffline, respectWindow) = (options.ScanAfter, options.RetryOffline, options.RespectWindow);
         var built = await BuildAsync(packageId, scanAfter, ct);
 
         var ids = computerIds.Distinct().ToList();
@@ -88,6 +100,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 PackageId = packageId, PackageName = package.Name, PackageVersion = package.Version, ScanAfter = scanAfter,
                 RetryUntilUtc = respectWindow ? DateTime.UtcNow + WindowWait : retryOffline ? DateTime.UtcNow + RetryWindow : null,
                 RetryOffline = retryOffline, RespectMaintenanceWindow = respectWindow,
+                MaxFailures = options.MaxFailures is > 0 ? options.MaxFailures : null,
+                MaxFailurePercent = options.MaxFailurePercent is > 0 ? Math.Min(options.MaxFailurePercent.Value, 100) : null,
+                MaxParallel = options.MaxParallel is > 0 ? options.MaxParallel : null,
                 Targets = computers.Select(c => new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.Queued }).ToList(),
             };
             db.Deployments.Add(deployment);
@@ -278,6 +293,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
     private async Task RunAsync(Deployment deployment, IReadOnlyList<DeploymentTarget> targets, BuiltJob built, bool checkOnline, CancellationTokenSource cts)
     {
+        SemaphoreSlim? own = null;
         try
         {
             // Einmal für alle Ziele: die Mitgliedschaft in dynamischen Sammlungen auszuwerten ist zu teuer für jeden Rechner einzeln.
@@ -285,7 +301,10 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             var closed = deployment.RespectMaintenanceWindow
                 ? await _maintenance.ClosedAsync([.. targets.Where(t => t.ComputerId is not null && t.Status != TargetStatus.WaitingReboot).Select(t => t.ComputerId!.Value)])
                 : [];
-            await Task.WhenAll(targets.Select(target => RunTargetAsync(deployment, target, built, checkOnline, closed, cts.Token)));
+            _slots.Limit = await _settings.GetMaxParallelTargetsAsync();
+            // Eigene Grenze des Deployments: die ersten Rechner wirken so als Pilotgruppe, bevor die übrigen folgen.
+            own = deployment.MaxParallel is > 0 ? new SemaphoreSlim(deployment.MaxParallel.Value) : null;
+            await Task.WhenAll(targets.Select(target => RunTargetAsync(deployment, target, built, checkOnline, closed, own, cts.Token)));
         }
         finally
         {
@@ -293,16 +312,42 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.FinishedUtc, DateTime.UtcNow)));
             _running.TryRemove(deployment.Id, out _);
             cts.Dispose();
+            own?.Dispose();
             Changed?.Invoke(deployment.Id);
         }
     }
 
-    private async Task RunTargetAsync(Deployment deployment, DeploymentTarget target, BuiltJob built, bool checkOnline, Dictionary<int, DateTime?> closed, CancellationToken ct)
+    /// <summary>
+    /// Nach einem fehlgeschlagenen Ziel: ist die Fehlergrenze des Deployments erreicht, starten die noch wartenden Ziele nicht mehr.
+    /// Laufende Ziele werden nicht abgebrochen – ein mitten in der Installation beendetes Setup wäre der größere Schaden.
+    /// </summary>
+    private async Task CheckFailureLimitAsync(Deployment deployment)
+    {
+        if ((deployment.MaxFailures ?? deployment.MaxFailurePercent) is null || _stopped.ContainsKey(deployment.Id))
+            return;
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var failed = await db.DeploymentTargets.CountAsync(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.Failed);
+        var finished = failed + await db.DeploymentTargets.CountAsync(t => t.DeploymentId == deployment.Id
+            && (t.Status == TargetStatus.Succeeded || t.Status == TargetStatus.AlreadyInstalled));
+        if (!DeploymentLimits.Reached(deployment.MaxFailures, deployment.MaxFailurePercent, failed, finished))
+            return;
+
+        var reason = L["Stopped: {0} of {1} finished computers failed", failed, finished].Value;
+        if (!_stopped.TryAdd(deployment.Id, reason))
+            return;
+        await db.Deployments.Where(d => d.Id == deployment.Id).ExecuteUpdateAsync(s => s.SetProperty(d => d.StopReason, reason));
+        // Wer noch auf seinen Rechner oder sein Fenster wartet, würde sonst später doch noch starten.
+        await db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingWindow))
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, reason).SetProperty(t => t.FinishedUtc, DateTime.UtcNow));
+    }
+
+    private async Task RunTargetAsync(Deployment deployment, DeploymentTarget target, BuiltJob built, bool checkOnline, Dictionary<int, DateTime?> closed, SemaphoreSlim? own, CancellationToken ct)
     {
         var status = TargetStatus.Failed;
         string? error = null;
         List<StepResult> steps = [];
         var started = false;
+        var ownTaken = false;
         // Fortsetzung nach einem Neustart: nur die restlichen Schritte, Ergebnisse der bisherigen bleiben erhalten.
         var resumeFrom = target.Status == TargetStatus.WaitingReboot ? target.ResumeFromStep ?? 0 : 0;
         var previousSteps = resumeFrom > 0 ? target.Steps.Take(resumeFrom).ToList() : [];
@@ -318,8 +363,21 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                     : L["Waiting for the maintenance window"];
                 return;
             }
-            await _slots.WaitAsync(ct);
+            if (own is not null)
+            {
+                await own.WaitAsync(ct);
+                ownTaken = true;
+            }
+            await _slots.EnterAsync(ct);
             started = true;
+            // Erst jetzt prüfen: die Grenze kann erreicht worden sein, während dieses Ziel auf einen freien Platz gewartet hat.
+            // Eine Fortsetzung nach einem Neustart läuft trotzdem zu Ende.
+            if (resumeFrom == 0 && _stopped.TryGetValue(deployment.Id, out var stopReason))
+            {
+                status = TargetStatus.Cancelled;
+                error = stopReason;
+                return;
+            }
             if (checkOnline && !await IsReachableAsync(target.ComputerName, ct))
             {
                 status = TargetStatus.WaitingOffline;
@@ -400,7 +458,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         finally
         {
             if (started)
-                _slots.Release();
+                _slots.Exit();
             _live.TryRemove(target.Id, out _);
             await UpdateAsync(async db =>
             {
@@ -417,6 +475,11 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 stored.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
                 await db.SaveChangesAsync();
             });
+            if (status == TargetStatus.Failed)
+                await CheckFailureLimitAsync(deployment);
+            // Erst nach der Prüfung freigeben, damit das nächste Ziel dieses Deployments die erreichte Grenze schon sieht.
+            if (ownTaken)
+                own!.Release();
             Changed?.Invoke(deployment.Id);
         }
     }

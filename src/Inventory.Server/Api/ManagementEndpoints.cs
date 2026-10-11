@@ -32,10 +32,11 @@ public static class ManagementEndpoints
 
     public sealed record ScheduleRequest(string Name, ScheduleAction Action, ScheduleTrigger Trigger, bool Enabled = true, int? PackageId = null, int? CollectionId = null,
         bool ScanAfter = true, bool RetryOffline = true, DateTime? StartLocal = null, int IntervalMinutes = 60, TimeSpan? TimeOfDay = null, int DaysOfWeek = 0,
-        bool RespectMaintenanceWindow = true);
+        bool RespectMaintenanceWindow = true, int? MaxFailures = null, int? MaxFailurePercent = 10, int? MaxParallel = null);
 
     public sealed record ScheduleDto(int Id, string Name, bool Enabled, ScheduleAction Action, int? PackageId, int? CollectionId, bool ScanAfter, bool RetryOffline,
-        ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult, bool RespectMaintenanceWindow);
+        ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult, bool RespectMaintenanceWindow,
+        int? MaxFailures, int? MaxFailurePercent, int? MaxParallel);
 
     public sealed record DeploymentSummaryDto(int Id, int? PackageId, string PackageName, string? PackageVersion, DateTime CreatedUtc, DateTime? FinishedUtc,
         int Targets, int Succeeded, int AlreadyInstalled, int Failed, int Waiting);
@@ -264,7 +265,7 @@ public static class ManagementEndpoints
         [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall);
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
-        s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow);
+        s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow, s.MaxFailures, s.MaxFailurePercent, s.MaxParallel);
 
     private static Schedule Apply(Schedule s, ScheduleRequest r)
     {
@@ -280,6 +281,7 @@ public static class ManagementEndpoints
         (s.Trigger, s.StartLocal, s.IntervalMinutes, s.DaysOfWeek) = (r.Trigger, r.StartLocal, Math.Max(r.IntervalMinutes, 1), r.DaysOfWeek);
         s.TimeOfDay = r.TimeOfDay ?? s.TimeOfDay;
         s.RespectMaintenanceWindow = r.RespectMaintenanceWindow;
+        (s.MaxFailures, s.MaxFailurePercent, s.MaxParallel) = (r.MaxFailures is > 0 ? r.MaxFailures : null, r.MaxFailurePercent is > 0 ? Math.Min(r.MaxFailurePercent.Value, 100) : null, r.MaxParallel is > 0 ? r.MaxParallel : null);
         return s;
     }
 

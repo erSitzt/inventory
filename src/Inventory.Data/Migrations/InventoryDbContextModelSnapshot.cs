@@ -601,6 +601,15 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("FinishedUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("MaxFailurePercent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxFailures")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxParallel")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("PackageId")
                         .HasColumnType("INTEGER");
 
@@ -622,6 +631,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<bool>("ScanAfter")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("StopReason")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -821,6 +833,15 @@ namespace Inventory.Data.Migrations
 
                     b.Property<DateTime?>("LastRunUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("MaxFailurePercent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxFailures")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxParallel")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()

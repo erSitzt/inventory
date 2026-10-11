@@ -64,6 +64,17 @@ public static class TargetStatusExtensions
     public static bool IsWaiting(this TargetStatus status) => status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot or TargetStatus.WaitingWindow;
 }
 
+public static class DeploymentLimits
+{
+    /// <summary>Vorher sagt ein Prozentwert nichts aus: ein einzelner Fehler unter drei Rechnern wären schon 33 %.</summary>
+    public const int MinFinishedForPercent = 5;
+
+    /// <summary>true, wenn bei diesem Stand keine weiteren Rechner mehr gestartet werden sollen.</summary>
+    public static bool Reached(int? maxFailures, int? maxFailurePercent, int failed, int finished) =>
+        (maxFailures is > 0 && failed >= maxFailures)
+        || (maxFailurePercent is > 0 && finished >= MinFinishedForPercent && failed >= 2 && failed * 100 >= maxFailurePercent * finished);
+}
+
 /// <summary>Ausführung eines Pakets auf einer Menge von Rechnern.</summary>
 public class Deployment
 {
@@ -79,6 +90,17 @@ public class Deployment
     public bool RetryOffline { get; set; }
     /// <summary>Rechner außerhalb ihres Wartungsfensters warten, bis es beginnt.</summary>
     public bool RespectMaintenanceWindow { get; set; }
+    /// <summary>Nach so vielen fehlgeschlagenen Rechnern werden keine weiteren mehr gestartet; null = keine Grenze.</summary>
+    public int? MaxFailures { get; set; }
+    /// <summary>
+    /// Anteil fehlgeschlagener an den abgeschlossenen Rechnern (in Prozent), ab dem keine weiteren mehr gestartet werden.
+    /// Greift erst nach <see cref="DeploymentLimits.MinFinishedForPercent"/> abgeschlossenen und zwei fehlgeschlagenen Rechnern.
+    /// </summary>
+    public int? MaxFailurePercent { get; set; }
+    /// <summary>So viele Rechner dieses Deployments laufen höchstens gleichzeitig; null = nur die allgemeine Grenze.</summary>
+    public int? MaxParallel { get; set; }
+    /// <summary>Gesetzt, sobald eine Fehlergrenze erreicht war: weshalb die restlichen Rechner nicht mehr gestartet wurden.</summary>
+    public string? StopReason { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? FinishedUtc { get; set; }
     public List<DeploymentTarget> Targets { get; set; } = [];

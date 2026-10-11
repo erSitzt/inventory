@@ -32,6 +32,15 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
     public Task SetVerifyTargetNameAsync(bool enabled, CancellationToken ct = default) =>
         SetAsync(SettingKeys.SkipTargetNameCheck, (!enabled).ToString(), ct);
 
+    public const int DefaultMaxParallelTargets = 16;
+
+    /// <summary>Obergrenze gleichzeitig laufender Deployment-Ziele über alle Deployments hinweg.</summary>
+    public async Task<int> GetMaxParallelTargetsAsync(CancellationToken ct = default) =>
+        int.TryParse(await GetAsync(SettingKeys.MaxParallelTargets, ct), out var value) && value > 0 ? Math.Min(value, 128) : DefaultMaxParallelTargets;
+
+    public Task SetMaxParallelTargetsAsync(int value, CancellationToken ct = default) =>
+        SetAsync(SettingKeys.MaxParallelTargets, Math.Clamp(value, 1, 128).ToString(), ct);
+
     public const int DefaultRebootWaitMinutes = 30;
 
     /// <summary>Wartefrist nach einem Neustart-Schritt; danach gilt das Ziel als fehlgeschlagen.</summary>

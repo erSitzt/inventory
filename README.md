@@ -19,6 +19,8 @@ credentials. The user interface is available in English and German; translations
 - **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
   embedded package – each with conditions and error handling; steps after a reboot continue automatically once the
   computer is back
+- **Limits per deployment**: stop starting further computers after a number or a rate of failures, and limit how
+  many computers run at once – so a broken package does not reach every computer and the first ones act as a pilot
 - **Robust steps**: retries with a pause (automatically when another installation is running), a free disk space
   check before the step, and closing named programs first – optionally after a notice to the logged-on user
 - **Maintenance windows**: weekdays and time of day per collection plus a default window; deployments and schedules

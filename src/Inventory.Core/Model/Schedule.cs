@@ -28,6 +28,12 @@ public class Schedule
     public bool RetryOffline { get; set; } = true;
     /// <summary>Bei Deployments: Rechner außerhalb ihres Wartungsfensters warten, bis es beginnt.</summary>
     public bool RespectMaintenanceWindow { get; set; } = true;
+    /// <summary>Wie <see cref="Deployment.MaxFailures"/>.</summary>
+    public int? MaxFailures { get; set; }
+    /// <summary>Wie <see cref="Deployment.MaxFailurePercent"/>; neue Zeitpläne halten ab 10 % Fehlern an, damit ein kaputtes Paket nachts nicht alle Rechner erreicht.</summary>
+    public int? MaxFailurePercent { get; set; } = 10;
+    /// <summary>Wie <see cref="Deployment.MaxParallel"/>.</summary>
+    public int? MaxParallel { get; set; }
     /// <summary>null = alle Rechner.</summary>
     public int? CollectionId { get; set; }
     public Collection? Collection { get; set; }

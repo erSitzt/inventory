@@ -68,6 +68,9 @@
   <data name="Account of the server service" xml:space="preserve">
     <value>Konto des Server-Dienstes</value>
   </data>
+  <data name="Across all deployments. A deployment can set a lower limit of its own." xml:space="preserve">
+    <value>Über alle Deployments hinweg. Ein Deployment kann eine eigene, niedrigere Grenze setzen.</value>
+  </data>
   <data name="Action" xml:space="preserve">
     <value>Aktion</value>
   </data>
@@ -365,6 +368,9 @@
   <data name="Computers added" xml:space="preserve">
     <value>Rechner hinzugefügt</value>
   </data>
+  <data name="Computers at once" xml:space="preserve">
+    <value>Rechner gleichzeitig</value>
+  </data>
   <data name="Computers deleted" xml:space="preserve">
     <value>Rechner gelöscht</value>
   </data>
@@ -373,6 +379,9 @@
   </data>
   <data name="Computers no longer found in the directory" xml:space="preserve">
     <value>Rechner, die im Verzeichnis nicht mehr gefunden werden</value>
+  </data>
+  <data name="Computers served at once" xml:space="preserve">
+    <value>Gleichzeitig bediente Rechner</value>
   </data>
   <data name="Computers with {0} older than the library version" xml:space="preserve">
     <value>Rechner mit {0} älter als die Bibliotheksversion</value>
@@ -1006,6 +1015,12 @@
   </data>
   <data name="Light" xml:space="preserve">
     <value>Hell</value>
+  </data>
+  <data name="Limits (active)" xml:space="preserve">
+    <value>Grenzen (aktiv)</value>
+  </data>
+  <data name="Limits (none)" xml:space="preserve">
+    <value>Grenzen (keine)</value>
   </data>
   <data name="Loading versions …" xml:space="preserve">
     <value>Versionen werden geladen …</value>
@@ -2057,6 +2072,15 @@
   <data name="Stop" xml:space="preserve">
     <value>Beenden</value>
   </data>
+  <data name="Stop after failures" xml:space="preserve">
+    <value>Anhalten nach Fehlern</value>
+  </data>
+  <data name="Stop at failure rate (%)" xml:space="preserve">
+    <value>Anhalten ab Fehlerquote (%)</value>
+  </data>
+  <data name="Stopped: {0} of {1} finished computers failed" xml:space="preserve">
+    <value>Angehalten: {0} von {1} abgeschlossenen Rechnern fehlgeschlagen</value>
+  </data>
   <data name="succeeded" xml:space="preserve">
     <value>erfolgreich</value>
   </data>
@@ -2170,6 +2194,9 @@
   </data>
   <data name="The release contains no checksums; nothing is installed without them." xml:space="preserve">
     <value>Das Release enthält keine Prüfsummen; ohne sie wird nichts installiert.</value>
+  </data>
+  <data name="the remaining computers were not started." xml:space="preserve">
+    <value>die übrigen Rechner wurden nicht gestartet.</value>
   </data>
   <data name="The runner on {0} exited without delivering a result (exit code {1}). Possible causes: .NET Framework 4.8 is missing, or antivirus or AppLocker blocks execution." xml:space="preserve">
     <value>Der Runner auf {0} wurde beendet, ohne ein Ergebnis zu liefern (Exitcode {1}). Mögliche Ursachen: .NET Framework 4.8 fehlt, Virenscanner oder AppLocker blockiert die Ausführung.</value>
@@ -2467,6 +2494,9 @@
   </data>
   <data name='What the token is for, e.g. "Monitoring" or "Package upload"' xml:space="preserve">
     <value>Wofür das Token gedacht ist, z. B. „Monitoring“ oder „Paket-Upload“</value>
+  </data>
+  <data name="When a limit is reached, no further computers are started; running ones finish. The failure rate counts once five computers have finished and at least two failed. With few computers at once, the first ones act as a pilot group." xml:space="preserve">
+    <value>Ist eine Grenze erreicht, werden keine weiteren Rechner gestartet; laufende werden fertig. Die Fehlerquote zählt, sobald fünf Rechner abgeschlossen und mindestens zwei fehlgeschlagen sind. Mit wenigen Rechnern gleichzeitig wirken die ersten als Pilotgruppe.</value>
   </data>
   <data name="Windows below version" xml:space="preserve">
     <value>Windows unter Version</value>
