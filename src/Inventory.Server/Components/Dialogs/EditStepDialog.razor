@@ -172,6 +172,39 @@
                             </MudItem>
                         </MudGrid>
                     </MudExpansionPanel>
+                    @if (Type is not (StepType.Sleep or StepType.Reboot or StepType.InventoryScan))
+                    {
+                        <MudExpansionPanel Text="@(HasRobustness ? L["Retries and preparation (active)"] : L["Retries and preparation"])">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12" sm="6">
+                                    <MudNumericField T="int" @bind-Value="_step.Retries" Label="@L["Retries on failure"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="20"
+                                                     HelperText="@(Type is StepType.Install or StepType.Uninstall ? L["If another installation is running (exit code 1618), the step is retried up to three times anyway."] : "")" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudNumericField T="int" @bind-Value="_step.RetryDelaySeconds" Label="@L["Pause before a retry (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="3600" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudNumericField T="int" @bind-Value="_step.MinFreeDiskMb" Label="@L["Required free disk space (MB)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="1000000"
+                                                     HelperText="@(Type == StepType.Install ? L["On the system drive. 0 = twice the size of the installer file."] : L["On the system drive. 0 = no check."])" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField @bind-Value="_closeProcesses" Label="@L["Close programs first"]" Placeholder="outlook, winword" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                                  HelperText="@L["Process names, comma-separated. They are terminated before the step; unsaved work is lost."]" />
+                                </MudItem>
+                                @if (!string.IsNullOrWhiteSpace(_closeProcesses))
+                                {
+                                    <MudItem xs="12" sm="4">
+                                        <MudNumericField T="int" @bind-Value="_step.CloseProcessesWarnSeconds" Label="@L["Warn users before (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="3600"
+                                                         HelperText="@L["0 = close immediately"]" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="8">
+                                        <MudTextField @bind-Value="_step.CloseProcessesMessage" Label="@L["Message for logged-on users"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                      Disabled="@(_step.CloseProcessesWarnSeconds <= 0)" Placeholder="@L["Outlook will be closed in two minutes for an update. Please save your work."]" />
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudExpansionPanel>
+                    }
                 </MudExpansionPanels>
             }
 
@@ -201,6 +234,9 @@
     private JobStep _step = new();
     private StepConditions _conditions = new();
     private string _successCodes = "";
+    private string _closeProcesses = "";
+
+    private bool HasRobustness => _step.Retries > 0 || _step.MinFreeDiskMb > 0 || !string.IsNullOrWhiteSpace(_closeProcesses);
     private int? _nestedPackageId;
     private List<Package> _packages = [];
     private string? _error;
@@ -237,6 +273,7 @@
         }
         _conditions = _step.Conditions ?? new StepConditions();
         _successCodes = string.Join(", ", _step.SuccessCodes);
+        _closeProcesses = string.Join(", ", _step.CloseProcesses);
         if (Nested)
             _packages = (await PackageService.ListAsync()).Where(p => p.Id != PackageId).ToList();
         await DetectAsync();
@@ -291,6 +328,7 @@
     private async Task SaveAsync()
     {
         var codes = new List<int>();
+        _step.CloseProcesses = [.. _closeProcesses.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
         foreach (var part in _successCodes.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries))
         {
             if (!int.TryParse(part, out var code))

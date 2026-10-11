@@ -23,6 +23,9 @@
   <data name="(not signed in)" xml:space="preserve">
     <value>(ohne Anmeldung)</value>
   </data>
+  <data name="0 = close immediately" xml:space="preserve">
+    <value>0 = sofort schließen</value>
+  </data>
   <data name='1 open item – details under "Needs attention".' xml:space="preserve">
     <value>1 offener Punkt – Einzelheiten unter „Handlungsbedarf“.</value>
   </data>
@@ -286,6 +289,12 @@
   </data>
   <data name="Close" xml:space="preserve">
     <value>Schließen</value>
+  </data>
+  <data name="Close programs first" xml:space="preserve">
+    <value>Programme vorher schließen</value>
+  </data>
+  <data name="closes {0}" xml:space="preserve">
+    <value>schließt {0}</value>
   </data>
   <data name="Collection" xml:space="preserve">
     <value>Sammlung</value>
@@ -812,6 +821,9 @@
   <data name='If all conditions entered here apply, the package counts as already installed: the computer is skipped and reported as "already installed". Without detection the package always runs.' xml:space="preserve">
     <value>Treffen alle hier eingetragenen Bedingungen zu, gilt das Paket als bereits installiert: der Rechner wird übersprungen und als „bereits installiert“ gemeldet. Ohne Erkennung läuft das Paket immer.</value>
   </data>
+  <data name="If another installation is running (exit code 1618), the step is retried up to three times anyway." xml:space="preserve">
+    <value>Läuft gerade eine andere Installation (Exitcode 1618), wird der Schritt ohnehin bis zu dreimal wiederholt.</value>
+  </data>
   <data name="If the program is not installed, the step counts as done. If the name matches more than three programs, nothing is uninstalled and the step fails." xml:space="preserve">
     <value>Ist das Programm nicht installiert, gilt der Schritt als erledigt. Trifft der Name mehr als drei Programme, wird nichts deinstalliert und der Schritt schlägt fehl.</value>
   </data>
@@ -1301,6 +1313,12 @@
   <data name="on" xml:space="preserve">
     <value>an</value>
   </data>
+  <data name="On the system drive. 0 = no check." xml:space="preserve">
+    <value>Auf dem Systemlaufwerk. 0 = keine Prüfung.</value>
+  </data>
+  <data name="On the system drive. 0 = twice the size of the installer file." xml:space="preserve">
+    <value>Auf dem Systemlaufwerk. 0 = das Doppelte der Installationsdatei.</value>
+  </data>
   <data name="on, every {0} min" xml:space="preserve">
     <value>an, alle {0} min</value>
   </data>
@@ -1360,6 +1378,9 @@
   </data>
   <data name="or MSI product code" xml:space="preserve">
     <value>oder MSI-Produktcode</value>
+  </data>
+  <data name="Outlook will be closed in two minutes for an update. Please save your work." xml:space="preserve">
+    <value>Outlook wird in zwei Minuten für ein Update geschlossen. Bitte Arbeit speichern.</value>
   </data>
   <data name="Overview" xml:space="preserve">
     <value>Übersicht</value>
@@ -1448,6 +1469,9 @@
   <data name="password reset" xml:space="preserve">
     <value>Passwort neu gesetzt</value>
   </data>
+  <data name="Pause before a retry (seconds)" xml:space="preserve">
+    <value>Pause vor einer Wiederholung (Sekunden)</value>
+  </data>
   <data name="Pending updates" xml:space="preserve">
     <value>Ausstehende Updates</value>
   </data>
@@ -1486,6 +1510,9 @@
   </data>
   <data name="Private network" xml:space="preserve">
     <value>Privates Netz</value>
+  </data>
+  <data name="Process names, comma-separated. They are terminated before the step; unsaved work is lost." xml:space="preserve">
+    <value>Prozessnamen, durch Komma getrennt. Sie werden vor dem Schritt beendet; nicht Gespeichertes geht verloren.</value>
   </data>
   <data name="Processor" xml:space="preserve">
     <value>Prozessor</value>
@@ -1658,6 +1685,9 @@
   <data name="Reported name differs" xml:space="preserve">
     <value>Gemeldeter Name weicht ab</value>
   </data>
+  <data name="Required free disk space (MB)" xml:space="preserve">
+    <value>Benötigter freier Speicherplatz (MB)</value>
+  </data>
   <data name="Rescan inventory afterwards" xml:space="preserve">
     <value>Danach Inventar neu scannen</value>
   </data>
@@ -1672,6 +1702,15 @@
   </data>
   <data name="Result" xml:space="preserve">
     <value>Ergebnis</value>
+  </data>
+  <data name="Retries and preparation" xml:space="preserve">
+    <value>Wiederholungen und Vorbereitung</value>
+  </data>
+  <data name="Retries and preparation (active)" xml:space="preserve">
+    <value>Wiederholungen und Vorbereitung (aktiv)</value>
+  </data>
+  <data name="Retries on failure" xml:space="preserve">
+    <value>Wiederholungen bei Fehler</value>
   </data>
   <data name="Retry offline computers (up to 3 days)" xml:space="preserve">
     <value>Offline-Rechner nachholen (bis zu 3 Tage)</value>
@@ -2408,6 +2447,9 @@
   <data name="Waiting for the maintenance window (opens {0})" xml:space="preserve">
     <value>Wartet auf das Wartungsfenster (beginnt {0})</value>
   </data>
+  <data name="Warn users before (seconds)" xml:space="preserve">
+    <value>Benutzer vorher warnen (Sekunden)</value>
+  </data>
   <data name="Website" xml:space="preserve">
     <value>Webseite</value>
   </data>
@@ -2584,6 +2626,9 @@
   </data>
   <data name="{0} outdated" xml:space="preserve">
     <value>{0} veraltet</value>
+  </data>
+  <data name="{0} retries" xml:space="preserve">
+    <value>{0} Wiederholungen</value>
   </data>
   <data name="{0} scanned, {1} failed" xml:space="preserve">
     <value>{0} gescannt, {1} fehlgeschlagen</value>

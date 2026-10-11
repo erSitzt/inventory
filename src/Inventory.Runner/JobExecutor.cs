@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
@@ -80,7 +81,7 @@ namespace Inventory.Runner
                         else
                         {
                             Write(progress, new ProgressEvent { Kind = ProgressKind.StepStarted, Step = i, Text = step.Name });
-                            stepResult = Dispatch(i, step, progress, result);
+                            stepResult = Prepare(i, step, progress) ?? DispatchWithRetries(i, step, progress, result);
                             // Die restlichen Schritte übernimmt der Server in einem Folgejob, sobald der Rechner wieder da ist.
                             if (step.Type == StepType.Reboot && stepResult.Status == StepStatus.Succeeded && i + 1 < manifest.Steps.Count)
                                 result.ResumeFromStep = i + 1;
@@ -139,6 +140,128 @@ namespace Inventory.Runner
         }
 
         private string FilesDir => Path.Combine(_jobDir, JobFiles.FilesFolder);
+
+        /// <summary>Was vor dem aktuellen Schritt geschah (z. B. geschlossene Programme); steht am Anfang seiner Ausgabe.</summary>
+        private readonly StringBuilder _preparation = new StringBuilder();
+
+        /// <summary>Prüfungen und Vorarbeiten vor einem Schritt; liefert ein Ergebnis nur, wenn der Schritt deshalb nicht laufen kann.</summary>
+        private StepResult? Prepare(int index, JobStep step, StreamWriter progress)
+        {
+            _preparation.Clear();
+            try
+            {
+                // Ein Setup, das mitten in der Installation am vollen Laufwerk scheitert, hinterlässt oft einen halben Stand.
+                var required = step.MinFreeDiskMb > 0 ? step.MinFreeDiskMb * 1024L * 1024L : 0;
+                if (required == 0 && step.Type == StepType.Install && !string.IsNullOrWhiteSpace(step.File))
+                {
+                    var installer = new FileInfo(Path.Combine(FilesDir, step.File!));
+                    required = installer.Exists ? installer.Length * 2 : 0;
+                }
+                if (required > 0)
+                {
+                    var drive = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory)!);
+                    if (drive.AvailableFreeSpace < required)
+                    {
+                        return new StepResult
+                        {
+                            Index = index, Name = step.Name, Status = StepStatus.Failed,
+                            Error = $"Not enough free disk space on {drive.Name} ({drive.AvailableFreeSpace / 1024 / 1024} MB free, {required / 1024 / 1024} MB required)",
+                        };
+                    }
+                }
+                CloseProcesses(index, step, progress);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return new StepResult { Index = index, Name = step.Name, Status = StepStatus.Failed, Error = ex.Message };
+            }
+        }
+
+        private void CloseProcesses(int index, JobStep step, StreamWriter progress)
+        {
+            var names = (step.CloseProcesses ?? new List<string>())
+                .Select(n => (n ?? "").Trim()).Where(n => n.Length > 0)
+                .Select(n => n.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? n.Substring(0, n.Length - 4) : n)
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            Func<List<Process>> running = () => names.SelectMany(Process.GetProcessesByName).ToList();
+            Action<string> say = line =>
+            {
+                _preparation.AppendLine(line);
+                Write(progress, new ProgressEvent { Kind = ProgressKind.Output, Step = index, Text = line });
+            };
+
+            var found = running();
+            if (found.Count == 0)
+                return;
+            if (step.CloseProcessesWarnSeconds > 0 && UserSession.ActiveSessionId() != null)
+            {
+                var seconds = step.CloseProcessesWarnSeconds;
+                var message = string.IsNullOrWhiteSpace(step.CloseProcessesMessage)
+                    ? $"{string.Join(", ", found.Select(p => p.ProcessName).Distinct())} will be closed in {seconds} seconds for a software installation. Please save your work."
+                    : step.CloseProcessesMessage!.Trim();
+                try
+                {
+                    // msg.exe zeigt den Hinweis in allen Sitzungen; fehlt es (Home-Editionen), wird ohne Hinweis gewartet.
+                    using (Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "msg.exe"), $"* /TIME:{seconds} \"{message.Replace("\"", "'")}\"")
+                           { UseShellExecute = false, CreateNoWindow = true })) { }
+                    say($"Users were notified; closing in {seconds} s");
+                }
+                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception || ex is FileNotFoundException)
+                {
+                    say($"The notice could not be shown ({ex.Message}); closing in {seconds} s");
+                }
+                for (var waited = 0; waited < seconds * 10 && !_cancelled; waited++)
+                    Thread.Sleep(100);
+                found = running();
+            }
+            foreach (var process in found)
+            {
+                try
+                {
+                    say($"Closing {process.ProcessName} (PID {process.Id})");
+                    KillTree(process);
+                    process.WaitForExit(10_000);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException || ex is System.ComponentModel.Win32Exception)
+                {
+                    // Schon beendet oder nicht beendbar: der Schritt zeigt dann selbst, ob es ohne ging.
+                    say($"{process.ProcessName} could not be closed: {ex.Message}");
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+            }
+        }
+
+        /// <summary>Wiederholt einen fehlgeschlagenen Schritt wie im Schritt eingestellt; die Ausgabe aller Versuche bleibt erhalten.</summary>
+        private StepResult DispatchWithRetries(int index, JobStep step, StreamWriter progress, JobResult job)
+        {
+            var earlier = new StringBuilder(_preparation.ToString());
+            var duration = 0d;
+            for (var attempt = 1; ; attempt++)
+            {
+                var result = Dispatch(index, step, progress, job);
+                duration += result.DurationSeconds;
+                // 1618 = eine andere Installation läuft gerade; das erledigt sich fast immer von selbst.
+                var busy = result.ExitCode == 1618 && (step.Type == StepType.Install || step.Type == StepType.Uninstall);
+                var retries = Math.Max(Math.Max(step.Retries, 0), busy ? 3 : 0);
+                if (result.Status != StepStatus.Failed || _cancelled || attempt > retries)
+                {
+                    result.Output = earlier + result.Output;
+                    result.DurationSeconds = Math.Round(duration, 2);
+                    return result;
+                }
+                var delay = step.RetryDelaySeconds > 0 ? step.RetryDelaySeconds : 60;
+                var note = $"Attempt {attempt} failed ({result.Error}); retrying in {delay} s";
+                earlier.Append(result.Output).AppendLine(note);
+                Write(progress, new ProgressEvent { Kind = ProgressKind.Output, Step = index, Text = note });
+                for (var waited = 0; waited < delay * 10 && !_cancelled; waited++)
+                    Thread.Sleep(100);
+                duration += delay;
+            }
+        }
 
         private StepResult Dispatch(int index, JobStep step, StreamWriter progress, JobResult job)
         {

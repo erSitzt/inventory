@@ -17,6 +17,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
   Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten; Schritte nach einem Neustart laufen
   automatisch weiter, sobald der Rechner wieder da ist
+- **Robuste Schritte**: Wiederholungen mit Pause (automatisch, wenn gerade eine andere Installation läuft), Prüfung
+  des freien Speicherplatzes vor dem Schritt und vorheriges Schließen benannter Programme – auf Wunsch nach einem
+  Hinweis an den angemeldeten Benutzer
 - **Wartungsfenster**: Wochentage und Uhrzeit je Sammlung sowie ein Standardfenster; Deployments und Zeitpläne mit
   der Option „Nur im Wartungsfenster“ halten Rechner zurück, deren Fenster geschlossen ist, und starten sie, sobald es
   beginnt

@@ -473,6 +473,26 @@ public sealed class PackageTests : IDisposable
         Assert.Null(await maintenance.GetDefaultAsync());
     }
 
+    [Fact]
+    public async Task Retry_and_preparation_settings_of_a_step_reach_the_job_and_old_steps_get_the_defaults()
+    {
+        var package = await _packages.SaveAsync(null, "Robust", null, null);
+        await _packages.SaveStepAsync(package.Id, null, new JobStep
+        {
+            Name = "Setup", Type = StepType.Command, Script = "setup.exe", Retries = 2, RetryDelaySeconds = 5, MinFreeDiskMb = 500,
+            CloseProcesses = ["outlook", "winword.exe"], CloseProcessesWarnSeconds = 120, CloseProcessesMessage = "Bitte speichern",
+        }, null);
+
+        var step = Assert.Single((await _packages.BuildJobAsync(package.Id)).Manifest.Steps);
+        Assert.Equal((2, 5, 500, 120, "Bitte speichern"), (step.Retries, step.RetryDelaySeconds, step.MinFreeDiskMb, step.CloseProcessesWarnSeconds, step.CloseProcessesMessage));
+        Assert.Equal(["outlook", "winword.exe"], step.CloseProcesses);
+
+        // Schritte, die vor diesen Feldern gespeichert wurden, verhalten sich wie bisher.
+        var old = JobJson.Deserialize<JobStep>("""{"name":"Alt","type":"Command","script":"echo"}""")!;
+        Assert.Equal((0, 60, 0, 0), (old.Retries, old.RetryDelaySeconds, old.MinFreeDiskMb, old.CloseProcessesWarnSeconds));
+        Assert.Empty(old.CloseProcesses);
+    }
+
     /// <summary>Merkt sich die Manifeste; der erste Job endet mit einem Neustart, der zweite läuft durch.</summary>
     private sealed class RecordingTransport : IRemoteTransport
     {
