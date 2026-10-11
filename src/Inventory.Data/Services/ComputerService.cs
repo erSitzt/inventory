@@ -78,8 +78,7 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
     }
 
     /// <summary>Hält fest, was die Verzeichnis-Synchronisation über die Rechner herausgefunden hat.</summary>
-    /// <param name="states">Je Rechner: im Verzeichnis vorhanden (und nicht ausgeschlossen), Konto deaktiviert.</param>
-    /// <param name="states">Je Rechner: ob das Konto vorhanden und ob es deaktiviert ist, dazu das Konto selbst, soweit das Verzeichnis es geliefert hat.</param>
+    /// <param name="states">Je Rechner: im Verzeichnis vorhanden (und nicht ausgeschlossen), Konto deaktiviert, dazu das Konto selbst, soweit das Verzeichnis es geliefert hat.</param>
     public async Task SetDirectoryStateAsync(IReadOnlyDictionary<int, (bool Present, bool Disabled, DirectoryComputer? Account)> states, DateTime nowUtc, CancellationToken ct = default)
     {
         var ids = states.Keys.ToList();

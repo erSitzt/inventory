@@ -23,10 +23,31 @@ public static class DirectoryNames
         return parts;
     }
 
+    /// <summary>Wert eines Bestandteils ohne Maskierung (RFC 4514): \, steht für das Zeichen selbst, \2C für das Byte in UTF-8.</summary>
     private static string Value(string part)
     {
         var value = part[(part.IndexOf('=') + 1)..];
-        return value.Replace("\\,", ",").Replace("\\\\", "\\");
+        if (!value.Contains('\\'))
+            return value;
+        var bytes = new List<byte>();
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (value[i] != '\\' || i + 1 >= value.Length)
+            {
+                bytes.AddRange(System.Text.Encoding.UTF8.GetBytes(value[i].ToString()));
+            }
+            else if (i + 2 < value.Length && Uri.IsHexDigit(value[i + 1]) && Uri.IsHexDigit(value[i + 2]))
+            {
+                bytes.Add(Convert.ToByte(value.Substring(i + 1, 2), 16));
+                i += 2;
+            }
+            else
+            {
+                bytes.AddRange(System.Text.Encoding.UTF8.GetBytes(value[i + 1].ToString()));
+                i++;
+            }
+        }
+        return System.Text.Encoding.UTF8.GetString(bytes.ToArray());
     }
 
     /// <summary>Der Container, in dem das Objekt liegt: der DN ohne seinen ersten Bestandteil.</summary>

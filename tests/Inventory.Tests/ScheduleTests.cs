@@ -251,6 +251,9 @@ public class ScheduleTests
         Assert.Equal(parent, DirectoryNames.Parent(dn));
         Assert.Equal(path, DirectoryNames.Path(DirectoryNames.Parent(dn)));
         Assert.Equal(@"Vertrieb, Nord", DirectoryNames.CommonName(@"CN=Vertrieb\, Nord,OU=Groups,DC=corp,DC=example"));
+        // Dieselben Zeichen als Hex-Maskierung, auch für Umlaute (zwei Bytes in UTF-8).
+        Assert.Equal("Ops, EMEA", DirectoryNames.CommonName(@"CN=Ops\2C EMEA,OU=Groups,DC=corp,DC=example"));
+        Assert.Equal("Büro/Süd", DirectoryNames.Path(@"OU=S\C3\BCd,OU=B\C3\BCro,DC=corp,DC=example"));
     }
 
     [Fact]
