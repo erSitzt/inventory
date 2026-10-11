@@ -58,6 +58,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         RuleField.UacOff => T("User Account Control off"),
         RuleField.Smb1Enabled => T("SMB 1 enabled"),
         RuleField.CredentialGuard => T("Credential Guard running"),
+        RuleField.MemoryIntegrity => T("Memory integrity on"),
         RuleField.LsaProtection => T("LSA protection on"),
         RuleField.BuiltinAdminEnabled => T("Built-in administrator account active"),
         RuleField.BuiltinAdminPasswordAgeDays => T("Built-in administrator: password age (days)"),
@@ -92,7 +93,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     {
         RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
             or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
-            or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard
+            or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
             or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated => [RuleOperator.Equals],
         RuleField.PendingUpdates or RuleField.DaysSinceUpdate or RuleField.BuiltinAdminPasswordAgeDays => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
         RuleField.MemoryGb => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals],
@@ -244,7 +245,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     /// <summary>Felder, die nur "ja" oder "nein" kennen.</summary>
     public bool IsFlag(RuleField field) => field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
         or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
-        or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard
+        or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
         or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated;
 
     public string OnOff(bool? value) => value switch { true => T("on"), false => T("off"), null => T("unknown") };
@@ -262,14 +263,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
 
     public string YesNo(bool value) => value ? T("yes") : T("no");
 
-    public string UacLevel(int? level) => level switch
-    {
-        0 => T("never notify"),
-        1 => T("notify without dimming the desktop"),
-        2 => T("default"),
-        3 => T("always notify"),
-        _ => T("unknown"),
-    };
+    public string UacLevel(int? level) => level is >= 0 and <= 3 ? T(InventoryDiff.UacLevels[level.Value]) : T("unknown");
 
     public string Chassis(Computer computer) => T(Core.Chassis.Label(Core.Chassis.Kind(computer.ChassisType, computer.Model)));
 

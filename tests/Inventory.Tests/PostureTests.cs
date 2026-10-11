@@ -44,6 +44,8 @@ public class PostureTests
             p.RdpNla = false;
             p.Smb1Enabled = true;
             p.BuiltinAdminEnabled = true;
+            p.UacLevel = 0;
+            p.BuiltinAdminPasswordAgeDays = 2;
             // Ließ sich diesmal nicht lesen.
             p.CredentialGuard = null;
             p.WindowsActivated = null;
@@ -54,7 +56,7 @@ public class PostureTests
         Assert.True(detail.Smb1Enabled);
         Assert.True(detail.CredentialGuard);
         Assert.True(detail.WindowsActivated);
-        Assert.Equal(2, detail.UacLevel);
+        Assert.Equal(0, detail.UacLevel);
         var user = Assert.Single(detail.LocalUsers);
         Assert.Equal(400, user.PasswordAgeDays);
         Assert.Equal(new DateTime(2026, 1, 2, 3, 4, 5), user.LastLogonUtc);
@@ -62,8 +64,10 @@ public class PostureTests
         Assert.Equal(
         [
             "Built-in administrator account|disabled|active",
+            "Built-in administrator: password age (days)|400|2",
             "Remote Desktop network level authentication|on|off",
             "SMB 1|off|on",
+            "User Account Control level|default|never notify",
         ], (await store.ChangesAsync(id)).Select(c => $"{c.Change.Item}|{c.Change.OldValue}|{c.Change.NewValue}").Order());
     }
 
@@ -84,6 +88,11 @@ public class PostureTests
             Assert.True(Matches(field, risky), field.ToString());
             Assert.False(Matches(field, unknown), field.ToString());
         }
+        // Ein unbekannter Wert passt auch nicht auf "nein".
+        foreach (var field in new[] { RuleField.RdpEnabled, RuleField.RdpWithoutNla, RuleField.UacOff, RuleField.Smb1Enabled, RuleField.CredentialGuard, RuleField.MemoryIntegrity, RuleField.LsaProtection, RuleField.NotActivated })
+            Assert.False(Matches(field, unknown, "false"), field.ToString());
+        Assert.True(Matches(RuleField.MemoryIntegrity, new Computer { Name = "d", MemoryIntegrity = true }));
+        Assert.True(Matches(RuleField.RdpWithoutNla, new Computer { Name = "e", RdpEnabled = false }, "false"));
         Assert.False(Matches(RuleField.CredentialGuard, risky));
         Assert.True(Matches(RuleField.LsaProtection, risky, "false"));
         Assert.True(Matches(RuleField.BuiltinAdminPasswordAgeDays, risky, "365", RuleOperator.GreaterOrEqual));

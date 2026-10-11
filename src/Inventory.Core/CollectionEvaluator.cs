@@ -38,15 +38,17 @@ public static class CollectionEvaluator
         RuleField.PendingUpdates => Text(rule, computer.UpdatePendingCount?.ToString(CultureInfo.InvariantCulture)),
         RuleField.DaysSinceUpdate => Text(rule, computer.UpdateLastInstallUtc is { } installed
             ? ((int)(DateTime.UtcNow - installed).TotalDays).ToString(CultureInfo.InvariantCulture) : null),
-        RuleField.RdpEnabled => Flag(rule, computer.RdpEnabled == true),
-        RuleField.RdpWithoutNla => Flag(rule, computer.RdpEnabled == true && computer.RdpNla == false),
-        RuleField.UacOff => Flag(rule, computer.UacEnabled == false),
-        RuleField.Smb1Enabled => Flag(rule, computer.Smb1Enabled == true),
-        RuleField.CredentialGuard => Flag(rule, computer.CredentialGuard == true),
-        RuleField.LsaProtection => Flag(rule, computer.LsaProtection == true),
-        RuleField.BuiltinAdminEnabled => Flag(rule, computer.BuiltinAdminEnabled == true),
+        RuleField.RdpEnabled => Known(rule, computer.RdpEnabled),
+        // Ohne Remotedesktop stellt sich die Frage nach NLA nicht; mit Remotedesktop muss der NLA-Wert bekannt sein.
+        RuleField.RdpWithoutNla => Known(rule, computer.RdpEnabled == false ? false : computer.RdpEnabled is null ? null : !computer.RdpNla),
+        RuleField.UacOff => Known(rule, !computer.UacEnabled),
+        RuleField.Smb1Enabled => Known(rule, computer.Smb1Enabled),
+        RuleField.CredentialGuard => Known(rule, computer.CredentialGuard),
+        RuleField.MemoryIntegrity => Known(rule, computer.MemoryIntegrity),
+        RuleField.LsaProtection => Known(rule, computer.LsaProtection),
+        RuleField.BuiltinAdminEnabled => Known(rule, computer.BuiltinAdminEnabled),
         RuleField.BuiltinAdminPasswordAgeDays => Text(rule, computer.BuiltinAdminPasswordAgeDays?.ToString(CultureInfo.InvariantCulture)),
-        RuleField.NotActivated => Flag(rule, computer.WindowsActivated == false),
+        RuleField.NotActivated => Known(rule, !computer.WindowsActivated),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         _ => false,
     };
@@ -83,6 +85,9 @@ public static class CollectionEvaluator
         var found = values.Any(v => Text(positive, v));
         return negated ? !found : found;
     }
+
+    /// <summary>Ein nicht ermittelter Wert passt auf keine Regel, weder auf "ja" noch auf "nein".</summary>
+    private static bool Known(CollectionRule rule, bool? actual) => actual is { } value && Flag(rule, value);
 
     private static bool Flag(CollectionRule rule, bool actual)
     {

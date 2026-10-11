@@ -47,6 +47,8 @@ public enum RuleField
     BuiltinAdminPasswordAgeDays = 115,
     /// <summary>Windows ist nicht aktiviert.</summary>
     NotActivated = 116,
+    /// <summary>Speicherintegrität (HVCI) läuft.</summary>
+    MemoryIntegrity = 117,
     Online = 1,
     Scanned,
     OsName,

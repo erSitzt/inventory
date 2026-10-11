@@ -1226,6 +1226,9 @@
   <data name="Memory integrity" xml:space="preserve">
     <value>Speicherintegrität</value>
   </data>
+  <data name="Memory integrity on" xml:space="preserve">
+    <value>Speicherintegrität an</value>
+  </data>
   <data name="Memory module" xml:space="preserve">
     <value>Speichermodul</value>
   </data>
@@ -2698,6 +2701,9 @@
   </data>
   <data name="User Account Control" xml:space="preserve">
     <value>Benutzerkontensteuerung</value>
+  </data>
+  <data name="User Account Control level" xml:space="preserve">
+    <value>Stufe der Benutzerkontensteuerung</value>
   </data>
   <data name="User Account Control level: {0}" xml:space="preserve">
     <value>Stufe der Benutzerkontensteuerung: {0}</value>

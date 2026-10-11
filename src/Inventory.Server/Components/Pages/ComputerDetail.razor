@@ -378,7 +378,7 @@ else if (_computer.ReverseDnsMismatch)
                 <MudItem xs="12" md="4">
                     <MudPaper Class="pa-4" Outlined="true">
                         <MudText Typo="Typo.h6" Class="mb-2">@L["System configuration"]</MudText>
-                        @if (_computer.UacEnabled is null && _computer.RdpEnabled is null && _computer.Smb1Enabled is null && _computer.LsaProtection is null)
+                        @if (!_computer.PostureKnown)
                         {
                             <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not captured yet."]</MudText>
                         }

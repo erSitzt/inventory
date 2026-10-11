@@ -111,6 +111,12 @@ public class Computer
     public int? BuiltinAdminPasswordAgeDays { get; set; }
     public bool? WindowsActivated { get; set; }
 
+    /// <summary>true, sobald ein Scan mindestens eine dieser Einstellungen geliefert hat.</summary>
+    public bool PostureKnown =>
+        RdpEnabled is not null || RdpNla is not null || UacEnabled is not null || UacLevel is not null || Smb1Enabled is not null
+        || CredentialGuard is not null || MemoryIntegrity is not null || LsaProtection is not null || BuiltinAdminEnabled is not null
+        || BuiltinAdminPasswordAgeDays is not null || WindowsActivated is not null;
+
     // Hardware und Plattformsicherheit aus dem letzten Scan; null = nicht ermittelt
     /// <summary>Wann zuletzt ein Scan Hardware-Details geliefert hat; null = noch nie (älterer Runner oder nicht gescannt).</summary>
     public DateTime? HardwareScanUtc { get; set; }

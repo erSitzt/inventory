@@ -86,6 +86,11 @@ public static partial class InventoryDiff
                 Security("LSA protection", previous.LsaProtection, posture.LsaProtection, "on", "off");
                 Security("Built-in administrator account", previous.BuiltinAdminEnabled, posture.BuiltinAdminEnabled, "active", "disabled");
                 Security("Windows activation", previous.WindowsActivated, posture.WindowsActivated, "activated", "not activated");
+                if (previous.UacLevel is { } oldLevel && posture.UacLevel is { } newLevel && oldLevel != newLevel)
+                    Add("Security", ChangeKind.Changed, "User Account Control level", UacLevels[Math.Clamp(oldLevel, 0, 3)], UacLevels[Math.Clamp(newLevel, 0, 3)]);
+                // Das Kennwortalter wächst von selbst; eine Aussage ist nur, dass es gesunken ist: das Kennwort wurde geändert.
+                if (previous.BuiltinAdminPasswordAgeDays is { } oldAge && posture.BuiltinAdminPasswordAgeDays is { } newAge && newAge < oldAge)
+                    Add("Security", ChangeKind.Changed, "Built-in administrator: password age (days)", oldAge.ToString(), newAge.ToString());
             }
             if (previous.AntivirusProducts is not null)
                 Set("Antivirus", Split(previous.AntivirusProducts).Select(p => (p, (string?)null)), security.AntivirusProducts.Select(p => (p, (string?)null)));
@@ -144,6 +149,9 @@ public static partial class InventoryDiff
         }
         return MergeUpdates(changes);
     }
+
+    /// <summary>Englische Bezeichnungen der Stufen der Benutzerkontensteuerung; zugleich Schlüssel für die Übersetzung.</summary>
+    public static readonly string[] UacLevels = ["never notify", "notify without dimming the desktop", "default", "always notify"];
 
     /// <summary>Modell plus Seriennummer: zwei gleiche Geräte bleiben unterscheidbar, ein Tausch wird sichtbar.</summary>
     private static string DiskKey(string model, string? serialNumber) =>
