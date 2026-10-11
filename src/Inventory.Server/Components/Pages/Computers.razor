@@ -282,7 +282,8 @@
     private bool Matches(Computer c) =>
         string.IsNullOrWhiteSpace(_search)
         || new[] { c.Name, c.ReportedName, c.IpAddress, c.Description, c.OsName, c.Model, c.LoggedOnUser, c.SerialNumber,
-                c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.Tags, c.PrimaryUser }
+                c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.Tags, c.PrimaryUser, c.Notes,
+                c.PurchaseDate?.ToString("yyyy-MM-dd"), c.WarrantyUntil?.ToString("yyyy-MM-dd") }
             .Any(v => v?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
 
     /// <summary>Die Auswahl, sonst alle gerade angezeigten Rechner.</summary>

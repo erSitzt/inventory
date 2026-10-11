@@ -23,6 +23,7 @@ namespace Inventory.Runner
             Section(data, "Prozessor", () => ReadProcessor(data));
             Section(data, "Software", () => ReadSoftware(data));
             Section(data, "Benutzerprofile", () => ReadUserProfiles(data));
+            Section(data, "Angemeldete Benutzer", () => ReadInteractiveUsers(data));
             Section(data, "Hotfixes", () => ReadHotfixes(data));
             Section(data, "Datenträger", () => ReadDisks(data));
             Section(data, "Netzwerk", () => ReadNetwork(data));
@@ -224,6 +225,28 @@ namespace Inventory.Runner
                 profile.LastUseUtc = Date(o, "LastUseTime") ?? RegistryFileTime(Text(o, "LocalPath"));
                 profile.Name = AccountName(sid) ?? System.IO.Path.GetFileName((Text(o, "LocalPath") ?? "").TrimEnd('\\'));
             }
+        }
+
+        /// <summary>Eine Desktop-Shell läuft nur in interaktiven Sitzungen: ihre Besitzer sind die angemeldeten Benutzer, auch per Remotedesktop.</summary>
+        private static void ReadInteractiveUsers(InventoryData data)
+        {
+            var users = new List<string>();
+            foreach (var o in Query("SELECT Handle FROM Win32_Process WHERE Name = 'explorer.exe'"))
+            {
+                if (!(o is ManagementObject process))
+                    continue;
+                using (var owner = process.InvokeMethod("GetOwner", null, null))
+                {
+                    var user = owner?["User"] as string;
+                    var domain = owner?["Domain"] as string;
+                    if (string.IsNullOrEmpty(user))
+                        continue;
+                    var name = string.IsNullOrEmpty(domain) ? user! : domain + "\\" + user;
+                    if (!users.Contains(name, StringComparer.OrdinalIgnoreCase))
+                        users.Add(name);
+                }
+            }
+            data.InteractiveUsers = users;
         }
 
         private static DateTime? RegistryFileTime(string? profilePath)

@@ -25,6 +25,11 @@ namespace Inventory.Contracts
         public int CpuLogicalProcessors { get; set; }
         public long MemoryBytes { get; set; }
         public string? LoggedOnUser { get; set; }
+        /// <summary>
+        /// Benutzer mit einer interaktiven Sitzung (Konsole oder Remotedesktop) zum Zeitpunkt des Scans, als DOMÄNE\name.
+        /// Dienste, geplante Aufgaben und Netzwerkanmeldungen zählen nicht. null bei Runnern, die das noch nicht erfassen.
+        /// </summary>
+        public List<string>? InteractiveUsers { get; set; }
 
         public List<SoftwareItem> Software { get; set; } = new List<SoftwareItem>();
         public List<HotfixItem> Hotfixes { get; set; } = new List<HotfixItem>();

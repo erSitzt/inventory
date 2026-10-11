@@ -44,7 +44,8 @@ public class Computer
 
     /// <summary>
     /// Wer das Gerät überwiegend nutzt: der Benutzer, der in den letzten 30 Tagen an den meisten Tagen bei einem Scan
-    /// angemeldet war; ohne solche Beobachtungen der mit dem zuletzt genutzten Profil.
+    /// interaktiv angemeldet war (Konsole oder Remotedesktop). Konten, mit denen der Server auf die Rechner zugreift,
+    /// zählen nie; ohne Beobachtung null.
     /// </summary>
     public string? PrimaryUser { get; set; }
 

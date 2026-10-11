@@ -37,6 +37,19 @@ public class AssetTests
         var second = (await computers.GetAsync(ids[1]))!;
         Assert.Equal(("Lager", "Halle 1", new DateOnly(2026, 12, 31)), (second.Owner, second.Location, second.WarrantyUntil));
 
+        // Gleicher Kurzname in zwei Domänen: der genaue Name trifft, der Kurzname allein ist mehrdeutig.
+        var twin = (await computers.ImportAsync("pc-02.other.example"))[0].Id;
+        result = await computers.ImportAssetsAsync("Name;Owner\npc-02.other.example;Einkauf\npc-02;Wer\n");
+        Assert.Equal(["pc-02.other.example"], result.Updated);
+        Assert.Contains("pc-02.corp.example", Assert.Single(result.Errors));
+        Assert.Equal("Einkauf", (await computers.GetAsync(twin))!.Owner);
+        Assert.Equal("Lager", (await computers.GetAsync(ids[1]))!.Owner);
+
+        // Deutsche Überschriften werden unabhängig von der Sprache des Aufrufers erkannt.
+        var german = await new ComputerService(db, new SimulatedHostProbe(), new GermanHeaders()).ImportAssetsAsync("Name;Zuständig;Standort\npc-01;Technik;Werk 1\n");
+        Assert.Equal(["pc-01"], german.Updated);
+        Assert.Equal(("Technik", "Werk 1"), ((await computers.GetAsync(ids[0]))!.Owner, (await computers.GetAsync(ids[0]))!.Location));
+
         await Assert.ThrowsAsync<InvalidOperationException>(() => computers.ImportAssetsAsync("Owner;Location\nA;B"));
         await Assert.ThrowsAsync<InvalidOperationException>(() => computers.ImportAssetsAsync("Name;Operating system\npc-01;x"));
     }
@@ -47,7 +60,8 @@ public class AssetTests
         using var db = new TestDb();
         var computers = new ComputerService(db, new SimulatedHostProbe());
         var id = (await computers.ImportAsync("pc-01"))[0].Id;
-        await computers.UpdateAssetAsync(id, new AssetData("Vertrieb", "Halle 2", null, null, null, new DateOnly(2027, 3, 1), "Kiosk", "Zeile 1; mit Semikolon"));
+        // Die Notiz beginnt mit einem Minus: der Export schützt sie vor Excel, der Import nimmt den Schutz wieder weg.
+        await computers.UpdateAssetAsync(id, new AssetData("Vertrieb", "Halle 2", "-5 Grad", null, null, new DateOnly(2027, 3, 1), "Kiosk", "Zeile 1; mit Semikolon"));
 
         var csv = await new ReportService(db).ComputersCsvAsync();
         var result = await computers.ImportAssetsAsync(csv.Replace("Halle 2", "Halle 3"));
@@ -56,50 +70,70 @@ public class AssetTests
         Assert.Empty(result.Errors);
         var computer = (await computers.GetAsync(id))!;
         Assert.Equal(("Vertrieb", "Halle 3", new DateOnly(2027, 3, 1), "Kiosk", "Zeile 1; mit Semikolon"), (computer.Owner, computer.Location, computer.WarrantyUntil, computer.Tags, computer.Notes));
+        Assert.Equal("-5 Grad", computer.CostCenter);
     }
 
     [Fact]
-    public async Task The_primary_user_is_whoever_was_logged_on_on_the_most_days()
+    public async Task The_primary_user_is_whoever_had_an_interactive_session_on_the_most_days_and_never_a_service_account()
     {
         using var db = new TestDb();
         var computers = new ComputerService(db, new SimulatedHostProbe());
         var store = new InventoryStore(db);
         var id = (await computers.ImportAsync("pc-01"))[0].Id;
-        InventoryData Scan(string? user) => new()
+        await using (var context = db.CreateDbContext())
         {
-            ComputerName = "PC-01", LoggedOnUser = user,
+            context.Credentials.Add(new Credential { Name = "Scan", Username = @"CORP\svc_scan", ProtectedPassword = "x" });
+            await context.SaveChangesAsync();
+        }
+        InventoryData Scan(params string[] interactive) => new()
+        {
+            ComputerName = "PC-01", InteractiveUsers = [.. interactive],
             UserProfiles =
             [
                 new UserProfileState { Sid = "S-1-5-21-1-2-3-1001", Name = @"CORP\anna", LastUseUtc = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc) },
-                new UserProfileState { Sid = "S-1-5-21-1-2-3-1002", Name = @"CORP\admin", LastUseUtc = new DateTime(2026, 10, 9, 8, 0, 0, DateTimeKind.Utc), Loaded = true },
+                // Das Konto des Servers hat ein Profil und es ist geladen, weil der Scan gerade läuft.
+                new UserProfileState { Sid = "S-1-5-21-1-2-3-1002", Name = @"CORP\svc_scan", LastUseUtc = new DateTime(2026, 10, 9, 8, 0, 0, DateTimeKind.Utc), Loaded = true },
             ],
         };
 
-        // Niemand angemeldet: das zuletzt genutzte Profil.
-        await store.SaveAsync(id, Scan(null));
+        // Niemand interaktiv angemeldet: kein Hauptbenutzer, auch wenn Profile vorhanden sind.
+        await store.SaveAsync(id, Scan());
         var detail = (await computers.GetDetailAsync(id))!;
-        Assert.Equal(@"CORP\admin", detail.PrimaryUser);
+        Assert.Null(detail.PrimaryUser);
         Assert.Equal(2, detail.UserProfiles.Count);
 
-        // Beobachtungen aus früheren Tagen: Anna an drei Tagen, der Administrator an einem.
+        // Das Dienstkonto zählt auch dann nicht, wenn es einmal interaktiv angemeldet war.
+        await store.SaveAsync(id, Scan(@"corp\SVC_SCAN"));
+        Assert.Null((await computers.GetAsync(id))!.PrimaryUser);
+
+        // Beobachtungen aus früheren Tagen: Anna an drei Tagen, Bernd an zweien; Bernds ältere Tage zählen nicht mehr.
         await using (var context = db.CreateDbContext())
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             context.UserSightings.AddRange(Enumerable.Range(1, 3).Select(d => new ComputerUserSighting { ComputerId = id, UserName = @"CORP\anna", Day = today.AddDays(-d) }));
-            // Zu alt, zählt nicht mehr.
-            context.UserSightings.AddRange(Enumerable.Range(40, 5).Select(d => new ComputerUserSighting { ComputerId = id, UserName = @"CORP\admin", Day = today.AddDays(-d) }));
+            context.UserSightings.AddRange(Enumerable.Range(40, 5).Select(d => new ComputerUserSighting { ComputerId = id, UserName = @"CORP\bernd", Day = today.AddDays(-d) }));
+            context.UserSightings.Add(new ComputerUserSighting { ComputerId = id, UserName = @"CORP\bernd", Day = today.AddDays(-1) });
             await context.SaveChangesAsync();
         }
-        await store.SaveAsync(id, Scan(@"CORP\admin"));
-        await store.SaveAsync(id, Scan(@"CORP\admin"));
+        // Zwei Scans am selben Tag zählen als ein Tag; auch die Remotedesktop-Sitzung zählt.
+        await store.SaveAsync(id, Scan(@"CORP\bernd", @"CORP\svc_scan"));
+        await store.SaveAsync(id, Scan(@"CORP\bernd"));
         Assert.Equal(@"CORP\anna", (await computers.GetAsync(id))!.PrimaryUser);
 
-        // Ein älterer Runner ohne Profilnamen lässt Profile und Hauptbenutzer stehen.
-        await store.SaveAsync(id, new InventoryData { ComputerName = "PC-01", UserProfiles = [new UserProfileState { Sid = "S-1-5-21-1-2-3-1001" }] });
+        // Ein älterer Runner meldet nur den Benutzer an der Konsole und keine Profilnamen: die Profile bleiben stehen.
+        await store.SaveAsync(id, new InventoryData { ComputerName = "PC-01", LoggedOnUser = @"CORP\anna", UserProfiles = [new UserProfileState { Sid = "S-1-5-21-1-2-3-1001" }] });
         detail = (await computers.GetDetailAsync(id))!;
         Assert.Equal(2, detail.UserProfiles.Count);
         Assert.Equal(@"CORP\anna", detail.PrimaryUser);
     }
+
+    [Theory]
+    [InlineData(@"CORP\svc_scan", "svc_scan")]
+    [InlineData("svc_scan@corp.example", "svc_scan")]
+    [InlineData(@".\Administrator", "Administrator")]
+    [InlineData("anna", "anna")]
+    public void Account_names_are_compared_without_domain(string user, string expected) =>
+        Assert.Equal(expected, InventoryStore.AccountName(user));
 
     [Fact]
     public void Rules_match_tags_asset_fields_and_remaining_warranty()
@@ -122,5 +156,18 @@ public class AssetTests
         // Ohne eingetragenes Datum passt nichts.
         Assert.False(Matches(RuleField.WarrantyDaysLeft, RuleOperator.LessThan, "90", new Computer { Name = "x" }));
         Assert.False(Matches(RuleField.WarrantyDaysLeft, RuleOperator.GreaterOrEqual, "0", new Computer { Name = "x" }));
+    }
+
+    /// <summary>Übersetzt nur unter deutscher Oberflächensprache, wie die echte Ressourcendatei.</summary>
+    private sealed class GermanHeaders : Microsoft.Extensions.Localization.IStringLocalizer<SharedResource>
+    {
+        private static readonly Dictionary<string, string> Texts = new() { ["Owner"] = "Zuständig", ["Location"] = "Standort" };
+
+        public Microsoft.Extensions.Localization.LocalizedString this[string name] =>
+            new(name, System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de" && Texts.TryGetValue(name, out var text) ? text : name);
+
+        public Microsoft.Extensions.Localization.LocalizedString this[string name, params object[] arguments] => new(name, string.Format(this[name].Value, arguments));
+
+        public IEnumerable<Microsoft.Extensions.Localization.LocalizedString> GetAllStrings(bool includeParentCultures) => [];
     }
 }

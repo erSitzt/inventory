@@ -103,7 +103,9 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var computers = await db.Computers.ToListAsync(ct);
-        var byName = computers.GroupBy(c => c.Name.Split('.')[0], StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        // Der genaue Name geht vor; der Kurzname hilft nur, wenn er eindeutig ist.
+        var exact = computers.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+        var byShortName = computers.GroupBy(c => c.Name.Split('.')[0], StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
         var updated = new List<string>();
         var unknown = new List<string>();
         var errors = new List<string>();
@@ -113,10 +115,20 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
             var name = nameIndex < row.Count ? row[nameIndex].Trim() : "";
             if (name.Length == 0)
                 continue;
-            if (!byName.TryGetValue(name.Split('.')[0], out var computer))
+            if (!exact.TryGetValue(name, out var computer))
             {
-                unknown.Add(name);
-                continue;
+                var candidates = byShortName.GetValueOrDefault(name.Split('.')[0]) ?? [];
+                if (candidates.Count > 1)
+                {
+                    errors.Add(L["{0}: several computers have this short name ({1}); use the full name.", name, string.Join(", ", candidates.Select(c => c.Name))]);
+                    continue;
+                }
+                if (candidates.Count == 0)
+                {
+                    unknown.Add(name);
+                    continue;
+                }
+                computer = candidates[0];
             }
             var asset = computer.Asset;
             var description = computer.Description;
@@ -126,7 +138,7 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
                 var cell = row[c].Trim();
                 if (columns[c] is not { } column || column == "Name" || cell.Length == 0)
                     continue;
-                var text = cell == "-" ? null : cell;
+                var text = cell == "-" ? null : AssetCsv.Unescape(cell);
                 switch (column)
                 {
                     case "Owner": asset = asset with { Owner = text }; break;

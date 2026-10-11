@@ -15,12 +15,38 @@ public static class AssetCsv
     /// <summary>Englische Spaltennamen; zugleich die Schlüssel der Übersetzung, unter der der Export sie schreibt.</summary>
     public static readonly string[] Columns = ["Name", "Owner", "Location", "Cost center", "Inventory number", "Purchase date", "Warranty until", "Tags", "Notes", "Description"];
 
-    /// <summary>Ordnet eine Überschrift ihrer Spalte zu, englisch oder in der Sprache des Aufrufers; null = unbekannte Spalte, wird ignoriert.</summary>
+    /// <summary>Sprachen, in denen der Export seine Spalten überschreibt.</summary>
+    private static readonly CultureInfo[] ExportCultures = [CultureInfo.GetCultureInfo("en"), CultureInfo.GetCultureInfo("de")];
+
+    /// <summary>
+    /// Ordnet eine Überschrift ihrer Spalte zu: englisch oder in einer der Sprachen des Exports, unabhängig von der Sprache
+    /// des Aufrufers. null = unbekannte Spalte, wird ignoriert.
+    /// </summary>
     public static string? Column(string header, IStringLocalizer<SharedResource> localizer)
     {
         var text = header.Trim().TrimStart('\uFEFF');
-        return Columns.FirstOrDefault(c => string.Equals(c, text, StringComparison.OrdinalIgnoreCase) || string.Equals(localizer[c].Value, text, StringComparison.OrdinalIgnoreCase));
+        if (Columns.FirstOrDefault(c => string.Equals(c, text, StringComparison.OrdinalIgnoreCase)) is { } direct)
+            return direct;
+        var previous = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (var culture in ExportCultures)
+            {
+                CultureInfo.CurrentUICulture = culture;
+                if (Columns.FirstOrDefault(c => string.Equals(localizer[c].Value, text, StringComparison.OrdinalIgnoreCase)) is { } translated)
+                    return translated;
+            }
+            return null;
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = previous;
+        }
     }
+
+    /// <summary>Der Export stellt Werten, die mit =, +, - oder @ beginnen, ein Hochkomma voran, damit Excel sie nicht als Formel ausführt.</summary>
+    public static string Unescape(string cell) =>
+        cell.Length > 1 && cell[0] == '\'' && cell[1] is '=' or '+' or '-' or '@' ? cell[1..] : cell;
 
     public static DateOnly? Date(string text) =>
         DateOnly.TryParseExact(text, ["yyyy-MM-dd", "d.M.yyyy", "dd.MM.yyyy", "M/d/yyyy", "yyyy-MM-dd HH:mm", "dd.MM.yyyy HH:mm:ss"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : null;

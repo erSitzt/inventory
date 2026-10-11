@@ -232,35 +232,53 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
     /// <summary>Über diesen Zeitraum wird beobachtet, wer ein Gerät nutzt.</summary>
     public const int PrimaryUserDays = 30;
 
-    /// <summary>Speichert die Benutzerprofile, merkt sich den gerade angemeldeten Benutzer und leitet daraus den Hauptbenutzer ab.</summary>
+    /// <summary>
+    /// Speichert die Benutzerprofile, merkt sich, wer gerade interaktiv angemeldet ist, und leitet daraus den Hauptbenutzer ab.
+    /// Konten, mit denen der Server selbst auf die Rechner zugreift, zählen dabei nie.
+    /// </summary>
     private static async Task SaveUsersAsync(InventoryDbContext db, Computer computer, InventoryData data, DateTime now, CancellationToken ct)
     {
+        var serviceAccounts = (await db.Credentials.AsNoTracking().Select(c => c.Username).ToListAsync(ct)).Select(AccountName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var today = DateOnly.FromDateTime(now);
         var since = today.AddDays(-PrimaryUserDays);
         await db.UserSightings.Where(s => s.ComputerId == computer.Id && s.Day < since).ExecuteDeleteAsync(ct);
         var sightings = await db.UserSightings.Where(s => s.ComputerId == computer.Id).ToListAsync(ct);
-        if (!string.IsNullOrWhiteSpace(data.LoggedOnUser) && !sightings.Any(s => s.Day == today && string.Equals(s.UserName, data.LoggedOnUser, StringComparison.OrdinalIgnoreCase)))
+
+        // Ältere Runner kennen nur den Benutzer an der Konsole.
+        var interactive = data.InteractiveUsers ?? (string.IsNullOrWhiteSpace(data.LoggedOnUser) ? [] : [data.LoggedOnUser]);
+        foreach (var user in interactive.Select(u => u.Trim()).Where(u => u.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            var sighting = new ComputerUserSighting { ComputerId = computer.Id, UserName = data.LoggedOnUser.Trim(), Day = today };
+            if (sightings.Any(s => s.Day == today && string.Equals(s.UserName, user, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            var sighting = new ComputerUserSighting { ComputerId = computer.Id, UserName = user, Day = today };
             db.UserSightings.Add(sighting);
             sightings.Add(sighting);
         }
 
         // Ältere Runner nennen nur die SIDs: ohne Namen gibt es nichts anzuzeigen, der vorige Stand bleibt.
         var named = data.UserProfiles?.Where(p => !string.IsNullOrWhiteSpace(p.Name)).ToList();
-        List<ComputerUserProfile>? profiles = null;
         if (named is { Count: > 0 })
         {
             await db.UserProfiles.Where(x => x.ComputerId == computer.Id).ExecuteDeleteAsync(ct);
-            profiles = named.Select(p => new ComputerUserProfile { ComputerId = computer.Id, UserName = p.Name!, Sid = p.Sid, LastUseUtc = p.LastUseUtc, Loaded = p.Loaded }).ToList();
-            db.UserProfiles.AddRange(profiles);
+            db.UserProfiles.AddRange(named.Select(p => new ComputerUserProfile { ComputerId = computer.Id, UserName = p.Name!, Sid = p.Sid, LastUseUtc = p.LastUseUtc, Loaded = p.Loaded }));
         }
 
-        var observed = sightings.GroupBy(s => s.UserName, StringComparer.OrdinalIgnoreCase)
+        // Nur beobachtete interaktive Sitzungen zählen: ein bloß vorhandenes oder geladenes Profil (Dienst, geplante Aufgabe,
+        // Zugriff des Servers) sagt nichts darüber, wer am Gerät arbeitet. Ohne Beobachtung gibt es keinen Hauptbenutzer.
+        computer.PrimaryUser = sightings.Where(s => !serviceAccounts.Contains(AccountName(s.UserName)))
+            .GroupBy(s => s.UserName, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(g => g.Count()).ThenByDescending(g => g.Max(s => s.Day)).FirstOrDefault()?.Key;
-        computer.PrimaryUser = observed
-                               ?? profiles?.Where(p => p.LastUseUtc is not null).OrderByDescending(p => p.LastUseUtc).FirstOrDefault()?.UserName
-                               ?? computer.PrimaryUser;
+    }
+
+    /// <summary>Kontoname ohne Domäne oder Rechner: aus DOMÄNE\\name, name@domäne und .\\name wird name.</summary>
+    internal static string AccountName(string user)
+    {
+        var name = user.Trim();
+        var slash = name.LastIndexOf('\\');
+        if (slash >= 0)
+            name = name[(slash + 1)..];
+        var at = name.IndexOf('@');
+        return at > 0 ? name[..at] : name;
     }
 
     /// <summary>

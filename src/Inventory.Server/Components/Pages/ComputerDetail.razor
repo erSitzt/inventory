@@ -507,13 +507,13 @@ else if (_computer.ReverseDnsMismatch)
     <MudTabPanel Text="@($"{L["Profiles"]} ({_computer.UserProfiles.Count})")">
         <MudText Typo="Typo.body2" Class="mb-2">
             @L["Primary user: {0}.", _computer.PrimaryUser ?? "–"]
-            @L["That is who was logged on at the console on the most days during scans of the last {0} days; without such observations, the most recently used profile.", InventoryStore.PrimaryUserDays]
+            @L["That is who had an interactive session (console or Remote Desktop) on the most days during scans of the last {0} days. Accounts stored as credentials never count; services and scheduled tasks do not either.", InventoryStore.PrimaryUserDays]
         </MudText>
         <MudDataGrid T="ComputerUserProfile" Items="@_computer.UserProfiles.OrderByDescending(p => p.LastUseUtc)" Dense="true" Hover="true" SortMode="SortMode.None">
             <Columns>
                 <PropertyColumn Property="p => p.UserName" Title="@L["User"]" />
                 <TemplateColumn Title="@L["Last used"]"><CellTemplate>@(context.Item.LastUseUtc is null ? "–" : Display.LocalTime(context.Item.LastUseUtc))</CellTemplate></TemplateColumn>
-                <TemplateColumn Title="@L["Logged on during the scan"]"><CellTemplate>@(context.Item.Loaded ? L["yes"] : "")</CellTemplate></TemplateColumn>
+                <TemplateColumn Title="@L["Profile loaded during the scan"]"><CellTemplate>@(context.Item.Loaded ? L["yes"] : "")</CellTemplate></TemplateColumn>
             </Columns>
             <NoRecordsContent>
                 <MudText Class="pa-4">@L["Not captured yet. Profiles are read with the next scan."]</MudText>

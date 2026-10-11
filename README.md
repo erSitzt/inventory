@@ -23,8 +23,9 @@ credentials. The user interface is available in English and German; translations
 - **Asset data**: owner, location, cost center, inventory number, purchase date, end of warranty, tags and notes per
   computer – edited in the UI, via the API or imported from a CSV table (the computer export can be edited and read
   back in); the overview points out warranties that end within 90 days
-- **Primary user**: who was logged on at the console on the most days during the scans of the last 30 days, plus the
-  list of user profiles per computer
+- **Primary user**: who had an interactive session (console or Remote Desktop) on the most days during the scans of
+  the last 30 days – accounts stored as credentials, services and scheduled tasks never count – plus the list of user
+  profiles per computer
 - **Hardware and platform security**: device type (desktop/laptop/server/virtual machine), UEFI and Secure Boot, TPM,
   BitLocker per volume, graphics, memory modules and free slots, physical disks with type and health, battery health,
   monitors and printers
