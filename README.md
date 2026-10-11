@@ -14,6 +14,9 @@ credentials. The user interface is available in English and German; translations
   (computers with name anomalies are skipped)
 - **Inventory scan**: system, operating system, processor, software, hotfixes, disks, network, services, local users
   and administrators, firewall, antivirus and Windows Update status
+- **System configuration**: Remote Desktop and network level authentication, User Account Control, SMB 1, Credential
+  Guard, memory integrity, LSA protection, built-in administrator account (active, password age), Windows activation,
+  last logon and password age of local accounts – all usable as collection rules
 - **Hardware and platform security**: device type (desktop/laptop/server/virtual machine), UEFI and Secure Boot, TPM,
   BitLocker per volume, graphics, memory modules and free slots, physical disks with type and health, battery health,
   monitors and printers

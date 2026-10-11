@@ -156,7 +156,9 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
             L["Processor"], L["Memory (GB)"], L["User"], L["Last boot (UTC)"], L["Last scan (UTC)"], L["Description"],
             L["Firewall domain"], L["Firewall private"], L["Firewall public"], L["Defender real-time protection"], L["Defender signature (UTC)"], L["Antivirus"],
             L["Last update installation (UTC)"], L["Pending updates"], L["Reboot pending"],
-            L["Device type"], L["Firmware"], "Secure Boot", "TPM", L["TPM ready"], L["BitLocker (system drive)"], L["Graphics"], L["Battery health (%)"], L["BIOS date"]);
+            L["Device type"], L["Firmware"], "Secure Boot", "TPM", L["TPM ready"], L["BitLocker (system drive)"], L["Graphics"], L["Battery health (%)"], L["BIOS date"],
+            L["Remote Desktop"], L["Network level authentication"], L["User Account Control"], L["User Account Control level"], "SMB 1", "Credential Guard", L["Memory integrity"], L["LSA protection"],
+            L["Built-in administrator account"], L["Built-in administrator: password age (days)"], L["Windows activated"]);
         foreach (var c in await db.Computers.AsNoTracking().OrderBy(c => c.Name).ToListAsync(ct))
         {
             Row(csv, c.Name, c.ReportedName, YesNo(c.IsOnline), c.IpAddress, c.OsName, c.OsVersion, c.OsRelease, c.Manufacturer, c.Model, c.SerialNumber,
@@ -167,7 +169,10 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
                 c.UpdateLastInstallUtc?.ToString("yyyy-MM-dd HH:mm"), c.UpdatePendingCount?.ToString(), YesNo(c.UpdateRebootRequired),
                 c.ChassisType is null ? null : L[Chassis.Label(Chassis.Kind(c.ChassisType, c.Model))], c.FirmwareType, YesNo(c.SecureBoot),
                 c.TpmPresent == false ? L["none"] : c.TpmVersion, YesNo(c.TpmReady), YesNo(c.SystemDriveProtected), c.Gpu,
-                c.BatteryHealthPercent?.ToString(), c.BiosDateUtc?.ToString("yyyy-MM-dd"));
+                c.BatteryHealthPercent?.ToString(), c.BiosDateUtc?.ToString("yyyy-MM-dd"),
+                YesNo(c.RdpEnabled), YesNo(c.RdpNla), YesNo(c.UacEnabled), c.UacLevel is >= 0 and <= 3 ? L[InventoryDiff.UacLevels[c.UacLevel.Value]] : null,
+                YesNo(c.Smb1Enabled), YesNo(c.CredentialGuard), YesNo(c.MemoryIntegrity), YesNo(c.LsaProtection),
+                YesNo(c.BuiltinAdminEnabled), c.BuiltinAdminPasswordAgeDays?.ToString(), YesNo(c.WindowsActivated));
         }
         return csv.ToString();
     }

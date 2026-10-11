@@ -109,6 +109,21 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.UpdatePendingCount = security.UpdatePending?.Count;
             computer.UpdatePending = security.UpdatePending is null ? null : string.Join('\n', security.UpdatePending);
             computer.UpdateServer = security.UpdateServer;
+            if (security.Posture is { } posture)
+            {
+                // Ein Wert, der sich diesmal nicht lesen ließ, ist nicht verschwunden: den vorigen behalten.
+                computer.RdpEnabled = posture.RdpEnabled ?? computer.RdpEnabled;
+                computer.RdpNla = posture.RdpNla ?? computer.RdpNla;
+                computer.UacEnabled = posture.UacEnabled ?? computer.UacEnabled;
+                computer.UacLevel = posture.UacLevel ?? computer.UacLevel;
+                computer.Smb1Enabled = posture.Smb1Enabled ?? computer.Smb1Enabled;
+                computer.CredentialGuard = posture.CredentialGuard ?? computer.CredentialGuard;
+                computer.MemoryIntegrity = posture.MemoryIntegrity ?? computer.MemoryIntegrity;
+                computer.LsaProtection = posture.LsaProtection ?? computer.LsaProtection;
+                computer.BuiltinAdminEnabled = posture.BuiltinAdminEnabled ?? computer.BuiltinAdminEnabled;
+                computer.BuiltinAdminPasswordAgeDays = posture.BuiltinAdminPasswordAgeDays ?? computer.BuiltinAdminPasswordAgeDays;
+                computer.WindowsActivated = posture.WindowsActivated ?? computer.WindowsActivated;
+            }
         }
 
         await db.Software.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
@@ -145,6 +160,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         db.LocalUsers.AddRange(data.LocalUsers.Select(u => new ComputerLocalUser
         {
             ComputerId = computerId, Name = u.Name, FullName = u.FullName, Description = u.Description, Disabled = u.Disabled, Sid = u.Sid,
+            PasswordAgeDays = u.PasswordAgeDays, LastLogonUtc = u.LastLogonUtc,
         }));
         db.LocalAdmins.AddRange(data.LocalAdmins.Select(a => new ComputerLocalAdmin
         {

@@ -53,6 +53,16 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         RuleField.RebootRequired => T("Reboot pending"),
         RuleField.PendingUpdates => T("Pending updates (count)"),
         RuleField.DaysSinceUpdate => T("Days since last update installation"),
+        RuleField.RdpEnabled => T("Remote Desktop enabled"),
+        RuleField.RdpWithoutNla => T("Remote Desktop without network level authentication"),
+        RuleField.UacOff => T("User Account Control off"),
+        RuleField.Smb1Enabled => T("SMB 1 enabled"),
+        RuleField.CredentialGuard => T("Credential Guard running"),
+        RuleField.MemoryIntegrity => T("Memory integrity on"),
+        RuleField.LsaProtection => T("LSA protection on"),
+        RuleField.BuiltinAdminEnabled => T("Built-in administrator account active"),
+        RuleField.BuiltinAdminPasswordAgeDays => T("Built-in administrator: password age (days)"),
+        RuleField.NotActivated => T("Windows not activated"),
         RuleField.Online => T("Online"),
         RuleField.Scanned => T("Scanned"),
         RuleField.OsName => T("Operating system"),
@@ -82,8 +92,10 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     public IReadOnlyList<RuleOperator> OperatorsFor(RuleField field) => field switch
     {
         RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
-            or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired => [RuleOperator.Equals],
-        RuleField.PendingUpdates or RuleField.DaysSinceUpdate => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
+            or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
+            or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
+            or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated => [RuleOperator.Equals],
+        RuleField.PendingUpdates or RuleField.DaysSinceUpdate or RuleField.BuiltinAdminPasswordAgeDays => [RuleOperator.GreaterOrEqual, RuleOperator.LessThan, RuleOperator.Equals],
         RuleField.MemoryGb => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals],
         RuleField.OsVersion => [RuleOperator.StartsWith, RuleOperator.LessThan, RuleOperator.GreaterOrEqual, RuleOperator.Equals, RuleOperator.Contains],
         RuleField.Software or RuleField.LocalAdmin => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
@@ -232,7 +244,9 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
 
     /// <summary>Felder, die nur "ja" oder "nein" kennen.</summary>
     public bool IsFlag(RuleField field) => field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
-        or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired;
+        or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
+        or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
+        or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated;
 
     public string OnOff(bool? value) => value switch { true => T("on"), false => T("off"), null => T("unknown") };
 
@@ -248,6 +262,8 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     };
 
     public string YesNo(bool value) => value ? T("yes") : T("no");
+
+    public string UacLevel(int? level) => level is >= 0 and <= 3 ? T(InventoryDiff.UacLevels[level.Value]) : T("unknown");
 
     public string Chassis(Computer computer) => T(Core.Chassis.Label(Core.Chassis.Kind(computer.ChassisType, computer.Model)));
 

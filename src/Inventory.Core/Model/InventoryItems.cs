@@ -70,6 +70,8 @@ public class ComputerLocalUser
     public string? Description { get; set; }
     public bool Disabled { get; set; }
     public string? Sid { get; set; }
+    public int? PasswordAgeDays { get; set; }
+    public DateTime? LastLogonUtc { get; set; }
 }
 
 /// <summary>Mitglied der lokalen Administratorengruppe.</summary>
