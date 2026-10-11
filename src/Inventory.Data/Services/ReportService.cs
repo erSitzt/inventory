@@ -170,7 +170,8 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
             L["Last update installation (UTC)"], L["Pending updates"], L["Pending security updates"], L["Reboot pending"],
             L["Device type"], L["Firmware"], "Secure Boot", "TPM", L["TPM ready"], L["BitLocker (system drive)"], L["Graphics"], L["Battery health (%)"], L["BIOS date"],
             L["Remote Desktop"], L["Network level authentication"], L["User Account Control"], L["User Account Control level"], "SMB 1", "Credential Guard", L["Memory integrity"], L["LSA protection"],
-            L["Built-in administrator account"], L["Built-in administrator: password age (days)"], L["Windows activated"]);
+            L["Built-in administrator account"], L["Built-in administrator: password age (days)"], L["Windows activated"],
+            L["AD organizational unit"], L["AD groups"], L["AD description"], L["Last AD logon (UTC)"]);
         foreach (var c in await db.Computers.AsNoTracking().OrderBy(c => c.Name).ToListAsync(ct))
         {
             Row(csv, c.Name, c.ReportedName, YesNo(c.IsOnline), c.IpAddress, c.OsName, c.OsVersion, c.OsRelease, c.Manufacturer, c.Model, c.SerialNumber,
@@ -184,7 +185,8 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
                 c.BatteryHealthPercent?.ToString(), c.BiosDateUtc?.ToString("yyyy-MM-dd"),
                 YesNo(c.RdpEnabled), YesNo(c.RdpNla), YesNo(c.UacEnabled), c.UacLevel is >= 0 and <= 3 ? L[InventoryDiff.UacLevels[c.UacLevel.Value]] : null,
                 YesNo(c.Smb1Enabled), YesNo(c.CredentialGuard), YesNo(c.MemoryIntegrity), YesNo(c.LsaProtection),
-                YesNo(c.BuiltinAdminEnabled), c.BuiltinAdminPasswordAgeDays?.ToString(), YesNo(c.WindowsActivated));
+                YesNo(c.BuiltinAdminEnabled), c.BuiltinAdminPasswordAgeDays?.ToString(), YesNo(c.WindowsActivated),
+                c.DirectoryOu, string.Join(", ", c.DirectoryGroupNames), c.DirectoryDescription, c.DirectoryLastLogonUtc?.ToString("yyyy-MM-dd HH:mm"));
         }
         return csv.ToString();
     }

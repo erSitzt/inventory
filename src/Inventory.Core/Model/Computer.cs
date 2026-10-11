@@ -35,6 +35,17 @@ public class Computer
     /// <summary>Das Computerkonto ist im Verzeichnis deaktiviert.</summary>
     public bool DirectoryDisabled { get; set; }
     public bool MissingInDirectory => DirectoryMissingSinceUtc is not null;
+    /// <summary>Container des Computerkontos als Distinguished Name, z. B. OU=Laptops,OU=Clients,DC=corp,DC=example.</summary>
+    public string? DirectoryPath { get; set; }
+    /// <summary>Lesbarer Pfad der Organisationseinheit, z. B. "Clients/Laptops".</summary>
+    public string? DirectoryOu => DirectoryNames.Path(DirectoryPath);
+    /// <summary>Namen der Gruppen, in denen das Konto direkt Mitglied ist, einer je Zeile.</summary>
+    public string? DirectoryGroups { get; set; }
+    public IEnumerable<string> DirectoryGroupNames => (DirectoryGroups ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+    /// <summary>Beschreibung des Computerkontos im Verzeichnis.</summary>
+    public string? DirectoryDescription { get; set; }
+    /// <summary>Letzte Anmeldung des Kontos an der Domäne; das Verzeichnis gleicht den Wert nur etwa alle zwei Wochen ab.</summary>
+    public DateTime? DirectoryLastLogonUtc { get; set; }
 
     // Aus dem letzten Inventar-Scan
     /// <summary>Name, den der Rechner selbst meldet; kann vom Eintrag abweichen (veralteter DNS-Eintrag, CNAME, IP-Adresse).</summary>

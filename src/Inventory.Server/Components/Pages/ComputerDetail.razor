@@ -108,6 +108,13 @@ else if (_computer.ReverseDnsMismatch)
                         @Row(L["Collections"], string.Join(", ", _computer.Collections.Select(c => c.Name)))
                         @Row(L["Agent"], _computer.AgentKeyHash is null ? L["not installed"] : L["Version {0}, last contact {1}", _computer.AgentVersion, Display.LocalTime(_computer.AgentLastSeenUtc)])
                         @Row(L["Description"], _computer.Description)
+                        @if (_computer.DirectorySeenUtc is not null)
+                        {
+                            @Row(L["AD organizational unit"], _computer.DirectoryOu)
+                            @Row(L["AD groups"], string.Join(", ", _computer.DirectoryGroupNames))
+                            @Row(L["AD description"], _computer.DirectoryDescription)
+                            @Row(L["Last AD logon"], _computer.DirectoryLastLogonUtc is null ? null : Display.LocalTime(_computer.DirectoryLastLogonUtc))
+                        }
                     </tbody>
                 </MudSimpleTable>
             </MudItem>

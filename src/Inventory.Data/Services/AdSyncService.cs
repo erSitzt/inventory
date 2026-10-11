@@ -81,7 +81,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
             var preview = plan.Preview;
             var added = await computers.ImportAsync(string.Join('\n', preview.NewNames), ct);
             foreach (var computer in added)
-                plan.States[computer.Id] = (true, false);
+                plan.States[computer.Id] = (true, false, plan.Found.GetValueOrDefault(ShortName(computer.Name)));
             await computers.SetDirectoryStateAsync(plan.States, plan.NowUtc, ct);
 
             result = L["{0} computer accounts found, {1} newly created", preview.Total, added.Count].Value;
@@ -120,7 +120,8 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         return true;
     }
 
-    private sealed record Plan(AdSyncPreview Preview, Dictionary<int, (bool Present, bool Disabled)> States, List<int> DeleteIds, DateTime NowUtc);
+    private sealed record Plan(AdSyncPreview Preview, Dictionary<int, (bool Present, bool Disabled, DirectoryComputer? Account)> States, List<int> DeleteIds, DateTime NowUtc,
+        Dictionary<string, DirectoryComputer> Found);
 
     private async Task<Plan> PlanAsync(CancellationToken ct)
     {
@@ -134,7 +135,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         var known = existing.Select(c => ShortName(c.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var newNames = found.Values.Where(c => Counts(c) && !known.Contains(c.Name)).Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase).ToList();
 
-        var states = new Dictionary<int, (bool Present, bool Disabled)>();
+        var states = new Dictionary<int, (bool Present, bool Disabled, DirectoryComputer? Account)>();
         var missing = new List<Computer>();
         var delete = new List<Computer>();
         // Ein leeres Ergebnis ist fast immer eine falsche Suchwurzel oder fehlende Leserechte, kein leeres Verzeichnis.
@@ -145,12 +146,12 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
                 var account = found.GetValueOrDefault(ShortName(computer.Name));
                 if (account is not null && Counts(account))
                 {
-                    states[computer.Id] = (true, !account.Enabled);
+                    states[computer.Id] = (true, !account.Enabled, account);
                 }
                 else if (account is not null || computer.DirectorySeenUtc is not null)
                 {
                     // Nur Rechner, die das Verzeichnis kennt oder kannte; von Hand angelegte bleiben unberührt.
-                    states[computer.Id] = (false, account is { Enabled: false });
+                    states[computer.Id] = (false, account is { Enabled: false }, account);
                     missing.Add(computer);
                     if (current.MissingAction == AdMissingAction.Delete && computer.DirectoryMissingSinceUtc is { } since && now - since >= TimeSpan.FromDays(current.MissingDays))
                         delete.Add(computer);
@@ -164,7 +165,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
             states.Remove(computer.Id);
 
         var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked);
-        return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now);
+        return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now, found);
     }
 
     private static string ShortName(string name) => name.Split('.')[0];

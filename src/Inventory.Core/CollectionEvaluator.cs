@@ -52,6 +52,11 @@ public static class CollectionEvaluator
         RuleField.PendingSecurityUpdates => Text(rule, computer.UpdatePendingSecurityCount?.ToString(CultureInfo.InvariantCulture)),
         RuleField.Hotfix => AnyOrNone(rule, computer.Hotfixes.Select(h => h.HotfixId)),
         RuleField.PendingUpdate => AnyOrNone(rule, computer.PendingUpdates.SelectMany(u => new[] { u.Title }.Concat((u.KbIds ?? "").Split(", ", StringSplitOptions.RemoveEmptyEntries)))),
+        RuleField.DirectoryOu => AnyOrNone(rule, new[] { computer.DirectoryOu, computer.DirectoryPath }.Where(v => v is not null).Select(v => v!)),
+        RuleField.DirectoryGroup => AnyOrNone(rule, computer.DirectoryGroupNames),
+        RuleField.DaysSinceDirectoryLogon => Text(rule, computer.DirectoryLastLogonUtc is { } logon
+            ? ((int)(DateTime.UtcNow - logon).TotalDays).ToString(CultureInfo.InvariantCulture) : null),
+        RuleField.DirectoryDescription => Text(rule, computer.DirectoryDescription),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         _ => false,
     };

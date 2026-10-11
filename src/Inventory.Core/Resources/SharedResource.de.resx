@@ -95,6 +95,18 @@
   <data name="Active: {0}" xml:space="preserve">
     <value>Aktiv: {0}</value>
   </data>
+  <data name="AD description" xml:space="preserve">
+    <value>AD-Beschreibung</value>
+  </data>
+  <data name="AD group (direct member)" xml:space="preserve">
+    <value>AD-Gruppe (direktes Mitglied)</value>
+  </data>
+  <data name="AD groups" xml:space="preserve">
+    <value>AD-Gruppen</value>
+  </data>
+  <data name="AD organizational unit" xml:space="preserve">
+    <value>AD-Organisationseinheit</value>
+  </data>
   <data name="AD synchronization: {0}, server {1}, every {2} h, disabled accounts {3}, missing computers: {4}" xml:space="preserve">
     <value>AD-Synchronisation: {0}, Server {1}, alle {2} h, deaktivierte Konten {3}, fehlende Rechner: {4}</value>
   </data>
@@ -592,6 +604,9 @@
   </data>
   <data name="Date" xml:space="preserve">
     <value>Datum</value>
+  </data>
+  <data name="Days since last AD logon" xml:space="preserve">
+    <value>Tage seit der letzten AD-Anmeldung</value>
   </data>
   <data name="Days since last update installation" xml:space="preserve">
     <value>Tage seit letzter Update-Installation</value>
@@ -1141,6 +1156,12 @@
   </data>
   <data name="last 24 hours" xml:space="preserve">
     <value>letzte 24 Stunden</value>
+  </data>
+  <data name="Last AD logon" xml:space="preserve">
+    <value>Letzte AD-Anmeldung</value>
+  </data>
+  <data name="Last AD logon (UTC)" xml:space="preserve">
+    <value>Letzte AD-Anmeldung (UTC)</value>
   </data>
   <data name="Last boot" xml:space="preserve">
     <value>Letzter Start</value>

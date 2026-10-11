@@ -79,14 +79,23 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
 
     /// <summary>Hält fest, was die Verzeichnis-Synchronisation über die Rechner herausgefunden hat.</summary>
     /// <param name="states">Je Rechner: im Verzeichnis vorhanden (und nicht ausgeschlossen), Konto deaktiviert.</param>
-    public async Task SetDirectoryStateAsync(IReadOnlyDictionary<int, (bool Present, bool Disabled)> states, DateTime nowUtc, CancellationToken ct = default)
+    /// <param name="states">Je Rechner: ob das Konto vorhanden und ob es deaktiviert ist, dazu das Konto selbst, soweit das Verzeichnis es geliefert hat.</param>
+    public async Task SetDirectoryStateAsync(IReadOnlyDictionary<int, (bool Present, bool Disabled, DirectoryComputer? Account)> states, DateTime nowUtc, CancellationToken ct = default)
     {
         var ids = states.Keys.ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         foreach (var computer in await db.Computers.Where(c => ids.Contains(c.Id)).ToListAsync(ct))
         {
-            var (present, disabled) = states[computer.Id];
+            var (present, disabled, account) = states[computer.Id];
             computer.DirectoryDisabled = disabled;
+            // Ohne Antwort zum Konto (es fehlt) bleibt stehen, was zuletzt bekannt war.
+            if (account is not null)
+            {
+                computer.DirectoryPath = DirectoryNames.Parent(account.DistinguishedName);
+                computer.DirectoryGroups = account.Groups is { Count: > 0 } groups ? string.Join('\n', groups) : null;
+                computer.DirectoryDescription = account.Description;
+                computer.DirectoryLastLogonUtc = account.LastLogonUtc;
+            }
             if (present)
             {
                 computer.DirectorySeenUtc = nowUtc;
