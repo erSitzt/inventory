@@ -22,7 +22,8 @@ public sealed record SoftwareGroup(string Name, string? Publisher, int Computers
 
 /// <summary>Ein ausstehendes Update über alle Rechner hinweg.</summary>
 /// <param name="Key">KB-Nummern, sonst der Titel; damit lassen sich die betroffenen Rechner abfragen.</param>
-public sealed record PendingUpdateSummary(string Key, string? KbIds, string Title, string? Classification, string? Severity, bool IsSecurity, int Computers);
+/// <param name="ComputerNames">Namen der Rechner, auf denen das Update aussteht.</param>
+public sealed record PendingUpdateSummary(string Key, string? KbIds, string Title, string? Classification, string? Severity, bool IsSecurity, int Computers, List<string> ComputerNames);
 
 /// <summary>Patch-Stand: was wo aussteht und wie viele Rechner ohne offene Sicherheitsupdates sind.</summary>
 /// <param name="Computers">Alle Rechner, deren Update-Stand bekannt ist.</param>
@@ -205,12 +206,14 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var rows = await db.PendingUpdates.AsNoTracking().ToListAsync(ct);
+        var names = await db.Computers.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Name, ct);
         var updates = rows.GroupBy(u => u.Key, StringComparer.OrdinalIgnoreCase)
             .Select(g =>
             {
                 // Ältere Runner kennen Klassifizierung und Schweregrad nicht: die vollständigste Meldung beschreibt das Update.
                 var best = g.OrderByDescending(u => u.Classification is not null).ThenByDescending(u => u.Severity is not null).First();
-                return new PendingUpdateSummary(g.Key, best.KbIds, best.Title, best.Classification, best.Severity, g.Any(u => u.IsSecurity), g.Select(u => u.ComputerId).Distinct().Count());
+                return new PendingUpdateSummary(g.Key, best.KbIds, best.Title, best.Classification, best.Severity, g.Any(u => u.IsSecurity), g.Select(u => u.ComputerId).Distinct().Count(),
+                    g.Select(u => names.GetValueOrDefault(u.ComputerId) ?? "").Distinct().Order(StringComparer.OrdinalIgnoreCase).ToList());
             })
             .OrderByDescending(u => u.IsSecurity).ThenByDescending(u => u.Computers).ThenBy(u => u.Title, StringComparer.OrdinalIgnoreCase).ToList();
         var computers = await db.Computers.AsNoTracking().Where(c => c.UpdatePendingCount != null).OrderBy(c => c.Name).ToListAsync(ct);

@@ -25,7 +25,7 @@
             <MudGrid>
                 <MudItem xs="12" lg="@(_selected is null ? 12 : 8)">
                     <MudDataGrid T="PendingUpdateSummary" Items="_report.Updates" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50"
-                                 QuickFilter="@(u => Matches(u.KbIds, u.Title))">
+                                 QuickFilter="@(u => Matches([u.KbIds, u.Title, .. u.ComputerNames]))">
                         <Columns>
                             <TemplateColumn Title="KB" SortBy="u => u.KbIds" CellStyle="white-space: nowrap">
                                 <CellTemplate>@(context.Item.KbIds ?? "–")</CellTemplate>

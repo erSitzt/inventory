@@ -46,6 +46,7 @@ public class PatchTests
         Assert.Equal(1, report.Compliant);
         var top = report.Updates[0];
         Assert.Equal(("KB5066835", 2, true, "Critical"), (top.Key, top.Computers, top.IsSecurity, top.Severity));
+        Assert.Equal(["pc-01", "pc-02"], top.ComputerNames);
         Assert.Equal(["pc-01", "pc-02"], (await reports.ComputersMissingUpdateAsync(top.Key)).Select(c => c.Name));
 
         var csv = await reports.PendingUpdatesCsvAsync();
@@ -126,6 +127,7 @@ public class PatchTests
     [InlineData("Definition Updates", null, "Security Intelligence Update", false)]
     [InlineData(null, null, "2026-10 Kumulatives Update für Windows 11 (KB5066835)", true)]
     [InlineData(null, null, "Update for Microsoft Defender Antivirus antimalware platform", false)]
+    [InlineData(null, null, "Security Intelligence Update for Microsoft Defender Antivirus - KB2267602", false)]
     public void Security_relevance_follows_classification_severity_or_the_title(string? classification, string? severity, string title, bool expected) =>
         Assert.Equal(expected, PendingUpdates.IsSecurity(classification, severity, title));
 }

@@ -21,6 +21,9 @@ public static partial class PendingUpdates
             return true;
         if (classification is not null)
             return false;
+        // Signaturupdates des Virenschutzes heißen "Security Intelligence Update", sind aber Definitionsupdates.
+        if (new[] { "Security Intelligence", "Definition", "Defender" }.Any(word => title.Contains(word, StringComparison.OrdinalIgnoreCase)))
+            return false;
         return new[] { "Security", "Sicherheit", "Cumulative", "Kumulativ" }.Any(word => title.Contains(word, StringComparison.OrdinalIgnoreCase));
     }
 }

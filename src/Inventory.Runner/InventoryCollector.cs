@@ -973,9 +973,9 @@ namespace Inventory.Runner
                                 item.KbIds.Add("KB" + (string)kb);
                             foreach (dynamic category in update.Categories)
                             {
-                                // Der Name der Kategorie ist übersetzt, ihre Kennung nicht.
+                                // Der Name der Kategorie ist übersetzt, ihre Kennung nicht; eine unbekannte Kennung bleibt deshalb leer.
                                 if ((string)category.Type == "UpdateClassification")
-                                    item.Classification = UpdateClassification((string)category.CategoryID) ?? (string)category.Name;
+                                    item.Classification = UpdateClassification((string)category.CategoryID);
                             }
                             var severity = (string)update.MsrcSeverity;
                             item.Severity = string.IsNullOrWhiteSpace(severity) ? null : severity;
