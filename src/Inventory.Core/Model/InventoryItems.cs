@@ -82,6 +82,65 @@ public class ComputerLocalAdmin
     public string? Sid { get; set; }
 }
 
+public class ComputerMemoryModule
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public required string Slot { get; set; }
+    public string? Manufacturer { get; set; }
+    public string? PartNumber { get; set; }
+    public string? SerialNumber { get; set; }
+    public long CapacityBytes { get; set; }
+    public int? SpeedMhz { get; set; }
+    public string? Type { get; set; }
+}
+
+public class ComputerPhysicalDisk
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public required string Model { get; set; }
+    public string? SerialNumber { get; set; }
+    /// <summary>"SSD", "HDD" oder null.</summary>
+    public string? MediaType { get; set; }
+    public string? BusType { get; set; }
+    public long SizeBytes { get; set; }
+    /// <summary>"Healthy", "Warning" oder "Unhealthy".</summary>
+    public string? Health { get; set; }
+}
+
+/// <summary>BitLocker-Zustand eines Laufwerks.</summary>
+public class ComputerVolumeEncryption
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public required string Drive { get; set; }
+    public bool? Protected { get; set; }
+    public int? EncryptedPercent { get; set; }
+    public string? Method { get; set; }
+}
+
+public class ComputerMonitor
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public string? Manufacturer { get; set; }
+    public required string Model { get; set; }
+    public string? SerialNumber { get; set; }
+    public int? Year { get; set; }
+}
+
+public class ComputerPrinter
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public required string Name { get; set; }
+    public string? Driver { get; set; }
+    public string? Port { get; set; }
+    public bool Network { get; set; }
+    public bool Shared { get; set; }
+}
+
 public enum ChangeKind
 {
     Added,

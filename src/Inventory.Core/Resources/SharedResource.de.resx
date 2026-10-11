@@ -278,6 +278,24 @@
   <data name="Back to the overview" xml:space="preserve">
     <value>Zur Übersicht</value>
   </data>
+  <data name="Battery" xml:space="preserve">
+    <value>Akku</value>
+  </data>
+  <data name="Battery health (%)" xml:space="preserve">
+    <value>Akkuzustand (%)</value>
+  </data>
+  <data name="BIOS date" xml:space="preserve">
+    <value>BIOS-Datum</value>
+  </data>
+  <data name="BitLocker" xml:space="preserve">
+    <value>BitLocker</value>
+  </data>
+  <data name="BitLocker (system drive)" xml:space="preserve">
+    <value>BitLocker (Systemlaufwerk)</value>
+  </data>
+  <data name="BitLocker: no volume reported." xml:space="preserve">
+    <value>BitLocker: kein Laufwerk gemeldet.</value>
+  </data>
   <data name="by {0}" xml:space="preserve">
     <value>von {0}</value>
   </data>
@@ -620,6 +638,9 @@
   <data name="Description" xml:space="preserve">
     <value>Beschreibung</value>
   </data>
+  <data name="Desktop" xml:space="preserve">
+    <value>Desktop</value>
+  </data>
   <data name="Destination on the computer" xml:space="preserve">
     <value>Ziel auf dem Rechner</value>
   </data>
@@ -631,6 +652,9 @@
   </data>
   <data name="Detection in inventory" xml:space="preserve">
     <value>Erkennung im Inventar</value>
+  </data>
+  <data name="Device type" xml:space="preserve">
+    <value>Gerätetyp</value>
   </data>
   <data name="disabled" xml:space="preserve">
     <value>deaktiviert</value>
@@ -679,6 +703,9 @@
   </data>
   <data name="Drive" xml:space="preserve">
     <value>Laufwerk</value>
+  </data>
+  <data name="Driver" xml:space="preserve">
+    <value>Treiber</value>
   </data>
   <data name="dynamic" xml:space="preserve">
     <value>dynamisch</value>
@@ -830,6 +857,9 @@
   <data name="Firewall public" xml:space="preserve">
     <value>Firewall Öffentlich</value>
   </data>
+  <data name="Firmware" xml:space="preserve">
+    <value>Firmware</value>
+  </data>
   <data name='Fixed version: a separate package "{0}" is created that is never updated automatically. Vendors sometimes remove older setups from their servers; then the download fails. Older versions usually also contain known security vulnerabilities.' xml:space="preserve">
     <value>Feste Version: Es entsteht ein eigenständiges Paket „{0}“, das nicht automatisch aktualisiert wird. Ältere Setups nehmen Hersteller manchmal vom Server; dann schlägt der Download fehl. Ältere Versionen enthalten außerdem meist bekannte Sicherheitslücken.</value>
   </data>
@@ -860,6 +890,9 @@
   <data name="Grace period (days)" xml:space="preserve">
     <value>Frist (Tage)</value>
   </data>
+  <data name="Graphics" xml:space="preserve">
+    <value>Grafik</value>
+  </data>
   <data name="greater or equal" xml:space="preserve">
     <value>größer oder gleich</value>
   </data>
@@ -871,6 +904,12 @@
   </data>
   <data name='Group policy "Set rules for remote control of Remote Desktop Services user sessions" (… Windows Components → Remote Desktop Services → Remote Desktop Session Host → Connections); firewall rules "Remote Desktop – Shadow" and "File and Printer Sharing (SMB-In)".' xml:space="preserve">
     <value>Gruppenrichtlinie „Regeln für Remotesteuerung von Remotedesktopdienste-Benutzersitzungen festlegen“ (… Windows-Komponenten → Remotedesktopdienste → Remotedesktopsitzungs-Host → Verbindungen); Firewall-Regeln „Remotedesktop – Schatten“ und „Datei- und Druckerfreigabe (SMB eingehend)“.</value>
+  </data>
+  <data name="Hardware" xml:space="preserve">
+    <value>Hardware</value>
+  </data>
+  <data name="Healthy" xml:space="preserve">
+    <value>in Ordnung</value>
   </data>
   <data name="History" xml:space="preserve">
     <value>Verlauf</value>
@@ -1013,6 +1052,9 @@
   <data name="Language" xml:space="preserve">
     <value>Sprache</value>
   </data>
+  <data name="Laptop" xml:space="preserve">
+    <value>Notebook</value>
+  </data>
   <data name="last 24 hours" xml:space="preserve">
     <value>letzte 24 Stunden</value>
   </data>
@@ -1145,6 +1187,15 @@
   <data name="Memory (GB)" xml:space="preserve">
     <value>Arbeitsspeicher (GB)</value>
   </data>
+  <data name="Memory module" xml:space="preserve">
+    <value>Speichermodul</value>
+  </data>
+  <data name="Memory modules" xml:space="preserve">
+    <value>Speichermodule</value>
+  </data>
+  <data name="Memory slots" xml:space="preserve">
+    <value>Speichersteckplätze</value>
+  </data>
   <data name="Message for logged-on users" xml:space="preserve">
     <value>Hinweis für angemeldete Benutzer</value>
   </data>
@@ -1162,6 +1213,9 @@
   </data>
   <data name="Modified" xml:space="preserve">
     <value>Geändert</value>
+  </data>
+  <data name="Monitors" xml:space="preserve">
+    <value>Monitore</value>
   </data>
   <data name="More results from winget" xml:space="preserve">
     <value>Weitere Treffer aus winget</value>
@@ -1352,6 +1406,9 @@
   <data name="Not captured yet. Firewall, antivirus and Windows Update are read with the next scan." xml:space="preserve">
     <value>Noch nicht erfasst. Firewall, Virenschutz und Windows Update werden beim nächsten Scan gelesen.</value>
   </data>
+  <data name="Not captured yet. Hardware details are read with the next scan; computers with an agent need the current agent version first." xml:space="preserve">
+    <value>Noch nicht erfasst. Hardware-Details werden mit dem nächsten Scan gelesen; Rechner mit Agent brauchen dafür zuerst die aktuelle Agent-Version.</value>
+  </data>
   <data name="Not found" xml:space="preserve">
     <value>Nicht gefunden</value>
   </data>
@@ -1360,6 +1417,9 @@
   </data>
   <data name="not installed" xml:space="preserve">
     <value>nicht installiert</value>
+  </data>
+  <data name="not ready" xml:space="preserve">
+    <value>nicht bereit</value>
   </data>
   <data name="Not retried: too little disk space or a program that cannot be closed." xml:space="preserve">
     <value>Nicht wiederholt wird bei zu wenig Speicherplatz oder wenn sich ein Programm nicht schließen lässt.</value>
@@ -1559,6 +1619,9 @@
   <data name="Parameters" xml:space="preserve">
     <value>Parameter</value>
   </data>
+  <data name="Part number" xml:space="preserve">
+    <value>Teilenummer</value>
+  </data>
   <data name="Passed along at installation. Renewing only blocks new enrollments; existing agents stay connected." xml:space="preserve">
     <value>Wird bei der Installation mitgegeben. Erneuern sperrt nur neue Anmeldungen, vorhandene Agenten bleiben verbunden.</value>
   </data>
@@ -1598,6 +1661,15 @@
   <data name="Period" xml:space="preserve">
     <value>Zeitraum</value>
   </data>
+  <data name="Physical disk" xml:space="preserve">
+    <value>Physischer Datenträger</value>
+  </data>
+  <data name="Physical disks" xml:space="preserve">
+    <value>Physische Datenträger</value>
+  </data>
+  <data name="Platform security" xml:space="preserve">
+    <value>Plattformsicherheit</value>
+  </data>
   <data name="Please choose how to sign in." xml:space="preserve">
     <value>Bitte einen Anmeldeweg wählen.</value>
   </data>
@@ -1606,6 +1678,9 @@
   </data>
   <data name="Please observe the vendor's license terms; the library only refers to the vendor's download." xml:space="preserve">
     <value>Bitte die Lizenzbedingungen des Herstellers beachten; die Bibliothek verweist nur auf dessen Download.</value>
+  </data>
+  <data name="Port" xml:space="preserve">
+    <value>Anschluss</value>
   </data>
   <data name="PowerShell exited with code {0}" xml:space="preserve">
     <value>PowerShell endete mit Code {0}</value>
@@ -1619,8 +1694,20 @@
   <data name="Prerequisites on the computers" xml:space="preserve">
     <value>Voraussetzungen auf den Rechnern</value>
   </data>
+  <data name="present" xml:space="preserve">
+    <value>vorhanden</value>
+  </data>
   <data name="Preview" xml:space="preserve">
     <value>Vorschau</value>
+  </data>
+  <data name="Printer" xml:space="preserve">
+    <value>Drucker</value>
+  </data>
+  <data name="Printers" xml:space="preserve">
+    <value>Drucker</value>
+  </data>
+  <data name="Printers set up for the whole computer; connections of individual users are not visible to the scan." xml:space="preserve">
+    <value>Für den ganzen Rechner eingerichtete Drucker; Verbindungen einzelner Benutzer sieht der Scan nicht.</value>
   </data>
   <data name="Private network" xml:space="preserve">
     <value>Privates Netz</value>
@@ -1669,6 +1756,9 @@
   </data>
   <data name="Re-captures the computer's hardware and software, e.g. after an installation." xml:space="preserve">
     <value>Erfasst Hard- und Software des Rechners neu, z. B. nach einer Installation.</value>
+  </data>
+  <data name="ready" xml:space="preserve">
+    <value>bereit</value>
   </data>
   <data name="Ready-made packages of common programs with verified download address and silent parameters. On import the server downloads the setup directly from the vendor and checks it against the checksum from the catalog. The catalog is generated daily from the manifests of the winget repository" xml:space="preserve">
     <value>Fertige Pakete gängiger Programme mit geprüfter Download-Adresse und Silent-Parametern. Beim Import lädt der Server das Setup direkt vom Hersteller und prüft es gegen die Prüfsumme aus dem Katalog. Der Katalog wird täglich aus den Manifesten des winget-Repositories erzeugt</value>
@@ -1994,6 +2084,9 @@
   <data name="Searching …" xml:space="preserve">
     <value>Suche …</value>
   </data>
+  <data name="Secure Boot" xml:space="preserve">
+    <value>Secure Boot</value>
+  </data>
   <data name="Security" xml:space="preserve">
     <value>Sicherheit</value>
   </data>
@@ -2069,6 +2162,9 @@
   <data name="Shadowing:" xml:space="preserve">
     <value>Spiegelung:</value>
   </data>
+  <data name="Shared" xml:space="preserve">
+    <value>Freigegeben</value>
+  </data>
   <data name="Short name of the service, e.g. Spooler" xml:space="preserve">
     <value>Kurzname des Dienstes, z. B. Spooler</value>
   </data>
@@ -2122,6 +2218,9 @@
   </data>
   <data name="skipped" xml:space="preserve">
     <value>übersprungen</value>
+  </data>
+  <data name="Slot" xml:space="preserve">
+    <value>Steckplatz</value>
   </data>
   <data name="SMB + service" xml:space="preserve">
     <value>SMB + Dienst</value>
@@ -2218,6 +2317,9 @@
   </data>
   <data name="System setting" xml:space="preserve">
     <value>Systemeinstellung</value>
+  </data>
+  <data name="Tablet" xml:space="preserve">
+    <value>Tablet</value>
   </data>
   <data name="Take over collection" xml:space="preserve">
     <value>Sammlung übernehmen</value>
@@ -2411,6 +2513,12 @@
   <data name="Token revoked." xml:space="preserve">
     <value>Token widerrufen.</value>
   </data>
+  <data name="TPM" xml:space="preserve">
+    <value>TPM</value>
+  </data>
+  <data name="TPM ready" xml:space="preserve">
+    <value>TPM bereit</value>
+  </data>
   <data name="Transport" xml:space="preserve">
     <value>Transport</value>
   </data>
@@ -2440,6 +2548,9 @@
   </data>
   <data name="Under this name {0} responds" xml:space="preserve">
     <value>Unter diesem Namen antwortet {0}</value>
+  </data>
+  <data name="Unhealthy" xml:space="preserve">
+    <value>fehlerhaft</value>
   </data>
   <data name="Uninstall" xml:space="preserve">
     <value>Deinstallation</value>
@@ -2576,6 +2687,9 @@
   <data name="Viewer" xml:space="preserve">
     <value>Betrachter</value>
   </data>
+  <data name="Virtual machine" xml:space="preserve">
+    <value>Virtuelle Maschine</value>
+  </data>
   <data name="Virus definitions are out of date." xml:space="preserve">
     <value>Die Virendefinitionen sind veraltet.</value>
   </data>
@@ -2611,6 +2725,9 @@
   </data>
   <data name="Warn users before (seconds)" xml:space="preserve">
     <value>Benutzer vorher warnen (Sekunden)</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Warnung</value>
   </data>
   <data name="Web interface" xml:space="preserve">
     <value>Weboberfläche</value>
@@ -2687,6 +2804,9 @@
   <data name="Wrong computer responds" xml:space="preserve">
     <value>Falscher Rechner antwortet</value>
   </data>
+  <data name="Year" xml:space="preserve">
+    <value>Baujahr</value>
+  </data>
   <data name="yes" xml:space="preserve">
     <value>ja</value>
   </data>
@@ -2701,6 +2821,15 @@
   </data>
   <data name="Your role does not allow this page." xml:space="preserve">
     <value>Deine Rolle erlaubt diese Seite nicht.</value>
+  </data>
+  <data name="{0} % encrypted" xml:space="preserve">
+    <value>{0} % verschlüsselt</value>
+  </data>
+  <data name="{0} % of the original capacity" xml:space="preserve">
+    <value>{0} % der ursprünglichen Kapazität</value>
+  </data>
+  <data name="{0} % of the original capacity, {1} charge cycles" xml:space="preserve">
+    <value>{0} % der ursprünglichen Kapazität, {1} Ladezyklen</value>
   </data>
   <data name="{0} ({1}), allowed for {2}." xml:space="preserve">
     <value>{0} ({1}), erlaubt für {2}.</value>
@@ -2794,6 +2923,9 @@
   </data>
   <data name="{0} of {1} succeeded" xml:space="preserve">
     <value>{0} von {1} erfolgreich</value>
+  </data>
+  <data name="{0} of {1} used" xml:space="preserve">
+    <value>{0} von {1} belegt</value>
   </data>
   <data name="{0} older than {1} days" xml:space="preserve">
     <value>{0} älter als {1} Tage</value>

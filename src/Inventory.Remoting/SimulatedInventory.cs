@@ -94,6 +94,41 @@ internal static class SimulatedInventory
             TeamViewerId = random.Next(3) == 0 ? null : random.Next(100_000_000, 999_999_999).ToString(),
             AnyDeskId = random.Next(4) == 0 ? random.Next(100_000_000, 999_999_999).ToString() : null,
         };
+        var laptop = model.Contains("Book") || model.Contains("Latitude") || model.Contains("ThinkPad");
+        var modules = memoryGb >= 16 ? 2 : 1;
+        data.Hardware = new HardwareInfo
+        {
+            ChassisType = laptop ? 10 : 3,
+            FirmwareType = "UEFI",
+            SecureBoot = random.Next(10) != 0,
+            BiosDateUtc = new DateTime(2022, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(random.Next(1000)),
+            TpmPresent = true,
+            TpmVersion = "2.0",
+            TpmReady = random.Next(12) != 0,
+            Gpus = [new GpuItem { Name = "Intel(R) UHD Graphics 630", DriverVersion = "31.0.101.2125" }],
+            MemorySlots = laptop ? 2 : 4,
+            MemoryModules = Enumerable.Range(1, modules).Select(i => new MemoryModuleItem
+            {
+                Slot = $"DIMM {i}", Manufacturer = "Samsung", PartNumber = "M471A1K43DB1-CWE", SerialNumber = $"{random.Next(0x10000000, 0x7FFFFFFF):X8}",
+                CapacityBytes = memoryGb * 1024L * 1024 * 1024 / modules, SpeedMhz = 3200, Type = "DDR4",
+            }).ToList(),
+            PhysicalDisks =
+            [
+                new PhysicalDiskItem
+                {
+                    Model = $"SAMSUNG MZVLB{diskGb}HBJQ", SerialNumber = $"S4EW{random.Next(100000, 999999)}", MediaType = "SSD", BusType = "NVMe",
+                    SizeBytes = diskGb * 1_000_000_000L, Health = random.Next(25) == 0 ? "Warning" : "Healthy",
+                },
+            ],
+            Volumes = [new VolumeEncryptionItem { Drive = "C:", Protected = laptop ? random.Next(8) != 0 : random.Next(3) == 0, EncryptedPercent = 100, Method = "XTS-AES 256" }],
+            Monitors = laptop
+                ? [new MonitorItem { Manufacturer = "BOE", Model = "BOE0812", Year = 2021 }]
+                : [new MonitorItem { Manufacturer = "DEL", Model = "DELL P2422H", SerialNumber = $"{random.Next(1000000, 9999999)}", Year = 2022 }],
+            Printers = random.Next(3) == 0 ? [new PrinterItem { Name = "Etage-2-Laser", Driver = "HP Universal Printing PCL 6", Port = "10.0.9.21", Network = false }] : [],
+            BatteryPresent = laptop,
+            BatteryHealthPercent = laptop ? random.Next(55, 100) : null,
+            BatteryCycleCount = laptop ? random.Next(20, 700) : null,
+        };
         data.LocalUsers.Add(new LocalUserItem { Name = "Administrator", Disabled = true, Description = "Vordefiniertes Konto" });
         data.LocalUsers.Add(new LocalUserItem { Name = "Gast", Disabled = true });
         data.LocalAdmins.Add(new LocalAdminItem { Name = $"{data.ComputerName}\\Administrator" });

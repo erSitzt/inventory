@@ -14,6 +14,9 @@ credentials. The user interface is available in English and German; translations
   (computers with name anomalies are skipped)
 - **Inventory scan**: system, operating system, processor, software, hotfixes, disks, network, services, local users
   and administrators, firewall, antivirus and Windows Update status
+- **Hardware and platform security**: device type (desktop/laptop/server/virtual machine), UEFI and Secure Boot, TPM,
+  BitLocker per volume, graphics, memory modules and free slots, physical disks with type and health, battery health,
+  monitors and printers
 - **Collections**: static or dynamic via rules (e.g. "Chrome installed with version below 141")
 - **Remote command** (cmd/PowerShell) with live output
 - **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
@@ -419,7 +422,7 @@ addresses require the same sign-in as the rest of the API.
 
 | Area | Endpoints |
 |---|---|
-| Computers | create, query, delete, check reachability, inventory scan, installed software, RDP file, run command or PowerShell script |
+| Computers | create, query, delete, check reachability, inventory scan, installed software, hardware details, RDP file, run command or PowerShell script |
 | Packages | list, create, change, delete; add, change, move and delete steps; upload and delete files (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); set the detection (`detection`, `verifyAfterInstall`) and read name, version and product code of an uploaded MSI (`…/api/packages/<id>/msi/setup.msi`) |
 | Deployments | start, list, query progress per computer, cancel |
 | Collections | list, create, change, delete; add and remove members of static collections; maintenance window per collection (`maintenanceWindow`) and the default window (`/api/settings/maintenance-window`) |

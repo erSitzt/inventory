@@ -97,6 +97,25 @@ public class Computer
     public string? UpdatePending { get; set; }
     public string? UpdateServer { get; set; }
 
+    // Hardware und Plattformsicherheit aus dem letzten Scan; null = nicht ermittelt
+    /// <summary>Gehäusetyp laut SMBIOS, siehe <see cref="Chassis"/>.</summary>
+    public int? ChassisType { get; set; }
+    /// <summary>"UEFI" oder "BIOS".</summary>
+    public string? FirmwareType { get; set; }
+    public bool? SecureBoot { get; set; }
+    public DateTime? BiosDateUtc { get; set; }
+    public bool? TpmPresent { get; set; }
+    public string? TpmVersion { get; set; }
+    public bool? TpmReady { get; set; }
+    /// <summary>Namen der Grafikkarten, durch Komma getrennt.</summary>
+    public string? Gpu { get; set; }
+    public int? MemorySlots { get; set; }
+    public bool? BatteryPresent { get; set; }
+    public int? BatteryHealthPercent { get; set; }
+    public int? BatteryCycleCount { get; set; }
+    /// <summary>BitLocker-Schutz des Systemlaufwerks; null = nicht ermittelt.</summary>
+    public bool? SystemDriveProtected { get; set; }
+
     // Fernzugriff, aus dem letzten Scan
     /// <summary>Sitzungsnummer des beim Scan angemeldeten Benutzers, für die RDP-Spiegelung.</summary>
     public int? SessionId { get; set; }
@@ -121,6 +140,11 @@ public class Computer
     public List<ComputerWindowsService> Services { get; set; } = [];
     public List<ComputerLocalUser> LocalUsers { get; set; } = [];
     public List<ComputerLocalAdmin> LocalAdmins { get; set; } = [];
+    public List<ComputerMemoryModule> MemoryModules { get; set; } = [];
+    public List<ComputerPhysicalDisk> PhysicalDisks { get; set; } = [];
+    public List<ComputerVolumeEncryption> Volumes { get; set; } = [];
+    public List<ComputerMonitor> Monitors { get; set; } = [];
+    public List<ComputerPrinter> Printers { get; set; } = [];
 
     /// <summary>Statische Sammlungen, denen der Rechner fest zugeordnet ist.</summary>
     public List<Collection> Collections { get; set; } = [];

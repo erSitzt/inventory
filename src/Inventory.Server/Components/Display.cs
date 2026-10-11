@@ -249,6 +249,11 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
 
     public string YesNo(bool value) => value ? T("yes") : T("no");
 
+    public string Chassis(Computer computer) => T(Core.Chassis.Label(Core.Chassis.Kind(computer.ChassisType, computer.Model)));
+
+    /// <summary>Zustand eines Datenträgers laut Windows-Speicherverwaltung.</summary>
+    public Color HealthColor(string? health) => health switch { "Healthy" => Color.Success, "Warning" => Color.Warning, "Unhealthy" => Color.Error, _ => Color.Default };
+
     public Color OnOffColor(bool? value) => value switch { true => Color.Success, false => Color.Error, null => Color.Default };
 
     public string Change(ChangeKind kind) => kind switch

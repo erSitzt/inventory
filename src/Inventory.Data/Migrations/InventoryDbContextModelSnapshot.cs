@@ -170,8 +170,23 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("AnyDeskId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("BatteryCycleCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BatteryHealthPercent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("BatteryPresent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("BiosDateUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("BiosVersion")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("ChassisType")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("CpuCores")
                         .HasColumnType("INTEGER");
@@ -233,6 +248,12 @@ namespace Inventory.Data.Migrations
                     b.Property<bool?>("FirewallPublic")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("FirmwareType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Gpu")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("IpAddress")
                         .HasColumnType("TEXT");
 
@@ -261,6 +282,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<long?>("MemoryBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MemorySlots")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Model")
@@ -293,13 +317,28 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("ReverseDnsName")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("SecureBoot")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("SerialNumber")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("SessionId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("SystemDriveProtected")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("TeamViewerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("TpmPresent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("TpmReady")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TpmVersion")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("Transport")
@@ -449,6 +488,73 @@ namespace Inventory.Data.Migrations
                     b.ToTable("LocalUsers");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerMemoryModule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CapacityBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Manufacturer")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PartNumber")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SerialNumber")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Slot")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SpeedMhz")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("MemoryModules");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerMonitor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Manufacturer")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SerialNumber")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("Monitors");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerNetworkAdapter", b =>
                 {
                     b.Property<int>("Id")
@@ -482,6 +588,73 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("ComputerId");
 
                     b.ToTable("NetworkAdapters");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerPhysicalDisk", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BusType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Health")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MediaType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SerialNumber")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("PhysicalDisks");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerPrinter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Driver")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Network")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Port")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Shared")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("Printers");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.ComputerSoftware", b =>
@@ -529,6 +702,35 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("Name");
 
                     b.ToTable("Software");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerVolumeEncryption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Drive")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("EncryptedPercent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Method")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Protected")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("Volumes");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.ComputerWindowsService", b =>
@@ -971,6 +1173,24 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerMemoryModule", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("MemoryModules")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerMonitor", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("Monitors")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerNetworkAdapter", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -980,10 +1200,37 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerPhysicalDisk", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("PhysicalDisks")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerPrinter", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("Printers")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerSoftware", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
                         .WithMany("Software")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerVolumeEncryption", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("Volumes")
                         .HasForeignKey("ComputerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1080,11 +1327,21 @@ namespace Inventory.Data.Migrations
 
                     b.Navigation("LocalUsers");
 
+                    b.Navigation("MemoryModules");
+
+                    b.Navigation("Monitors");
+
                     b.Navigation("NetworkAdapters");
+
+                    b.Navigation("PhysicalDisks");
+
+                    b.Navigation("Printers");
 
                     b.Navigation("Services");
 
                     b.Navigation("Software");
+
+                    b.Navigation("Volumes");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Deployment", b =>
