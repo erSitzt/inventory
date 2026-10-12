@@ -14,6 +14,7 @@
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
 @inject Auditor Audit
+@inject Access Access
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
 
@@ -452,7 +453,8 @@
 
     private async Task SetPublicDownloadAsync(string choice)
     {
-        if (choice == "open")
+        // Die Seite gibt das Anmeldegeheimnis frei: die Rolle wird beim Klick erneut geprüft, nicht nur beim Öffnen der Einstellungen.
+        if (choice == "open" || !await Access.DemandAdminAsync())
             return;
         TimeSpan? duration = choice switch
         {
@@ -464,12 +466,13 @@
         };
         await Agents.SetPublicDownloadAsync(duration);
         await LoadPublicDownloadAsync();
-        await Audit.LogAsync(L["Setting changed"], $"{L["Download page without sign-in"]}: " + _publicDownload switch
+        var state = _publicDownload switch
         {
-            "off" => L["closed"],
-            "forever" => L["open permanently"],
-            _ => L["open until {0}", Display.LocalTime(_publicDownloadUntil)],
-        });
+            "off" => L["closed"].Value,
+            "forever" => L["open permanently"].Value,
+            _ => L["open until {0}", Display.LocalTime(_publicDownloadUntil)].Value,
+        };
+        await Audit.LogAsync(L["Setting changed"], $"{L["Download page without sign-in"]}: {state}");
         Snackbar.Add(L["Saved."], Severity.Success);
     }
     private string _agentToken = "";

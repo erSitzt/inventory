@@ -43,6 +43,18 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         return until > time.GetUtcNow().UtcDateTime ? until : null;
     }
 
+    /// <summary>
+    /// Räumt eine abgelaufene Frist ab und liefert true, wenn das gerade geschehen ist – einmal je Ablauf, damit der Takt
+    /// das Schließen ins Protokoll schreiben kann.
+    /// </summary>
+    public async Task<bool> CloseExpiredPublicDownloadAsync(CancellationToken ct = default)
+    {
+        if (await settings.GetAsync(SettingKeys.AgentPublicDownloadUntilUtc, ct) is null || await GetPublicDownloadUntilAsync(ct) is not null)
+            return false;
+        await settings.SetAsync(SettingKeys.AgentPublicDownloadUntilUtc, null, ct);
+        return true;
+    }
+
     /// <param name="duration">null = schließen; <see cref="Timeout.InfiniteTimeSpan"/> = ohne Ablauf.</param>
     public Task SetPublicDownloadAsync(TimeSpan? duration, CancellationToken ct = default)
     {
@@ -60,17 +72,23 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         var serverUrl = await GetServerUrlAsync(ct);
         if (string.IsNullOrWhiteSpace(serverUrl))
             throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
+        // Aufgeräumt wird auch nach einem Fehler: im entpackten Ordner liegt das Anmeldegeheimnis.
         return $$"""
             $ErrorActionPreference = 'Stop'
             $ProgressPreference = 'SilentlyContinue'
             $folder = Join-Path $env:TEMP 'InventoryAgentSetup'
             $zip = "$folder.zip"
-            Remove-Item -Path $folder, $zip -Recurse -Force -ErrorAction SilentlyContinue
-            Invoke-WebRequest -Uri '{{serverUrl.Replace("'", "''")}}/{{PublicSetupPath}}' -OutFile $zip -UseBasicParsing
-            Expand-Archive -Path $zip -DestinationPath $folder -Force
-            & (Join-Path $folder '{{JobFiles.RunnerExe}}') {{RunnerModes.InstallAgent}}
-            $code = $LASTEXITCODE
-            Remove-Item -Path $folder, $zip -Recurse -Force -ErrorAction SilentlyContinue
+            $code = 1
+            try {
+                Remove-Item -Path $folder, $zip -Recurse -Force -ErrorAction SilentlyContinue
+                Invoke-WebRequest -Uri '{{serverUrl.Replace("'", "''")}}/{{PublicSetupPath}}' -OutFile $zip -UseBasicParsing
+                Expand-Archive -Path $zip -DestinationPath $folder -Force
+                & (Join-Path $folder '{{JobFiles.RunnerExe}}') {{RunnerModes.InstallAgent}}
+                $code = $LASTEXITCODE
+            }
+            finally {
+                Remove-Item -Path $folder, $zip -Recurse -Force -ErrorAction SilentlyContinue
+            }
             if ($code -ne 0) { Write-Error "Agent setup failed with exit code $code" }
 
             """;

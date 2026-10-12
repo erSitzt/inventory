@@ -55,8 +55,12 @@ public class AgentTests
 
         await agents.SetPublicDownloadAsync(TimeSpan.FromHours(1));
         Assert.Equal(new DateTime(2026, 10, 12, 9, 0, 0, DateTimeKind.Utc), await agents.GetPublicDownloadUntilAsync());
+        Assert.False(await agents.CloseExpiredPublicDownloadAsync());
         clock.Advance(TimeSpan.FromMinutes(61));
         Assert.Null(await agents.GetPublicDownloadUntilAsync());
+        // Der Ablauf wird genau einmal gemeldet.
+        Assert.True(await agents.CloseExpiredPublicDownloadAsync());
+        Assert.False(await agents.CloseExpiredPublicDownloadAsync());
 
         await agents.SetPublicDownloadAsync(Timeout.InfiniteTimeSpan);
         clock.Advance(TimeSpan.FromDays(3650));
@@ -72,6 +76,8 @@ public class AgentTests
         Assert.Contains($"'{JobFiles.RunnerExe}') {RunnerModes.InstallAgent}", script);
         Assert.DoesNotContain("::", script);
         Assert.DoesNotContain("New-Object", script);
+        // Aufgeräumt wird auch nach einem Fehler.
+        Assert.Matches(@"(?s)finally \{\s+Remove-Item -Path \$folder, \$zip", script);
     }
 
     private sealed class MovingClock(DateTimeOffset now) : TimeProvider

@@ -112,7 +112,12 @@ public static class AgentEndpoints
     /// </summary>
     private static void MapPublicDownload(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/" + AgentService.PublicPagePath).AllowAnonymous().ExcludeFromDescription();
+        // Nichts davon darf zwischengespeichert werden: das Paket enthält das Anmeldegeheimnis, und ob die Seite offen ist, entscheidet jede Anfrage neu.
+        var group = app.MapGroup("/" + AgentService.PublicPagePath).AllowAnonymous().ExcludeFromDescription().AddEndpointFilter(async (context, next) =>
+        {
+            context.HttpContext.Response.Headers.CacheControl = "no-store";
+            return await next(context);
+        });
 
         group.MapGet("", async (AgentService agents, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
         {
@@ -141,13 +146,15 @@ public static class AgentEndpoints
             }
         });
 
-        group.MapGet("install.ps1", async (AgentService agents, CancellationToken ct) =>
+        group.MapGet("install.ps1", async (HttpContext http, AgentService agents, AuditService audit, CancellationToken ct) =>
         {
             if (await agents.GetPublicDownloadUntilAsync(ct) is null)
                 return Results.NotFound();
             try
             {
-                return Results.Text(await agents.BuildInstallScriptAsync(ct), "text/plain; charset=utf-8");
+                var script = await agents.BuildInstallScriptAsync(ct);
+                await audit.LogAsync(new AuditActor("(anonymous)", null, AuditSource.Agent), "Agent install script downloaded from the public page", $"from {http.Connection.RemoteIpAddress}", ct);
+                return Results.Text(script, "text/plain; charset=utf-8");
             }
             catch (InvalidOperationException ex)
             {
