@@ -10,6 +10,8 @@ public static class SettingKeys
 {
     public const string DefaultTransport = "DefaultTransport";
     public const string TransportFallback = "TransportFallback";
+    /// <summary><see cref="AgentlessPolicy"/>; leer = immer erlaubt.</summary>
+    public const string AgentlessPolicy = "Transport.AgentlessPolicy";
     public const string SkipTargetNameCheck = "SkipTargetNameCheck";
     /// <summary>So viele Minuten darf ein Rechner nach einem Neustart-Schritt brauchen, bis er wieder erreichbar ist.</summary>
     public const string RebootWaitMinutes = "Deployment.RebootWaitMinutes";

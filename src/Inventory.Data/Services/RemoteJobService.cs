@@ -20,7 +20,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
     };
 
     /// <summary>Liefert immer ein Ergebnis; Zustellfehler stehen in <see cref="JobResult.Error"/>.</summary>
-    /// <param name="agentless">Den Agenten umgehen, auch wenn der Rechner einen hat (z. B. um den Agenten selbst zu installieren).</param>
+    /// <param name="agentless">Den Agenten umgehen, auch wenn der Rechner einen hat. Nur für die Installation des Agenten selbst: sie bleibt bei <see cref="AgentlessPolicy.AgentInstallOnly"/> erlaubt.</param>
     public async Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default,
         IReadOnlyList<JobFile>? files = null, bool agentless = false)
     {
@@ -33,6 +33,15 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             var kind = computer.Transport ?? await settings.GetDefaultTransportAsync(ct);
             if (agentless && kind == TransportKind.Agent)
                 kind = await settings.GetDefaultTransportAsync(ct);
+            if (kind != TransportKind.Agent)
+            {
+                // Vor jedem Zugriff prüfen: auch der Ausweichweg unten ist agentenlos und damit mit abgedeckt.
+                var policy = await settings.GetAgentlessPolicyAsync(ct);
+                if (policy == AgentlessPolicy.Never)
+                    return JobResult.Failed(job.JobId, L["Agentless access is switched off in the settings and this computer has no agent."]);
+                if (policy == AgentlessPolicy.AgentInstallOnly && !agentless)
+                    return JobResult.Failed(job.JobId, L["This computer has no agent. Agentless access is only allowed for installing the agent (see settings)."]);
+            }
             var transport = transports.FirstOrDefault(t => t.Kind == kind);
             if (transport is null)
                 return JobResult.Failed(job.JobId, L["The transport {0} is not available on this server", kind]);

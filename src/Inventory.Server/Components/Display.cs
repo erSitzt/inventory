@@ -22,6 +22,14 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         _ => kind.ToString(),
     };
 
+    public string Agentless(AgentlessPolicy policy) => policy switch
+    {
+        AgentlessPolicy.Always => T("allowed for all jobs"),
+        AgentlessPolicy.AgentInstallOnly => T("only to install the agent"),
+        AgentlessPolicy.Never => T("never"),
+        _ => policy.ToString(),
+    };
+
     /// <summary>Ein Agent gilt als verbunden, solange sein letzter Kontakt nur wenige Minuten zurückliegt.</summary>
     public bool AgentConnected(Computer c) => c.AgentLastSeenUtc is { } seen && DateTime.UtcNow - seen < TimeSpan.FromMinutes(5);
 

@@ -7,6 +7,7 @@
 @inject MaintenanceService Maintenance
 @inject AgentService Agents
 @inject UpdateService Updates
+@inject Inventory.Remoting.RunnerPackage Runner
 @inject CredentialService CredentialService
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
@@ -28,6 +29,15 @@
         <MudText Typo="Typo.body2">
             @L["Endpoint protection often rates agentless access (a service started remotely, files copied to ADMIN$) as suspicious. Computers with the agent need neither; the README describes how to allow the rest narrowly."]
         </MudText>
+        <MudSelect T="AgentlessPolicy" Value="_agentless" ValueChanged="SetAgentlessAsync" Label="@L["Agentless access"]" Variant="Variant.Outlined"
+                   HelperText="@L["Restricting it keeps scans, deployments and schedules from reaching computers without an agent; they fail there with a clear message."]">
+            @foreach (var policy in Enum.GetValues<AgentlessPolicy>())
+            {
+                <MudSelectItem T="AgentlessPolicy" Value="policy">@Display.Agentless(policy)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField T="string" Value="@Runner.ExeSha256" ReadOnly="true" Label="@L["SHA-256 of InventoryRunner.exe"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      HelperText="@L["The value for an allow rule by file hash in your endpoint protection. It changes with every server update."]" />
         <MudSwitch T="bool" Value="_fallback" ValueChanged="SetFallbackAsync" Color="Color.Primary"
                    Label="@L["Try the other transport on delivery errors"]" />
         <MudSwitch T="bool" Value="_verifyName" ValueChanged="SetVerifyNameAsync" Color="Color.Primary"
@@ -427,6 +437,7 @@
     }
 
     private TransportKind _transport;
+    private AgentlessPolicy _agentless;
 
     private bool _fallback;
     private bool _verifyName = true;
@@ -497,6 +508,7 @@
     protected override async Task OnInitializedAsync()
     {
         _transport = await SettingsService.GetDefaultTransportAsync();
+        _agentless = await SettingsService.GetAgentlessPolicyAsync();
         _fallback = await SettingsService.GetTransportFallbackAsync();
         _verifyName = await SettingsService.GetVerifyTargetNameAsync();
         _rebootWait = await SettingsService.GetRebootWaitMinutesAsync();
@@ -516,6 +528,14 @@
         _fallback = enabled;
         await SettingsService.SetTransportFallbackAsync(enabled);
         await Audit.LogAsync(L["Setting changed"], $"{L["Fallback transport"]}: {Display.OnOff(enabled)}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private async Task SetAgentlessAsync(AgentlessPolicy policy)
+    {
+        _agentless = policy;
+        await SettingsService.SetAgentlessPolicyAsync(policy);
+        await Audit.LogAsync(L["Setting changed"], $"{L["Agentless access"]}: {Display.Agentless(policy)}");
         Snackbar.Add(L["Saved."], Severity.Success);
     }
 

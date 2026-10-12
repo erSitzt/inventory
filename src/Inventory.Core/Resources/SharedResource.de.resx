@@ -176,6 +176,12 @@
   <data name="Agent {0}, last contact {1}" xml:space="preserve">
     <value>Agent {0}, letzter Kontakt {1}</value>
   </data>
+  <data name="Agentless access" xml:space="preserve">
+    <value>Agentenloser Zugriff</value>
+  </data>
+  <data name="Agentless access is switched off in the settings and this computer has no agent." xml:space="preserve">
+    <value>Der agentenlose Zugriff ist in den Einstellungen abgeschaltet, und dieser Rechner hat keinen Agenten.</value>
+  </data>
   <data name="Agents" xml:space="preserve">
     <value>Agenten</value>
   </data>
@@ -202,6 +208,9 @@
   </data>
   <data name="all users" xml:space="preserve">
     <value>alle Benutzer</value>
+  </data>
+  <data name="allowed for all jobs" xml:space="preserve">
+    <value>für alle Jobs erlaubt</value>
   </data>
   <data name="Along with the computer, its inventory data and history are deleted. Narrowing the search roots makes all computers outside them count as missing. If conspicuously many computers were to be deleted at once, the run deletes nothing and reports it." xml:space="preserve">
     <value>Mit dem Rechner werden seine Inventardaten und sein Verlauf gelöscht. Wer die Suchwurzeln einschränkt, lässt alle Rechner außerhalb davon als fehlend gelten. Wären auf einmal auffällig viele Rechner zu löschen, löscht der Lauf nichts und meldet das.</value>
@@ -1481,6 +1490,9 @@
   <data name="Network level authentication" xml:space="preserve">
     <value>Authentifizierung auf Netzwerkebene (NLA)</value>
   </data>
+  <data name="never" xml:space="preserve">
+    <value>nie</value>
+  </data>
   <data name="never notify" xml:space="preserve">
     <value>nie benachrichtigen</value>
   </data>
@@ -1786,6 +1798,9 @@
   </data>
   <data name="Only these KB numbers" xml:space="preserve">
     <value>Nur diese KB-Nummern</value>
+  </data>
+  <data name="only to install the agent" xml:space="preserve">
+    <value>nur zur Installation des Agenten</value>
   </data>
   <data name="Only within the maintenance window (computers outside wait until it opens)" xml:space="preserve">
     <value>Nur im Wartungsfenster (Rechner außerhalb warten, bis es beginnt)</value>
@@ -2243,6 +2258,9 @@
   <data name="Restarting – the remaining steps follow once the computer is back" xml:space="preserve">
     <value>Startet neu – die restlichen Schritte folgen, sobald der Rechner wieder da ist</value>
   </data>
+  <data name="Restricting it keeps scans, deployments and schedules from reaching computers without an agent; they fail there with a clear message." xml:space="preserve">
+    <value>Eine Einschränkung hält Scans, Verteilungen und Zeitpläne von Rechnern ohne Agenten fern; sie schlagen dort mit einer klaren Meldung fehl.</value>
+  </data>
   <data name="Result" xml:space="preserve">
     <value>Ergebnis</value>
   </data>
@@ -2518,6 +2536,9 @@
   </data>
   <data name="Severity" xml:space="preserve">
     <value>Schweregrad</value>
+  </data>
+  <data name="SHA-256 of InventoryRunner.exe" xml:space="preserve">
+    <value>SHA-256 von InventoryRunner.exe</value>
   </data>
   <data name="Shadow session" xml:space="preserve">
     <value>Sitzung spiegeln</value>
@@ -2861,6 +2882,9 @@
   <data name="The update to {0} is running. The service restarts shortly; reload this page afterwards." xml:space="preserve">
     <value>Die Aktualisierung auf {0} läuft. Der Dienst startet gleich neu; diese Seite danach neu laden.</value>
   </data>
+  <data name="The value for an allow rule by file hash in your endpoint protection. It changes with every server update." xml:space="preserve">
+    <value>Der Wert für eine Freigabe per Datei-Hash in Ihrem Endpoint-Schutz. Er ändert sich mit jedem Server-Update.</value>
+  </data>
   <data name="The whole day on the selected weekdays." xml:space="preserve">
     <value>An den gewählten Wochentagen ganztägig.</value>
   </data>
@@ -2884,6 +2908,9 @@
   </data>
   <data name="This computer does not exist (anymore)." xml:space="preserve">
     <value>Dieser Rechner existiert nicht (mehr).</value>
+  </data>
+  <data name="This computer has no agent. Agentless access is only allowed for installing the agent (see settings)." xml:space="preserve">
+    <value>Dieser Rechner hat keinen Agenten. Agentenloser Zugriff ist nur für die Installation des Agenten erlaubt (siehe Einstellungen).</value>
   </data>
   <data name="This computer has not been scanned yet." xml:space="preserve">
     <value>Dieser Rechner wurde noch nicht gescannt.</value>

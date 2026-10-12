@@ -127,6 +127,47 @@ public class TransportTests
         Assert.Contains("WinRM aus", failed.Error);
     }
 
+    [Fact]
+    public async Task JobService_reaches_computers_without_agent_only_as_far_as_the_setting_allows()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var settings = new SettingsService(db);
+        var smb = new RecordingTransport(TransportKind.SmbService) { Fail = "Port 445 gesperrt" };
+        var winRm = new RecordingTransport(TransportKind.WinRm);
+        var agent = new RecordingTransport(TransportKind.Agent);
+        var jobs = new RemoteJobService([smb, winRm, agent], computers, new CredentialService(db, new ReversingProtector()), settings);
+        var plain = (await computers.ImportAsync("pc-01"))[0];
+        var managed = (await computers.ImportAsync("pc-02"))[0];
+        await computers.UpdateAsync(managed.Id, null, TransportKind.Agent, null);
+        await settings.SetTransportFallbackAsync(true);
+        JobManifest Job() => new() { Steps = [new JobStep { Type = StepType.InventoryScan }] };
+
+        // Nur die Installation des Agenten: sie darf agentenlos laufen, auch auf Rechnern, die schon einen Agenten haben.
+        await settings.SetAgentlessPolicyAsync(AgentlessPolicy.AgentInstallOnly);
+        Assert.Contains("no agent", (await jobs.RunAsync(plain.Id, Job())).Error);
+        Assert.Null(smb.Last);
+        Assert.Null(winRm.Last);
+        Assert.True((await jobs.RunAsync(plain.Id, Job(), agentless: true)).Success);
+        Assert.Equal("pc-01", winRm.Last!.Host);
+        Assert.True((await jobs.RunAsync(managed.Id, Job(), agentless: true)).Success);
+        Assert.Equal("pc-02", winRm.Last!.Host);
+        Assert.True((await jobs.RunAsync(managed.Id, Job())).Success);
+        Assert.Equal("pc-02", agent.Last!.Host);
+
+        // Ganz aus: auch die Installation und der Ausweichweg bleiben gesperrt, der Agent läuft weiter.
+        await settings.SetAgentlessPolicyAsync(AgentlessPolicy.Never);
+        (smb.Last, winRm.Last, agent.Last) = (null, null, null);
+        Assert.Contains("switched off", (await jobs.RunAsync(plain.Id, Job())).Error);
+        Assert.Contains("switched off", (await jobs.RunAsync(managed.Id, Job(), agentless: true)).Error);
+        Assert.Null(smb.Last);
+        Assert.Null(winRm.Last);
+        Assert.True((await jobs.RunAsync(managed.Id, Job())).Success);
+        Assert.Equal("pc-02", agent.Last!.Host);
+
+        Assert.Equal(AgentlessPolicy.Always, await new SettingsService(new TestDb()).GetAgentlessPolicyAsync());
+    }
+
     [Theory]
     [InlineData("P:{\"kind\":\"Output\"}", "Progress", "{\"kind\":\"Output\"}")]
     [InlineData("R:eyJ9", "Result", "eyJ9")]
@@ -157,7 +198,7 @@ public class TransportTests
     private sealed class RecordingTransport(TransportKind kind) : IRemoteTransport
     {
         public TransportKind Kind => kind;
-        public RemoteTarget? Last { get; private set; }
+        public RemoteTarget? Last { get; set; }
         public string? Fail { get; set; }
 
         public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<Inventory.Core.Abstractions.JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
