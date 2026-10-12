@@ -211,6 +211,14 @@ public class NotificationTests
 
         Assert.Equal("HTTP 403: invalid token", error.Message);
         Assert.Equal(("https://hooks.example.test/T000/secret", "{}", "application/json"), (handler.Url, handler.Body, handler.ContentType));
+        // Dienst oder Proxy wiederholen die Adresse in ihrer Antwort: nichts davon darf am Kanal landen.
+        foreach (var echo in new[] { "No route for POST https://hooks.example.test/T000/secret", "unknown path /T000/secret", "token secret rejected" })
+        {
+            var echoed = await Assert.ThrowsAsync<RemoteException>(() =>
+                new Inventory.Remoting.HttpWebhookSender(new HttpClient(new StubHandler(HttpStatusCode.NotFound, echo))).PostAsync("https://hooks.example.test/T000/secret", "{}"));
+            Assert.StartsWith("HTTP 404", echoed.Message);
+            Assert.DoesNotContain("secret", echoed.Message);
+        }
         var unreachable = new Inventory.Remoting.HttpWebhookSender(new HttpClient(new StubHandler(null, "")));
         Assert.DoesNotContain("secret", (await Assert.ThrowsAsync<RemoteException>(() => unreachable.PostAsync("https://hooks.example.test/T000/secret", "{}"))).Message);
     }

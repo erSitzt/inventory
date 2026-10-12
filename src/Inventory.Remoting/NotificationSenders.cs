@@ -43,6 +43,27 @@ public sealed class MailKitSender : IMailSender
 
 public sealed class HttpWebhookSender(HttpClient http) : IWebhookSender
 {
+    /// <summary>
+    /// Entfernt die Adresse und ihre Bestandteile aus einem Text. Die Antwort des Dienstes (oder eines Proxys davor) kann
+    /// die aufgerufene Adresse wiederholen.
+    /// </summary>
+    internal static string Redact(string text, string url)
+    {
+        var parts = new List<string> { url };
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            parts.Add(uri.AbsoluteUri);
+            parts.Add(uri.PathAndQuery);
+            parts.AddRange(uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries));
+            parts.AddRange(uri.Query.TrimStart('?').Split(['&', '='], StringSplitOptions.RemoveEmptyEntries));
+            parts.AddRange(parts.ToList().Select(Uri.UnescapeDataString));
+        }
+        // Kurze Stücke ("api", "v1") verraten nichts und kämen in jedem Text vor.
+        foreach (var part in parts.Where(p => p.Length >= 6).Distinct().OrderByDescending(p => p.Length))
+            text = text.Replace(part, "…", StringComparison.OrdinalIgnoreCase);
+        return text;
+    }
+
     public async Task PostAsync(string url, string json, CancellationToken ct = default)
     {
         try
@@ -51,8 +72,9 @@ public sealed class HttpWebhookSender(HttpClient http) : IWebhookSender
             if (response.IsSuccessStatusCode)
                 return;
             var body = await response.Content.ReadAsStringAsync(ct);
-            // Die Adresse selbst nie in die Meldung: sie enthält das Geheimnis des Webhooks.
-            throw new RemoteException($"HTTP {(int)response.StatusCode}" + (body.Length == 0 ? "" : ": " + (body.Length <= 200 ? body : body[..200] + "…")));
+            // Die Adresse selbst nie in die Meldung: sie enthält das Geheimnis des Webhooks, und die Meldung wird am Kanal gespeichert.
+            var detail = Redact(body.Length <= 200 ? body : body[..200] + "…", url);
+            throw new RemoteException($"HTTP {(int)response.StatusCode}" + (detail.Length == 0 ? "" : ": " + detail));
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
