@@ -1120,6 +1120,67 @@ namespace Inventory.Data.Migrations
                     b.ToTable("InventoryChanges");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.NotificationChannel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CredentialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastSentUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("ProtectedUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Recipients")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sender")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SmtpHost")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SmtpPort")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SmtpSecurity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WebhookFormat")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CredentialId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("NotificationChannels");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.Package", b =>
                 {
                     b.Property<int>("Id")
@@ -1504,6 +1565,16 @@ namespace Inventory.Data.Migrations
                         .HasForeignKey("ComputerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.NotificationChannel", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Credential", "Credential")
+                        .WithMany()
+                        .HasForeignKey("CredentialId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Credential");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Package", b =>

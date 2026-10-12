@@ -1,0 +1,122 @@
+@inject NotificationService Notifications
+@inject CredentialService CredentialService
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
+            <MudSelect T="NotificationKind" @bind-Value="_kind" Label="@L["Type"]" Variant="Variant.Outlined" Disabled="@(Channel is not null)">
+                <MudSelectItem T="NotificationKind" Value="NotificationKind.Email">@L["E-mail"]</MudSelectItem>
+                <MudSelectItem T="NotificationKind" Value="NotificationKind.Webhook">@L["Webhook"]</MudSelectItem>
+            </MudSelect>
+            @if (_kind == NotificationKind.Email)
+            {
+                <MudStack Row="true" Spacing="2">
+                    <MudTextField @bind-Value="_host" Label="@L["Mail server (SMTP)"]" Variant="Variant.Outlined" Immediate="true" Style="flex: 3" />
+                    <MudNumericField T="int" @bind-Value="_port" Label="@L["TCP port"]" Variant="Variant.Outlined" Min="1" Max="65535" HideSpinButtons="true" Style="flex: 1" />
+                </MudStack>
+                <MudSelect T="SmtpSecurity" Value="_security" ValueChanged="SetSecurity" Label="@L["Encryption"]" Variant="Variant.Outlined">
+                    <MudSelectItem T="SmtpSecurity" Value="SmtpSecurity.StartTls">STARTTLS</MudSelectItem>
+                    <MudSelectItem T="SmtpSecurity" Value="SmtpSecurity.Ssl">SSL/TLS</MudSelectItem>
+                    <MudSelectItem T="SmtpSecurity" Value="SmtpSecurity.None">@L["none (relay in your own network)"]</MudSelectItem>
+                </MudSelect>
+                <MudSelect T="int?" @bind-Value="_credentialId" Label="@L["Sign-in"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["without sign-in"]"
+                           HelperText="@L["Stored credentials whose user name and password the mail server accepts."]">
+                    @foreach (var credential in _credentials)
+                    {
+                        <MudSelectItem T="int?" Value="credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="_sender" Label="@L["Sender address"]" Variant="Variant.Outlined" Immediate="true" />
+                <MudTextField @bind-Value="_recipients" Label="@L["Recipients"]" Variant="Variant.Outlined" Lines="2" Immediate="true"
+                              HelperText="@L["Several addresses separated by comma or line break."]" />
+            }
+            else
+            {
+                <MudSelect T="WebhookFormat" @bind-Value="_format" Label="@L["Format"]" Variant="Variant.Outlined">
+                    <MudSelectItem T="WebhookFormat" Value="WebhookFormat.Generic">@Display.Webhook(WebhookFormat.Generic)</MudSelectItem>
+                    <MudSelectItem T="WebhookFormat" Value="WebhookFormat.Teams">@Display.Webhook(WebhookFormat.Teams)</MudSelectItem>
+                    <MudSelectItem T="WebhookFormat" Value="WebhookFormat.Slack">@Display.Webhook(WebhookFormat.Slack)</MudSelectItem>
+                </MudSelect>
+                <MudTextField @bind-Value="_url" Label="@L["Webhook address"]" Variant="Variant.Outlined" InputType="InputType.Password" Immediate="true"
+                              HelperText="@(Channel is null ? L["https://… – whoever knows the address can post to the channel, so it is stored encrypted."].Value : L["Leave empty to keep the stored address"].Value)" />
+            }
+            <MudSwitch T="bool" @bind-Value="_enabled" Color="Color.Primary" Label="@L["Enabled"]" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neuen Kanal anlegen.</summary>
+    [Parameter] public NotificationChannel? Channel { get; set; }
+
+    private string _name = "";
+    private NotificationKind _kind;
+    private bool _enabled = true;
+    private string? _host;
+    private int _port = 587;
+    private SmtpSecurity _security;
+    private int? _credentialId;
+    private string? _sender;
+    private string? _recipients;
+    private WebhookFormat _format;
+    private string? _url;
+    private string? _error;
+    private List<Credential> _credentials = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _credentials = await CredentialService.ListAsync();
+        if (Channel is null)
+            return;
+        (_name, _kind, _enabled) = (Channel.Name, Channel.Kind, Channel.Enabled);
+        (_host, _port, _security, _credentialId) = (Channel.SmtpHost, Channel.SmtpPort, Channel.SmtpSecurity, Channel.CredentialId);
+        (_sender, _recipients, _format) = (Channel.Sender, Channel.Recipients, Channel.WebhookFormat);
+    }
+
+    private void SetSecurity(SmtpSecurity security)
+    {
+        // Den üblichen Port vorschlagen, solange noch einer der üblichen eingetragen ist.
+        if (_port is 25 or 465 or 587)
+            _port = security switch { SmtpSecurity.Ssl => 465, SmtpSecurity.None => 25, _ => 587 };
+        _security = security;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        try
+        {
+            var saved = await Notifications.SaveAsync(new NotificationChannel
+            {
+                Id = Channel?.Id ?? 0, Name = _name, Kind = _kind, Enabled = _enabled, SmtpHost = _host, SmtpPort = _port, SmtpSecurity = _security,
+                CredentialId = _credentialId, Sender = _sender, Recipients = _recipients, WebhookFormat = _format,
+            }, _url);
+            await Audit.LogAsync(Channel is null ? L["Notification channel created"] : L["Notification channel changed"],
+                $"{saved.Name} ({Display.Channel(saved)})" + (Channel is not null && !string.IsNullOrWhiteSpace(_url) ? ", " + L["address replaced"] : ""));
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            _error = L["A channel named \"{0}\" already exists.", _name.Trim()];
+        }
+    }
+}

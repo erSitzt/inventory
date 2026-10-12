@@ -63,6 +63,8 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Ausführungskontext** je Schritt: als Lokales System oder in der Sitzung des angemeldeten Benutzers
 - **Fernzugriff** je Rechner: Remoteunterstützung anbieten, Sitzung spiegeln, Remotedesktop, TeamViewer/AnyDesk
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
+- **Benachrichtigungen**: Kanäle für E-Mail (SMTP mit STARTTLS/TLS, auf Wunsch Anmeldung mit gespeicherten
+  Zugangsdaten) und Webhooks (Microsoft Teams, Slack oder schlichtes JSON), jeweils mit Testknopf
 - **Protokoll**: Anmeldungen, Befehle, Deployments und jede Änderung mit Benutzer, Rolle und Herkunft (Weboberfläche,
   API, API-Token); Filter, CSV-Export und Aufbewahrungsfrist
 - **Zeitpläne**: täglich, wöchentlich, monatlich (ein Tag des Monats oder z. B. „drei Tage nach dem zweiten
@@ -473,6 +475,22 @@ curl -H "Authorization: Bearer inv_…" https://<server>:<port>/api/computers
 ```
 
 Mit aktiver Windows-Anmeldung geht weiterhin auch `curl --negotiate -u : …`.
+
+### Benachrichtigungen
+
+Unter *Benachrichtigungen* richten Administratoren die Kanäle ein, über die der Server Nachrichten verschickt.
+
+| Kanal | Einstellungen |
+|---|---|
+| E-Mail | Mailserver und Port, Verschlüsselung (STARTTLS auf 587, SSL/TLS auf 465 oder keine für ein Relay im eigenen Netz auf 25), auf Wunsch Anmeldung mit gespeicherten Zugangsdaten, Absenderadresse und Empfänger (mehrere, durch Komma oder Zeilenumbruch getrennt). Die Nachrichten sind reiner Text; der Betreff beginnt mit `[Inventory]`. |
+| Webhook | Adresse und Format: *Microsoft Teams* (eine Adaptive Card, für einen per Teams-Workflow angelegten Webhook), *Slack* (Blöcke, auch von kompatiblen Diensten verstanden) oder *Allgemein* – ein JSON-Objekt `{"source":"Inventory","title":…,"text":…,"severity":"info"\|"warning"\|"error","link":…,"timeUtc":…}`. |
+
+Eine Webhook-Adresse enthält meist das Geheimnis, das das Schreiben erlaubt; sie wird deshalb wie Passwörter
+verschlüsselt gespeichert und nie wieder angezeigt, und Fehlermeldungen wiederholen sie nicht. *Test senden* schickt
+eine Probenachricht über einen Kanal, auch über einen abgeschalteten. Je Kanal steht das Ergebnis des letzten Versands.
+
+Der Server braucht eine ausgehende Verbindung zum Mailserver bzw. zum Webhook-Dienst. Webhooks nutzen den Proxy aus
+den Systemeinstellungen des Dienstkontos; E-Mail geht direkt.
 
 ### Protokoll
 

@@ -60,6 +60,8 @@ credentials. The user interface is available in English and German; translations
 - **Run context** per step: as Local System or in the session of the logged-on user
 - **Remote access** per computer: offer Remote Assistance, shadow a session, Remote Desktop, TeamViewer/AnyDesk
 - **Deployments** in parallel with live status, cancel, retry, and catching up on offline computers
+- **Notifications**: channels for e-mail (SMTP with STARTTLS/TLS, optional sign-in with stored credentials) and
+  webhooks (Microsoft Teams, Slack or plain JSON), each with a test button
 - **Audit log**: sign-ins, commands, deployments and every change with user, role and source (web interface, API,
   API token); filters, CSV export and a retention period
 - **Schedules**: daily, weekly, monthly (a day of the month or e.g. "three days after the second Tuesday"), at fixed
@@ -457,6 +459,22 @@ curl -H "Authorization: Bearer inv_…" https://<server>:<port>/api/computers
 ```
 
 With Windows sign-in enabled, `curl --negotiate -u : …` works as well.
+
+### Notifications
+
+Under *Notifications* administrators set up the channels the server sends messages through.
+
+| Channel | Settings |
+|---|---|
+| E-mail | Mail server and port, encryption (STARTTLS on 587, SSL/TLS on 465, or none for a relay in your own network on 25), optional sign-in with one of the stored credentials, sender address and recipients (several, separated by comma or line break). Messages are plain text; the subject starts with `[Inventory]`. |
+| Webhook | Address and format: *Microsoft Teams* (an adaptive card, for a webhook created with a Teams workflow), *Slack* (blocks, also understood by compatible services) or *Generic* – a JSON object `{"source":"Inventory","title":…,"text":…,"severity":"info"\|"warning"\|"error","link":…,"timeUtc":…}`. |
+
+A webhook address usually contains the secret that allows posting, so it is stored encrypted like passwords and never
+shown again; error messages do not repeat it. *Send test* delivers a sample message through one channel, also through
+a disabled one. The outcome of the last delivery is shown per channel.
+
+The server needs an outbound connection to the mail server or the webhook service. Webhooks use the proxy from the
+system settings of the service account; mail is sent directly.
 
 ### Audit log
 

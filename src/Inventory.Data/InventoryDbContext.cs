@@ -35,6 +35,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
+    public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,14 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
 
         modelBuilder.Entity<InventoryChange>().HasIndex(c => c.TimeUtc);
         modelBuilder.Entity<AuditEntry>().HasIndex(e => e.TimeUtc);
+
+        modelBuilder.Entity<NotificationChannel>(e =>
+        {
+            e.Property(c => c.Name).UseCollation("NOCASE").HasMaxLength(200);
+            e.HasIndex(c => c.Name).IsUnique();
+            // Gelöschte Zugangsdaten: der Kanal bleibt, meldet sich aber nicht mehr an (und der nächste Versand zeigt den Fehler).
+            e.HasOne(c => c.Credential).WithMany().HasForeignKey(c => c.CredentialId).OnDelete(DeleteBehavior.SetNull);
+        });
 
         modelBuilder.Entity<Credential>(e =>
         {
