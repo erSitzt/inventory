@@ -103,7 +103,8 @@ $old = (Invoke-RestMethod -Uri "https://api.security.microsoft.com/api/indicator
 $old | ForEach-Object { Invoke-RestMethod -Method Delete -Uri "https://api.security.microsoft.com/api/indicators/$($_.id)" -Headers $headers }
 ```
 
-The releases are signed with the project's self-signed certificate. An indicator of the type `CertificateThumbprint`
+Releases built with a release certificate are signed with the project's self-signed certificate (README,
+*Updating*); earlier ones are unsigned. For signed releases an indicator of the type `CertificateThumbprint`
 would replace the hash and survive updates, but Defender only honours certificates the computers trust; that
 requires distributing the certificate first (see the README, *Updating*).
 

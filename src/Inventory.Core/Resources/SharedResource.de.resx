@@ -3113,8 +3113,8 @@
   <data name="Updates are not signature-checked; only the checksum secures the download." xml:space="preserve">
     <value>Updates werden nicht auf ihre Signatur geprüft; nur die Prüfsumme sichert den Download.</value>
   </data>
-  <data name="Updates are only installed if the setup carries a valid signature of a release certificate shipped with this version." xml:space="preserve">
-    <value>Updates werden nur eingespielt, wenn das Setup eine gültige Signatur eines Release-Zertifikats trägt, das diese Version mitbringt.</value>
+  <data name="Updates are only installed if the setup carries a valid signature of an accepted certificate: a release certificate shipped with this version, or one allowed in the configuration." xml:space="preserve">
+    <value>Updates werden nur eingespielt, wenn das Setup eine gültige Signatur eines zugelassenen Zertifikats trägt: eines Release-Zertifikats, das diese Version mitbringt, oder eines in der Konfiguration erlaubten.</value>
   </data>
   <data name='Updates come from the source configured on the computer (WSUS or Microsoft Update). The step does not restart the computer: add a "Reboot" step with the condition "only if a restart is pending" after it. Works via SMB + service or agent, not over WinRM.' xml:space="preserve">
     <value>Die Updates kommen aus der Quelle, die auf dem Rechner eingestellt ist (WSUS oder Microsoft Update). Der Schritt startet den Rechner nicht neu: dafür danach einen Schritt „Neustart“ mit der Bedingung „nur wenn ein Neustart aussteht“ anlegen. Funktioniert über SMB + Dienst oder Agent, nicht über WinRM.</value>

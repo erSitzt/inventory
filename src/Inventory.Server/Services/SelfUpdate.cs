@@ -99,7 +99,9 @@ public static class SelfUpdate
 
     /// <summary>
     /// Die Entscheidung ohne Windows-Aufrufe. Gültig ist eine Signatur, die zur Datei passt und entweder von einem der
-    /// mitgelieferten Zertifikate stammt (auch selbstsigniert) oder von einem Herausgeber, dem Windows vertraut und der konfiguriert ist.
+    /// mitgelieferten oder in der Konfiguration zugelassenen Zertifikate stammt (auch selbstsigniert – die Konfiguration
+    /// liegt in der Hand des Betreibers und ist für eigene, selbstsignierte Builds gedacht) oder von einem Herausgeber,
+    /// dem Windows vertraut und der konfiguriert ist.
     /// </summary>
     public static string? Decide(string name, uint trust, string? thumbprint, string? subject, string? requiredPublisher, IReadOnlyCollection<string> trustedThumbprints)
     {
@@ -112,8 +114,8 @@ public static class SelfUpdate
                 ? null
                 : $"{name} is signed by \"{subject}\", expected \"{requiredPublisher}\".";
         return trust == UntrustedRoot
-            ? $"{name} is signed with a certificate ({thumbprint}) that Windows does not trust and that is not one of the release certificates of this version."
-            : $"{name} is signed by \"{subject}\" ({thumbprint}), which is not one of the release certificates of this version.";
+            ? $"{name} is signed with a certificate ({thumbprint}) that Windows does not trust and that is not one of the accepted release certificates."
+            : $"{name} is signed by \"{subject}\" ({thumbprint}), which is not one of the accepted release certificates.";
     }
 
     [SupportedOSPlatform("windows")]

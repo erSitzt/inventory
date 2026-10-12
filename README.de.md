@@ -130,8 +130,8 @@ mit einem Konto ausführen, von dem andere Systeme abhängen, und das Werkzeug z
 Meldungen bedeuten, ein PowerShell-Skript, das die Runner-Datei über ihren Hash freigibt (er steht unter
 *Einstellungen*), und wie sich die Verhaltensmeldungen im Portal abstimmen lassen.
 
-Die veröffentlichten Programmdateien sind mit dem selbstsignierten Zertifikat des Projekts signiert (siehe
-[Aktualisieren](#aktualisieren)). Eine Regel nach Zertifikat greift erst, wenn die eigenen Rechner diesem Zertifikat
+Releases, die mit einem Release-Zertifikat gebaut wurden, sind mit dem selbstsignierten Zertifikat des Projekts
+signiert (siehe [Aktualisieren](#aktualisieren)); frühere sind unsigniert. Eine Regel nach Zertifikat greift erst, wenn die eigenen Rechner diesem Zertifikat
 vertrauen; bis dahin den Runner über seinen Hash freigeben. PowerShell-Schritte laufen als
 `powershell.exe -ExecutionPolicy Bypass -File <Skript im Job-Verzeichnis>`; Regeln, die auf den Bypass-Schalter
 anspringen, melden sie weiterhin.
@@ -359,12 +359,12 @@ Die Selbstaktualisierung setzt voraus, dass der Dienst als Lokales System oder m
 Abschalten lässt sich die Update-Prüfung mit `Inventory:Update:Enabled = false`.
 
 > **Zur Vertrauenskette:** Über Updates gelangt neuer Programmcode auf den Server und über die Agenten auf alle
-> verwalteten Rechner. Releases sind mit einem eigenen, selbstsignierten Zertifikat des Projekts signiert; sein
-> öffentlicher Teil liegt in `installer/signing` und wird mit jeder Version ausgeliefert. Die Selbstaktualisierung
-> spielt nur ein Setup ein, dessen Signatur unversehrt ist und von einem der Zertifikate der *installierten* Version
+> verwalteten Rechner. Releases werden mit einem eigenen, selbstsignierten Zertifikat des Projekts signiert,
+> sobald eines unter `installer/signing` eingecheckt ist; sein öffentlicher Teil wird dann mit jeder Version
+> ausgeliefert. Eine solche Version spielt nur ein Setup ein, dessen Signatur unversehrt ist und von einem der Zertifikate der *installierten* Version
 > stammt – eine veränderte oder anders signierte Datei wird verworfen. *Einstellungen → Updates* zeigt, ob die eigene
-> Version Signaturen prüft (Versionen von vor dem Zertifikat oder aus einem Fork ohne Zertifikat prüfen nur die
-> Prüfsumme).
+> Version Signaturen prüft; eine ohne Zertifikat gebaute Version (von vor dem Zertifikat oder aus einem Fork) prüft
+> nur die Prüfsumme, und die sichert die Übertragung, nicht die Herkunft.
 >
 > Selbstsigniert heißt: die Signatur belegt, dass ein Update vom selben Schlüssel stammt wie die bereits laufende
 > Version, nicht, wer dahintersteht. Windows, SmartScreen und Endpunktschutz vertrauen dem Zertifikat von sich aus

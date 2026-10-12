@@ -107,8 +107,9 @@ $old = (Invoke-RestMethod -Uri "https://api.security.microsoft.com/api/indicator
 $old | ForEach-Object { Invoke-RestMethod -Method Delete -Uri "https://api.security.microsoft.com/api/indicators/$($_.id)" -Headers $headers }
 ```
 
-Die Releases sind mit dem selbstsignierten Zertifikat des Projekts signiert. Ein Indikator vom Typ
-`CertificateThumbprint` würde den Hash ersetzen und Updates überstehen, Defender berücksichtigt aber nur Zertifikate,
+Releases, die mit einem Release-Zertifikat gebaut wurden, sind mit dem selbstsignierten Zertifikat des Projekts
+signiert (README, *Aktualisieren*); frühere sind unsigniert. Für signierte Releases würde ein Indikator vom Typ
+`CertificateThumbprint` den Hash ersetzen und Updates überstehen, Defender berücksichtigt aber nur Zertifikate,
 denen die Rechner vertrauen; dafür muss das Zertifikat zuerst verteilt werden (siehe README, *Aktualisieren*).
 
 ## 3. Die Verhaltensmeldungen abstimmen (nur im Portal)

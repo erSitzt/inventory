@@ -122,8 +122,9 @@ systems depend on, and try the tool on a few computers first.
 PowerShell script that allows the runner file by its hash (shown under *Settings*), and how to tune the behaviour
 alerts in the portal.
 
-The released binaries are signed with the project's self-signed certificate (see [Updating](#updating)). A rule by
-certificate only works once your computers trust that certificate; until then allow the runner by its hash.
+Releases built with a release certificate are signed with the project's self-signed certificate (see
+[Updating](#updating)); earlier ones are unsigned. A rule by certificate only works once your computers trust that
+certificate; until then allow the runner by its hash.
 PowerShell steps run as
 `powershell.exe -ExecutionPolicy Bypass -File <script in the job directory>`; rules that flag the bypass switch will
 keep reporting them.
@@ -345,11 +346,11 @@ Self-update requires the service to run as Local System or with local administra
 disabled with `Inventory:Update:Enabled = false`.
 
 > **About the chain of trust:** updates bring new program code onto the server and, through the agents, onto all
-> managed computers. Releases are signed with the project's own, self-signed certificate; its public part lies in
-> `installer/signing` and is shipped with every version. The self-update only installs a setup whose signature is
+> managed computers. Releases are signed with the project's own, self-signed certificate as soon as one is committed
+> under `installer/signing`; its public part is then shipped with every version. Such a version only installs a setup whose signature is
 > intact and comes from one of the certificates of the *installed* version – a tampered or differently signed file is
-> discarded. *Settings → Updates* shows whether your version checks signatures (versions built before a certificate
-> existed, or from a fork without one, only check the checksum).
+> discarded. *Settings → Updates* shows whether your version checks signatures; a version built without a
+> certificate (before one existed, or from a fork) only checks the checksum, which secures the transfer, not the origin.
 >
 > Self-signed means: the signature proves that an update comes from the same key as the version you already run, not
 > who that is. Windows, SmartScreen and endpoint protection do not trust the certificate by themselves. If you want
