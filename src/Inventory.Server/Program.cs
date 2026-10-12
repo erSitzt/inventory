@@ -117,6 +117,7 @@ builder.Services.AddSingleton<ICatalogSource>(new HttpCatalogSource(new HttpClie
 builder.Services.AddSingleton(sp => new CatalogService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), sp.GetRequiredService<ICatalogSource>(),
     sp.GetRequiredService<PackageService>(), sp.GetRequiredService<CollectionService>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, options.Catalog.Url, options.Catalog.IndexUrl, options.Catalog.VersionsUrl));
 builder.Services.AddHostedService<SchedulerWorker>();
+builder.Services.AddHostedService<AlertWorker>();
 
 var windowsAuthentication = options.ResolveWindowsAuthentication();
 builder.Services.AddSingleton<ApiTokenService>();
@@ -127,6 +128,9 @@ builder.Services.AddSingleton<CredentialService>();
 builder.Services.AddSingleton<IMailSender, MailKitSender>();
 builder.Services.AddSingleton<IWebhookSender>(new HttpWebhookSender(new HttpClient { Timeout = TimeSpan.FromSeconds(20) }));
 builder.Services.AddSingleton<NotificationService>();
+builder.Services.AddSingleton<AlertQueue>();
+builder.Services.AddSingleton<IAlertSink>(sp => sp.GetRequiredService<AlertQueue>());
+builder.Services.AddSingleton<AlertService>();
 builder.Services.AddSingleton<SettingsService>();
 builder.Services.AddSingleton<ExampleData>();
 

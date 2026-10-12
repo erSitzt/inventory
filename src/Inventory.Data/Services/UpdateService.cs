@@ -31,7 +31,7 @@ public sealed record UpdateSettings(bool Automatic, TimeSpan WindowStart);
 
 /// <summary>Sucht nach neuen Versionen und spielt sie auf Wunsch oder automatisch im Wartungsfenster ein.</summary>
 public sealed class UpdateService(IReleaseSource source, SettingsService settings, BackupService backups, DeploymentService deployments,
-    AuditService audit, TimeProvider time, UpdateOptions options, IStringLocalizer<SharedResource>? localizer = null)
+    AuditService audit, TimeProvider time, UpdateOptions options, IStringLocalizer<SharedResource>? localizer = null, IAlertSink? alerts = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
@@ -157,7 +157,10 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
         // Jede Version nur einmal automatisch versuchen: ein fehlschlagendes Setup soll nicht jede Nacht erneut laufen.
         if (await settings.GetAsync(AttemptedKey, ct) == Latest!.Version)
             return false;
-        return await ApplyAsync(AuditActor.System("(automatisch)"), ct) is null;
+        if (await ApplyAsync(AuditActor.System("(automatisch)"), ct) is not { } error)
+            return true;
+        alerts?.Raise(new(AlertKind.UpdateFailed, L["Automatic update to {0} failed", Latest!.Version], error, "settings#updates"));
+        return false;
     }
 
     /// <summary>
@@ -196,6 +199,7 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
             var tail = File.Exists(marker.Log) ? string.Join(" | ", (await File.ReadAllLinesAsync(marker.Log, ct)).TakeLast(6)) : L["no setup log available"].Value;
             LastError = L["The update to {0} failed; {1} keeps running. Setup log: {2}", marker.To, options.CurrentVersion, marker.Log];
             await audit.LogAsync(new AuditActor(marker.User, null, AuditSource.System), L["Update failed"], $"{marker.From} → {marker.To}: {tail}", ct);
+            alerts?.Raise(new(AlertKind.UpdateFailed, L["Update to {0} failed", marker.To], LastError, "settings#updates"));
         }
         Changed?.Invoke();
     }

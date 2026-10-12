@@ -1,6 +1,7 @@
 @page "/notifications"
 @attribute [Authorize(Policy = AccessControl.AdminPolicy)]
 @inject NotificationService Channels
+@inject AlertService Alerts
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject Auditor Audit
@@ -59,11 +60,86 @@
     </NoRecordsContent>
 </MudDataGrid>
 
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-8 mb-4">
+    <MudText Typo="Typo.h5">@L["Alert rules"]</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditRuleAsync(null))">@L["Add"]</MudButton>
+</MudStack>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    @L["A rule sends a message when something happens: a computer enters a collection, a deployment finishes with failures, a schedule or the directory synchronization fails. Dynamic collections are the rule language – \"computers without antivirus\" is a collection, and the rule reports who enters it. Only changes are reported; what already applies when a rule is created is the starting point."]
+</MudText>
+
+<MudDataGrid T="AlertRule" Items="_rules" Dense="true" Hover="true" SortMode="SortMode.None">
+    <Columns>
+        <PropertyColumn Property="r => r.Name" Title="@L["Name"]" />
+        <TemplateColumn Title="@L["Trigger"]">
+            <CellTemplate>@Display.Alert(context.Item)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Channels"]">
+            <CellTemplate>@(context.Item.Channels.Count == 0 ? L["all"] : string.Join(", ", context.Item.Channels.Select(c => c.Name).Order()))</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Status"]">
+            <CellTemplate>
+                @if (!context.Item.Enabled)
+                {
+                    <MudChip T="string" Size="Size.Small">@L["off"]</MudChip>
+                }
+                else if (AlertRule.NeedsCollection(context.Item.Kind) && context.Item.Collection is null)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["Collection deleted"]</MudChip>
+                }
+                else if (context.Item.LastFiredUtc is not null)
+                {
+                    <MudTooltip Text="@context.Item.LastMessage">
+                        <MudText Typo="Typo.body2">@L["Last reported {0}", Display.LocalTime(context.Item.LastFiredUtc)]</MudText>
+                    </MudTooltip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditRuleAsync(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteRuleAsync(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">@L["No rules set up yet."]</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+
 @code {
     private List<NotificationChannel> _channels = [];
+    private List<AlertRule> _rules = [];
     private int? _testing;
 
-    protected override async Task OnInitializedAsync() => _channels = await Channels.ListAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _channels = await Channels.ListAsync();
+        _rules = await Alerts.ListAsync();
+    }
+
+    private async Task EditRuleAsync(AlertRule? rule)
+    {
+        var parameters = new DialogParameters<EditAlertRuleDialog> { { d => d.Rule, rule }, { d => d.AvailableChannels, _channels } };
+        var dialog = await Dialogs.ShowAsync<EditAlertRuleDialog>(rule?.Name ?? L["Add rule"], parameters,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            _rules = await Alerts.ListAsync();
+    }
+
+    private async Task DeleteRuleAsync(AlertRule rule)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete rule"], L["Really delete \"{0}\"?", rule.Name],
+            yesText: L["Delete"], cancelText: L["Cancel"]);
+        if (confirmed != true)
+            return;
+        await Alerts.DeleteAsync(rule.Id);
+        await Audit.LogAsync(L["Alert rule deleted"], rule.Name);
+        _rules = await Alerts.ListAsync();
+    }
 
     private async Task EditAsync(NotificationChannel? channel)
     {
@@ -101,5 +177,6 @@
         await Channels.DeleteAsync(channel.Id);
         await Audit.LogAsync(L["Notification channel deleted"], channel.Name);
         _channels = await Channels.ListAsync();
+        _rules = await Alerts.ListAsync();
     }
 }

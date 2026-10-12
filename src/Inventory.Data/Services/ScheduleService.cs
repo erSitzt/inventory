@@ -6,7 +6,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
-public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, ScanService scans, DeploymentService deployments, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null)
+public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, ScanService scans, DeploymentService deployments, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null, Inventory.Core.Abstractions.IAlertSink? alerts = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
@@ -61,6 +61,7 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
                 schedule.LastResult = L["Missed: the server was not running at {0}", TimeZoneInfo.ConvertTimeFromUtc(schedule.NextRunUtc.Value, time.LocalTimeZone).ToString("g")];
                 schedule.NextRunUtc = NextUtc(schedule);
                 await StoreAsync(schedule, ct);
+                alerts?.Raise(new(AlertKind.ScheduleFailed, L["Schedule \"{0}\" missed", schedule.Name], schedule.LastResult, "schedules"));
                 continue;
             }
 
@@ -74,7 +75,7 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
                 await StoreAsync(schedule, ct);
             }
 
-            schedule.LastResult = await RunAsync(schedule, ct);
+            schedule.LastResult = await RunAsync(schedule, ct, scheduled: true);
             await StoreAsync(schedule, ct);
         }
         return due.Count;
@@ -170,7 +171,8 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
         return result;
     }
 
-    private async Task<string> RunAsync(Schedule schedule, CancellationToken ct)
+    /// <param name="scheduled">Regulärer Lauf: ein Fehler geht auch an die Alarmregeln. Beim Start von Hand sieht ihn der Mensch selbst.</param>
+    private async Task<string> RunAsync(Schedule schedule, CancellationToken ct, bool scheduled = false)
     {
         try
         {
@@ -196,6 +198,8 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
         {
+            if (scheduled)
+                alerts?.Raise(new(AlertKind.ScheduleFailed, L["Schedule \"{0}\" failed", schedule.Name], ex.Message, "schedules"));
             return $"Fehler: {ex.Message}";
         }
     }
