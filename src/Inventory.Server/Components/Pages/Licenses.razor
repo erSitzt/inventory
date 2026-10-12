@@ -3,6 +3,7 @@
 @inject IDialogService Dialogs
 @inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <PageTitle>@L["Licences"] – Inventory</PageTitle>
 
@@ -110,6 +111,8 @@
 
     private async Task EditAsync(SoftwareLicense? license)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var parameters = new DialogParameters<EditLicenseDialog> { { d => d.License, license } };
         var dialog = await Dialogs.ShowAsync<EditLicenseDialog>(license?.Name ?? L["Add licence"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is { Canceled: false })
@@ -118,6 +121,8 @@
 
     private async Task DeleteAsync(SoftwareLicense license)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete licence"], L["Really delete \"{0}\"?", license.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;

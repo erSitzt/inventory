@@ -105,14 +105,14 @@ public static class ReportEndpoints
         {
             var license = await service.SaveAsync(ToLicense(0, request), ct);
             await audit.LogAsync(http.Actor(), "Licence created via API", license.Name, ct);
-            return Results.Created($"/api/licenses/{license.Id}", license);
+            return Results.Created($"/api/licenses/{license.Id}", ToDto((await service.UsageAsync(ct)).First(u => u.License.Id == license.Id)));
         }).WithSummary("Record a licence").WithDescription("pattern: text the program name must contain; with * the whole name must match.");
 
         licenses.MapPut("{id:int}", async (int id, LicenseRequest request, LicenseService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             var license = await service.SaveAsync(ToLicense(id, request), ct);
             await audit.LogAsync(http.Actor(), "Licence changed via API", license.Name, ct);
-            return Results.Ok(license);
+            return Results.Ok(ToDto((await service.UsageAsync(ct)).First(u => u.License.Id == license.Id)));
         }).WithSummary("Change a licence");
 
         licenses.MapDelete("{id:int}", async (int id, LicenseService service, AuditService audit, HttpContext http, CancellationToken ct) =>

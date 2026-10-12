@@ -4,6 +4,7 @@
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
 <PageTitle>@L["Reports"] – Inventory</PageTitle>
 
@@ -61,6 +62,8 @@
 
     private async Task EditAsync(Report? report)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var parameters = new DialogParameters<EditReportDialog> { { d => d.Report, report } };
         var dialog = await Dialogs.ShowAsync<EditReportDialog>(report?.Name ?? L["Add report"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is { Canceled: false })
@@ -70,6 +73,8 @@
     /// <summary>Eine Kopie als Ausgangspunkt, z. B. von einem der Beispiele; sie öffnet sich gleich zum Anpassen.</summary>
     private async Task DuplicateAsync(Report report)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var names = _reports.Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var baseName = report.Name.StartsWith(L[ExampleData.Prefix], StringComparison.Ordinal) ? report.Name[L[ExampleData.Prefix].Value.Length..] : L["{0} (copy)", report.Name].Value;
         var name = baseName;
@@ -87,6 +92,8 @@
 
     private async Task DeleteAsync(Report report)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete report"], L["Really delete \"{0}\"?", report.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;

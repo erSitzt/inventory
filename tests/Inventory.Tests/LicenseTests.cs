@@ -99,6 +99,38 @@ public class LicenseTests
         Assert.Equal(1, await NextAsync());
     }
 
+    [Fact]
+    public async Task A_licence_whose_message_was_not_delivered_is_reported_again_while_delivered_ones_are_not()
+    {
+        using var db = await SeedAsync();
+        var clock = new Clock(new DateTimeOffset(2040, 1, 1, 8, 0, 0, TimeSpan.Zero));
+        var webhook = new RecordingWebhook();
+        var licenses = new LicenseService(db);
+        var notifications = new NotificationService(db, new ReversingProtector(), new CredentialService(db, new ReversingProtector()), new NoMail(), webhook, clock);
+        var alerts = new AlertService(db, new CollectionService(db), notifications, new AlertQueue(), new SettingsService(db), clock, licenses: licenses);
+        await notifications.SaveAsync(new NotificationChannel { Name = "Chat", Kind = NotificationKind.Webhook }, "https://hooks.example.test/x");
+        var acrobat = await licenses.SaveAsync(new SoftwareLicense { Name = "Acrobat Pro", Pattern = "Acrobat Pro", Owned = 9 });
+        var office = await licenses.SaveAsync(new SoftwareLicense { Name = "Office 2021", Pattern = "Microsoft Office * 2021*", Owned = 9 });
+        await alerts.SaveAsync(new AlertRule { Name = "Lizenzen", Kind = AlertKind.LicenseExceeded }, []);
+        clock.Advance(AlertService.PollInterval);
+        await alerts.EvaluateAsync();
+
+        // Beide werden im selben Durchlauf überschritten; die Nachricht zu Office kommt nicht an.
+        await licenses.SaveAsync(new SoftwareLicense { Id = acrobat.Id, Name = acrobat.Name, Pattern = acrobat.Pattern, Owned = 1 });
+        await licenses.SaveAsync(new SoftwareLicense { Id = office.Id, Name = office.Name, Pattern = office.Pattern, Owned = 1 });
+        webhook.FailWhenContains = "Office 2021";
+        clock.Advance(AlertService.PollInterval);
+        Assert.Equal(1, await alerts.EvaluateAsync());
+
+        webhook.FailWhenContains = null;
+        clock.Advance(AlertService.PollInterval);
+        Assert.Equal(1, await alerts.EvaluateAsync());
+        clock.Advance(AlertService.PollInterval);
+        Assert.Equal(0, await alerts.EvaluateAsync());
+        Assert.Equal(1, webhook.Sent.Count(json => json.Contains("Acrobat Pro")));
+        Assert.Equal(1, webhook.Sent.Count(json => json.Contains("Office 2021")));
+    }
+
     private sealed class Clock(DateTimeOffset now) : TimeProvider
     {
         private DateTimeOffset _now = now;
@@ -115,9 +147,12 @@ public class LicenseTests
     private sealed class RecordingWebhook : IWebhookSender
     {
         public List<string> Sent { get; } = [];
+        public string? FailWhenContains { get; set; }
 
         public Task PostAsync(string url, string json, CancellationToken ct = default)
         {
+            if (FailWhenContains is not null && json.Contains(FailWhenContains))
+                throw new RemoteException("HTTP 503");
             Sent.Add(json);
             return Task.CompletedTask;
         }
