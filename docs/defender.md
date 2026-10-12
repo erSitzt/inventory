@@ -40,8 +40,8 @@ The hash is shown under *Settings → SHA-256 of InventoryRunner.exe*, or on the
 (Get-FileHash "$env:ProgramFiles\Inventory\runner\InventoryRunner.exe" -Algorithm SHA256).Hash
 ```
 
-It changes with every server update, so the indicator has to be renewed after each update until the releases are
-code-signed. Indicators need Microsoft Defender Antivirus with cloud-delivered protection on the clients and the
+It changes with every server update, so the indicator has to be renewed after each update, as long as your
+computers do not trust the release certificate. Indicators need Microsoft Defender Antivirus with cloud-delivered protection on the clients and the
 feature *Allow or block file* (*Settings → Endpoints → Advanced features*).
 
 **In the portal:** *Settings → Endpoints → Indicators → File hashes → Add item*, action *Allow*.
@@ -103,8 +103,10 @@ $old = (Invoke-RestMethod -Uri "https://api.security.microsoft.com/api/indicator
 $old | ForEach-Object { Invoke-RestMethod -Method Delete -Uri "https://api.security.microsoft.com/api/indicators/$($_.id)" -Headers $headers }
 ```
 
-Once the releases are code-signed, one indicator of the type `CertificateThumbprint` replaces the hash and survives
-updates.
+Releases built with a release certificate are signed with the project's self-signed certificate (README,
+*Updating*); earlier ones are unsigned. For signed releases an indicator of the type `CertificateThumbprint`
+would replace the hash and survive updates, but Defender only honours certificates the computers trust; that
+requires distributing the certificate first (see the README, *Updating*).
 
 ## 3. Tune the behaviour alerts (portal only)
 

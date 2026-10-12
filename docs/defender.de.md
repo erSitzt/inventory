@@ -42,8 +42,8 @@ Der Hash steht unter *Einstellungen → SHA-256 von InventoryRunner.exe*, oder a
 (Get-FileHash "$env:ProgramFiles\Inventory\runner\InventoryRunner.exe" -Algorithm SHA256).Hash
 ```
 
-Er ändert sich mit jedem Server-Update; der Indikator muss also nach jedem Update erneuert werden, bis die Releases
-signiert sind. Indikatoren setzen auf den Clients Microsoft Defender Antivirus mit Cloudschutz voraus sowie die
+Er ändert sich mit jedem Server-Update; der Indikator muss also nach jedem Update erneuert werden, solange die
+eigenen Rechner dem Release-Zertifikat nicht vertrauen. Indikatoren setzen auf den Clients Microsoft Defender Antivirus mit Cloudschutz voraus sowie die
 Funktion *Datei zulassen oder blockieren* (*Einstellungen → Endpunkte → Erweiterte Features*).
 
 **Im Portal:** *Einstellungen → Endpunkte → Indikatoren → Dateihashes → Element hinzufügen*, Aktion *Zulassen*.
@@ -107,8 +107,10 @@ $old = (Invoke-RestMethod -Uri "https://api.security.microsoft.com/api/indicator
 $old | ForEach-Object { Invoke-RestMethod -Method Delete -Uri "https://api.security.microsoft.com/api/indicators/$($_.id)" -Headers $headers }
 ```
 
-Sobald die Releases signiert sind, ersetzt ein Indikator vom Typ `CertificateThumbprint` den Hash und übersteht
-Updates.
+Releases, die mit einem Release-Zertifikat gebaut wurden, sind mit dem selbstsignierten Zertifikat des Projekts
+signiert (README, *Aktualisieren*); frühere sind unsigniert. Für signierte Releases würde ein Indikator vom Typ
+`CertificateThumbprint` den Hash ersetzen und Updates überstehen, Defender berücksichtigt aber nur Zertifikate,
+denen die Rechner vertrauen; dafür muss das Zertifikat zuerst verteilt werden (siehe README, *Aktualisieren*).
 
 ## 3. Die Verhaltensmeldungen abstimmen (nur im Portal)
 

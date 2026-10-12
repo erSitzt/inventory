@@ -122,8 +122,10 @@ systems depend on, and try the tool on a few computers first.
 PowerShell script that allows the runner file by its hash (shown under *Settings*), and how to tune the behaviour
 alerts in the portal.
 
-The released binaries are not code-signed yet, so a rule by publisher certificate is not possible; that is planned
-together with signed updates (see the roadmap). PowerShell steps run as
+Releases built with a release certificate are signed with the project's self-signed certificate (see
+[Updating](#updating)); earlier ones are unsigned. A rule by certificate only works once your computers trust that
+certificate; until then allow the runner by its hash.
+PowerShell steps run as
 `powershell.exe -ExecutionPolicy Bypass -File <script in the job directory>`; rules that flag the bypass switch will
 keep reporting them.
 
@@ -344,16 +346,31 @@ Self-update requires the service to run as Local System or with local administra
 disabled with `Inventory:Update:Enabled = false`.
 
 > **About the chain of trust:** updates bring new program code onto the server and, through the agents, onto all
-> managed computers. Releases are currently **not signed**; the checksum only secures the transfer, not the origin.
-> If you want to lock this down, leave automatic updates off and review releases before installing. Once releases are
-> signed, `Inventory:Update:RequiredPublisher` enforces the publisher check.
+> managed computers. Releases are signed with the project's own, self-signed certificate as soon as one is committed
+> under `installer/signing`; its public part is then shipped with every version. Such a version only installs a setup whose signature is
+> intact and comes from one of the certificates of the *installed* version – a tampered or differently signed file is
+> discarded. *Settings → Updates* shows whether your version checks signatures; a version built without a
+> certificate (before one existed, or from a fork) only checks the checksum, which secures the transfer, not the origin.
+>
+> Self-signed means: the signature proves that an update comes from the same key as the version you already run, not
+> who that is. Windows, SmartScreen and endpoint protection do not trust the certificate by themselves. If you want
+> them to, distribute the `.cer` file to *Trusted Root Certification Authorities* and *Trusted Publishers* of your
+> computers (group policy) – only after you have decided to trust the releases.
+>
+> `Inventory:Update:TrustedThumbprints` adds certificates (own builds), `Inventory:Update:RequiredPublisher` also
+> accepts a publisher that Windows trusts, `Inventory:Update:AllowUnsigned` switches the check off.
 
 ### Creating a release (for maintainers)
 
 A tag `vX.Y.Z` starts the pipeline (`.github/workflows/release.yml`): tests, publish, setup, ZIP, checksums, GitHub
 release with automatically generated notes. Tags with a suffix (`v1.2.0-rc1`) are marked as pre-release and ignored
-by the update check. If the secrets `SIGNING_CERT_PFX` (Base64 of the PFX file) and `SIGNING_CERT_PASSWORD` exist, the
-pipeline signs server, runner and setup.
+by the update check.
+
+Signing: `scripts/new-signing-cert.sh --set-secrets` creates a self-signed code-signing certificate, stores it as the
+secrets `SIGNING_CERT_PFX` (Base64 of the PFX file) and `SIGNING_CERT_PASSWORD` and writes the public certificate to
+`installer/signing/`, which is committed. The pipeline then signs server, runner, launcher and setup, and refuses to
+build a release whose signing certificate is not among the committed ones – servers could not install it. To change
+the certificate, add the new one and keep the old one for one more release (see `installer/signing/README.md`).
 
 ### Configuration (`C:\ProgramData\Inventory\appsettings.json`)
 
@@ -369,7 +386,7 @@ pipeline signs server, runner and setup.
 | `Inventory:Oidc:ClientId`, `ClientSecret` | from the app registration |
 | `Inventory:Oidc:AllowedGroups` | object IDs of the administrator groups or names of app roles |
 | `Inventory:Oidc:Roles:Admin`, `Operator`, `Viewer` | groups or app roles per role; without any entry here or in `AllowedGroups` the server does not start |
-| `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher` | update check, source of the releases, expected publisher of the signature |
+| `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher`, `TrustedThumbprints`, `AllowUnsigned` | update check, source of the releases, expected publisher of the signature |
 | `Inventory:Catalog:Url` | address or path of the package library's `catalog.json` |
 | `Inventory:Catalog:VersionsUrl` | folder with the version lists (`<winget-ID>.json`); empty = offer only the current version |
 | `Inventory:Catalog:IndexUrl` | address or path of the search index `winget.json`; empty = disable the search over all of winget |

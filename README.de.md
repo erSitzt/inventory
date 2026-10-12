@@ -130,8 +130,9 @@ mit einem Konto ausführen, von dem andere Systeme abhängen, und das Werkzeug z
 Meldungen bedeuten, ein PowerShell-Skript, das die Runner-Datei über ihren Hash freigibt (er steht unter
 *Einstellungen*), und wie sich die Verhaltensmeldungen im Portal abstimmen lassen.
 
-Die veröffentlichten Programmdateien sind noch nicht signiert, eine Regel nach Herausgeber-Zertifikat ist daher nicht
-möglich; das ist zusammen mit signierten Updates geplant (siehe Roadmap). PowerShell-Schritte laufen als
+Releases, die mit einem Release-Zertifikat gebaut wurden, sind mit dem selbstsignierten Zertifikat des Projekts
+signiert (siehe [Aktualisieren](#aktualisieren)); frühere sind unsigniert. Eine Regel nach Zertifikat greift erst, wenn die eigenen Rechner diesem Zertifikat
+vertrauen; bis dahin den Runner über seinen Hash freigeben. PowerShell-Schritte laufen als
 `powershell.exe -ExecutionPolicy Bypass -File <Skript im Job-Verzeichnis>`; Regeln, die auf den Bypass-Schalter
 anspringen, melden sie weiterhin.
 
@@ -358,16 +359,34 @@ Die Selbstaktualisierung setzt voraus, dass der Dienst als Lokales System oder m
 Abschalten lässt sich die Update-Prüfung mit `Inventory:Update:Enabled = false`.
 
 > **Zur Vertrauenskette:** Über Updates gelangt neuer Programmcode auf den Server und über die Agenten auf alle
-> verwalteten Rechner. Releases sind derzeit **nicht signiert**; die Prüfsumme sichert nur die Übertragung, nicht die
-> Herkunft. Wer das absichern will, lässt die Automatik aus und prüft Releases vor dem Einspielen. Sobald Releases
-> signiert sind, erzwingt `Inventory:Update:RequiredPublisher` die Prüfung des Herausgebers.
+> verwalteten Rechner. Releases werden mit einem eigenen, selbstsignierten Zertifikat des Projekts signiert,
+> sobald eines unter `installer/signing` eingecheckt ist; sein öffentlicher Teil wird dann mit jeder Version
+> ausgeliefert. Eine solche Version spielt nur ein Setup ein, dessen Signatur unversehrt ist und von einem der Zertifikate der *installierten* Version
+> stammt – eine veränderte oder anders signierte Datei wird verworfen. *Einstellungen → Updates* zeigt, ob die eigene
+> Version Signaturen prüft; eine ohne Zertifikat gebaute Version (von vor dem Zertifikat oder aus einem Fork) prüft
+> nur die Prüfsumme, und die sichert die Übertragung, nicht die Herkunft.
+>
+> Selbstsigniert heißt: die Signatur belegt, dass ein Update vom selben Schlüssel stammt wie die bereits laufende
+> Version, nicht, wer dahintersteht. Windows, SmartScreen und Endpunktschutz vertrauen dem Zertifikat von sich aus
+> nicht. Wer das möchte, verteilt die `.cer`-Datei per Gruppenrichtlinie in *Vertrauenswürdige
+> Stammzertifizierungsstellen* und *Vertrauenswürdige Herausgeber* der eigenen Rechner – erst nach der Entscheidung,
+> den Releases zu vertrauen.
+>
+> `Inventory:Update:TrustedThumbprints` ergänzt Zertifikate (eigene Builds), `Inventory:Update:RequiredPublisher`
+> lässt zusätzlich einen Herausgeber zu, dem Windows vertraut, `Inventory:Update:AllowUnsigned` schaltet die Prüfung ab.
 
 ### Release erstellen (für Maintainer)
 
 Ein Tag `vX.Y.Z` startet die Pipeline (`.github/workflows/release.yml`): Tests, Veröffentlichung, Setup, ZIP,
 Prüfsummen, GitHub-Release mit automatisch erzeugten Notizen. Tags mit Zusatz (`v1.2.0-rc1`) werden als Vorabversion
-markiert und von der Update-Prüfung ignoriert. Liegen die Secrets `SIGNING_CERT_PFX` (Base64 der PFX-Datei) und
-`SIGNING_CERT_PASSWORD` vor, signiert die Pipeline Server, Runner und Setup.
+markiert und von der Update-Prüfung ignoriert.
+
+Signatur: `scripts/new-signing-cert.sh --set-secrets` erzeugt ein selbstsigniertes Code-Signing-Zertifikat, hinterlegt
+es als Secrets `SIGNING_CERT_PFX` (Base64 der PFX-Datei) und `SIGNING_CERT_PASSWORD` und schreibt das öffentliche
+Zertifikat nach `installer/signing/`; dieses wird eingecheckt. Die Pipeline signiert dann Server, Runner, Starter und
+Setup und verweigert ein Release, dessen Signaturzertifikat nicht unter den eingecheckten ist – Server könnten es
+nicht einspielen. Für einen Zertifikatswechsel das neue dazulegen und das alte noch ein Release lang behalten (siehe
+`installer/signing/README.md`).
 
 ### Konfiguration (`C:\ProgramData\Inventory\appsettings.json`)
 
@@ -383,7 +402,7 @@ markiert und von der Update-Prüfung ignoriert. Liegen die Secrets `SIGNING_CERT
 | `Inventory:Oidc:ClientId`, `ClientSecret` | Aus der App-Registrierung |
 | `Inventory:Oidc:AllowedGroups` | Objekt-IDs der Administratorgruppen oder Namen von App-Rollen |
 | `Inventory:Oidc:Roles:Admin`, `Operator`, `Viewer` | Gruppen oder App-Rollen je Rolle; ohne jeden Eintrag hier oder in `AllowedGroups` startet der Server nicht |
-| `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher` | Update-Prüfung, Quelle der Releases, erwarteter Herausgeber der Signatur |
+| `Inventory:Update:Enabled`, `Repository`, `RequiredPublisher`, `TrustedThumbprints`, `AllowUnsigned` | Update-Prüfung, Quelle der Releases, erwarteter Herausgeber der Signatur |
 | `Inventory:Catalog:Url` | Adresse oder Pfad der `catalog.json` der Paketbibliothek |
 | `Inventory:Catalog:VersionsUrl` | Ordner mit den Versionslisten (`<winget-ID>.json`); leer = nur die aktuelle Version anbieten |
 | `Inventory:Catalog:IndexUrl` | Adresse oder Pfad des Suchindex `winget.json`; leer = Suche in ganz winget abschalten |

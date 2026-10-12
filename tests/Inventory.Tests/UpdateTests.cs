@@ -185,6 +185,56 @@ public sealed class UpdateTests : IDisposable
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
     }
 
+    [Theory]
+    // Mitgeliefertes Zertifikat: gilt auch selbstsigniert (Windows vertraut dem Aussteller nicht).
+    [InlineData(0x800B0109u, "AA11", "Inventory Release Signing", null, "aa11", true)]
+    [InlineData(0u, "AA11", "Inventory Release Signing", null, "aa11", true)]
+    // Selbstsigniert mit fremdem Zertifikat, verändert, unsigniert.
+    [InlineData(0x800B0109u, "BB22", "Inventory Release Signing", null, "aa11", false)]
+    [InlineData(0x800B0109u, "BB22", "Inventory Release Signing", "Inventory", "aa11", false)]
+    [InlineData(0x80096010u, "AA11", "Inventory Release Signing", null, "aa11", false)]
+    [InlineData(0x800B0100u, null, null, null, "aa11", false)]
+    // Von Windows als vertrauenswürdig eingestuft: nur mit konfiguriertem, passendem Herausgeber.
+    [InlineData(0u, "CC33", "Example Publisher", "Example", "aa11", true)]
+    [InlineData(0u, "CC33", "Example Publisher", "Other", "aa11", false)]
+    [InlineData(0u, "CC33", "Example Publisher", null, "aa11", false)]
+    [InlineData(0u, "CC33", "Example Publisher", null, "", false)]
+    public void Setup_signature_must_come_from_a_shipped_certificate_or_the_configured_publisher(uint trust, string? thumbprint, string? subject, string? publisher, string pins, bool accepted)
+    {
+        var problem = Inventory.Server.Services.SelfUpdate.Decide("Setup.exe", trust, thumbprint, subject, publisher, pins.Split(',', StringSplitOptions.RemoveEmptyEntries));
+
+        Assert.Equal(accepted, problem is null);
+    }
+
+    [Fact]
+    public void Release_certificates_come_from_the_signing_folder_and_the_configuration()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            Assert.Empty(Inventory.Server.Services.SelfUpdate.TrustedThumbprints(dir, null));
+
+            using var key = System.Security.Cryptography.RSA.Create(2048);
+            var request = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=Test", key,
+                System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+            using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+            var folder = Directory.CreateDirectory(Path.Combine(dir, Inventory.Server.Services.SelfUpdate.SigningFolder)).FullName;
+            File.WriteAllBytes(Path.Combine(folder, "release.cer"), certificate.Export(System.Security.Cryptography.X509Certificates.X509ContentType.Cert));
+            File.WriteAllText(Path.Combine(folder, "broken.cer"), "kein Zertifikat");
+
+            var configured = new string('a', 40);
+            var trusted = Inventory.Server.Services.SelfUpdate.TrustedThumbprints(dir, [$" {configured[..20]} {configured[20..]} ", "zu kurz"]);
+
+            Assert.Equal(2, trusted.Count);
+            Assert.Contains(certificate.Thumbprint, trusted);
+            Assert.Contains(configured, trusted);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
     private sealed class FakeSource : IReleaseSource
     {
         private static readonly byte[] SetupBytes = [77, 90, 1, 2, 3];

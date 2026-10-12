@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Öffentliche Zertifikate, mit denen Releases signiert sind: die Selbstaktualisierung nimmt nur damit signierte Setups an. -->
+    <Content Include="..\..\installer\signing\*.cer" Link="signing\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Inventory.Core\Inventory.Core.csproj" />
     <ProjectReference Include="..\Inventory.Data\Inventory.Data.csproj" />
     <ProjectReference Include="..\Inventory.Remoting\Inventory.Remoting.csproj" />

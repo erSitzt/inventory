@@ -203,10 +203,16 @@ public sealed class UpdateSettingsOptions
     public string Repository { get; set; } = "erSitzt/inventory";
 
     /// <summary>
-    /// Gesetzt = das Setup wird nur installiert, wenn es eine gültige Signatur dieses Herausgebers trägt.
-    /// Leer (solange Releases unsigniert sind) sichert nur die Prüfsumme die Übertragung.
+    /// Gesetzt = auch ein Setup, das mit einem von Windows als vertrauenswürdig eingestuften Zertifikat dieses Herausgebers
+    /// signiert ist, wird angenommen. Unabhängig davon gelten die mit der Version gelieferten Zertifikate (Ordner "signing").
     /// </summary>
     public string? RequiredPublisher { get; set; }
+
+    /// <summary>Zusätzliche SHA-1-Fingerabdrücke von Zertifikaten, mit denen Releases signiert sein dürfen (eigene Builds, Zertifikatswechsel).</summary>
+    public string[] TrustedThumbprints { get; set; } = [];
+
+    /// <summary>true = Updates auch ohne gültige Signatur einspielen, obwohl diese Version Zertifikate mitbringt (nur für eigene, unsignierte Builds).</summary>
+    public bool AllowUnsigned { get; set; }
 }
 
 /// <summary>Quelle der Paketbibliothek.</summary>

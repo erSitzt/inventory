@@ -49,6 +49,8 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
     public string Repository => options.Repository;
     public bool Enabled => options.Enabled;
     public string? CannotInstallReason => options.CannotInstallReason;
+    /// <summary>false = nur die Prüfsumme sichert das Setup; die Herkunft wird nicht geprüft.</summary>
+    public bool VerifiesSignature => options.VerifySignature is not null;
 
     /// <summary>Lokal gebaute Stände tragen 0.0.0; für sie wäre jedes Release "neuer".</summary>
     public bool IsDevelopmentBuild => options.CurrentVersion.StartsWith("0.0.0", StringComparison.Ordinal);
