@@ -28,6 +28,76 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
     public async Task<string> GetEnrollmentTokenAsync(CancellationToken ct = default) =>
         await settings.GetAsync(SettingKeys.AgentEnrollmentToken, ct) ?? await RenewEnrollmentTokenAsync(ct);
 
+    /// <summary>Steht für "ohne Ablauf".</summary>
+    public static readonly DateTime PublicDownloadForever = DateTime.MaxValue.Date;
+
+    /// <summary>
+    /// Bis wann die Download-Seite des Agenten ohne Anmeldung offen ist; null = geschlossen (auch wenn die Frist abgelaufen ist),
+    /// <see cref="PublicDownloadForever"/> = ohne Ablauf.
+    /// </summary>
+    public async Task<DateTime?> GetPublicDownloadUntilAsync(CancellationToken ct = default)
+    {
+        if (!DateTime.TryParse(await settings.GetAsync(SettingKeys.AgentPublicDownloadUntilUtc, ct), System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind, out var until))
+            return null;
+        return until > time.GetUtcNow().UtcDateTime ? until : null;
+    }
+
+    /// <summary>
+    /// Räumt eine abgelaufene Frist ab und liefert true, wenn das gerade geschehen ist – einmal je Ablauf, damit der Takt
+    /// das Schließen ins Protokoll schreiben kann.
+    /// </summary>
+    public async Task<bool> CloseExpiredPublicDownloadAsync(CancellationToken ct = default)
+    {
+        if (await settings.GetAsync(SettingKeys.AgentPublicDownloadUntilUtc, ct) is null || await GetPublicDownloadUntilAsync(ct) is not null)
+            return false;
+        await settings.SetAsync(SettingKeys.AgentPublicDownloadUntilUtc, null, ct);
+        return true;
+    }
+
+    /// <param name="duration">null = schließen; <see cref="Timeout.InfiniteTimeSpan"/> = ohne Ablauf.</param>
+    public Task SetPublicDownloadAsync(TimeSpan? duration, CancellationToken ct = default)
+    {
+        var until = duration is null ? (DateTime?)null : duration == Timeout.InfiniteTimeSpan ? PublicDownloadForever : time.GetUtcNow().UtcDateTime + duration.Value;
+        return settings.SetAsync(SettingKeys.AgentPublicDownloadUntilUtc, until?.ToString("O", System.Globalization.CultureInfo.InvariantCulture), ct);
+    }
+
+    /// <summary>
+    /// Skript für eine PowerShell mit Administratorrechten: lädt das Agent-Setup von der öffentlichen Seite, entpackt es und
+    /// richtet den Agenten ein. Nur Cmdlets, damit es auch im eingeschränkten Sprachmodus läuft.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
+    public async Task<string> BuildInstallScriptAsync(CancellationToken ct = default)
+    {
+        var serverUrl = await GetServerUrlAsync(ct);
+        if (string.IsNullOrWhiteSpace(serverUrl))
+            throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
+        // Aufgeräumt wird auch nach einem Fehler: im entpackten Ordner liegt das Anmeldegeheimnis.
+        return $$"""
+            $ErrorActionPreference = 'Stop'
+            $ProgressPreference = 'SilentlyContinue'
+            $folder = Join-Path $env:TEMP 'InventoryAgentSetup'
+            $zip = "$folder.zip"
+            $code = 1
+            try {
+                Remove-Item -Path $folder, $zip -Recurse -Force -ErrorAction SilentlyContinue
+                Invoke-WebRequest -Uri '{{serverUrl.Replace("'", "''")}}/{{PublicSetupPath}}' -OutFile $zip -UseBasicParsing
+                Expand-Archive -Path $zip -DestinationPath $folder -Force
+                & (Join-Path $folder '{{JobFiles.RunnerExe}}') {{RunnerModes.InstallAgent}}
+                $code = $LASTEXITCODE
+            }
+            finally {
+                Remove-Item -Path $folder, $zip -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            if ($code -ne 0) { Write-Error "Agent setup failed with exit code $code" }
+
+            """;
+    }
+
+    public const string PublicPagePath = "agent";
+    public const string PublicSetupPath = "agent/setup.zip";
+    public const string PublicScriptPath = "agent/install.ps1";
+
     /// <summary>Neues Anmeldegeheimnis; bereits angemeldete Agenten bleiben gültig.</summary>
     public async Task<string> RenewEnrollmentTokenAsync(CancellationToken ct = default)
     {

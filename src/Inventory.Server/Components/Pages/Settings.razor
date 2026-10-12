@@ -14,6 +14,7 @@
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
 @inject Auditor Audit
+@inject Access Access
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
 
@@ -240,6 +241,30 @@
         <div>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="/download/agent-setup" Target="_blank">@L["Download agent setup"]</MudButton>
         </div>
+        <MudDivider />
+        <MudText Typo="Typo.subtitle2">@L["Download page without sign-in"]</MudText>
+        <MudText Typo="Typo.body2">
+            @L["To set up a new computer, open this page in its browser: it offers the agent setup, already configured for this server, and a one-line command for PowerShell. Nobody has to sign in."]
+        </MudText>
+        <MudAlert Severity="Severity.Warning" Dense="true">
+            @L["While the page is open, everyone who can reach this server can download the setup with the enrollment secret and register a computer – also under the name of an existing one, which would then receive that computer's jobs. Open it only as long as you need it, keep an eye on \"Agent enrolled\" in the audit log, and renew the secret afterwards if in doubt."]
+        </MudAlert>
+        <MudSelect T="string" Value="_publicDownload" ValueChanged="SetPublicDownloadAsync" Label="@L["Download page"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+            <MudSelectItem T="string" Value="@("off")">@L["closed"]</MudSelectItem>
+            <MudSelectItem T="string" Value="@("1h")">@L["open for one hour"]</MudSelectItem>
+            <MudSelectItem T="string" Value="@("1d")">@L["open for one day"]</MudSelectItem>
+            <MudSelectItem T="string" Value="@("7d")">@L["open for one week"]</MudSelectItem>
+            <MudSelectItem T="string" Value="@("forever")">@L["open permanently"]</MudSelectItem>
+            @if (_publicDownload == "open")
+            {
+                <MudSelectItem T="string" Value="@("open")">@L["open until {0}", Display.LocalTime(_publicDownloadUntil)]</MudSelectItem>
+            }
+        </MudSelect>
+        @if (_publicDownloadUntil is not null)
+        {
+            var link = string.IsNullOrWhiteSpace(_agentUrl) ? $"/{AgentService.PublicPagePath}" : $"{_agentUrl!.TrimEnd('/')}/{AgentService.PublicPagePath}";
+            <MudText Typo="Typo.body2">@L["Address for the new computer:"] <MudLink Href="@link" Target="_blank"><b>@link</b></MudLink></MudText>
+        }
     </MudStack>
 </MudPaper>
 
@@ -417,6 +442,39 @@
     }
 
     private string? _agentUrl;
+    private string _publicDownload = "off";
+    private DateTime? _publicDownloadUntil;
+
+    private async Task LoadPublicDownloadAsync()
+    {
+        _publicDownloadUntil = await Agents.GetPublicDownloadUntilAsync();
+        _publicDownload = _publicDownloadUntil is null ? "off" : _publicDownloadUntil == AgentService.PublicDownloadForever ? "forever" : "open";
+    }
+
+    private async Task SetPublicDownloadAsync(string choice)
+    {
+        // Die Seite gibt das Anmeldegeheimnis frei: die Rolle wird beim Klick erneut geprüft, nicht nur beim Öffnen der Einstellungen.
+        if (choice == "open" || !await Access.DemandAdminAsync())
+            return;
+        TimeSpan? duration = choice switch
+        {
+            "1h" => TimeSpan.FromHours(1),
+            "1d" => TimeSpan.FromDays(1),
+            "7d" => TimeSpan.FromDays(7),
+            "forever" => Timeout.InfiniteTimeSpan,
+            _ => null,
+        };
+        await Agents.SetPublicDownloadAsync(duration);
+        await LoadPublicDownloadAsync();
+        var state = _publicDownload switch
+        {
+            "off" => L["closed"].Value,
+            "forever" => L["open permanently"].Value,
+            _ => L["open until {0}", Display.LocalTime(_publicDownloadUntil)].Value,
+        };
+        await Audit.LogAsync(L["Setting changed"], $"{L["Download page without sign-in"]}: {state}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
     private string _agentToken = "";
 
     private async Task SaveAgentAsync()
@@ -628,6 +686,7 @@
         await LoadHeartbeatAsync();
         await LoadUpdateAsync();
         _agentUrl = await Agents.GetServerUrlAsync();
+        await LoadPublicDownloadAsync();
         _defenderTenant = await SettingsService.GetAsync(SettingKeys.DefenderTenant);
         _defenderClient = await SettingsService.GetAsync(SettingKeys.DefenderClientId);
         _defenderAllowed = await SettingsService.GetAsync(SettingKeys.DefenderAllowedHash);

@@ -194,6 +194,15 @@ the agent.
    it can stay assigned; `Install-Agent.cmd --force` reinstalls. The ZIP contains the enrollment secret: make the
    share readable only for the computers that need it (e.g. *Domain Computers*), and renew the secret under
    *Settings* if it got into the wrong hands.
+   **From the new computer itself:** under *Settings → Agents → Download page without sign-in* an administrator
+   opens the page `<server address>/agent` for an hour, a day, a week or permanently. Opened in the browser of a new
+   computer it offers the setup, already configured for this server, and a one-line command for an elevated
+   PowerShell (`irm <server address>/agent/install.ps1 | iex`) that downloads, unpacks and installs it. Nobody has to
+   sign in. While the page is open, everyone who can reach the server can fetch the setup with the enrollment secret
+   and register a computer – also under the name of an existing one, which would then receive that computer's jobs.
+   So: open it only as long as needed, or restrict the server port by firewall to the networks that need it; every
+   download is written to the audit log with the address it came from, as is every enrollment. Closed, the page
+   answers 404.
 3. As soon as the service has enrolled, the computer switches to transport "Agent" (visible as a green "Agent" chip).
    Per computer the transport can be set back to SMB or WinRM; the agent keeps polling regardless.
 

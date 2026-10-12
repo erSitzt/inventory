@@ -206,6 +206,9 @@
   <data name='Add to "{0}"' xml:space="preserve">
     <value>Zu „{0}“ hinzufügen</value>
   </data>
+  <data name="Address for the new computer:" xml:space="preserve">
+    <value>Adresse für den neuen Rechner:</value>
+  </data>
   <data name="Address of this server as seen by the agents" xml:space="preserve">
     <value>Adresse dieses Servers aus Sicht der Agenten</value>
   </data>
@@ -571,6 +574,9 @@
   </data>
   <data name="Close programs first" xml:space="preserve">
     <value>Programme vorher schließen</value>
+  </data>
+  <data name="closed" xml:space="preserve">
+    <value>geschlossen</value>
   </data>
   <data name="closes {0}" xml:space="preserve">
     <value>schließt {0}</value>
@@ -1016,6 +1022,15 @@
   <data name="Download InventoryLauncher.exe" xml:space="preserve">
     <value>InventoryLauncher.exe herunterladen</value>
   </data>
+  <data name="Download page" xml:space="preserve">
+    <value>Download-Seite</value>
+  </data>
+  <data name="Download page without sign-in" xml:space="preserve">
+    <value>Download-Seite ohne Anmeldung</value>
+  </data>
+  <data name="Download the agent setup." xml:space="preserve">
+    <value>Das Agent-Setup herunterladen.</value>
+  </data>
   <data name="Downloaded" xml:space="preserve">
     <value>Heruntergeladen</value>
   </data>
@@ -1390,6 +1405,9 @@
   </data>
   <data name="Install remote access launcher" xml:space="preserve">
     <value>Starter für Fernzugriff installieren</value>
+  </data>
+  <data name="Install the Inventory agent" xml:space="preserve">
+    <value>Inventory-Agent installieren</value>
   </data>
   <data name="Install update {0}" xml:space="preserve">
     <value>Update {0} installieren</value>
@@ -2180,8 +2198,26 @@
   <data name="Open" xml:space="preserve">
     <value>Öffnen Sie</value>
   </data>
+  <data name="open for one day" xml:space="preserve">
+    <value>einen Tag offen</value>
+  </data>
+  <data name="open for one hour" xml:space="preserve">
+    <value>eine Stunde offen</value>
+  </data>
+  <data name="open for one week" xml:space="preserve">
+    <value>eine Woche offen</value>
+  </data>
   <data name="Open package" xml:space="preserve">
     <value>Paket öffnen</value>
+  </data>
+  <data name="open permanently" xml:space="preserve">
+    <value>dauerhaft offen</value>
+  </data>
+  <data name="open until {0}" xml:space="preserve">
+    <value>offen bis {0}</value>
+  </data>
+  <data name="Open Windows PowerShell as administrator and run:" xml:space="preserve">
+    <value>Windows PowerShell als Administrator öffnen und ausführen:</value>
   </data>
   <data name="Operating system" xml:space="preserve">
     <value>Betriebssystem</value>
@@ -2206,6 +2242,9 @@
   </data>
   <data name="OR" xml:space="preserve">
     <value>ODER</value>
+  </data>
+  <data name="Or in one step" xml:space="preserve">
+    <value>Oder in einem Schritt</value>
   </data>
   <data name="or MSI product code" xml:space="preserve">
     <value>oder MSI-Produktcode</value>
@@ -2743,6 +2782,9 @@
   </data>
   <data name="Rhythm" xml:space="preserve">
     <value>Rhythmus</value>
+  </data>
+  <data name='Right-click Install-Agent.cmd and choose "Run as administrator".' xml:space="preserve">
+    <value>Install-Agent.cmd mit der rechten Maustaste anklicken und „Als Administrator ausführen“ wählen.</value>
   </data>
   <data name="Role" xml:space="preserve">
     <value>Rolle</value>
@@ -3317,6 +3359,9 @@
   <data name="The computer account was no longer found in Active Directory" xml:space="preserve">
     <value>Das Computerkonto wurde im Active Directory nicht mehr gefunden</value>
   </data>
+  <data name='The computer appears in Inventory under "Computers" a few seconds after the installation. The setup is configured for this server; nothing has to be entered.' xml:space="preserve">
+    <value>Der Rechner erscheint wenige Sekunden nach der Installation in Inventory unter „Rechner“. Das Setup ist für diesen Server eingerichtet; es muss nichts eingetragen werden.</value>
+  </data>
   <data name="The computer did not come back within {0} minutes after the restart" xml:space="preserve">
     <value>Der Rechner war {0} Minuten nach dem Neustart nicht wieder erreichbar</value>
   </data>
@@ -3412,6 +3457,9 @@
   </data>
   <data name="The sender is not a valid e-mail address." xml:space="preserve">
     <value>Der Absender ist keine gültige E-Mail-Adresse.</value>
+  </data>
+  <data name="The server address for agents is not set yet. An administrator can enter it under Settings → Agents." xml:space="preserve">
+    <value>Die Server-Adresse für Agenten ist noch nicht eingetragen. Ein Administrator kann sie unter Einstellungen → Agenten eintragen.</value>
   </data>
   <data name="The server uses these accounts to access the target computers. They need local administrator rights there. Passwords are stored encrypted and never shown again." xml:space="preserve">
     <value>Mit diesen Konten greift der Server auf die Zielrechner zu. Sie brauchen dort lokale Administratorrechte. Passwörter werden verschlüsselt gespeichert und nie wieder angezeigt.</value>
@@ -3539,6 +3587,9 @@
   <data name="To install the agent without the server reaching the computers (no ADMIN$, no remote service), distribute the agent setup yourself: unpack it to a share and run Install-Agent.cmd as a computer startup script of a group policy or through your software distribution. Save the server address first. The setup contains the enrollment secret – make the share readable only for the computers that need it." xml:space="preserve">
     <value>Um den Agenten zu installieren, ohne dass der Server die Rechner erreicht (kein ADMIN$, kein Dienst aus der Ferne), verteilen Sie das Agent-Setup selbst: auf eine Freigabe entpacken und Install-Agent.cmd als Computer-Startskript einer Gruppenrichtlinie oder über Ihre Softwareverteilung ausführen. Speichern Sie zuerst die Server-Adresse. Das Setup enthält das Anmeldegeheimnis – machen Sie die Freigabe nur für die Rechner lesbar, die es brauchen.</value>
   </data>
+  <data name="To set up a new computer, open this page in its browser: it offers the agent setup, already configured for this server, and a one-line command for PowerShell. Nobody has to sign in." xml:space="preserve">
+    <value>Um einen neuen Rechner einzurichten, diese Seite in seinem Browser öffnen: sie bietet das Agent-Setup, fertig für diesen Server eingerichtet, und einen einzeiligen Befehl für die PowerShell. Niemand muss sich anmelden.</value>
+  </data>
   <data name="Token created – copy it now." xml:space="preserve">
     <value>Token angelegt – jetzt kopieren.</value>
   </data>
@@ -3628,6 +3679,9 @@
   </data>
   <data name="unlimited" xml:space="preserve">
     <value>unbegrenzt</value>
+  </data>
+  <data name="Unpack the ZIP file." xml:space="preserve">
+    <value>Die ZIP-Datei entpacken.</value>
   </data>
   <data name="unreachable" xml:space="preserve">
     <value>nicht erreichbar</value>
@@ -3871,6 +3925,9 @@
   </data>
   <data name="Which" xml:space="preserve">
     <value>Welcher</value>
+  </data>
+  <data name="While the page is open, everyone who can reach this server can download the setup with the enrollment secret and register a computer – also under the name of an existing one, which would then receive that computer's jobs. Open it only as long as you need it, keep an eye on &quot;Agent enrolled&quot; in the audit log, and renew the secret afterwards if in doubt." xml:space="preserve">
+    <value>Solange die Seite offen ist, kann jeder, der diesen Server erreicht, das Setup mit dem Anmeldegeheimnis herunterladen und einen Rechner anmelden – auch unter dem Namen eines vorhandenen, der dann dessen Jobs bekäme. Nur so lange öffnen wie nötig, im Protokoll auf „Agent enrolled“ achten und das Geheimnis im Zweifel danach erneuern.</value>
   </data>
   <data name="Who uses which device, where it is and how long the warranty lasts" xml:space="preserve">
     <value>Wer welches Gerät nutzt, wo es steht und wie lange die Garantie läuft</value>
