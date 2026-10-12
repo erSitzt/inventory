@@ -27,7 +27,11 @@ public static class ReportPdf
     {
         var rows = table.Rows.Count > MaxRows ? table.Rows.Take(MaxRows).ToList() : table.Rows;
         if (table.Rows.Count > MaxRows)
-            subtitle += "  ·  " + string.Format(CultureInfo.InvariantCulture, truncatedNote, MaxRows, table.Rows.Count);
+        {
+            // Vorn, damit eine lange Beschreibung den Hinweis nicht aus der Zeile drängt.
+            var note = string.Format(CultureInfo.InvariantCulture, truncatedNote, MaxRows, table.Rows.Count);
+            subtitle = subtitle.Length == 0 ? note : note + "  ·  " + subtitle;
+        }
         var widths = ColumnWidths(table, rows);
         var bands = Bands(widths);
 

@@ -36,13 +36,15 @@ public sealed class ExampleData(IDbContextFactory<InventoryDbContext> dbFactory,
     {
         if (await settings.GetAsync(SettingKeys.ExampleReportsCreated, ct) == bool.TrueString)
             return 0;
-        await settings.SetAsync(SettingKeys.ExampleReportsCreated, bool.TrueString, ct);
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var existing = (await db.Reports.Select(r => r.Name).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var added = ExampleReports(L).Where(r => !existing.Contains(r.Name)).ToList();
         db.Reports.AddRange(added);
         await db.SaveChangesAsync(ct);
+        // Erst nach dem Speichern als erledigt vermerken: bricht der Start vorher ab, holt der nächste es nach
+        // (vorhandene Namen werden übersprungen, doppelt entsteht nichts).
+        await settings.SetAsync(SettingKeys.ExampleReportsCreated, bool.TrueString, ct);
         return added.Count;
     }
 

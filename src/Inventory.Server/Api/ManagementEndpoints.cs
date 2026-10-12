@@ -338,6 +338,8 @@ public static class ManagementEndpoints
             throw new ArgumentException("packageId is required for action Deploy");
         if (r.Action == ScheduleAction.Report && r.ReportId is null)
             throw new ArgumentException("reportId is required for action Report");
+        if (!Enum.IsDefined(r.ReportFormat))
+            throw new ArgumentException("reportFormat must be Excel, Pdf or Csv");
         if (r.Trigger == ScheduleTrigger.Weekly && r.DaysOfWeek == 0)
             throw new ArgumentException("daysOfWeek is required for trigger Weekly");
         if (r.Trigger == ScheduleTrigger.Once && r.StartLocal is null)

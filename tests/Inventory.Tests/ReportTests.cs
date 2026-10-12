@@ -177,7 +177,7 @@ public class ReportTests
         // Viele Zeilen: mehrere Seiten mit Kopfzeile, und ab der Obergrenze ein Hinweis statt tausender Seiten.
         var many = new ReportTable([new ReportColumn("n", "Nummer", true), new ReportColumn("t", "Text")],
             Enumerable.Range(1, ReportPdf.MaxRows + 10).Select(i => new string?[] { i.ToString(), $"Zeile {i}" }).ToList());
-        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(ReportPdf.Write(many, "Viele", "Stand heute")))
+        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(ReportPdf.Write(many, "Viele", "Stand heute · " + new string('x', 400))))
         {
             Assert.True(pdf.NumberOfPages > 50);
             Assert.All(pdf.GetPages().Take(5), page => Assert.Contains("Nummer", page.Text));
