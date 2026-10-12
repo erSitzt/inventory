@@ -87,6 +87,23 @@ public class DefenderTests
     }
 
     [Fact]
+    public async Task Outdated_indicators_are_collected_across_pages_and_the_token_never_leaves_the_api()
+    {
+        string Page(string id, string? next) => $$"""{"value":[{"id":"{{id}}","title":"Inventory runner","indicatorType":"FileSha256","action":"Allowed","indicatorValue":"{{new string('b', 64)}}"}]{{(next is null ? "" : $",\"@odata.nextLink\":\"{next}\"")}}}""";
+        var handler = new ScriptedHandler(
+            (HttpStatusCode.OK, "{}"),
+            (HttpStatusCode.OK, Page("7", "https://api.security.microsoft.com/api/indicators?$skip=1")),
+            (HttpStatusCode.OK, Page("8", "https://evil.example/api/indicators?$skip=2")),
+            (HttpStatusCode.NoContent, ""));
+
+        var result = await new DefenderClient(new HttpClient(handler)).AllowRunnerAsync("tok", new string('a', 64), "runner", removeOutdated: true);
+
+        Assert.Equal(2, result.Removed);
+        Assert.Equal(["POST", "GET", "GET", "DELETE", "DELETE"], handler.Requests.Select(r => r.Method));
+        Assert.All(handler.Requests, r => Assert.StartsWith("https://api.security.microsoft.com/api/indicators", r.Url));
+    }
+
+    [Fact]
     public async Task Missing_permission_is_explained_and_nothing_is_removed_without_asking()
     {
         var denied = new DefenderClient(new HttpClient(new ScriptedHandler((HttpStatusCode.Forbidden, "{}"))));

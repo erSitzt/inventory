@@ -18,6 +18,7 @@ public sealed partial class DefenderClient(HttpClient http)
     public const string IndicatorTitle = "Inventory runner";
     private const string Resource = "https://api.securitycenter.microsoft.com";
     private const string Api = "https://api.security.microsoft.com/api/indicators";
+    private const int MaxPages = 50;
 
     /// <summary>Wartezeit zwischen zwei Abfragen; in Tests ersetzbar.</summary>
     public Func<TimeSpan, CancellationToken, Task> Delay { get; set; } = Task.Delay;
@@ -107,17 +108,28 @@ public sealed partial class DefenderClient(HttpClient http)
             var removed = 0;
             if (removeOutdated)
             {
-                using var list = Authorized(HttpMethod.Get, $"{Api}?$filter={Uri.EscapeDataString($"title eq '{IndicatorTitle}'")}", token);
-                using var response = await http.SendAsync(list, ct);
-                await EnsureAsync(response, ct);
-                using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
-                foreach (var item in doc.RootElement.GetProperty("value").EnumerateArray())
+                // Erst alle Seiten lesen, dann löschen: sonst verschiebt das Löschen die Seitengrenzen.
+                var outdated = new List<string>();
+                var url = $"{Api}?$filter={Uri.EscapeDataString($"title eq '{IndicatorTitle}'")}";
+                for (var page = 0; url is not null && page < MaxPages; page++)
                 {
-                    // Der Filter ist nur eine Vorauswahl: gelöscht wird ausschließlich, was eindeutig von hier stammt.
-                    if (Text(item, "title") != IndicatorTitle || Text(item, "indicatorType") != "FileSha256" || Text(item, "action") != "Allowed"
-                        || string.Equals(Text(item, "indicatorValue"), sha256, StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    var id = item.GetProperty("id").ToString();
+                    using var list = Authorized(HttpMethod.Get, url, token);
+                    using var response = await http.SendAsync(list, ct);
+                    await EnsureAsync(response, ct);
+                    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+                    foreach (var item in doc.RootElement.GetProperty("value").EnumerateArray())
+                    {
+                        // Der Filter ist nur eine Vorauswahl: gelöscht wird ausschließlich, was eindeutig von hier stammt.
+                        if (Text(item, "title") == IndicatorTitle && Text(item, "indicatorType") == "FileSha256" && Text(item, "action") == "Allowed"
+                            && !string.Equals(Text(item, "indicatorValue"), sha256, StringComparison.OrdinalIgnoreCase))
+                            outdated.Add(item.GetProperty("id").ToString());
+                    }
+                    // Das Token geht nur an die Schnittstelle selbst, nie an eine Adresse aus der Antwort mit anderem Ziel.
+                    var next = Text(doc.RootElement, "@odata.nextLink");
+                    url = next is not null && next.StartsWith(Api, StringComparison.OrdinalIgnoreCase) ? next : null;
+                }
+                foreach (var id in outdated)
+                {
                     using var delete = Authorized(HttpMethod.Delete, $"{Api}/{Uri.EscapeDataString(id)}", token);
                     using var deleted = await http.SendAsync(delete, ct);
                     await EnsureAsync(deleted, ct);
