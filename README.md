@@ -62,6 +62,8 @@ credentials. The user interface is available in English and German; translations
 - **Deployments** in parallel with live status, cancel, retry, and catching up on offline computers
 - **Notifications**: channels for e-mail (SMTP with STARTTLS/TLS, optional sign-in with stored credentials) and
   webhooks (Microsoft Teams, Slack or plain JSON), each with a test button
+- **Trends on the overview**: one value per day for the key figures (pending updates, reboots, antivirus, firewall,
+  drive encryption, scan errors …) shown as 30-day lines, deployments per week and the age of the last scans
 - **Reports**: saved lists of computers, software, pending updates, deployments or changes – limited to a collection,
   with chosen columns and order; shown in the browser, as CSV, Excel or PDF, or sent by e-mail on a schedule. Ten
   ready-made examples (hardware, security status, patch status, asset list …) serve as they are or as templates

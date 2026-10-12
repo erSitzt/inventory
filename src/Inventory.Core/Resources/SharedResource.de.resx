@@ -47,8 +47,17 @@
   <data name='1 open item – details under "Needs attention".' xml:space="preserve">
     <value>1 offener Punkt – Einzelheiten unter „Handlungsbedarf“.</value>
   </data>
+  <data name="1 to 3 days" xml:space="preserve">
+    <value>1 bis 3 Tage</value>
+  </data>
   <data name="1 year" xml:space="preserve">
     <value>1 Jahr</value>
+  </data>
+  <data name="3 to 7 days" xml:space="preserve">
+    <value>3 bis 7 Tage</value>
+  </data>
+  <data name="7 to 30 days" xml:space="preserve">
+    <value>7 bis 30 Tage</value>
   </data>
   <data name='A channel named "{0}" already exists.' xml:space="preserve">
     <value>Ein Kanal namens „{0}“ existiert bereits.</value>
@@ -205,6 +214,9 @@
   </data>
   <data name="after {0} seconds" xml:space="preserve">
     <value>nach {0} Sekunden</value>
+  </data>
+  <data name="Age of the last scan" xml:space="preserve">
+    <value>Alter des letzten Scans</value>
   </data>
   <data name="Agent" xml:space="preserve">
     <value>Agent</value>
@@ -895,6 +907,9 @@
   </data>
   <data name="Deployments of the last 30 days" xml:space="preserve">
     <value>Verteilungen der letzten 30 Tage</value>
+  </data>
+  <data name="Deployments per week" xml:space="preserve">
+    <value>Verteilungen je Woche</value>
   </data>
   <data name="Deployments that respect maintenance windows run on the members only during this period. A computer in several collections may run as soon as one of their windows is open." xml:space="preserve">
     <value>Deployments, die Wartungsfenster beachten, laufen auf den Mitgliedern nur in diesem Zeitraum. Ein Rechner in mehreren Sammlungen darf laufen, sobald eines ihrer Fenster offen ist.</value>
@@ -1685,6 +1700,9 @@
   <data name="More results from winget" xml:space="preserve">
     <value>Weitere Treffer aus winget</value>
   </data>
+  <data name="more than 30 days" xml:space="preserve">
+    <value>mehr als 30 Tage</value>
+  </data>
   <data name="Move down" xml:space="preserve">
     <value>Nach unten</value>
   </data>
@@ -1804,6 +1822,9 @@
   </data>
   <data name="No credentials stored yet." xml:space="preserve">
     <value>Noch keine Zugangsdaten hinterlegt.</value>
+  </data>
+  <data name="No deployments in the last {0} weeks." xml:space="preserve">
+    <value>Keine Verteilungen in den letzten {0} Wochen.</value>
   </data>
   <data name="No deployments yet." xml:space="preserve">
     <value>Noch keine Deployments.</value>
@@ -2047,6 +2068,9 @@
   </data>
   <data name="One row per program; different versions are grouped and listed when the row is expanded. Click a version to see the computers." xml:space="preserve">
     <value>Eine Zeile je Programm; verschiedene Versionen sind zusammengefasst und erscheinen beim Aufklappen. Ein Klick auf eine Version zeigt die Rechner.</value>
+  </data>
+  <data name="One value per day is recorded. The trend becomes visible from the second day on." xml:space="preserve">
+    <value>Je Tag wird ein Wert festgehalten. Der Verlauf wird ab dem zweiten Tag sichtbar.</value>
   </data>
   <data name="Online" xml:space="preserve">
     <value>Online</value>
@@ -2738,6 +2762,9 @@
   <data name="Scan now" xml:space="preserve">
     <value>Jetzt scannen</value>
   </data>
+  <data name="Scan older than {0} days" xml:space="preserve">
+    <value>Scan älter als {0} Tage</value>
+  </data>
   <data name="Scan on weekdays after hours" xml:space="preserve">
     <value>Scan werktags nach Feierabend</value>
   </data>
@@ -3125,6 +3152,9 @@
   <data name="System configuration" xml:space="preserve">
     <value>Systemkonfiguration</value>
   </data>
+  <data name="System drive not encrypted" xml:space="preserve">
+    <value>Systemlaufwerk nicht verschlüsselt</value>
+  </data>
   <data name="System setting" xml:space="preserve">
     <value>Systemeinstellung</value>
   </data>
@@ -3443,6 +3473,9 @@
   <data name="Transport" xml:space="preserve">
     <value>Transport</value>
   </data>
+  <data name="Trend of the last {0} days" xml:space="preserve">
+    <value>Verlauf der letzten {0} Tage</value>
+  </data>
   <data name="Trigger" xml:space="preserve">
     <value>Auslöser</value>
   </data>
@@ -3451,6 +3484,9 @@
   </data>
   <data name="Type" xml:space="preserve">
     <value>Art</value>
+  </data>
+  <data name="unchanged" xml:space="preserve">
+    <value>unverändert</value>
   </data>
   <data name="unchecked" xml:space="preserve">
     <value>ungeprüft</value>
@@ -3514,6 +3550,9 @@
   </data>
   <data name="until {0}" xml:space="preserve">
     <value>bis {0}</value>
+  </data>
+  <data name="up to 1 day" xml:space="preserve">
+    <value>bis 1 Tag</value>
   </data>
   <data name="up to date" xml:space="preserve">
     <value>aktuell</value>
@@ -3719,6 +3758,9 @@
   <data name="Website" xml:space="preserve">
     <value>Webseite</value>
   </data>
+  <data name="Week from {0}: {1} succeeded, {2} failed or cancelled" xml:space="preserve">
+    <value>Woche ab {0}: {1} erfolgreich, {2} fehlgeschlagen oder abgebrochen</value>
+  </data>
   <data name="Weekday" xml:space="preserve">
     <value>Wochentag</value>
   </data>
@@ -3917,6 +3959,9 @@
   <data name="{0} computers selected" xml:space="preserve">
     <value>{0} Rechner ausgewählt</value>
   </data>
+  <data name="{0} computers succeeded" xml:space="preserve">
+    <value>{0} Rechner erfolgreich</value>
+  </data>
   <data name="{0} computers updated." xml:space="preserve">
     <value>{0} Rechner aktualisiert.</value>
   </data>
@@ -3943,6 +3988,9 @@
   </data>
   <data name="{0} failed" xml:space="preserve">
     <value>{0} fehlgeschlagen</value>
+  </data>
+  <data name="{0} failed or cancelled" xml:space="preserve">
+    <value>{0} fehlgeschlagen oder abgebrochen</value>
   </data>
   <data name="{0} is already imported." xml:space="preserve">
     <value>{0} ist bereits importiert.</value>

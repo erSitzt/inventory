@@ -3,7 +3,7 @@ using Inventory.Data.Services;
 namespace Inventory.Server.Services;
 
 /// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, Heartbeat, AD-Synchronisation, Datensicherung.</summary>
-public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, AuditService audit, SettingsService settings, UpdateService updates, CatalogService catalog, Inventory.Core.Abstractions.IAlertSink alertSink, ILogger<SchedulerWorker> logger) : BackgroundService
+public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, AuditService audit, SettingsService settings, UpdateService updates, CatalogService catalog, TrendService trends, Inventory.Core.Abstractions.IAlertSink alertSink, ILogger<SchedulerWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(5);
@@ -31,6 +31,8 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                 await updates.ReportPreviousAsync(startup: false, stoppingToken);
                 await updates.ApplyIfDueAsync(stoppingToken);
                 await catalog.UpdateDueAsync(stoppingToken);
+                // Einmal täglich die Kennzahlen der Übersicht festhalten (der erste Takt des Tages).
+                await trends.TakeIfDueAsync(stoppingToken);
                 var backedUp = false;
                 try
                 {

@@ -4,6 +4,7 @@
 @inject PackageService Packages
 @inject CollectionService Collections
 @inject ScheduleService Schedules
+@inject TrendService Trends
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
 @inject Access Access
@@ -143,6 +144,76 @@
         </div>
     </MudItem>
 
+    @if (_trends is not null)
+    {
+        <MudItem xs="12">
+            <div class="dash-card">
+                <div class="title"><MudIcon Icon="@Icons.Material.Filled.ShowChart" Size="Size.Small" Color="Color.Primary" /> @L["Trend of the last {0} days", TrendService.TrendDays]</div>
+                @if (_trends.Days.Count < 2)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["One value per day is recorded. The trend becomes visible from the second day on."]</MudText>
+                }
+                else
+                {
+                    <div class="trend-grid">
+                        @Trend(L["Computers"], d => d.Computers, neutral: true)
+                        @Trend(L["Updates pending"], d => d.WithPendingUpdates)
+                        @Trend(L["Reboot pending"], d => d.RebootRequired)
+                        @Trend(L["No real-time antivirus"], d => d.AntivirusProblems)
+                        @Trend(L["Firewall (partly) off"], d => d.FirewallOff)
+                        @Trend(L["System drive not encrypted"], d => d.DriveUnprotected)
+                        @Trend(L["Scan failed"], d => d.ScanErrors)
+                        @Trend(L["Scan older than {0} days", DashboardStats.StaleDays], d => d.StaleScans)
+                    </div>
+                }
+            </div>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <div class="dash-card">
+                <div class="title"><MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Small" Color="Color.Info" /> @L["Deployments per week"]</div>
+                @if (_trends.Weeks.All(w => w.Succeeded + w.Failed == 0))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["No deployments in the last {0} weeks.", TrendService.Weeks]</MudText>
+                }
+                else
+                {
+                    var most = Math.Max(_trends.Weeks.Max(w => w.Succeeded + w.Failed), 1);
+                    <div class="week-bars">
+                        @foreach (var week in _trends.Weeks)
+                        {
+                            <div class="week" title="@L["Week from {0}: {1} succeeded, {2} failed or cancelled", week.WeekStart.ToString("d"), week.Succeeded, week.Failed]">
+                                <div class="stack">
+                                    <span style="height: @(100 * week.Failed / most)%; background: #ef4444"></span>
+                                    <span style="height: @(100 * week.Succeeded / most)%; background: #10b981"></span>
+                                </div>
+                                <div class="label">@week.WeekStart.ToString("d.M.")</div>
+                            </div>
+                        }
+                    </div>
+                    <MudStack Row="true" Spacing="4" Class="mt-2">
+                        <MudText Typo="Typo.caption"><span class="legend-dot" style="background: #10b981"></span> @L["{0} computers succeeded", _trends.Weeks.Sum(w => w.Succeeded)]</MudText>
+                        <MudText Typo="Typo.caption"><span class="legend-dot" style="background: #ef4444"></span> @L["{0} failed or cancelled", _trends.Weeks.Sum(w => w.Failed)]</MudText>
+                    </MudStack>
+                }
+            </div>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <div class="dash-card">
+                <div class="title"><MudIcon Icon="@Icons.Material.Filled.ManageSearch" Size="Size.Small" Color="Color.Primary" /> @L["Age of the last scan"]</div>
+                @foreach (var bucket in _trends.ScanAges)
+                {
+                    <div class="os-row">
+                        <MudText Typo="Typo.body2">@L[bucket.Label]</MudText>
+                        <div class="bar"><span style="width: @(100 * bucket.Computers / Math.Max(_stats.Computers, 1))%"></span></div>
+                        <MudText Typo="Typo.body2" Style="text-align: right; font-weight: 600">@bucket.Computers</MudText>
+                    </div>
+                }
+            </div>
+        </MudItem>
+    }
+
     <MudItem xs="12" lg="6">
         <div class="dash-card">
             <div class="title">
@@ -189,6 +260,7 @@
 
 @code {
     private DashboardStats? _stats;
+    private DashboardTrends? _trends;
 
     private AuditLinkMap? _links;
 
@@ -196,12 +268,44 @@
     {
         _stats = await Reports.DashboardAsync(includeAudit: await Access.IsOperatorAsync());
         _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
+        await LoadTrendsAsync();
+    }
+
+    private DateTime _trendsLoaded;
+
+    /// <summary>Die Verläufe ändern sich langsam: beim Öffnen, bei einem Tageswechsel und sonst alle zehn Minuten.</summary>
+    private async Task LoadTrendsAsync()
+    {
+        var now = DateTime.Now;
+        if (_trends is not null && now.Date == _trendsLoaded.Date && now - _trendsLoaded < TimeSpan.FromMinutes(10))
+            return;
+        _trends = await Trends.TrendsAsync();
+        _trendsLoaded = now;
+    }
+
+    /// <summary>Eine Kennzahl im Verlauf: Stand, Veränderung seit dem ersten Tag des Zeitraums und die Linie dazu.</summary>
+    /// <param name="neutral">Mehr ist weder gut noch schlecht (z. B. die Zahl der Rechner); sonst gilt weniger als besser.</param>
+    private RenderFragment Trend(string label, Func<DailySnapshot, int> value, bool neutral = false)
+    {
+        var values = _trends!.Days.Select(value).ToList();
+        var delta = values[^1] - values[0];
+        var color = neutral || delta == 0 ? "#6366f1" : delta > 0 ? "#ef4444" : "#10b981";
+        var change = delta == 0 ? L["unchanged"].Value : (delta > 0 ? "+" : "−") + Math.Abs(delta);
+        return @<div class="trend">
+            <div class="head">
+                <span class="value">@values[^1]</span>
+                <span class="delta" style="color: @(delta == 0 ? "var(--mud-palette-text-secondary)" : color)">@change</span>
+            </div>
+            <div class="name">@label</div>
+            <Sparkline Values="values" Color="@color" Label="@($"{label}: {values[0]} → {values[^1]}")" />
+        </div>;
     }
 
     private async Task RefreshAsync()
     {
         _stats = await Reports.DashboardAsync(includeAudit: await Access.IsOperatorAsync());
         _links = await AuditLinkMap.LoadAsync(Computers, Packages, Collections, Schedules);
+        await LoadTrendsAsync();
     }
 
     /// <summary>Kreisdiagramm im Kopfbereich: Anteil als Ring, Zahl in der Mitte.</summary>
