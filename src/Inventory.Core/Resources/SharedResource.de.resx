@@ -8,6 +8,9 @@
   <data name='"{0}" contains no KB number.' xml:space="preserve">
     <value>„{0}“ enthält keine KB-Nummer.</value>
   </data>
+  <data name='"{0}" is not a valid e-mail address.' xml:space="preserve">
+    <value>„{0}“ ist keine gültige E-Mail-Adresse.</value>
+  </data>
   <data name='"{0}" is not a valid exit code.' xml:space="preserve">
     <value>„{0}“ ist kein gültiger Exitcode.</value>
   </data>
@@ -29,6 +32,9 @@
   <data name="(not signed in)" xml:space="preserve">
     <value>(ohne Anmeldung)</value>
   </data>
+  <data name="(stored address)" xml:space="preserve">
+    <value>(gespeicherte Adresse)</value>
+  </data>
   <data name="0 = all" xml:space="preserve">
     <value>0 = alle</value>
   </data>
@@ -43,6 +49,9 @@
   </data>
   <data name="1 year" xml:space="preserve">
     <value>1 Jahr</value>
+  </data>
+  <data name='A channel named "{0}" already exists.' xml:space="preserve">
+    <value>Ein Kanal namens „{0}“ existiert bereits.</value>
   </data>
   <data name="A collection cannot refer to itself." xml:space="preserve">
     <value>Eine Sammlung kann nicht auf sich selbst verweisen.</value>
@@ -125,6 +134,9 @@
   <data name="Add" xml:space="preserve">
     <value>Hinzufügen</value>
   </data>
+  <data name="Add channel" xml:space="preserve">
+    <value>Kanal hinzufügen</value>
+  </data>
   <data name="Add computers" xml:space="preserve">
     <value>Rechner hinzufügen</value>
   </data>
@@ -142,6 +154,9 @@
   </data>
   <data name="Address of this server as seen by the agents" xml:space="preserve">
     <value>Adresse dieses Servers aus Sicht der Agenten</value>
+  </data>
+  <data name="address replaced" xml:space="preserve">
+    <value>Adresse ersetzt</value>
   </data>
   <data name="Administrator" xml:space="preserve">
     <value>Administrator</value>
@@ -326,6 +341,9 @@
   <data name="At least one firewall profile is off" xml:space="preserve">
     <value>Mindestens ein Firewall-Profil ist abgeschaltet</value>
   </data>
+  <data name="At least one recipient is required." xml:space="preserve">
+    <value>Mindestens ein Empfänger ist nötig.</value>
+  </data>
   <data name="at least one rule" xml:space="preserve">
     <value>mindestens eine Regel</value>
   </data>
@@ -400,6 +418,12 @@
   </data>
   <data name="Changes and download" xml:space="preserve">
     <value>Änderungen und Download</value>
+  </data>
+  <data name="Channel {0} not found" xml:space="preserve">
+    <value>Kanal {0} nicht gefunden</value>
+  </data>
+  <data name="Channels through which the server sends messages: e-mail to a list of recipients, or a webhook (Microsoft Teams, Slack, or any service that accepts JSON). Webhook addresses are stored encrypted and never shown again." xml:space="preserve">
+    <value>Kanäle, über die der Server Nachrichten verschickt: E-Mail an eine Empfängerliste oder ein Webhook (Microsoft Teams, Slack oder jeder Dienst, der JSON annimmt). Webhook-Adressen werden verschlüsselt gespeichert und nie wieder angezeigt.</value>
   </data>
   <data name="Check now" xml:space="preserve">
     <value>Jetzt prüfen</value>
@@ -707,6 +731,9 @@
   <data name="delete after {0} days" xml:space="preserve">
     <value>nach {0} Tagen löschen</value>
   </data>
+  <data name="Delete channel" xml:space="preserve">
+    <value>Kanal löschen</value>
+  </data>
   <data name="Delete collection" xml:space="preserve">
     <value>Sammlung löschen</value>
   </data>
@@ -860,6 +887,9 @@
   <data name="dynamic, {0} rules" xml:space="preserve">
     <value>dynamisch, {0} Regeln</value>
   </data>
+  <data name="E-mail" xml:space="preserve">
+    <value>E-Mail</value>
+  </data>
   <data name="E.g. %ProgramData%\Company\ – a trailing \ means folder. Existing files are overwritten." xml:space="preserve">
     <value>Z. B. %ProgramData%\Firma\ – ein abschließender \ bedeutet Ordner. Vorhandene Dateien werden überschrieben.</value>
   </data>
@@ -880,6 +910,12 @@
   </data>
   <data name="Empty result from {0}" xml:space="preserve">
     <value>Leeres Ergebnis von {0}</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>Aktiv</value>
+  </data>
+  <data name="Encryption" xml:space="preserve">
+    <value>Verschlüsselung</value>
   </data>
   <data name="Endpoint protection often rates agentless access (a service started remotely, files copied to ADMIN$) as suspicious. Computers with the agent need neither; the README describes how to allow the rest narrowly." xml:space="preserve">
     <value>Endpunktschutz wertet den agentenlosen Zugriff (aus der Ferne gestarteter Dienst, nach ADMIN$ kopierte Dateien) oft als verdächtig. Rechner mit Agent brauchen beides nicht; die README beschreibt, wie sich der Rest eng begrenzt freigeben lässt.</value>
@@ -1028,6 +1064,9 @@
   <data name="Forget agent" xml:space="preserve">
     <value>Agent vergessen</value>
   </data>
+  <data name="Format" xml:space="preserve">
+    <value>Format</value>
+  </data>
   <data name="Free" xml:space="preserve">
     <value>Frei</value>
   </data>
@@ -1048,6 +1087,9 @@
   </data>
   <data name="Full rights on the computer, but no access to a user's profile and settings." xml:space="preserve">
     <value>Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.</value>
+  </data>
+  <data name="Generic (JSON)" xml:space="preserve">
+    <value>Allgemein (JSON)</value>
   </data>
   <data name="Grace period (days)" xml:space="preserve">
     <value>Frist (Tage)</value>
@@ -1088,6 +1130,9 @@
   <data name="HTTPS recommended: over this connection the agent receives commands that it runs as Local System." xml:space="preserve">
     <value>HTTPS empfohlen: Über diese Verbindung erhält der Agent Befehle, die er als Lokales System ausführt.</value>
   </data>
+  <data name="https://… – whoever knows the address can post to the channel, so it is stored encrypted." xml:space="preserve">
+    <value>https://… – wer die Adresse kennt, kann in den Kanal schreiben; sie wird deshalb verschlüsselt gespeichert.</value>
+  </data>
   <data name='If all conditions entered here apply, the package counts as already installed: the computer is skipped and reported as "already installed". Without detection the package always runs.' xml:space="preserve">
     <value>Treffen alle hier eingetragenen Bedingungen zu, gilt das Paket als bereits installiert: der Rechner wird übersprungen und als „bereits installiert“ gemeldet. Ohne Erkennung läuft das Paket immer.</value>
   </data>
@@ -1099,6 +1144,9 @@
   </data>
   <data name="If the server was off at the scheduled time: catch up when it is less than a day late" xml:space="preserve">
     <value>War der Server zum geplanten Zeitpunkt aus: nachholen, wenn es weniger als einen Tag her ist</value>
+  </data>
+  <data name="If you can read this, the channel works. Inventory uses it to report events you choose." xml:space="preserve">
+    <value>Wenn Sie das lesen können, funktioniert der Kanal. Inventory meldet darüber die Ereignisse, die Sie auswählen.</value>
   </data>
   <data name="immediately" xml:space="preserve">
     <value>sofort</value>
@@ -1253,6 +1301,9 @@
   <data name="Last AD logon (UTC)" xml:space="preserve">
     <value>Letzte AD-Anmeldung (UTC)</value>
   </data>
+  <data name="Last attempt failed" xml:space="preserve">
+    <value>Letzter Versuch fehlgeschlagen</value>
+  </data>
   <data name="Last boot" xml:space="preserve">
     <value>Letzter Start</value>
   </data>
@@ -1301,6 +1352,9 @@
   <data name="Last seen" xml:space="preserve">
     <value>Zuletzt gesehen</value>
   </data>
+  <data name="Last sent {0}" xml:space="preserve">
+    <value>Zuletzt gesendet {0}</value>
+  </data>
   <data name="Last update installation (UTC)" xml:space="preserve">
     <value>Letzte Update-Installation (UTC)</value>
   </data>
@@ -1312,6 +1366,9 @@
   </data>
   <data name="Launcher set up on {0} computers. Remote access now opens there with one click." xml:space="preserve">
     <value>Starter auf {0} Rechnern eingerichtet. Fernzugriffe öffnen sich dort jetzt per Klick.</value>
+  </data>
+  <data name="Leave empty to keep the stored address" xml:space="preserve">
+    <value>Leer lassen, um die gespeicherte Adresse zu behalten</value>
   </data>
   <data name="Leave empty to keep the stored password" xml:space="preserve">
     <value>Leer lassen, um das gespeicherte Passwort zu behalten</value>
@@ -1381,6 +1438,9 @@
   </data>
   <data name="MAC address" xml:space="preserve">
     <value>MAC-Adresse</value>
+  </data>
+  <data name="Mail server (SMTP)" xml:space="preserve">
+    <value>Mailserver (SMTP)</value>
   </data>
   <data name="Maintenance window" xml:space="preserve">
     <value>Wartungsfenster</value>
@@ -1553,6 +1613,9 @@
   <data name="No changes yet. The first scan is the baseline; from the second on, what changed is recorded." xml:space="preserve">
     <value>Noch keine Änderungen. Der erste Scan ist die Ausgangslage; ab dem zweiten wird festgehalten, was sich geändert hat.</value>
   </data>
+  <data name="No channels set up yet." xml:space="preserve">
+    <value>Noch keine Kanäle eingerichtet.</value>
+  </data>
   <data name="No checksum for {0} in the release's list." xml:space="preserve">
     <value>Für {0} steht keine Prüfsumme in der Liste des Releases.</value>
   </data>
@@ -1649,6 +1712,9 @@
   <data name="none" xml:space="preserve">
     <value>keine</value>
   </data>
+  <data name="none (relay in your own network)" xml:space="preserve">
+    <value>keine (Relay im eigenen Netz)</value>
+  </data>
   <data name="normal" xml:space="preserve">
     <value>normal</value>
   </data>
@@ -1708,6 +1774,18 @@
   </data>
   <data name="Nothing happens? Set up the launcher / show commands …" xml:space="preserve">
     <value>Passiert nichts? Starter einrichten / Befehle anzeigen …</value>
+  </data>
+  <data name="Notification channel changed" xml:space="preserve">
+    <value>Benachrichtigungskanal geändert</value>
+  </data>
+  <data name="Notification channel created" xml:space="preserve">
+    <value>Benachrichtigungskanal angelegt</value>
+  </data>
+  <data name="Notification channel deleted" xml:space="preserve">
+    <value>Benachrichtigungskanal gelöscht</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Benachrichtigungen</value>
   </data>
   <data name="notify without dimming the desktop" xml:space="preserve">
     <value>benachrichtigen, ohne den Desktop abzublenden</value>
@@ -2147,6 +2225,9 @@
   <data name="Recent deployments" xml:space="preserve">
     <value>Letzte Deployments</value>
   </data>
+  <data name="Recipients" xml:space="preserve">
+    <value>Empfänger</value>
+  </data>
   <data name="Recognized by its signature." xml:space="preserve">
     <value>An der Signatur erkannt.</value>
   </data>
@@ -2504,6 +2585,15 @@
   <data name="Self-update is only available on Windows." xml:space="preserve">
     <value>Die Selbstaktualisierung gibt es nur unter Windows.</value>
   </data>
+  <data name="Send test" xml:space="preserve">
+    <value>Test senden</value>
+  </data>
+  <data name="Sender address" xml:space="preserve">
+    <value>Absenderadresse</value>
+  </data>
+  <data name='Sending via "{0}" failed: {1}' xml:space="preserve">
+    <value>Versand über „{0}“ fehlgeschlagen: {1}</value>
+  </data>
   <data name='Separated by commas, e.g. "Kiosk, Loan device"' xml:space="preserve">
     <value>Durch Komma getrennt, z. B. „Kiosk, Leihgerät“</value>
   </data>
@@ -2558,6 +2648,9 @@
   <data name="Setup" xml:space="preserve">
     <value>Setup</value>
   </data>
+  <data name="Several addresses separated by comma or line break." xml:space="preserve">
+    <value>Mehrere Adressen durch Komma oder Zeilenumbruch getrennt.</value>
+  </data>
   <data name="Severity" xml:space="preserve">
     <value>Schweregrad</value>
   </data>
@@ -2605,6 +2698,9 @@
   </data>
   <data name="Sign out" xml:space="preserve">
     <value>Abmelden</value>
+  </data>
+  <data name="Sign-in" xml:space="preserve">
+    <value>Anmeldung</value>
   </data>
   <data name="Sign-in denied" xml:space="preserve">
     <value>Anmeldung abgelehnt</value>
@@ -2729,6 +2825,9 @@
   <data name="Stopped: {0} of {1} finished computers failed" xml:space="preserve">
     <value>Angehalten: {0} von {1} abgeschlossenen Rechnern fehlgeschlagen</value>
   </data>
+  <data name="Stored credentials whose user name and password the mail server accepts." xml:space="preserve">
+    <value>Gespeicherte Zugangsdaten, deren Benutzername und Passwort der Mailserver annimmt.</value>
+  </data>
   <data name="succeeded" xml:space="preserve">
     <value>erfolgreich</value>
   </data>
@@ -2777,8 +2876,17 @@
   <data name="Target computers" xml:space="preserve">
     <value>Zielrechner</value>
   </data>
+  <data name="TCP port" xml:space="preserve">
+    <value>Port</value>
+  </data>
   <data name="Tenant ID" xml:space="preserve">
     <value>Mandanten-ID</value>
+  </data>
+  <data name="Test message from Inventory" xml:space="preserve">
+    <value>Testnachricht von Inventory</value>
+  </data>
+  <data name='Test message sent via "{0}".' xml:space="preserve">
+    <value>Testnachricht über „{0}“ gesendet.</value>
   </data>
   <data name="That is who had an interactive session (console or Remote Desktop) on the most days during scans of the last {0} days. Accounts stored as credentials never count; services and scheduled tasks do not either." xml:space="preserve">
     <value>Das ist, wer bei Scans der letzten {0} Tage an den meisten Tagen eine interaktive Sitzung hatte (Konsole oder Remotedesktop). Als Zugangsdaten hinterlegte Konten zählen nie, Dienste und geplante Aufgaben ebenso wenig.</value>
@@ -2849,6 +2957,9 @@
   <data name="The list shows a base selection of common programs; the search additionally finds all other programs from winget." xml:space="preserve">
     <value>Die Liste zeigt eine Grundauswahl gängiger Programme; die Suche findet zusätzlich alle weiteren Programme aus winget.</value>
   </data>
+  <data name="The mail server is missing." xml:space="preserve">
+    <value>Der Mailserver fehlt.</value>
+  </data>
   <data name="The maintenance window did not open before the deadline expired" xml:space="preserve">
     <value>Das Wartungsfenster hat sich bis zum Ablauf der Frist nicht geöffnet</value>
   </data>
@@ -2891,6 +3002,9 @@
   <data name="The scan returned no data" xml:space="preserve">
     <value>Der Scan lieferte keine Daten</value>
   </data>
+  <data name="The sender is not a valid e-mail address." xml:space="preserve">
+    <value>Der Absender ist keine gültige E-Mail-Adresse.</value>
+  </data>
   <data name="The server uses these accounts to access the target computers. They need local administrator rights there. Passwords are stored encrypted and never shown again." xml:space="preserve">
     <value>Mit diesen Konten greift der Server auf die Zielrechner zu. Sie brauchen dort lokale Administratorrechte. Passwörter werden verschlüsselt gespeichert und nie wieder angezeigt.</value>
   </data>
@@ -2926,6 +3040,12 @@
   </data>
   <data name="The value for an allow rule by file hash in your endpoint protection. It changes with every server update." xml:space="preserve">
     <value>Der Wert für eine Freigabe per Datei-Hash in Ihrem Endpoint-Schutz. Er ändert sich mit jedem Server-Update.</value>
+  </data>
+  <data name="The webhook address is missing." xml:space="preserve">
+    <value>Die Webhook-Adresse fehlt.</value>
+  </data>
+  <data name="The webhook address must start with https:// or http://." xml:space="preserve">
+    <value>Die Webhook-Adresse muss mit https:// oder http:// beginnen.</value>
   </data>
   <data name="The whole day on the selected weekdays." xml:space="preserve">
     <value>An den gewählten Wochentagen ganztägig.</value>
@@ -3269,6 +3389,12 @@
   <data name="Web interface" xml:space="preserve">
     <value>Weboberfläche</value>
   </data>
+  <data name="Webhook" xml:space="preserve">
+    <value>Webhook</value>
+  </data>
+  <data name="Webhook address" xml:space="preserve">
+    <value>Webhook-Adresse</value>
+  </data>
   <data name="Website" xml:space="preserve">
     <value>Webseite</value>
   </data>
@@ -3361,6 +3487,9 @@
   </data>
   <data name="Without launcher: commands to copy" xml:space="preserve">
     <value>Ohne Starter: Befehle zum Kopieren</value>
+  </data>
+  <data name="without sign-in" xml:space="preserve">
+    <value>ohne Anmeldung</value>
   </data>
   <data name="Wrong computer responds" xml:space="preserve">
     <value>Falscher Rechner antwortet</value>

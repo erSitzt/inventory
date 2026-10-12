@@ -22,6 +22,16 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         _ => kind.ToString(),
     };
 
+    public string Webhook(WebhookFormat format) => format switch
+    {
+        WebhookFormat.Teams => "Microsoft Teams",
+        WebhookFormat.Slack => "Slack",
+        _ => T("Generic (JSON)"),
+    };
+
+    public string Channel(NotificationChannel channel) =>
+        channel.Kind == NotificationKind.Email ? T("E-mail") : $"{T("Webhook")} – {Webhook(channel.WebhookFormat)}";
+
     public string Agentless(AgentlessPolicy policy) => policy switch
     {
         AgentlessPolicy.Always => T("allowed for all jobs"),
