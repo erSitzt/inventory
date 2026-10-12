@@ -62,6 +62,8 @@ credentials. The user interface is available in English and German; translations
 - **Deployments** in parallel with live status, cancel, retry, and catching up on offline computers
 - **Notifications**: channels for e-mail (SMTP with STARTTLS/TLS, optional sign-in with stored credentials) and
   webhooks (Microsoft Teams, Slack or plain JSON), each with a test button
+- **Licences**: record how many licences you own per product; the inventory counts the computers the software is
+  installed on and shows what is missing or free, with cost and expiry date – and an alert rule for exceeded licences
 - **Trends on the overview**: one value per day for the key figures (pending updates, reboots, antivirus, firewall,
   drive encryption, scan errors …) shown as 30-day lines, deployments per week and the age of the last scans
 - **Reports**: saved lists of computers, software, pending updates, deployments or changes – limited to a collection,
@@ -488,6 +490,7 @@ a disabled one. The outcome of the last delivery is shown per channel.
 | A computer enters a collection | the computers that are new in the collection since the last check. Dynamic collections are the rule language: "antivirus off", "not seen in AD for 60 days" or "disk nearly full" are collections, the rule reports who enters them. |
 | A collection reaches a number of members / scan errors reach a number of computers | once when the number reaches the threshold, and again only after it had dropped below. |
 | A deployment finishes with failures | every finished deployment with failed computers, with a link to it. |
+| A licence is exceeded | a licence for which more installations are found than licences are recorded, once when that happens. |
 | A computer is added | new computers, however they arrive (by hand, import, directory synchronization, agent). |
 | A schedule fails or is missed, the Active Directory synchronization, the database backup or the server update fails | the failure with its reason. |
 

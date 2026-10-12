@@ -19,6 +19,8 @@ public enum AlertKind
     NewComputer = 7,
     /// <summary>Mindestens so viele Rechner wie die Schwelle haben einen Fehler beim letzten Scan.</summary>
     ScanErrors = 8,
+    /// <summary>Für eine Lizenz sind mehr Installationen gefunden als Lizenzen vorhanden.</summary>
+    LicenseExceeded = 9,
 }
 
 /// <summary>Eine Regel, die bei einem Ereignis oder Zustand eine Nachricht über die Benachrichtigungskanäle schickt.</summary>

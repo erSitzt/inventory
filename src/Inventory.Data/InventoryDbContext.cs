@@ -39,6 +39,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<AlertRule> AlertRules => Set<AlertRule>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<DailySnapshot> DailySnapshots => Set<DailySnapshot>();
+    public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -93,6 +94,12 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         });
 
         modelBuilder.Entity<DailySnapshot>().HasIndex(s => s.Date).IsUnique();
+
+        modelBuilder.Entity<SoftwareLicense>(e =>
+        {
+            e.Property(l => l.Name).UseCollation("NOCASE").HasMaxLength(200);
+            e.HasIndex(l => l.Name).IsUnique();
+        });
 
         modelBuilder.Entity<Report>(e =>
         {

@@ -33,6 +33,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         Inventory.Core.Model.AlertKind.UpdateFailed => T("The update of the server fails"),
         Inventory.Core.Model.AlertKind.NewComputer => T("A computer is added"),
         Inventory.Core.Model.AlertKind.ScanErrors => T("Scan errors reach a number of computers"),
+        Inventory.Core.Model.AlertKind.LicenseExceeded => T("A licence is exceeded"),
         _ => kind.ToString(),
     };
 

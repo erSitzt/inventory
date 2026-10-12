@@ -10,7 +10,7 @@ namespace Inventory.Data.Services;
 
 /// <summary>Verwaltet die Alarmregeln und wertet sie aus: gemeldet wird nur, was sich seit dem letzten Durchlauf geändert hat.</summary>
 public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, NotificationService notifications,
-    AlertQueue queue, SettingsService settings, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null)
+    AlertQueue queue, SettingsService settings, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null, LicenseService? licenses = null)
 {
     private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
@@ -118,24 +118,27 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                 continue;
             }
 
-            var (messages, state) = await PollAsync(rule, now, baseUrl, ct);
+            var polled = await PollAsync(rule, now, baseUrl, ct);
+            var (messages, state) = (polled.Messages, polled.State);
             if (messages.Count == 0 || inCooldown)
             {
                 await StoreAsync(rule.Id, state, now, firedUtc: null, null, ct);
                 continue;
             }
-            var delivered = 0;
-            foreach (var message in messages)
+            var undelivered = new List<int>();
+            for (var i = 0; i < messages.Count; i++)
             {
-                if (Delivered(await notifications.SendAsync(message with { Title = prefix + message.Title }, channelIds, ct)))
-                    delivered++;
+                if (!Delivered(await notifications.SendAsync(messages[i] with { Title = prefix + messages[i].Title }, channelIds, ct)))
+                    undelivered.Add(i);
             }
+            var delivered = messages.Count - undelivered.Count;
             sent += delivered;
             // Nahm kein Kanal etwas an, bleibt der Ausgangsstand stehen: der nächste Durchlauf findet dieselbe Veränderung wieder.
             if (delivered == 0)
                 await StoreAsync(rule.Id, rule.State, now, firedUtc: null, null, ct);
             else
-                await StoreAsync(rule.Id, state, now, now, messages[^1].Title, ct);
+                await StoreAsync(rule.Id, undelivered.Count > 0 && polled.StateWithout is not null ? polled.StateWithout(undelivered) : state, now, now,
+                    messages[Enumerable.Range(0, messages.Count).Last(i => !undelivered.Contains(i))].Title, ct);
         }
 
         // Was niemand annehmen konnte (Mailserver nicht erreichbar), kommt beim nächsten Durchlauf noch einmal.
@@ -157,7 +160,13 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
     }
 
     /// <summary>Liest den Datenbestand für eine Regel ab und liefert die Nachrichten samt neuem Ausgangsstand.</summary>
-    private async Task<(List<Notification> Messages, string? State)> PollAsync(AlertRule rule, DateTime now, string? baseUrl, CancellationToken ct)
+    /// <param name="StateWithout">
+    /// Für Regeln, die mehrere unabhängige Dinge auf einmal melden: der Stand, wenn die Nachrichten mit diesen Nummern nicht
+    /// zugestellt wurden – sie gelten dann als noch nicht gemeldet und kommen beim nächsten Durchlauf wieder.
+    /// </param>
+    private sealed record Polled(List<Notification> Messages, string? State, Func<IReadOnlyCollection<int>, string?>? StateWithout = null);
+
+    private async Task<Polled> PollAsync(AlertRule rule, DateTime now, string? baseUrl, CancellationToken ct)
     {
         var messages = new List<Notification>();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
@@ -167,7 +176,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
             {
                 var collection = rule.CollectionId is null ? null : await db.Collections.AsNoTracking().FirstOrDefaultAsync(c => c.Id == rule.CollectionId, ct);
                 if (collection is null)
-                    return (messages, rule.State);
+                    return new Polled(messages, rule.State);
                 var members = await collections.GetMemberIdsAsync(collection.Id, ct);
                 var link = Link(baseUrl, $"computers?collection={collection.Id}");
                 if (rule.Kind == AlertKind.CollectionCount)
@@ -177,7 +186,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                     if (above && rule.State == bool.FalseString)
                         messages.Add(new Notification(L["{0} computers in \"{1}\"", members.Count, collection.Name],
                             L["The collection \"{0}\" now has {1} members (threshold {2}).", collection.Name, members.Count, rule.Threshold!], NotificationSeverity.Warning, link));
-                    return (messages, above.ToString());
+                    return new Polled(messages, above.ToString());
                 }
 
                 // Der erste Durchlauf legt nur den Ausgangsstand fest: wer schon Mitglied ist, ist nicht "neu hinzugekommen".
@@ -192,7 +201,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                             L["New members of the collection \"{0}\": {1}", collection.Name, Names(names)], NotificationSeverity.Warning, link));
                     }
                 }
-                return (messages, JsonSerializer.Serialize(members.Order()));
+                return new Polled(messages, JsonSerializer.Serialize(members.Order()));
             }
             case AlertKind.ScanErrors:
             {
@@ -201,7 +210,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                 if (above && rule.State == bool.FalseString)
                     messages.Add(new Notification(L["{0} computers with scan errors", count],
                         L["{0} computers failed their last scan (threshold {1}).", count, rule.Threshold!], NotificationSeverity.Warning, Link(baseUrl, "computers")));
-                return (messages, above.ToString());
+                return new Polled(messages, above.ToString());
             }
             case AlertKind.DeploymentFailed:
             {
@@ -213,7 +222,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                     messages.Add(new Notification(L["Deployment #{0} \"{1}\": {2} of {3} failed", deployment.Id, deployment.PackageName, deployment.Failed, deployment.Total],
                         L["The deployment of \"{0}\" has finished; {1} of {2} computers failed.", deployment.PackageName, deployment.Failed, deployment.Total],
                         NotificationSeverity.Error, Link(baseUrl, $"deployments/{deployment.Id}")));
-                return (messages, Stamp(finished.Count == 0 ? since : finished[^1].FinishedUtc!.Value));
+                return new Polled(messages, Stamp(finished.Count == 0 ? since : finished[^1].FinishedUtc!.Value));
             }
             case AlertKind.NewComputer:
             {
@@ -222,10 +231,29 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                 if (created.Count > 0)
                     messages.Add(new Notification(L["{0} new computers", created.Count], L["New computers: {0}", Names(created.Select(c => c.Name).ToList())],
                         NotificationSeverity.Info, Link(baseUrl, "computers")));
-                return (messages, Stamp(created.Count == 0 ? since : created[^1].CreatedUtc));
+                return new Polled(messages, Stamp(created.Count == 0 ? since : created[^1].CreatedUtc));
+            }
+            case AlertKind.LicenseExceeded:
+            {
+                if (licenses is null)
+                    return new Polled(messages, rule.State);
+                var exceeded = (await licenses.UsageAsync(ct)).Where(u => u.Exceeded).ToList();
+                // Gemeldet wird eine Lizenz, wenn sie neu überschritten ist; der erste Durchlauf legt nur den Stand fest.
+                if (rule.State is not null)
+                {
+                    var known = JsonSerializer.Deserialize<HashSet<int>>(rule.State) ?? [];
+                    foreach (var usage in exceeded.Where(u => !known.Contains(u.License.Id)))
+                        messages.Add(new Notification(L["Licence \"{0}\" exceeded: {1} installed, {2} owned", usage.License.Name, usage.Installed, usage.License.Owned],
+                            L["\"{0}\" is installed on {1} computers, but only {2} licences are recorded.", usage.License.Name, usage.Installed, usage.License.Owned],
+                            NotificationSeverity.Warning, Link(baseUrl, "licenses")));
+                }
+                var reported = messages.Count == 0 ? [] : exceeded.Where(u => !(JsonSerializer.Deserialize<HashSet<int>>(rule.State!) ?? []).Contains(u.License.Id)).Select(u => u.License.Id).ToList();
+                string State(IReadOnlyCollection<int> undelivered) =>
+                    JsonSerializer.Serialize(exceeded.Select(u => u.License.Id).Where(id => !undelivered.Select(i => reported[i]).Contains(id)).Order());
+                return new Polled(messages, State([]), State);
             }
             default:
-                return (messages, rule.State);
+                return new Polled(messages, rule.State);
         }
     }
 

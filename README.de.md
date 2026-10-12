@@ -65,6 +65,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
 - **Benachrichtigungen**: Kanäle für E-Mail (SMTP mit STARTTLS/TLS, auf Wunsch Anmeldung mit gespeicherten
   Zugangsdaten) und Webhooks (Microsoft Teams, Slack oder schlichtes JSON), jeweils mit Testknopf
+- **Lizenzen**: je Produkt eintragen, wie viele Lizenzen vorhanden sind; das Inventar zählt die Rechner, auf denen die
+  Software installiert ist, und zeigt, was fehlt oder frei ist, mit Kosten und Ablaufdatum – dazu eine Alarmregel für
+  überschrittene Lizenzen
 - **Verläufe auf der Übersicht**: je Tag ein Wert der Kennzahlen (ausstehende Updates, Neustarts, Virenschutz,
   Firewall, Laufwerksverschlüsselung, Scan-Fehler …) als 30-Tage-Linien, dazu Verteilungen je Woche und das Alter
   der letzten Scans
@@ -506,6 +509,7 @@ eine Probenachricht über einen Kanal, auch über einen abgeschalteten. Je Kanal
 | Ein Rechner kommt in eine Sammlung | die Rechner, die seit der letzten Prüfung neu in der Sammlung sind. Dynamische Sammlungen sind die Regelsprache: „Virenschutz aus“, „seit 60 Tagen nicht im AD gesehen“ oder „Platte fast voll“ sind Sammlungen, die Regel meldet, wer hineinkommt. |
 | Eine Sammlung erreicht eine Mitgliederzahl / Scan-Fehler erreichen eine Anzahl Rechner | einmal, wenn die Zahl die Schwelle erreicht, und erst wieder, nachdem sie darunter gefallen war. |
 | Eine Verteilung endet mit Fehlern | jede abgeschlossene Verteilung mit fehlgeschlagenen Rechnern, mit Link dorthin. |
+| Eine Lizenz ist überschritten | eine Lizenz, für die mehr Installationen gefunden als Lizenzen erfasst sind, einmal beim Eintreten. |
 | Ein Rechner kommt hinzu | neue Rechner, gleich auf welchem Weg (von Hand, Import, Verzeichnisabgleich, Agent). |
 | Ein Zeitplan schlägt fehl oder wird verpasst, der Active-Directory-Abgleich, die Datenbanksicherung oder die Server-Aktualisierung schlägt fehl | den Fehler mit seinem Grund. |
 
