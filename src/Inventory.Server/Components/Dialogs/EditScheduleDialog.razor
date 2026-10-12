@@ -25,8 +25,13 @@
                         <MudSelectItem T="int?" Value="@report.Id">@report.Name</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSelect T="ReportFormat" @bind-Value="_s.ReportFormat" Label="@L["Attachment"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    <MudSelectItem T="ReportFormat" Value="ReportFormat.Excel">Excel</MudSelectItem>
+                    <MudSelectItem T="ReportFormat" Value="ReportFormat.Pdf">PDF</MudSelectItem>
+                    <MudSelectItem T="ReportFormat" Value="ReportFormat.Csv">CSV</MudSelectItem>
+                </MudSelect>
                 <MudSelect T="int?" @bind-Value="_s.NotificationChannelId" Label="@L["Channel"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["all enabled channels"]"
-                           HelperText="@L["E-mail channels get the report as an Excel attachment, webhooks a note with the number of rows and a link."]">
+                           HelperText="@L["E-mail channels get the report as an attachment, webhooks a note with the number of rows and a link."]">
                     @foreach (var channel in _channels)
                     {
                         <MudSelectItem T="int?" Value="@channel.Id">@channel.Name</MudSelectItem>
@@ -192,7 +197,7 @@
             LastRunUtc = Schedule.LastRunUtc, LastResult = Schedule.LastResult,
             MonthDay = Schedule.MonthDay, MonthWeek = Schedule.MonthWeek, MonthWeekday = Schedule.MonthWeekday, MonthOffsetDays = Schedule.MonthOffsetDays,
             EndLocal = Schedule.EndLocal, CatchUpMissed = Schedule.CatchUpMissed, RecheckDays = Schedule.RecheckDays,
-            ReportId = Schedule.ReportId, NotificationChannelId = Schedule.NotificationChannelId,
+            ReportId = Schedule.ReportId, NotificationChannelId = Schedule.NotificationChannelId, ReportFormat = Schedule.ReportFormat,
         };
         _byWeekday = Schedule.MonthDay <= 0;
         _monthDay = Math.Max(Schedule.MonthDay, 1);

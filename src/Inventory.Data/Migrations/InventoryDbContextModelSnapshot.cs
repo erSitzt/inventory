@@ -1447,6 +1447,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int>("RecheckDays")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("ReportFormat")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("ReportId")
                         .HasColumnType("INTEGER");
 

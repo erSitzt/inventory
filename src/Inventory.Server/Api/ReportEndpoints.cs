@@ -75,17 +75,21 @@ public static class ReportEndpoints
                 : Results.NotFound())
             .WithSummary("Run a saved report").WithDescription("columns with key, title and numeric; rows as arrays of text in the order of the columns.");
 
-        saved.MapGet("{id:int}.csv", async (int id, SavedReportService service, CancellationToken ct) =>
-            await service.GetAsync(id, ct) is { } report
-                ? Results.File(ReportExport.CsvBytes(await service.RunAsync(report, ct)), "text/csv; charset=utf-8", SavedReportService.FileName(report) + ".csv")
-                : Results.NotFound())
-            .WithSummary("Saved report as CSV").Produces<string>(200, "text/csv");
-
-        saved.MapGet("{id:int}.xlsx", async (int id, SavedReportService service, CancellationToken ct) =>
-            await service.GetAsync(id, ct) is { } report
-                ? Results.File(ReportExport.Xlsx(await service.RunAsync(report, ct), report.Name), ReportExport.XlsxContentType, SavedReportService.FileName(report) + ".xlsx")
-                : Results.NotFound())
-            .WithSummary("Saved report as Excel workbook").WithDescription("One sheet with a fixed, filterable header row; numeric columns are stored as numbers.");
+        foreach (var (extension, format, summary) in new[] { ("csv", ReportFormat.Csv, "Saved report as CSV"), ("xlsx", ReportFormat.Excel, "Saved report as Excel workbook"), ("pdf", ReportFormat.Pdf, "Saved report as PDF") })
+        {
+            saved.MapGet($"{{id:int}}.{extension}", async (int id, SavedReportService service, TimeProvider time, CancellationToken ct) =>
+            {
+                if (await service.GetAsync(id, ct) is not { } report)
+                    return Results.NotFound();
+                var file = await service.ExportAsync(report, format, TimeZoneInfo.ConvertTime(time.GetUtcNow(), time.LocalTimeZone), ct);
+                return Results.File(file.Content, file.ContentType, file.FileName);
+            }).WithSummary(summary).WithDescription(format switch
+            {
+                ReportFormat.Excel => "One sheet with a fixed, filterable header row; numeric columns are stored as numbers.",
+                ReportFormat.Pdf => $"A4 landscape with the header row on every page; tables too wide for one page continue on further pages with the first column repeated. At most {ReportPdf.MaxRows} rows.",
+                _ => "Semicolon-separated, UTF-8 with BOM.",
+            });
+        }
 
         var audit = app.MapGroup("/api/audit").WithTags("Audit log").RequireOperator();
 

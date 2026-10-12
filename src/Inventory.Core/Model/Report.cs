@@ -15,6 +15,14 @@ public enum ReportSource
     Changes = 4,
 }
 
+/// <summary>Dateiformat eines Berichts beim Herunterladen oder als Anhang.</summary>
+public enum ReportFormat
+{
+    Excel = 0,
+    Pdf = 1,
+    Csv = 2,
+}
+
 /// <summary>Ein gespeicherter Bericht: Quelle, Filter, Spaltenauswahl und Sortierung.</summary>
 public class Report
 {

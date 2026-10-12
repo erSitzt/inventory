@@ -28,6 +28,71 @@ public sealed class ExampleData(IDbContextFactory<InventoryDbContext> dbFactory,
         return db.Schedules.Local.Count;
     }
 
+    /// <summary>
+    /// Beispiel-Berichte, einmalig; liefert die Zahl der angelegten. Anders als bei den Zeitplänen auch neben vorhandenen
+    /// Berichten: sie laufen nicht von selbst, und wer schon einen eigenen angelegt hat, soll die Vorlagen trotzdem bekommen.
+    /// </summary>
+    public async Task<int> SeedReportsAsync(CancellationToken ct = default)
+    {
+        if (await settings.GetAsync(SettingKeys.ExampleReportsCreated, ct) == bool.TrueString)
+            return 0;
+        await settings.SetAsync(SettingKeys.ExampleReportsCreated, bool.TrueString, ct);
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var existing = (await db.Reports.Select(r => r.Name).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var added = ExampleReports(L).Where(r => !existing.Contains(r.Name)).ToList();
+        db.Reports.AddRange(added);
+        await db.SaveChangesAsync(ct);
+        return added.Count;
+    }
+
+    /// <summary>Häufig gefragte Listen als Ausgangspunkt: so wie sie sind verwendbar, oder dupliziert und angepasst.</summary>
+    public static List<Report> ExampleReports(IStringLocalizer<SharedResource> L) =>
+    [
+        new()
+        {
+            Name = L[Prefix] + L["Hardware overview"], Description = L["Device type, model, serial number, processor and memory of every computer"], Source = ReportSource.Computers,
+            Columns = "name,deviceType,manufacturer,model,serial,cpu,memoryGb,os,osRelease,lastScan", SortColumn = "name",
+        },
+        new()
+        {
+            Name = L[Prefix] + L["Security status"], Description = L["Firewall, antivirus, drive encryption and platform security per computer"], Source = ReportSource.Computers,
+            Columns = "name,firewallDomain,firewallPrivate,firewallPublic,defenderRealTime,antivirus,bitLocker,secureBoot,tpm,rebootPending,pendingSecurityUpdates", SortColumn = "name",
+        },
+        new()
+        {
+            Name = L[Prefix] + L["Patch status"], Description = L["Pending updates per computer, the ones with the most security updates first"], Source = ReportSource.Computers,
+            Columns = "name,os,osRelease,lastUpdateInstall,pendingUpdates,pendingSecurityUpdates,rebootPending,lastScan", SortColumn = "pendingSecurityUpdates", SortDescending = true,
+        },
+        new()
+        {
+            Name = L[Prefix] + L["Asset list"], Description = L["Who uses which device, where it is and how long the warranty lasts"], Source = ReportSource.Computers,
+            Columns = "name,primaryUser,owner,location,costCenter,inventoryNumber,model,serial,purchaseDate,warrantyUntil", SortColumn = "warrantyUntil",
+        },
+        new()
+        {
+            Name = L[Prefix] + L["Operating systems"], Description = L["Windows edition and feature update, the oldest first"], Source = ReportSource.Computers,
+            Columns = "name,os,osRelease,osVersion,activated,lastBoot,lastScan", SortColumn = "osRelease",
+        },
+        new()
+        {
+            Name = L[Prefix] + L["Windows 11 requirements"], Description = L["Firmware, Secure Boot, TPM, processor and memory"], Source = ReportSource.Computers,
+            Columns = "name,model,os,cpu,memoryGb,firmware,secureBoot,tpm,tpmReady", SortColumn = "name",
+        },
+        new()
+        {
+            Name = L[Prefix] + L["Installed software"], Description = L["Every program on every computer"], Source = ReportSource.Software,
+            Columns = "computer,program,version,publisher,installed", SortColumn = "program",
+        },
+        new()
+        {
+            Name = L[Prefix] + L["Pending updates"], Description = L["Every pending update on every computer"], Source = ReportSource.PendingUpdates,
+            Columns = "computer,kb,title,classification,severity,security,lastSearch", SortColumn = "computer",
+        },
+        new() { Name = L[Prefix] + L["Deployments of the last 30 days"], Source = ReportSource.Deployments, Days = 30 },
+        new() { Name = L[Prefix] + L["Changes of the last 7 days"], Description = L["What was installed, removed or changed"], Source = ReportSource.Changes, Days = 7 },
+    ];
+
     /// <summary>Nur Scans: ein Paket-Zeitplan braucht ein Paket, das es beim ersten Start noch nicht gibt.</summary>
     public static List<Schedule> ExampleSchedules(IStringLocalizer<SharedResource> L) =>
     [

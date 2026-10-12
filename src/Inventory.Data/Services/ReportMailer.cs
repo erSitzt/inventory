@@ -5,7 +5,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
-/// <summary>Führt einen gespeicherten Bericht aus und verschickt ihn über die Benachrichtigungskanäle: per E-Mail als Excel-Anhang, an Webhooks als Hinweis mit Link.</summary>
+/// <summary>Führt einen gespeicherten Bericht aus und verschickt ihn über die Benachrichtigungskanäle: per E-Mail als Anhang, an Webhooks als Hinweis mit Link.</summary>
 public sealed class ReportMailer(SavedReportService saved, NotificationService notifications, SettingsService settings, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null)
 {
     private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
@@ -13,15 +13,21 @@ public sealed class ReportMailer(SavedReportService saved, NotificationService n
     /// <param name="channelId">null = alle eingeschalteten Kanäle.</param>
     /// <returns>Kurzer Ergebnistext für den Zeitplan.</returns>
     /// <exception cref="InvalidOperationException">Der Bericht fehlt oder kein Kanal hat ihn angenommen.</exception>
-    public async Task<string> SendAsync(int reportId, int? channelId, CancellationToken ct = default)
+    public async Task<string> SendAsync(int reportId, int? channelId, ReportFormat format = ReportFormat.Excel, CancellationToken ct = default)
     {
         var report = await saved.GetAsync(reportId, ct) ?? throw new InvalidOperationException(L["Report {0} not found", reportId]);
         var table = await saved.RunAsync(report, ct);
         var local = TimeZoneInfo.ConvertTime(time.GetUtcNow(), time.LocalTimeZone);
         var baseUrl = (await settings.GetAsync(SettingKeys.AgentServerUrl, ct))?.TrimEnd('/');
         var text = L["{0} rows, as of {1}.", table.Rows.Count, local.ToString("g")] + (report.Description is null ? "" : "\n" + report.Description);
-        // Die Arbeitsmappe entsteht erst, wenn ein E-Mail-Kanal sie braucht: Webhooks bekommen nur Text und Link.
-        MailAttachment Attachment() => new($"{SavedReportService.FileName(report)} {local:yyyy-MM-dd}.xlsx", ReportExport.XlsxContentType, ReportExport.Xlsx(table, report.Name));
+
+        // Die Datei entsteht erst, wenn ein E-Mail-Kanal sie braucht: Webhooks bekommen nur Text und Link.
+        // Das Datum im Namen: die Anhänge mehrerer Monate lassen sich nebeneinander ablegen.
+        MailAttachment Attachment()
+        {
+            var file = saved.Render(report, table, format, local);
+            return new MailAttachment($"{Path.GetFileNameWithoutExtension(file.FileName)} {local:yyyy-MM-dd}{Path.GetExtension(file.FileName)}", file.ContentType.Split(';')[0], file.Content);
+        }
 
         var results = await notifications.SendAsync(new Notification(L["Report \"{0}\"", report.Name], text, NotificationSeverity.Info, string.IsNullOrEmpty(baseUrl) ? null : $"{baseUrl}/reports/{report.Id}"),
             channelId is null ? null : [channelId.Value], ct, Attachment);

@@ -38,6 +38,8 @@ public class Schedule
     /// <summary>Für <see cref="ScheduleAction.Report"/>: der Kanal; null = alle eingeschalteten.</summary>
     public int? NotificationChannelId { get; set; }
     public NotificationChannel? NotificationChannel { get; set; }
+    /// <summary>Für <see cref="ScheduleAction.Report"/>: das Format des Anhangs.</summary>
+    public ReportFormat ReportFormat { get; set; }
     public bool ScanAfter { get; set; } = true;
     /// <summary>Bei Deployments: Offline-Rechner nachholen, sobald sie erreichbar sind.</summary>
     public bool RetryOffline { get; set; } = true;

@@ -66,8 +66,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Benachrichtigungen**: Kanäle für E-Mail (SMTP mit STARTTLS/TLS, auf Wunsch Anmeldung mit gespeicherten
   Zugangsdaten) und Webhooks (Microsoft Teams, Slack oder schlichtes JSON), jeweils mit Testknopf
 - **Berichte**: gespeicherte Listen von Rechnern, Software, ausstehenden Updates, Verteilungen oder Änderungen – auf
-  eine Sammlung beschränkt, mit gewählten Spalten und Sortierung; im Browser, als CSV oder Excel, oder per Zeitplan
-  als E-Mail
+  eine Sammlung beschränkt, mit gewählten Spalten und Sortierung; im Browser, als CSV, Excel oder PDF, oder per
+  Zeitplan als E-Mail. Zehn fertige Beispiele (Hardware, Sicherheitsstatus, Patch-Stand, Bestandsliste …) dienen
+  unverändert oder als Vorlage
 - **Alarmregeln**: eine Nachricht, wenn ein Rechner in eine Sammlung kommt, eine Sammlung oder die Scan-Fehler eine
   Anzahl erreichen, eine Verteilung mit Fehlern endet, ein Rechner hinzukommt oder ein Zeitplan, der
   Verzeichnisabgleich, die Sicherung oder die Server-Aktualisierung fehlschlägt – mit Pause je Regel und Wahl der Kanäle
@@ -528,13 +529,24 @@ die Oberfläche nutzen darf.
 | Zeitraum | bei Verteilungen und Änderungen: die Zahl der Tage zurück (Standard 30) |
 | Spalten und Sortierung | welche Spalten erscheinen und nach welcher sortiert wird. Zahlen werden als Zahlen sortiert; leere Werte stehen am Ende. |
 
-Jeder Bericht lässt sich im Browser öffnen, als CSV (Semikolon-getrennt, UTF-8 mit BOM) oder als Excel-Arbeitsmappe
-herunterladen (fixierte, filterbare Kopfzeile; Zahlenspalten sind Zahlen, alles andere Text, sodass nie etwas als
-Formel ausgewertet wird) und über die API abrufen (`/api/reports/saved`). Ein Bericht liefert höchstens 100.000 Zeilen.
+Jeder Bericht lässt sich im Browser öffnen und in drei Formaten herunterladen, auch über die API
+(`/api/reports/saved`). Ein Bericht liefert höchstens 100.000 Zeilen.
+
+| Format | |
+|---|---|
+| CSV | Semikolon-getrennt, UTF-8 mit BOM |
+| Excel | ein Blatt mit fixierter, filterbarer Kopfzeile; Zahlenspalten sind Zahlen, alles andere Text, sodass nie etwas als Formel ausgewertet wird |
+| PDF | A4 quer mit Titel, Stand und Seitenzahlen, die Kopfzeile auf jeder Seite. Eine Tabelle, die nicht auf eine Seite passt, läuft auf weiteren Seiten weiter, jeweils mit der ersten Spalte davor; lange Werte werden gekürzt. Höchstens 5.000 Zeilen – für längere Listen Excel nehmen. Zeichen außerhalb des westeuropäischen Zeichenvorrats erscheinen als `?`. |
+
+**Beispiele:** beim ersten Start legt der Server zehn Berichte namens „Beispiel: …“ an: Hardware-Übersicht,
+Sicherheitsstatus, Patch-Stand, Bestandsliste, Betriebssysteme, Windows-11-Voraussetzungen, installierte Software,
+ausstehende Updates, Verteilungen der letzten 30 Tage und Änderungen der letzten 7 Tage. Unverändert verwenden oder
+einen *Duplizieren* und die Kopie anpassen. Gelöschte Beispiele kommen nicht wieder. Ihre Namen folgen der Sprache
+des Servers (`Inventory:Language`).
 
 **Per E-Mail nach Zeitplan:** ein Zeitplan mit der Aktion *Bericht versenden* führt den Bericht täglich, wöchentlich,
 monatlich oder in Abständen aus und verschickt ihn über einen Benachrichtigungskanal oder alle eingeschalteten.
-E-Mail-Kanäle bekommen die Arbeitsmappe als Anhang, Webhooks einen Hinweis mit der Zeilenzahl und einem Link. Nimmt
+E-Mail-Kanäle bekommen ihn als Anhang im gewählten Format (Excel, PDF oder CSV), Webhooks einen Hinweis mit der Zeilenzahl und einem Link. Nimmt
 kein Kanal ihn an, steht der Grund am Zeitplan, und eine Alarmregel für fehlgeschlagene Zeitpläne meldet ihn. Mit
 einem Bericht oder einem Kanal werden auch die Zeitpläne gelöscht, die darüber verschicken.
 

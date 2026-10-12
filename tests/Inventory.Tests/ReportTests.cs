@@ -143,6 +143,60 @@ public class ReportTests
     }
 
     [Fact]
+    public async Task The_pdf_repeats_the_header_and_continues_wide_tables_on_further_pages()
+    {
+        var (db, _, _) = await SeedAsync();
+        using var _d = db;
+        var reports = new ReportService(db);
+
+        var narrow = await reports.TableAsync(new ReportQuery(ReportSource.Computers, Columns: ["name", "memoryGb", "location", "notes"]));
+        narrow.Rows[1][3] = "Umlaute äöüß – „Zitat“ € und ein Zeichen außerhalb: 😀";
+        var bytes = ReportPdf.Write(narrow, "Hardware: Büro", "Rechner · 3 Zeilen", "Seite {0} von {1}");
+        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(bytes))
+        {
+            Assert.Equal(1, pdf.NumberOfPages);
+            var text = pdf.GetPage(1).Text;
+            Assert.Contains("Hardware: Büro", text);
+            Assert.Contains("Memory (GB)", text);
+            Assert.Contains("pc-01", text);
+            Assert.Contains("äöüß – „Zitat“ €", text);
+            Assert.Contains("Seite 1 von 1", text);
+            Assert.Equal((842, 595), ((int)Math.Round(pdf.GetPage(1).Width), (int)Math.Round(pdf.GetPage(1).Height)));
+        }
+
+        // Alle Spalten passen nicht nebeneinander: weitere Seiten, jeweils mit dem Namen vorn.
+        var wide = await reports.TableAsync(new ReportQuery(ReportSource.Computers));
+        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(ReportPdf.Write(wide, "Alles", "")))
+        {
+            Assert.True(pdf.NumberOfPages > 1);
+            Assert.All(pdf.GetPages(), page => Assert.Contains("pc-01", page.Text));
+            Assert.Contains("Notes", pdf.GetPage(pdf.NumberOfPages).Text);
+            Assert.Contains($"Page {pdf.NumberOfPages} of {pdf.NumberOfPages}", pdf.GetPage(pdf.NumberOfPages).Text);
+        }
+
+        // Viele Zeilen: mehrere Seiten mit Kopfzeile, und ab der Obergrenze ein Hinweis statt tausender Seiten.
+        var many = new ReportTable([new ReportColumn("n", "Nummer", true), new ReportColumn("t", "Text")],
+            Enumerable.Range(1, ReportPdf.MaxRows + 10).Select(i => new string?[] { i.ToString(), $"Zeile {i}" }).ToList());
+        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(ReportPdf.Write(many, "Viele", "Stand heute")))
+        {
+            Assert.True(pdf.NumberOfPages > 50);
+            Assert.All(pdf.GetPages().Take(5), page => Assert.Contains("Nummer", page.Text));
+            Assert.Contains($"First {ReportPdf.MaxRows} of {ReportPdf.MaxRows + 10} rows.", pdf.GetPage(1).Text);
+            Assert.DoesNotContain($"Zeile {ReportPdf.MaxRows + 1}", pdf.GetPage(pdf.NumberOfPages).Text);
+        }
+
+        using var empty = UglyToad.PdfPig.PdfDocument.Open(ReportPdf.Write(new ReportTable([], []), "Leer", ""));
+        Assert.Equal(1, empty.NumberOfPages);
+        Assert.Equal("Sehr lange…", ReportPdf.Fit("Sehr langer Text, der nicht passt", 45, 7.5, bold: false));
+
+        if (Environment.GetEnvironmentVariable("INVENTORY_PDF_OUT") is { Length: > 0 } directory)
+        {
+            File.WriteAllBytes(Path.Combine(directory, "narrow.pdf"), bytes);
+            File.WriteAllBytes(Path.Combine(directory, "wide.pdf"), ReportPdf.Write(wide, "Alles", "Rechner · alle Spalten"));
+        }
+    }
+
+    [Fact]
     public async Task Csv_export_protects_against_formulas_and_matches_the_table()
     {
         var (db, _, _) = await SeedAsync();
@@ -207,6 +261,20 @@ public class ReportTests
         using var workbook = SpreadsheetDocument.Open(new MemoryStream(message.Attachment.Content), false);
         Assert.Equal(4, workbook.WorkbookPart!.WorksheetParts.Single().Worksheet.Descendants<Row>().Count());
 
+        // Als PDF: derselbe Bericht, anderes Format des Anhangs.
+        schedule.ReportFormat = ReportFormat.Pdf;
+        await schedules.SaveAsync(schedule);
+        await schedules.RunNowAsync(schedule.Id);
+        var pdfMail = mail.Sent[^1].Attachment!;
+        Assert.Matches(@"^Hardware \d{4}-\d{2}-\d{2}\.pdf$", pdfMail.FileName);
+        Assert.Equal("application/pdf", pdfMail.ContentType);
+        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(pdfMail.Content))
+        {
+            Assert.Contains("Computers", pdf.GetPage(1).Text);
+            Assert.Contains("3 rows", pdf.GetPage(1).Text);
+        }
+        mail.Sent.RemoveAt(mail.Sent.Count - 1);
+
         // Ein regulärer Lauf, der nicht zustellen kann, geht an die Alarmregeln.
         mail.Fail = "Relay access denied";
         await using (var context = db.CreateDbContext())
@@ -219,6 +287,42 @@ public class ReportTests
         // Mit dem Bericht verschwindet auch sein Zeitplan.
         await saved.DeleteAsync(report.Id);
         Assert.Empty(await schedules.ListAsync());
+    }
+
+    [Fact]
+    public async Task Example_reports_are_created_once_use_only_known_columns_and_are_not_restored_after_deletion()
+    {
+        using var db = new TestDb();
+        var settings = new SettingsService(db);
+        var reports = new ReportService(db);
+        var saved = new SavedReportService(db, reports);
+        var examples = new ExampleData(db, settings);
+
+        // Ein eigener Bericht – auch einer, der wie ein Beispiel heißt – hindert die übrigen Beispiele nicht.
+        await saved.SaveAsync(new Report { Name = "Eigener", Source = ReportSource.Software });
+        await saved.SaveAsync(new Report { Name = ExampleData.Prefix + "Patch status", Source = ReportSource.Changes });
+        Assert.Equal(9, await examples.SeedReportsAsync());
+        Assert.Equal(0, await examples.SeedReportsAsync());
+        var stored = await saved.ListAsync();
+        Assert.Equal(11, stored.Count);
+        Assert.Equal(ReportSource.Changes, stored.Single(r => r.Name == ExampleData.Prefix + "Patch status").Source);
+        Assert.All(stored, report =>
+        {
+            var known = reports.ColumnsOf(report.Source).Select(c => c.Key).ToHashSet();
+            Assert.All(report.ColumnKeys, key => Assert.Contains(key, known));
+            Assert.True(report.SortColumn is null || known.Contains(report.SortColumn));
+        });
+        // Jedes Beispiel läuft, auch auf einem leeren Bestand, und lässt sich in jedes Format bringen.
+        foreach (var report in stored)
+        {
+            foreach (var format in Enum.GetValues<ReportFormat>())
+                Assert.NotEmpty((await saved.ExportAsync(report, format, DateTimeOffset.Now)).Content);
+        }
+
+        foreach (var report in stored)
+            await saved.DeleteAsync(report.Id);
+        Assert.Equal(0, await new ExampleData(db, settings).SeedReportsAsync());
+        Assert.Empty(await saved.ListAsync());
     }
 
     private sealed class RecordingMail : Inventory.Core.Abstractions.IMailSender
