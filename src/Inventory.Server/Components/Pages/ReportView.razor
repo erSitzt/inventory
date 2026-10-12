@@ -16,6 +16,7 @@ else
         <MudSpacer />
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="@($"api/reports/saved/{Id}.csv")" Target="_blank" Class="d-print-none">CSV</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.GridOn" Href="@($"api/reports/saved/{Id}.xlsx")" Target="_blank" Class="d-print-none">Excel</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf" Href="@($"api/reports/saved/{Id}.pdf")" Target="_blank" Class="d-print-none">PDF</MudButton>
     </MudStack>
     <MudText Typo="Typo.body2" Class="mb-4">
         @Display.Report(_report.Source)@(_report.Collection is null ? "" : $" · {_report.Collection.Name}") · @L["{0} rows", _table?.Rows.Count ?? 0] · @L["as of {0}", Display.LocalTime(_asOfUtc)]

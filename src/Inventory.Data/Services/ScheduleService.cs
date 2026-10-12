@@ -189,7 +189,7 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
             {
                 if (schedule.ReportId is not { } reportId)
                     return L["No report selected"];
-                return await (reportMailer ?? throw new InvalidOperationException("Report delivery is not available.")).SendAsync(reportId, schedule.NotificationChannelId, ct);
+                return await (reportMailer ?? throw new InvalidOperationException("Report delivery is not available.")).SendAsync(reportId, schedule.NotificationChannelId, schedule.ReportFormat, ct);
             }
 
             var ids = await TargetIdsAsync(schedule, ct);

@@ -63,7 +63,8 @@ credentials. The user interface is available in English and German; translations
 - **Notifications**: channels for e-mail (SMTP with STARTTLS/TLS, optional sign-in with stored credentials) and
   webhooks (Microsoft Teams, Slack or plain JSON), each with a test button
 - **Reports**: saved lists of computers, software, pending updates, deployments or changes – limited to a collection,
-  with chosen columns and order; shown in the browser, as CSV or Excel, or sent by e-mail on a schedule
+  with chosen columns and order; shown in the browser, as CSV, Excel or PDF, or sent by e-mail on a schedule. Ten
+  ready-made examples (hardware, security status, patch status, asset list …) serve as they are or as templates
 - **Alert rules**: a message when a computer enters a collection, a collection or the scan errors reach a number, a
   deployment finishes with failures, a computer is added, or a schedule, the directory synchronization, the backup
   or the server update fails – with a pause per rule and a choice of channels
@@ -510,13 +511,23 @@ A report is a saved list. Administrators set it up under *Reports*; everyone who
 | Period | for deployments and changes: the number of days back (default 30) |
 | Columns and order | which columns appear, and the column to sort by. Numbers sort as numbers; empty values come last. |
 
-Every report can be opened in the browser, downloaded as CSV (semicolon-separated, UTF-8 with BOM) or as an Excel
-workbook (fixed, filterable header row; numeric columns are numbers, everything else is text, so nothing is ever
-evaluated as a formula), and fetched through the API (`/api/reports/saved`). A report returns at most 100,000 rows.
+Every report can be opened in the browser and downloaded in three formats, also through the API
+(`/api/reports/saved`). A report returns at most 100,000 rows.
+
+| Format | |
+|---|---|
+| CSV | semicolon-separated, UTF-8 with BOM |
+| Excel | one sheet with a fixed, filterable header row; numeric columns are numbers, everything else is text, so nothing is ever evaluated as a formula |
+| PDF | A4 landscape with title, date and page numbers, the header row on every page. A table too wide for one page continues on further pages with the first column repeated; long values are shortened. At most 5,000 rows – for longer lists use Excel. Characters outside the Western European character set appear as `?`. |
+
+**Examples:** on first start the server adds ten reports named "Example: …": hardware overview, security status,
+patch status, asset list, operating systems, Windows 11 requirements, installed software, pending updates,
+deployments of the last 30 days and changes of the last 7 days. Use them as they are, or *Duplicate* one and adjust
+the copy. Deleted examples do not come back. Their names follow the server language (`Inventory:Language`).
 
 **By e-mail on a schedule:** a schedule with the action *Send report* runs the report daily, weekly, monthly or at
-intervals and sends it through one notification channel or all enabled ones. E-mail channels get the workbook as an
-attachment, webhooks a note with the number of rows and a link. If no channel accepts it, the schedule shows the
+intervals and sends it through one notification channel or all enabled ones. E-mail channels get it as an
+attachment in the chosen format (Excel, PDF or CSV), webhooks a note with the number of rows and a link. If no channel accepts it, the schedule shows the
 reason and an alert rule for failed schedules reports it. Deleting a report or a channel also deletes the schedules
 that send through it.
 

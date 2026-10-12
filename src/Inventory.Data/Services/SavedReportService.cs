@@ -66,6 +66,49 @@ public sealed class SavedReportService(IDbContextFactory<InventoryDbContext> dbF
 
     public Task<ReportTable> RunAsync(Report report, CancellationToken ct = default) => reports.TableAsync(Query(report), ct);
 
+    public sealed record ReportFile(string FileName, string ContentType, byte[] Content);
+
+    /// <summary>Führt den Bericht aus und bringt ihn in das gewünschte Format.</summary>
+    public async Task<ReportFile> ExportAsync(Report report, ReportFormat format, DateTimeOffset localNow, CancellationToken ct = default) =>
+        Render(report, await RunAsync(report, ct), format, localNow);
+
+    /// <summary>Bringt die Zeilen eines Berichts in ein Dateiformat. Download und Versand gehen beide hier durch.</summary>
+    public ReportFile Render(Report report, ReportTable table, ReportFormat format, DateTimeOffset localNow)
+    {
+        var name = FileName(report);
+        return format switch
+        {
+            ReportFormat.Pdf => new ReportFile(name + ".pdf", ReportPdf.ContentType, ReportPdf.Write(table, report.Name, Subtitle(report, table.Rows.Count, localNow), L["Page {0} of {1}"], L["First {0} of {1} rows."])),
+            ReportFormat.Csv => new ReportFile(name + ".csv", "text/csv; charset=utf-8", ReportExport.CsvBytes(table)),
+            _ => new ReportFile(name + ".xlsx", ReportExport.XlsxContentType, ReportExport.Xlsx(table, report.Name)),
+        };
+    }
+
+    /// <summary>Die Zeile unter dem Titel eines gedruckten Berichts: Quelle, Sammlung, Zeitraum, Zeilenzahl und Stand.</summary>
+    public string Subtitle(Report report, int rows, DateTimeOffset localNow)
+    {
+        var parts = new List<string> { SourceName(report.Source) };
+        if (report.Collection is not null)
+            parts.Add(report.Collection.Name);
+        if (Report.HasPeriod(report.Source))
+            parts.Add(L["last {0} days", report.Days ?? ReportService.DefaultDays]);
+        parts.Add(L["{0} rows", rows]);
+        parts.Add(L["as of {0}", localNow.ToString("g")]);
+        if (report.Description is not null)
+            parts.Add(report.Description);
+        return string.Join("  ·  ", parts);
+    }
+
+    public string SourceName(ReportSource source) => source switch
+    {
+        ReportSource.Computers => L["Computers"],
+        ReportSource.Software => L["Installed software"],
+        ReportSource.PendingUpdates => L["Pending updates"],
+        ReportSource.Deployments => L["Deployments"],
+        ReportSource.Changes => L["Changes"],
+        _ => source.ToString(),
+    };
+
     /// <summary>Dateiname ohne Endung: der Name des Berichts, auf das reduziert, was jedes Dateisystem annimmt.</summary>
     public static string FileName(Report report)
     {

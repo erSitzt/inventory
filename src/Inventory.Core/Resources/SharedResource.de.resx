@@ -398,6 +398,9 @@
   <data name="Asset data imported" xml:space="preserve">
     <value>Bestandsdaten importiert</value>
   </data>
+  <data name="Asset list" xml:space="preserve">
+    <value>Bestandsliste</value>
+  </data>
   <data name="At fixed intervals" xml:space="preserve">
     <value>In festen Abständen</value>
   </data>
@@ -412,6 +415,9 @@
   </data>
   <data name="At most this many updates per run" xml:space="preserve">
     <value>Höchstens so viele Updates je Lauf</value>
+  </data>
+  <data name="Attachment" xml:space="preserve">
+    <value>Anhang</value>
   </data>
   <data name="Audit log" xml:space="preserve">
     <value>Protokoll</value>
@@ -493,6 +499,9 @@
   </data>
   <data name="Changes and download" xml:space="preserve">
     <value>Änderungen und Download</value>
+  </data>
+  <data name="Changes of the last 7 days" xml:space="preserve">
+    <value>Änderungen der letzten 7 Tage</value>
   </data>
   <data name="Channel" xml:space="preserve">
     <value>Kanal</value>
@@ -884,6 +893,9 @@
   <data name="Deployments are still running. Please wait until they have finished." xml:space="preserve">
     <value>Es laufen noch Deployments. Bitte warten, bis sie beendet sind.</value>
   </data>
+  <data name="Deployments of the last 30 days" xml:space="preserve">
+    <value>Verteilungen der letzten 30 Tage</value>
+  </data>
   <data name="Deployments that respect maintenance windows run on the members only during this period. A computer in several collections may run as soon as one of their windows is open." xml:space="preserve">
     <value>Deployments, die Wartungsfenster beachten, laufen auf den Mitgliedern nur in diesem Zeitraum. Ein Rechner in mehreren Sammlungen darf laufen, sobald eines ihrer Fenster offen ist.</value>
   </data>
@@ -910,6 +922,9 @@
   </data>
   <data name="Device type" xml:space="preserve">
     <value>Gerätetyp</value>
+  </data>
+  <data name="Device type, model, serial number, processor and memory of every computer" xml:space="preserve">
+    <value>Gerätetyp, Modell, Seriennummer, Prozessor und Arbeitsspeicher jedes Rechners</value>
   </data>
   <data name="disabled" xml:space="preserve">
     <value>deaktiviert</value>
@@ -971,6 +986,9 @@
   <data name="Drivers" xml:space="preserve">
     <value>Treiber</value>
   </data>
+  <data name="Duplicate" xml:space="preserve">
+    <value>Duplizieren</value>
+  </data>
   <data name="During the pause this rule sends nothing; 0 = report every time." xml:space="preserve">
     <value>In der Pause schickt diese Regel nichts; 0 = jedes Mal melden.</value>
   </data>
@@ -988,6 +1006,9 @@
   </data>
   <data name="E-mail" xml:space="preserve">
     <value>E-Mail</value>
+  </data>
+  <data name="E-mail channels get the report as an attachment, webhooks a note with the number of rows and a link." xml:space="preserve">
+    <value>E-Mail-Kanäle bekommen den Bericht als Anhang, Webhooks einen Hinweis mit der Zeilenzahl und einem Link.</value>
   </data>
   <data name="E-mail channels get the report as an Excel attachment, webhooks a note with the number of rows and a link." xml:space="preserve">
     <value>E-Mail-Kanäle bekommen den Bericht als Excel-Anhang, Webhooks einen Hinweis mit der Zeilenzahl und einem Link.</value>
@@ -1042,6 +1063,12 @@
   </data>
   <data name="Error" xml:space="preserve">
     <value>Fehler</value>
+  </data>
+  <data name="Every pending update on every computer" xml:space="preserve">
+    <value>Jedes ausstehende Update auf jedem Rechner</value>
+  </data>
+  <data name="Every program on every computer" xml:space="preserve">
+    <value>Jedes Programm auf jedem Rechner</value>
   </data>
   <data name="every {0} hours" xml:space="preserve">
     <value>alle {0} Stunden</value>
@@ -1157,8 +1184,17 @@
   <data name="Firewall public" xml:space="preserve">
     <value>Firewall Öffentlich</value>
   </data>
+  <data name="Firewall, antivirus, drive encryption and platform security per computer" xml:space="preserve">
+    <value>Firewall, Virenschutz, Laufwerksverschlüsselung und Plattformsicherheit je Rechner</value>
+  </data>
   <data name="Firmware" xml:space="preserve">
     <value>Firmware</value>
+  </data>
+  <data name="Firmware, Secure Boot, TPM, processor and memory" xml:space="preserve">
+    <value>Firmware, Secure Boot, TPM, Prozessor und Arbeitsspeicher</value>
+  </data>
+  <data name="First {0} of {1} rows." xml:space="preserve">
+    <value>Die ersten {0} von {1} Zeilen.</value>
   </data>
   <data name='Fixed version: a separate package "{0}" is created that is never updated automatically. Vendors sometimes remove older setups from their servers; then the download fails. Older versions usually also contain known security vulnerabilities.' xml:space="preserve">
     <value>Feste Version: Es entsteht ein eigenständiges Paket „{0}“, das nicht automatisch aktualisiert wird. Ältere Setups nehmen Hersteller manchmal vom Server; dann schlägt der Download fehl. Ältere Versionen enthalten außerdem meist bekannte Sicherheitslücken.</value>
@@ -1219,6 +1255,9 @@
   </data>
   <data name="Hardware" xml:space="preserve">
     <value>Hardware</value>
+  </data>
+  <data name="Hardware overview" xml:space="preserve">
+    <value>Hardware-Übersicht</value>
   </data>
   <data name="Healthy" xml:space="preserve">
     <value>in Ordnung</value>
@@ -1474,6 +1513,9 @@
   </data>
   <data name="Last used" xml:space="preserve">
     <value>Zuletzt verwendet</value>
+  </data>
+  <data name="last {0} days" xml:space="preserve">
+    <value>letzte {0} Tage</value>
   </data>
   <data name="Launcher for direct start" xml:space="preserve">
     <value>Starter für den Direktstart</value>
@@ -2159,6 +2201,9 @@
   <data name="Packages are nested too deeply or in a cycle." xml:space="preserve">
     <value>Pakete sind zu tief oder im Kreis verschachtelt.</value>
   </data>
+  <data name="Page {0} of {1}" xml:space="preserve">
+    <value>Seite {0} von {1}</value>
+  </data>
   <data name="Parameters" xml:space="preserve">
     <value>Parameter</value>
   </data>
@@ -2189,6 +2234,9 @@
   <data name="password reset" xml:space="preserve">
     <value>Passwort neu gesetzt</value>
   </data>
+  <data name="Patch status" xml:space="preserve">
+    <value>Patch-Stand</value>
+  </data>
   <data name="Pause after a message (minutes)" xml:space="preserve">
     <value>Pause nach einer Nachricht (Minuten)</value>
   </data>
@@ -2212,6 +2260,9 @@
   </data>
   <data name="Pending updates (CSV)" xml:space="preserve">
     <value>Ausstehende Updates (CSV)</value>
+  </data>
+  <data name="Pending updates per computer, the ones with the most security updates first" xml:space="preserve">
+    <value>Ausstehende Updates je Rechner, die mit den meisten Sicherheitsupdates zuerst</value>
   </data>
   <data name="per user" xml:space="preserve">
     <value>pro Benutzer</value>
@@ -2767,6 +2818,9 @@
   </data>
   <data name="security and critical updates" xml:space="preserve">
     <value>Sicherheits- und kritische Updates</value>
+  </data>
+  <data name="Security status" xml:space="preserve">
+    <value>Sicherheitsstatus</value>
   </data>
   <data name="Security Updates" xml:space="preserve">
     <value>Sicherheitsupdates</value>
@@ -3680,11 +3734,20 @@
   <data name='What the token is for, e.g. "Monitoring" or "Package upload"' xml:space="preserve">
     <value>Wofür das Token gedacht ist, z. B. „Monitoring“ oder „Paket-Upload“</value>
   </data>
+  <data name="What was installed, removed or changed" xml:space="preserve">
+    <value>Was installiert, entfernt oder geändert wurde</value>
+  </data>
   <data name="When a limit is reached, no further computers are started; running ones finish. The failure rate counts once five computers have finished and at least two failed. With few computers at once, the first ones act as a pilot group." xml:space="preserve">
     <value>Ist eine Grenze erreicht, werden keine weiteren Rechner gestartet; laufende werden fertig. Die Fehlerquote zählt, sobald fünf Rechner abgeschlossen und mindestens zwei fehlgeschlagen sind. Mit wenigen Rechnern gleichzeitig wirken die ersten als Pilotgruppe.</value>
   </data>
   <data name="Which" xml:space="preserve">
     <value>Welcher</value>
+  </data>
+  <data name="Who uses which device, where it is and how long the warranty lasts" xml:space="preserve">
+    <value>Wer welches Gerät nutzt, wo es steht und wie lange die Garantie läuft</value>
+  </data>
+  <data name="Windows 11 requirements" xml:space="preserve">
+    <value>Windows-11-Voraussetzungen</value>
   </data>
   <data name="Windows activated" xml:space="preserve">
     <value>Windows aktiviert</value>
@@ -3694,6 +3757,9 @@
   </data>
   <data name="Windows below version" xml:space="preserve">
     <value>Windows unter Version</value>
+  </data>
+  <data name="Windows edition and feature update, the oldest first" xml:space="preserve">
+    <value>Windows-Edition und Funktionsupdate, die ältesten zuerst</value>
   </data>
   <data name="Windows Firewall" xml:space="preserve">
     <value>Windows-Firewall</value>
@@ -3787,6 +3853,9 @@
   </data>
   <data name="{0} % of the original capacity, {1} charge cycles" xml:space="preserve">
     <value>{0} % der ursprünglichen Kapazität, {1} Ladezyklen</value>
+  </data>
+  <data name="{0} (copy)" xml:space="preserve">
+    <value>{0} (Kopie)</value>
   </data>
   <data name="{0} ({1}), allowed for {2}." xml:space="preserve">
     <value>{0} ({1}), erlaubt für {2}.</value>
