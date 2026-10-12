@@ -12,6 +12,39 @@ public class AgentTests
     private static readonly JobManifest Job = new() { Steps = [new JobStep { Type = StepType.Command, Script = "whoami", TimeoutSeconds = 60 }] };
 
     [Fact]
+    public async Task Setup_package_carries_runner_configuration_and_start_script()
+    {
+        using var db = new TestDb();
+        var agents = new AgentService(db, new SettingsService(db), TimeProvider.System);
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var runner = Path.Combine(dir, JobFiles.RunnerExe);
+            File.WriteAllText(runner, "exe");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildSetupAsync([runner], "abc123"));
+
+            await agents.SetServerUrlAsync("https://inventory.example.local:5100/");
+            using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(await agents.BuildSetupAsync([runner], "abc123")));
+            string Read(string name)
+            {
+                using var reader = new StreamReader(zip.GetEntry(name)!.Open());
+                return reader.ReadToEnd();
+            }
+
+            Assert.Equal([AgentService.SetupScript, JobFiles.RunnerExe, "README.txt", AgentProtocol.ConfigFile, AgentProtocol.VersionFile],
+                zip.Entries.Select(e => e.FullName).Order(StringComparer.Ordinal));
+            var config = JobJson.Deserialize<AgentConfig>(Read(AgentProtocol.ConfigFile))!;
+            Assert.Equal(("https://inventory.example.local:5100", await agents.GetEnrollmentTokenAsync()), (config.ServerUrl, config.EnrollmentToken));
+            Assert.Equal("abc123", Read(AgentProtocol.VersionFile));
+            Assert.Contains($"\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*", Read(AgentService.SetupScript));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public async Task Enrollment_requires_the_token_links_existing_computers_and_switches_them_to_the_agent()
     {
         using var db = new TestDb();

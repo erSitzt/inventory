@@ -53,6 +53,21 @@ public static class ComputerEndpoints
             return File.Exists(path) ? Results.File(path, "application/octet-stream", "InventoryLauncher.exe") : Results.NotFound();
         }).WithTags("Downloads").WithSummary("Launcher for admin PCs").WithDescription("InventoryLauncher.exe: registers inventory:// links through which the UI opens Remote Assistance, RDP and RDP shadowing directly.");
 
+        // Enthält das Anmeldegeheimnis für Agenten, daher nur für Administratoren und mit Protokolleintrag.
+        app.MapGet("/download/agent-setup", async (HttpContext http, AgentService agents, Inventory.Remoting.RunnerPackage runner, AuditService audit, CancellationToken ct) =>
+        {
+            try
+            {
+                var setup = await agents.BuildSetupAsync(runner.Files, runner.Hash, ct);
+                await audit.LogAsync(http.Actor(), "Agent setup downloaded", null, ct);
+                return Results.File(setup, "application/zip", AgentService.SetupFileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+            }
+        }).RequireAuthorization(AccessControl.AdminPolicy).WithTags("Downloads").WithSummary("Agent setup").WithDescription("ZIP with the agent, its configuration (server address and enrollment secret) and Install-Agent.cmd, for distribution by group policy or an existing software distribution. Administrators only.");
+
         var group = app.MapGroup("/api/computers").WithTags("Computers");
 
         group.MapGet("", async (ComputerService computers, CancellationToken ct) =>

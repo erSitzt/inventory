@@ -24,7 +24,9 @@ Rechner mit Agent verbinden sich ausgehend; nichts von dem obigen Verhalten trit
 
 - **nur zur Installation des Agenten** – Scans, Verteilungen und Zeitpläne erreichen nur Rechner mit Agent; der
   einzige verbleibende agentenlose Job ist *Rechner → Aktionen → Agent installieren*.
-- **nie** – sobald der Agent auf anderem Weg kommt (Softwareverteilung, Gruppenrichtlinie).
+- **nie** – sobald der Agent auf anderem Weg kommt: *Einstellungen → Agenten → Agent-Setup herunterladen* liefert ein
+  Paket für ein Startskript per Gruppenrichtlinie oder eine vorhandene Softwareverteilung (siehe README, Abschnitt
+  *Agent*).
 
 Entwicklungsstände nicht gegen Rechner testen, die in Defender eingebunden sind: jeder Build ist eine Datei, die noch
 niemand gesehen hat.
