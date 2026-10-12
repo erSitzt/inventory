@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using Inventory.Contracts;
@@ -138,6 +139,53 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         };
         var files = runnerFiles.Select(f => new JobFile(f, $@"{InstallFolder}\{Path.GetFileName(f)}")).ToList();
         return new BuiltJob(manifest, files) { InstallsAgent = true };
+    }
+
+    public const string SetupFileName = "InventoryAgentSetup.zip";
+    public const string SetupScript = "Install-Agent.cmd";
+
+    /// <summary>
+    /// Agent-Setup zum Verteilen ohne agentenlosen Zugriff (Startskript einer Gruppenrichtlinie, vorhandene Softwareverteilung):
+    /// Runner-Dateien, Konfiguration mit Server-Adresse und Anmeldegeheimnis, ein Startskript. Der Runner richtet sich daraus selbst ein.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
+    public async Task<byte[]> BuildSetupAsync(IReadOnlyList<string> runnerFiles, string runnerHash, CancellationToken ct = default)
+    {
+        var serverUrl = await GetServerUrlAsync(ct);
+        if (string.IsNullOrWhiteSpace(serverUrl))
+            throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
+        var config = JobJson.Serialize(new AgentConfig { ServerUrl = serverUrl, EnrollmentToken = await GetEnrollmentTokenAsync(ct) });
+
+        using var buffer = new MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(buffer, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var file in runnerFiles)
+                zip.CreateEntryFromFile(file, Path.GetFileName(file));
+            void Add(string name, string content, Encoding encoding)
+            {
+                using var writer = new StreamWriter(zip.CreateEntry(name).Open(), encoding);
+                writer.Write(content);
+            }
+            var utf8 = new UTF8Encoding(false);
+            Add(AgentProtocol.ConfigFile, config, utf8);
+            Add(AgentProtocol.VersionFile, runnerHash, Encoding.ASCII);
+            // Läuft als Startskript unter Local System; bei vorhandenem Agenten kehrt der Runner sofort zurück.
+            Add(SetupScript, $"@echo off\r\n\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n", Encoding.ASCII);
+            Add("README.txt", string.Join("\r\n",
+                "Inventory agent setup",
+                "",
+                $"Install:   {SetupScript}            (as administrator or Local System)",
+                $"Reinstall: {SetupScript} {RunnerModes.Force}",
+                $"Remove:    {JobFiles.RunnerExe} {RunnerModes.UninstallAgent}",
+                "",
+                "The setup copies the agent to %ProgramFiles%\\Inventory Agent and registers the service InventoryAgent.",
+                "On a computer that already has the agent it does nothing: the agent updates itself from the server.",
+                "",
+                $"{AgentProtocol.ConfigFile} contains the enrollment secret of the server. Whoever can read it can enroll a computer.",
+                "Keep this folder readable only for the computer accounts and administrators that need it.",
+                ""), utf8);
+        }
+        return buffer.ToArray();
     }
 
     /// <summary>

@@ -233,6 +233,13 @@
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAgentAsync">@L["Save"]</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="RenewAgentTokenAsync">@L["Renew secret"]</MudButton>
         </MudStack>
+        <MudDivider />
+        <MudText Typo="Typo.body2">
+            @L["To install the agent without the server reaching the computers (no ADMIN$, no remote service), distribute the agent setup yourself: unpack it to a share and run Install-Agent.cmd as a computer startup script of a group policy or through your software distribution. Save the server address first. The setup contains the enrollment secret – make the share readable only for the computers that need it."]
+        </MudText>
+        <div>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="/download/agent-setup" Target="_blank">@L["Download agent setup"]</MudButton>
+        </div>
     </MudStack>
 </MudPaper>
 

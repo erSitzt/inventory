@@ -49,7 +49,13 @@ namespace Inventory.Runner
                 return 0;
             }
 
-            Console.Error.WriteLine("Usage: InventoryRunner --service [<jobdir|job-id>] | --console <jobdir|job-id> | --agent | --agent-console | --version");
+            if (args.Length >= 1 && args.Length <= 2 && args[0] == RunnerModes.InstallAgent && (args.Length == 1 || args[1] == RunnerModes.Force))
+                return AgentInstaller.Install(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, args.Length == 2);
+
+            if (args.Length == 1 && args[0] == RunnerModes.UninstallAgent)
+                return AgentInstaller.Uninstall();
+
+            Console.Error.WriteLine("Usage: InventoryRunner --service [<jobdir|job-id>] | --console <jobdir|job-id> | --agent | --agent-console | --install-agent [--force] | --uninstall-agent | --version");
             return 2;
         }
 

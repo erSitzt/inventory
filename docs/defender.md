@@ -23,7 +23,8 @@ choose:
 
 - **only to install the agent** – scans, deployments and schedules reach only computers with an agent; the one
   agentless job left is *Computers → Actions → Install agent*.
-- **never** – once the agent arrives another way (software distribution, group policy).
+- **never** – once the agent arrives another way: *Settings → Agents → Download agent setup* gives a package for a
+  group policy startup script or an existing software distribution (see the README, section *Agent*).
 
 Do not test development builds against computers that are onboarded to Defender: every build is a file nobody has
 seen before.

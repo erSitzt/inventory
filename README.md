@@ -173,13 +173,18 @@ the agent.
    save.
 2. Under *Computers* select the targets and choose *Actions → Install agent*. The installation itself runs agentless
    (SMB or WinRM) and copies the runner, writes `agent.json` and `agent.version`, creates and starts the service.
-   Without an agentless path, copy the `agent` folder from the server (`<program folder>\runner`), add an `agent.json`
-   with `{"serverUrl": "https://…", "enrollmentToken": "…"}` and register the service manually:
-   `sc create InventoryAgent binPath= "\"C:\Program Files\Inventory Agent\InventoryRunner.exe\" --agent" start= auto`.
+   **Without an agentless path:** *Settings → Agents → Download agent setup* gives a ZIP with the runner, its
+   configuration and `Install-Agent.cmd`. Unpack it to a share and run `Install-Agent.cmd` as a computer startup
+   script of a group policy, or through an existing software distribution (as administrator or Local System). On a
+   computer that already has the agent the script returns at once – the agent updates itself from the server –, so
+   it can stay assigned; `Install-Agent.cmd --force` reinstalls. The ZIP contains the enrollment secret: make the
+   share readable only for the computers that need it (e.g. *Domain Computers*), and renew the secret under
+   *Settings* if it got into the wrong hands.
 3. As soon as the service has enrolled, the computer switches to transport "Agent" (visible as a green "Agent" chip).
    Per computer the transport can be set back to SMB or WinRM; the agent keeps polling regardless.
 
-**Removing an agent:** stop and delete the service on the computer (`sc stop InventoryAgent`, `sc delete
+**Removing an agent:** run `InventoryRunner.exe --uninstall-agent` from a copy outside the agent folder
+(e.g. the setup share), or stop and delete the service by hand (`sc stop InventoryAgent`, `sc delete
 InventoryAgent`, delete the folder), then choose *Forget agent* in *Edit computer* – that drops the key on the server
 and resets the transport. The other way round, the still-running agent would simply enroll again with the secret.
 

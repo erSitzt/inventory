@@ -182,13 +182,20 @@ Agenten.
    empfohlen), und speichern.
 2. Unter *Rechner* die Ziele auswählen und *Aktionen → Agent installieren* wählen. Die Installation selbst läuft
    agentenlos (SMB oder WinRM): Runner kopieren, `agent.json` und `agent.version` schreiben, Dienst anlegen und
-   starten. Ohne agentenlosen Weg lässt sich der Ordner `agent` vom Server (`<Programmordner>\runner`) kopieren, eine
-   `agent.json` mit `{"serverUrl": "https://…", "enrollmentToken": "…"}` dazulegen und der Dienst von Hand anlegen:
-   `sc create InventoryAgent binPath= "\"C:\Program Files\Inventory Agent\InventoryRunner.exe\" --agent" start= auto`.
+   starten.
+   **Ohne agentenlosen Weg:** *Einstellungen → Agenten → Agent-Setup herunterladen* liefert ein ZIP mit dem Runner,
+   seiner Konfiguration und `Install-Agent.cmd`. Auf eine Freigabe entpacken und `Install-Agent.cmd` als
+   Computer-Startskript einer Gruppenrichtlinie oder über eine vorhandene Softwareverteilung ausführen (als
+   Administrator oder Local System). Auf einem Rechner, der den Agenten schon hat, kehrt das Skript sofort zurück –
+   der Agent aktualisiert sich selbst vom Server –, es kann also zugewiesen bleiben; `Install-Agent.cmd --force`
+   installiert neu. Das ZIP enthält das Anmeldegeheimnis: die Freigabe nur für die Rechner lesbar machen, die es
+   brauchen (z. B. *Domänencomputer*), und das Geheimnis unter *Einstellungen* erneuern, falls es in falsche Hände
+   geraten ist.
 3. Sobald sich der Dienst angemeldet hat, steht der Rechner auf Transport „Agent“ (grüner Chip „Agent“). Je Rechner
    lässt sich der Transport wieder auf SMB oder WinRM stellen; der Agent fragt trotzdem weiter ab.
 
-**Agent entfernen:** Dienst auf dem Rechner beenden und löschen (`sc stop InventoryAgent`, `sc delete
+**Agent entfernen:** `InventoryRunner.exe --uninstall-agent` aus einer Kopie außerhalb des Agent-Ordners ausführen
+(z. B. von der Setup-Freigabe), oder den Dienst von Hand beenden und löschen (`sc stop InventoryAgent`, `sc delete
 InventoryAgent`, Ordner löschen), danach in *Rechner bearbeiten* „Agent vergessen“ wählen – das verwirft den Schlüssel
 auf dem Server und setzt den Transport zurück. Umgekehrt würde sich der noch laufende Agent mit dem Geheimnis einfach
 neu anmelden.

@@ -827,6 +827,9 @@
   <data name="DOMAIN\user, user@domain or .\user for local accounts" xml:space="preserve">
     <value>DOMÄNE\benutzer, benutzer@domäne oder .\benutzer für lokale Konten</value>
   </data>
+  <data name="Download agent setup" xml:space="preserve">
+    <value>Agent-Setup herunterladen</value>
+  </data>
   <data name="Download InventoryLauncher.exe" xml:space="preserve">
     <value>InventoryLauncher.exe herunterladen</value>
   </data>
@@ -2989,6 +2992,9 @@
   </data>
   <data name='Tip: On import, a dynamic collection "… outdated" with all computers running an older version can be created. A schedule that regularly deploys the package to this collection keeps the program up to date everywhere.' xml:space="preserve">
     <value>Tipp: Beim Import entsteht auf Wunsch eine dynamische Sammlung „… veraltet“ mit allen Rechnern, auf denen eine ältere Version installiert ist. Ein Zeitplan, der das Paket regelmäßig auf diese Sammlung bereitstellt, hält das Programm überall aktuell.</value>
+  </data>
+  <data name="To install the agent without the server reaching the computers (no ADMIN$, no remote service), distribute the agent setup yourself: unpack it to a share and run Install-Agent.cmd as a computer startup script of a group policy or through your software distribution. Save the server address first. The setup contains the enrollment secret – make the share readable only for the computers that need it." xml:space="preserve">
+    <value>Um den Agenten zu installieren, ohne dass der Server die Rechner erreicht (kein ADMIN$, kein Dienst aus der Ferne), verteilen Sie das Agent-Setup selbst: auf eine Freigabe entpacken und Install-Agent.cmd als Computer-Startskript einer Gruppenrichtlinie oder über Ihre Softwareverteilung ausführen. Speichern Sie zuerst die Server-Adresse. Das Setup enthält das Anmeldegeheimnis – machen Sie die Freigabe nur für die Rechner lesbar, die es brauchen.</value>
   </data>
   <data name="Token created – copy it now." xml:space="preserve">
     <value>Token angelegt – jetzt kopieren.</value>
