@@ -110,6 +110,7 @@ builder.Services.AddSingleton(new UpdateOptions
         : setup => OperatingSystem.IsWindows() ? SelfUpdate.VerifySignature(setup, options.Update.RequiredPublisher) : "Signature verification is only available on Windows.",
 });
 builder.Services.AddSingleton<UpdateService>();
+builder.Services.AddSingleton(new DefenderClient(new HttpClient { Timeout = TimeSpan.FromSeconds(30) }));
 builder.Services.AddSingleton<ICatalogSource>(new HttpCatalogSource(new HttpClient(new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All }) { Timeout = TimeSpan.FromMinutes(30) }));
 builder.Services.AddSingleton(sp => new CatalogService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), sp.GetRequiredService<ICatalogSource>(),
     sp.GetRequiredService<PackageService>(), sp.GetRequiredService<CollectionService>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, options.Catalog.Url, options.Catalog.IndexUrl, options.Catalog.VersionsUrl));

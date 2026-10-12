@@ -8,6 +8,8 @@
 @inject AgentService Agents
 @inject UpdateService Updates
 @inject Inventory.Remoting.RunnerPackage Runner
+@inject Inventory.Remoting.DefenderClient Defender
+@implements IDisposable
 @inject CredentialService CredentialService
 @inject IOptions<InventoryOptions> Options
 @inject ISnackbar Snackbar
@@ -175,6 +177,48 @@
     </MudStack>
 </MudPaper>
 
+<MudPaper id="defender" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">Microsoft Defender</MudText>
+        <MudText Typo="Typo.body2">
+            @L["Optional: allows the runner file in Microsoft Defender for Endpoint by its hash, so that it is no longer rated as malware. You sign in at Microsoft with your own account; the server stores neither password nor token. This needs an application registration in your tenant (see docs/defender.md) and has to be repeated after every server update. Alerts about the agentless way itself are tuned in the Defender portal."]
+        </MudText>
+        <MudTextField @bind-Value="_defenderTenant" Label="@L["Tenant ID"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+        <MudTextField @bind-Value="_defenderClient" Label="@L["Application (client) ID"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+        <MudSwitch T="bool" @bind-Value="_defenderRemoveOld" Color="Color.Primary" Label="@L["Remove the indicators of earlier runners"]" />
+        @if (_defenderAllowed is not null)
+        {
+            @if (string.Equals(_defenderAllowed, Runner.ExeSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">@L["The current runner has been allowed in Defender."]</MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@L["The runner has changed since the last allowance (server update). Allow it again."]</MudAlert>
+            }
+        }
+        @if (_defenderCode is not null)
+        {
+            <MudAlert Severity="Severity.Info">
+                @L["Open"] <MudLink Href="@_defenderCode.VerificationUri" Target="_blank" rel="noopener">@_defenderCode.VerificationUri</MudLink>
+                @L["and enter this code:"] <b style="font-family: monospace; font-size: 1.2em">@_defenderCode.UserCode</b>
+                <MudProgressLinear Indeterminate="true" Class="mt-2" />
+            </MudAlert>
+        }
+        @if (_defenderError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true">@_defenderError</MudAlert>
+        }
+        <MudStack Row="true">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_defenderBusy || !Inventory.Remoting.DefenderClient.IsValid(_defenderTenant?.Trim(), _defenderClient?.Trim()))" OnClick="AllowInDefenderAsync">@L["Sign in and allow the runner"]</MudButton>
+            @if (_defenderBusy)
+            {
+                <MudButton Variant="Variant.Outlined" OnClick="@(() => _defenderCancel?.Cancel())">@L["Cancel"]</MudButton>
+            }
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
 <MudPaper Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="3">
         <MudText Typo="Typo.h6">@L["Agents"]</MudText>
@@ -306,6 +350,58 @@
         await Updates.SaveSettingsAsync(_updateAuto, _updateWindow ?? new TimeSpan(3, 0, 0));
         await Audit.LogAsync(L["Setting changed"], L["Automatic update: {0}", _updateAuto ? L["on, from {0}", $"{_updateWindow:hh\\:mm}"] : Display.OnOff(false)]);
         Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private string? _defenderTenant;
+    private string? _defenderClient;
+    private string? _defenderAllowed;
+    private string? _defenderError;
+    private bool _defenderRemoveOld = true;
+    private bool _defenderBusy;
+    private Inventory.Remoting.DefenderClient.DeviceCode? _defenderCode;
+    private CancellationTokenSource? _defenderCancel;
+
+    private async Task AllowInDefenderAsync()
+    {
+        var (tenant, client) = (_defenderTenant!.Trim(), _defenderClient!.Trim());
+        (_defenderBusy, _defenderError) = (true, null);
+        _defenderCancel?.Dispose();
+        _defenderCancel = new CancellationTokenSource();
+        var ct = _defenderCancel.Token;
+        try
+        {
+            await SettingsService.SetAsync(SettingKeys.DefenderTenant, tenant, ct);
+            await SettingsService.SetAsync(SettingKeys.DefenderClientId, client, ct);
+            _defenderCode = await Defender.BeginSignInAsync(tenant, client, ct);
+            StateHasChanged();
+            var token = await Defender.WaitForTokenAsync(tenant, client, _defenderCode, ct);
+            _defenderCode = null;
+            StateHasChanged();
+            var result = await Defender.AllowRunnerAsync(token, Runner.ExeSha256,
+                $"InventoryRunner.exe of the Inventory server, version {Updates.CurrentVersion} (scans and software deployment)", _defenderRemoveOld, ct);
+            await SettingsService.SetAsync(SettingKeys.DefenderAllowedHash, Runner.ExeSha256, ct);
+            _defenderAllowed = Runner.ExeSha256;
+            await Audit.LogAsync(L["Runner allowed in Microsoft Defender"], L["SHA-256 {0}, {1} earlier indicators removed", Runner.ExeSha256, result.Removed]);
+            Snackbar.Add(L["The runner is allowed in Defender; {0} earlier indicators removed.", result.Removed], Severity.Success);
+        }
+        catch (Inventory.Core.Abstractions.RemoteException ex)
+        {
+            _defenderError = ex.Message;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            (_defenderBusy, _defenderCode) = (false, null);
+        }
+    }
+
+    public void Dispose()
+    {
+        // Verlässt man die Seite, endet auch das Warten auf die Anmeldung.
+        _defenderCancel?.Cancel();
+        _defenderCancel?.Dispose();
     }
 
     private string? _agentUrl;
@@ -520,6 +616,9 @@
         await LoadHeartbeatAsync();
         await LoadUpdateAsync();
         _agentUrl = await Agents.GetServerUrlAsync();
+        _defenderTenant = await SettingsService.GetAsync(SettingKeys.DefenderTenant);
+        _defenderClient = await SettingsService.GetAsync(SettingKeys.DefenderClientId);
+        _defenderAllowed = await SettingsService.GetAsync(SettingKeys.DefenderAllowedHash);
         _agentToken = await Agents.GetEnrollmentTokenAsync();
     }
 
