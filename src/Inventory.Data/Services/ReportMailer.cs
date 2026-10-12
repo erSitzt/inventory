@@ -20,10 +20,11 @@ public sealed class ReportMailer(SavedReportService saved, NotificationService n
         var local = TimeZoneInfo.ConvertTime(time.GetUtcNow(), time.LocalTimeZone);
         var baseUrl = (await settings.GetAsync(SettingKeys.AgentServerUrl, ct))?.TrimEnd('/');
         var text = L["{0} rows, as of {1}.", table.Rows.Count, local.ToString("g")] + (report.Description is null ? "" : "\n" + report.Description);
-        var attachment = new MailAttachment($"{SavedReportService.FileName(report)} {local:yyyy-MM-dd}.xlsx", ReportExport.XlsxContentType, ReportExport.Xlsx(table, report.Name));
+        // Die Arbeitsmappe entsteht erst, wenn ein E-Mail-Kanal sie braucht: Webhooks bekommen nur Text und Link.
+        MailAttachment Attachment() => new($"{SavedReportService.FileName(report)} {local:yyyy-MM-dd}.xlsx", ReportExport.XlsxContentType, ReportExport.Xlsx(table, report.Name));
 
         var results = await notifications.SendAsync(new Notification(L["Report \"{0}\"", report.Name], text, NotificationSeverity.Info, string.IsNullOrEmpty(baseUrl) ? null : $"{baseUrl}/reports/{report.Id}"),
-            channelId is null ? null : [channelId.Value], ct, attachment);
+            channelId is null ? null : [channelId.Value], ct, Attachment);
         if (results.Count == 0)
             throw new InvalidOperationException(L["No enabled notification channel to send the report to."]);
         var failed = results.Where(r => r.Error is not null).ToList();

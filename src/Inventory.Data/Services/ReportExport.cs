@@ -143,14 +143,17 @@ public static class ReportExport
     /// <summary>Blattnamen: höchstens 31 Zeichen, ohne die Zeichen, die Excel dort verbietet.</summary>
     internal static string SheetName(string name)
     {
-        var cleaned = new string(name.Select(c => c is ':' or '\\' or '/' or '?' or '*' or '[' or ']' ? ' ' : c).ToArray()).Trim().Trim('\'');
+        // Erst die Zeichen entfernen, die XML nicht kennt: sonst bliebe von einem Namen aus Steuerzeichen ein leerer Blattname.
+        var cleaned = new string(Valid(name).Select(c => c is ':' or '\\' or '/' or '?' or '*' or '[' or ']' ? ' ' : c).ToArray()).Trim().Trim('\'');
         if (cleaned.Length > 31)
             cleaned = cleaned[..31].TrimEnd();
         return cleaned.Length == 0 ? "Report" : cleaned;
     }
 
     /// <summary>Maskiert für XML und entfernt Zeichen, die in XML 1.0 nicht vorkommen dürfen (Steuerzeichen aus Scan-Daten).</summary>
-    private static string Xml(string value)
+    private static string Xml(string value) => SecurityElement.Escape(Valid(value)) ?? "";
+
+    private static string Valid(string value)
     {
         var builder = new StringBuilder(value.Length);
         for (var i = 0; i < value.Length; i++)
@@ -161,10 +164,10 @@ public static class ReportExport
                 builder.Append(c).Append(value[++i]);
                 continue;
             }
-            if (c is '\t' or '\n' or '\r' || (c >= ' ' && c <= '퟿') || (c >= '' && c <= '�'))
+            if (c is '\t' or '\n' or '\r' || (c >= ' ' && c <= '\uD7FF') || (c >= '\uE000' && c <= '\uFFFD'))
                 builder.Append(c);
         }
-        return SecurityElement.Escape(builder.ToString()) ?? "";
+        return builder.ToString();
     }
 
     private static void Add(ZipArchive zip, string name, string content)

@@ -75,6 +75,9 @@ public class ReportTests
         var recent = await reports.TableAsync(new ReportQuery(ReportSource.Changes, Columns: ["computer", "kind", "item"]));
         Assert.Equal(["pc-01|new|Editor"], recent.Rows.Select(r => string.Join('|', r)));
         Assert.Equal(2, (await reports.TableAsync(new ReportQuery(ReportSource.Changes, Days: 365))).Rows.Count);
+        // Die Sammlung filtert die Änderungen, bevor irgendeine Obergrenze greift.
+        var office = await new CollectionService(db).SaveAsync(null, "Büro", null, true, true, [new CollectionRule { Field = RuleField.Location, Operator = RuleOperator.Equals, Value = "Büro" }]);
+        Assert.Equal(["pc-02"], (await reports.TableAsync(new ReportQuery(ReportSource.Changes, office.Id, Days: 365, Columns: ["computer"]))).Rows.Select(r => r[0]));
     }
 
     [Fact]
@@ -87,6 +90,7 @@ public class ReportTests
         await Assert.ThrowsAsync<ArgumentException>(() => saved.SaveAsync(new Report { Name = "X", Source = ReportSource.Software, Columns = "name,serial" }));
         await Assert.ThrowsAsync<ArgumentException>(() => saved.SaveAsync(new Report { Name = "X", Source = ReportSource.Software, SortColumn = "memoryGb" }));
         await Assert.ThrowsAsync<ArgumentException>(() => saved.SaveAsync(new Report { Name = " ", Source = ReportSource.Software }));
+        await Assert.ThrowsAsync<ArgumentException>(() => saved.SaveAsync(new Report { Name = "X", Source = (ReportSource)999 }));
 
         var report = await saved.SaveAsync(new Report { Name = " Arbeitsspeicher: Büro/Halle ", Source = ReportSource.Computers, Columns = "name, memoryGb", SortColumn = "memoryGb", SortDescending = true, Days = 7 });
         Assert.Equal(("Arbeitsspeicher: Büro/Halle", "name,memoryGb", (int?)null), (report.Name, report.Columns, report.Days));
@@ -124,6 +128,13 @@ public class ReportTests
         Assert.Equal("Steuerzeichen  & <Tags> \"x\" 😀", rows[2].Elements<Cell>().Last().InnerText);
         // Leere Werte ergeben keine Zelle.
         Assert.Equal(["A4"], rows[3].Elements<Cell>().Select(c => c.CellReference!.Value));
+
+        // Ein Name nur aus Steuerzeichen ergibt trotzdem ein gültiges Blatt.
+        using (var odd = SpreadsheetDocument.Open(new MemoryStream(ReportExport.Xlsx(table, "\u0001\u0002")), false))
+        {
+            Assert.Empty(new OpenXmlValidator().Validate(odd));
+            Assert.Equal("Report", odd.WorkbookPart!.Workbook.Descendants<Sheet>().Single().Name!.Value);
+        }
 
         // Auch eine leere Tabelle ist eine gültige Arbeitsmappe.
         using var empty = SpreadsheetDocument.Open(new MemoryStream(ReportExport.Xlsx(new ReportTable([], []), "")), false);
@@ -169,6 +180,13 @@ public class ReportTests
         var schedule = new Schedule { Name = "Monatsbericht", Action = ScheduleAction.Report, ReportId = report.Id, CollectionId = 99, PackageId = 5, Trigger = ScheduleTrigger.Interval, IntervalMinutes = 60 };
         await schedules.SaveAsync(schedule);
         Assert.Equal((null, null), (schedule.CollectionId, schedule.PackageId));
+
+        // Nur ein Webhook als Ziel: er bekommt den Hinweis, ein Anhang wird gar nicht erst erzeugt.
+        var hook = await notifications.SaveAsync(new NotificationChannel { Name = "Chat", Kind = NotificationKind.Webhook }, "https://hooks.example.test/x");
+        var built = 0;
+        await notifications.SendAsync(new Notification("Titel", "Text"), [hook.Id], attachment: () => { built++; return new Inventory.Core.Abstractions.MailAttachment("a.xlsx", "x/y", []); });
+        Assert.Equal(0, built);
+        await notifications.DeleteAsync(hook.Id);
 
         // Ohne Kanal: der Lauf meldet den Grund, statt still nichts zu tun.
         Assert.Contains("No enabled notification channel", await schedules.RunNowAsync(schedule.Id));

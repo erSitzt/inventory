@@ -40,36 +40,43 @@ public sealed partial class ReportService
         _ => [],
     };
 
-    /// <summary>Die Zeilen eines Berichts. Oberfläche, CSV, Excel und der Versand per Zeitplan gehen alle hier durch.</summary>
-    public async Task<ReportTable> TableAsync(ReportQuery query, CancellationToken ct = default)
+    /// <summary>Die Zeilen eines Berichts, höchstens <see cref="MaxRows"/>. Oberfläche, CSV, Excel und der Versand per Zeitplan gehen alle hier durch.</summary>
+    public Task<ReportTable> TableAsync(ReportQuery query, CancellationToken ct = default) => TableAsync(query, MaxRows, ct);
+
+    /// <param name="limit">
+    /// Obergrenze der gelieferten Zeilen, angewandt nach Filter und Sortierung – sonst fehlten bei einer anderen Sortierung
+    /// gerade die Zeilen, die vorn stehen müssten. Die Abfrage selbst begrenzen Sammlung und Zeitraum.
+    /// </param>
+    private async Task<ReportTable> TableAsync(ReportQuery query, int limit, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        HashSet<int>? members = query.CollectionId is { } collectionId && Report.HasCollectionFilter(query.Source) ? await _collections.GetMemberIdsAsync(collectionId, ct) : null;
+        // Die Mitglieder gehen als Filter in die Abfrage: ein Bericht über eine kleine Sammlung lädt nicht den ganzen Bestand.
+        var members = query.CollectionId is { } collectionId && Report.HasCollectionFilter(query.Source) ? (await _collections.GetMemberIdsAsync(collectionId, ct)).ToList() : null;
         var since = DateTime.UtcNow.AddDays(-Math.Clamp(query.Days ?? DefaultDays, 1, 3650));
 
         switch (query.Source)
         {
             case ReportSource.Computers:
             {
-                var computers = await db.Computers.AsNoTracking().OrderBy(c => c.Name).ToListAsync(ct);
-                return Build(ComputerColumns(), computers.Where(c => members is null || members.Contains(c.Id)), query);
+                var computers = await db.Computers.AsNoTracking().Where(c => members == null || members.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
+                return Build(ComputerColumns(), computers, query, limit);
             }
             case ReportSource.Software:
             {
                 // Erst sortieren, dann in den Zeilentyp füllen: nach einem Konstruktoraufruf kann die Datenbank nicht mehr ordnen.
-                var rows = (await db.Software.AsNoTracking()
+                var rows = (await db.Software.AsNoTracking().Where(s => members == null || members.Contains(s.ComputerId))
                         .Join(db.Computers, s => s.ComputerId, c => c.Id, (s, c) => new { c.Id, Computer = c.Name, s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser })
                         .OrderBy(r => r.Computer).ThenBy(r => r.Name).ToListAsync(ct))
                     .Select(r => new SoftwareRow(r.Id, r.Computer, r.Name, r.Version, r.Publisher, r.InstallDate, r.Is64Bit, r.PerUser));
-                return Build(SoftwareColumns(), rows.Where(r => members is null || members.Contains(r.ComputerId)), query);
+                return Build(SoftwareColumns(), rows, query, limit);
             }
             case ReportSource.PendingUpdates:
             {
-                var rows = (await db.PendingUpdates.AsNoTracking()
+                var rows = (await db.PendingUpdates.AsNoTracking().Where(u => members == null || members.Contains(u.ComputerId))
                         .Join(db.Computers, u => u.ComputerId, c => c.Id, (u, c) => new { c.Id, Computer = c.Name, c.UpdateLastSearchUtc, Update = u })
                         .OrderBy(r => r.Computer).ThenBy(r => r.Update.Title).ToListAsync(ct))
                     .Select(r => new UpdateRow(r.Id, r.Computer, r.UpdateLastSearchUtc, r.Update));
-                return Build(UpdateColumns(), rows.Where(r => members is null || members.Contains(r.ComputerId)), query);
+                return Build(UpdateColumns(), rows, query, limit);
             }
             case ReportSource.Deployments:
             {
@@ -81,26 +88,29 @@ public sealed partial class ReportService
                             Failed = d.Targets.Count(t => t.Status == TargetStatus.Failed),
                             Cancelled = d.Targets.Count(t => t.Status == TargetStatus.Cancelled),
                         })
-                        .Take(MaxRows).ToListAsync(ct))
+                        .ToListAsync(ct))
                     // Offen ist, was weder gelungen, gescheitert noch abgebrochen ist: in der Warteschlange, laufend oder wartend.
                     .Select(d => new DeploymentRow(d.Id, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc, d.StopReason, d.Total, d.Succeeded, d.Failed, d.Cancelled,
                         d.Total - d.Succeeded - d.Failed - d.Cancelled));
-                return Build(DeploymentColumns(), rows, query);
+                return Build(DeploymentColumns(), rows, query, limit);
             }
             case ReportSource.Changes:
             {
-                var rows = (await db.InventoryChanges.AsNoTracking().Where(c => c.TimeUtc >= since)
+                var rows = (await db.InventoryChanges.AsNoTracking().Where(c => c.TimeUtc >= since && (members == null || members.Contains(c.ComputerId)))
                         .Join(db.Computers, c => c.ComputerId, c => c.Id, (change, computer) => new { computer.Id, computer.Name, Change = change })
-                        .OrderByDescending(r => r.Change.TimeUtc).ThenByDescending(r => r.Change.Id).Take(MaxRows).ToListAsync(ct))
+                        .OrderByDescending(r => r.Change.TimeUtc).ThenByDescending(r => r.Change.Id).ToListAsync(ct))
                     .Select(r => new ChangeRow(r.Id, r.Name, r.Change));
-                return Build(ChangeColumns(), rows.Where(r => members is null || members.Contains(r.ComputerId)), query);
+                return Build(ChangeColumns(), rows, query, limit);
             }
             default:
                 return new ReportTable([], []);
         }
     }
 
-    private static ReportTable Build<T>(List<Column<T>> all, IEnumerable<T> items, ReportQuery query)
+    /// <summary>Für die festen Exporte (alle Rechner, alle Software, alle Updates): ohne Obergrenze, wie bisher.</summary>
+    private Task<ReportTable> AllRowsAsync(ReportSource source, CancellationToken ct) => TableAsync(new ReportQuery(source), int.MaxValue, ct);
+
+    private static ReportTable Build<T>(List<Column<T>> all, IEnumerable<T> items, ReportQuery query, int limit)
     {
         // Unbekannte Schlüssel (Spalte in einer späteren Version entfernt) fallen still weg; bleibt nichts, gelten alle.
         var chosen = query.Columns is { Count: > 0 }
@@ -118,7 +128,7 @@ public sealed partial class ReportService
             var filledFirst = items.OrderBy(item => string.IsNullOrEmpty(sort.Value(item)));
             source = query.SortDescending ? filledFirst.ThenByDescending(sort.Value, comparer) : filledFirst.ThenBy(sort.Value, comparer);
         }
-        var rows = source.Take(MaxRows).Select(item => chosen.Select(c => c.Value(item)).ToArray()).ToList();
+        var rows = source.Take(limit).Select(item => chosen.Select(c => c.Value(item)).ToArray()).ToList();
         return new ReportTable(chosen.Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(), rows);
     }
 

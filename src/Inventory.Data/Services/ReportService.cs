@@ -164,9 +164,9 @@ public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> 
         };
     }
 
-    public async Task<string> ComputersCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await TableAsync(new ReportQuery(ReportSource.Computers), ct));
+    public async Task<string> ComputersCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await AllRowsAsync(ReportSource.Computers, ct));
 
-    public async Task<string> SoftwareCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await TableAsync(new ReportQuery(ReportSource.Software), ct));
+    public async Task<string> SoftwareCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await AllRowsAsync(ReportSource.Software, ct));
 
     public async Task<PatchCompliance> PatchComplianceAsync(CancellationToken ct = default)
     {
@@ -194,7 +194,7 @@ public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> 
         return await db.Computers.AsNoTracking().Where(c => ids.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
     }
 
-    public async Task<string> PendingUpdatesCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await TableAsync(new ReportQuery(ReportSource.PendingUpdates), ct));
+    public async Task<string> PendingUpdatesCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await AllRowsAsync(ReportSource.PendingUpdates, ct));
 
     private string? YesNo(bool? value) => value is null ? null : value.Value ? L["yes"] : L["no"];
 }

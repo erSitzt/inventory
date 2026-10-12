@@ -192,6 +192,7 @@
             LastRunUtc = Schedule.LastRunUtc, LastResult = Schedule.LastResult,
             MonthDay = Schedule.MonthDay, MonthWeek = Schedule.MonthWeek, MonthWeekday = Schedule.MonthWeekday, MonthOffsetDays = Schedule.MonthOffsetDays,
             EndLocal = Schedule.EndLocal, CatchUpMissed = Schedule.CatchUpMissed, RecheckDays = Schedule.RecheckDays,
+            ReportId = Schedule.ReportId, NotificationChannelId = Schedule.NotificationChannelId,
         };
         _byWeekday = Schedule.MonthDay <= 0;
         _monthDay = Math.Max(Schedule.MonthDay, 1);

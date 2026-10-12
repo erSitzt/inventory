@@ -28,6 +28,8 @@ public sealed class SavedReportService(IDbContextFactory<InventoryDbContext> dbF
     {
         if (string.IsNullOrWhiteSpace(input.Name))
             throw new ArgumentException(L["Name is missing"]);
+        if (!Enum.IsDefined(input.Source))
+            throw new ArgumentException(L["Unknown report source."]);
         var known = reports.ColumnsOf(input.Source).Select(c => c.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (input.ColumnKeys.FirstOrDefault(key => !known.Contains(key)) is { } unknown)
             throw new ArgumentException(L["Unknown column \"{0}\".", unknown]);
