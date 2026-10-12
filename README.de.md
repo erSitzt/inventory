@@ -65,6 +65,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
 - **Benachrichtigungen**: Kanäle für E-Mail (SMTP mit STARTTLS/TLS, auf Wunsch Anmeldung mit gespeicherten
   Zugangsdaten) und Webhooks (Microsoft Teams, Slack oder schlichtes JSON), jeweils mit Testknopf
+- **Verläufe auf der Übersicht**: je Tag ein Wert der Kennzahlen (ausstehende Updates, Neustarts, Virenschutz,
+  Firewall, Laufwerksverschlüsselung, Scan-Fehler …) als 30-Tage-Linien, dazu Verteilungen je Woche und das Alter
+  der letzten Scans
 - **Berichte**: gespeicherte Listen von Rechnern, Software, ausstehenden Updates, Verteilungen oder Änderungen – auf
   eine Sammlung beschränkt, mit gewählten Spalten und Sortierung; im Browser, als CSV, Excel oder PDF, oder per
   Zeitplan als E-Mail. Zehn fertige Beispiele (Hardware, Sicherheitsstatus, Patch-Stand, Bestandsliste …) dienen

@@ -1,0 +1,37 @@
+@* Verlaufslinie ohne Achsen: zeigt die Richtung, die Zahl daneben nennt den Stand. *@
+<svg viewBox="0 0 @Width @Height" width="100%" height="@Height" preserveAspectRatio="none" role="img" aria-label="@Label" style="display: block">
+    <title>@Label</title>
+    @if (Values.Count >= 2)
+    {
+        <polygon points="@Area" fill="@Color" fill-opacity="0.12" />
+        <polyline points="@Line" fill="none" stroke="@Color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<int> Values { get; set; } = [];
+    [Parameter] public string Color { get; set; } = "#6366f1";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public int Height { get; set; } = 40;
+
+    private const int Width = 200;
+    private const int Inset = 3;
+
+    private string Line => string.Join(' ', Points().Select(p => $"{F(p.X)},{F(p.Y)}"));
+
+    private string Area => $"0,{Height} {Line} {Width},{Height}";
+
+    private IEnumerable<(double X, double Y)> Points()
+    {
+        var (min, max) = (Values.Min(), Values.Max());
+        for (var i = 0; i < Values.Count; i++)
+        {
+            var x = Width * i / (double)(Values.Count - 1);
+            // Eine gleichbleibende Reihe liegt in der Mitte statt am Boden.
+            var y = max == min ? Height / 2.0 : Inset + (Height - 2 * Inset) * (1 - (Values[i] - min) / (double)(max - min));
+            yield return (x, y);
+        }
+    }
+
+    private static string F(double value) => value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+}

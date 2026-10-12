@@ -38,6 +38,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<AlertRule> AlertRules => Set<AlertRule>();
     public DbSet<Report> Reports => Set<Report>();
+    public DbSet<DailySnapshot> DailySnapshots => Set<DailySnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -90,6 +91,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasOne(r => r.Collection).WithMany().HasForeignKey(r => r.CollectionId).OnDelete(DeleteBehavior.SetNull);
             e.HasMany(r => r.Channels).WithMany().UsingEntity("AlertRuleChannels");
         });
+
+        modelBuilder.Entity<DailySnapshot>().HasIndex(s => s.Date).IsUnique();
 
         modelBuilder.Entity<Report>(e =>
         {

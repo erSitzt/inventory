@@ -1041,6 +1041,59 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Credentials");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.DailySnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Agents")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AntivirusProblems")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Computers")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DriveUnprotected")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FirewallOff")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Online")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RebootRequired")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ScanErrors")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Scanned")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("StaleScans")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WarrantyEnding")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WithPendingUpdates")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date")
+                        .IsUnique();
+
+                    b.ToTable("DailySnapshots");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.Deployment", b =>
                 {
                     b.Property<int>("Id")

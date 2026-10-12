@@ -286,3 +286,84 @@ a:hover > .kpi {
 .rule-select .mud-list-item-text .mud-typography {
     white-space: nowrap;
 }
+
+/* Verläufe auf der Übersicht */
+.trend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 16px 24px;
+}
+
+.trend .head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.trend .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.trend .delta {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.trend .name {
+    font-size: 0.8rem;
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.week-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    height: 150px;
+}
+
+.week-bars .week {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+}
+
+.week-bars .stack {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.week-bars .stack > span {
+    display: block;
+    width: 100%;
+}
+
+.week-bars .stack > span:first-child {
+    border-radius: 4px 4px 0 0;
+}
+
+.week-bars .label {
+    font-size: 0.7rem;
+    text-align: center;
+    color: var(--mud-palette-text-secondary);
+    padding-top: 4px;
+    white-space: nowrap;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
