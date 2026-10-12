@@ -62,6 +62,8 @@ credentials. The user interface is available in English and German; translations
 - **Deployments** in parallel with live status, cancel, retry, and catching up on offline computers
 - **Notifications**: channels for e-mail (SMTP with STARTTLS/TLS, optional sign-in with stored credentials) and
   webhooks (Microsoft Teams, Slack or plain JSON), each with a test button
+- **Reports**: saved lists of computers, software, pending updates, deployments or changes – limited to a collection,
+  with chosen columns and order; shown in the browser, as CSV or Excel, or sent by e-mail on a schedule
 - **Alert rules**: a message when a computer enters a collection, a collection or the scan errors reach a number, a
   deployment finishes with failures, a computer is added, or a schedule, the directory synchronization, the backup
   or the server update fails – with a pause per rule and a choice of channels
@@ -496,6 +498,27 @@ from *Settings → Agents* (the address under which the server is reached).
 
 The server needs an outbound connection to the mail server or the webhook service. Webhooks use the proxy from the
 system settings of the service account; mail is sent directly.
+
+### Reports
+
+A report is a saved list. Administrators set it up under *Reports*; everyone who may use the interface can open it.
+
+| Setting | Meaning |
+|---|---|
+| Source | *Computers* (one row per computer, about 60 columns from inventory, security, directory and asset data), *Installed software* and *Pending updates* (one row per computer and entry), *Deployments* (one row each with the numbers of succeeded, failed, cancelled and open computers) or *Changes* (the inventory history) |
+| Collection | limits the rows to the computers of a collection – dynamic collections are evaluated every time the report runs |
+| Period | for deployments and changes: the number of days back (default 30) |
+| Columns and order | which columns appear, and the column to sort by. Numbers sort as numbers; empty values come last. |
+
+Every report can be opened in the browser, downloaded as CSV (semicolon-separated, UTF-8 with BOM) or as an Excel
+workbook (fixed, filterable header row; numeric columns are numbers, everything else is text, so nothing is ever
+evaluated as a formula), and fetched through the API (`/api/reports/saved`). A report returns at most 100,000 rows.
+
+**By e-mail on a schedule:** a schedule with the action *Send report* runs the report daily, weekly, monthly or at
+intervals and sends it through one notification channel or all enabled ones. E-mail channels get the workbook as an
+attachment, webhooks a note with the number of rows and a link. If no channel accepts it, the schedule shows the
+reason and an alert rule for failed schedules reports it. Deleting a report or a channel also deletes the schedules
+that send through it.
 
 ### Audit log
 

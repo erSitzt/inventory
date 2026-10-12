@@ -1331,6 +1331,52 @@ namespace Inventory.Data.Migrations
                     b.ToTable("PackageSteps");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.Report", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CollectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Columns")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Days")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("SortColumn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SortDescending")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollectionId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Reports");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.Schedule", b =>
                 {
                     b.Property<int>("Id")
@@ -1392,10 +1438,16 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("NextRunUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("NotificationChannelId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("PackageId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("RecheckDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ReportId")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("RespectMaintenanceWindow")
@@ -1420,7 +1472,11 @@ namespace Inventory.Data.Migrations
 
                     b.HasIndex("CollectionId");
 
+                    b.HasIndex("NotificationChannelId");
+
                     b.HasIndex("PackageId");
+
+                    b.HasIndex("ReportId");
 
                     b.ToTable("Schedules");
                 });
@@ -1693,6 +1749,16 @@ namespace Inventory.Data.Migrations
                     b.Navigation("NestedPackage");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.Report", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Collection", "Collection")
+                        .WithMany()
+                        .HasForeignKey("CollectionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Collection");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.Schedule", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Collection", "Collection")
@@ -1700,14 +1766,28 @@ namespace Inventory.Data.Migrations
                         .HasForeignKey("CollectionId")
                         .OnDelete(DeleteBehavior.Cascade);
 
+                    b.HasOne("Inventory.Core.Model.NotificationChannel", "NotificationChannel")
+                        .WithMany()
+                        .HasForeignKey("NotificationChannelId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Inventory.Core.Model.Package", "Package")
                         .WithMany()
                         .HasForeignKey("PackageId")
                         .OnDelete(DeleteBehavior.Cascade);
 
+                    b.HasOne("Inventory.Core.Model.Report", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.Navigation("Collection");
 
+                    b.Navigation("NotificationChannel");
+
                     b.Navigation("Package");
+
+                    b.Navigation("Report");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Computer", b =>

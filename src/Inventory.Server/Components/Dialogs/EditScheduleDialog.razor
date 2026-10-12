@@ -1,6 +1,8 @@
 @inject ScheduleService ScheduleService
 @inject PackageService PackageService
 @inject CollectionService CollectionService
+@inject SavedReportService SavedReports
+@inject NotificationService Channels
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
@@ -13,7 +15,24 @@
             <MudSelect T="ScheduleAction" @bind-Value="_s.Action" Label="@L["Action"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                 <MudSelectItem T="ScheduleAction" Value="ScheduleAction.Scan">@L["Inventory scan"]</MudSelectItem>
                 <MudSelectItem T="ScheduleAction" Value="ScheduleAction.Deploy">@L["Deploy package"]</MudSelectItem>
+                <MudSelectItem T="ScheduleAction" Value="ScheduleAction.Report">@L["Send report"]</MudSelectItem>
             </MudSelect>
+            @if (_s.Action == ScheduleAction.Report)
+            {
+                <MudSelect T="int?" @bind-Value="_s.ReportId" Label="@L["Report"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    @foreach (var report in _reports)
+                    {
+                        <MudSelectItem T="int?" Value="@report.Id">@report.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="int?" @bind-Value="_s.NotificationChannelId" Label="@L["Channel"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["all enabled channels"]"
+                           HelperText="@L["E-mail channels get the report as an Excel attachment, webhooks a note with the number of rows and a link."]">
+                    @foreach (var channel in _channels)
+                    {
+                        <MudSelectItem T="int?" Value="@channel.Id">@channel.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            }
             @if (_s.Action == ScheduleAction.Deploy)
             {
                 <MudSelect T="int?" @bind-Value="_s.PackageId" Label="@L["Package"]" Variant="Variant.Outlined" Margin="Margin.Dense">
@@ -27,13 +46,16 @@
                 <MudCheckBox T="bool" @bind-Value="_s.RespectMaintenanceWindow" Label="@L["Only within the maintenance window (computers outside wait until it opens)"]" Dense="true" />
                 <DeploymentLimitsEditor @bind-MaxFailures="_s.MaxFailures" @bind-MaxFailurePercent="_s.MaxFailurePercent" @bind-MaxParallel="_s.MaxParallel" />
             }
-            <MudSelect T="int?" @bind-Value="_s.CollectionId" Label="@L["Target"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["All computers"]"
-                       HelperText="@L["Dynamic collections are re-evaluated on every run."]">
-                @foreach (var summary in _collections)
-                {
-                    <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
-                }
-            </MudSelect>
+            @if (_s.Action != ScheduleAction.Report)
+            {
+                <MudSelect T="int?" @bind-Value="_s.CollectionId" Label="@L["Target"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["All computers"]"
+                           HelperText="@L["Dynamic collections are re-evaluated on every run."]">
+                    @foreach (var summary in _collections)
+                    {
+                        <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
+                    }
+                </MudSelect>
+            }
 
             <MudSelect T="ScheduleTrigger" @bind-Value="_s.Trigger" Label="@L["Rhythm"]" Variant="Variant.Outlined" Margin="Margin.Dense">
                 <MudSelectItem T="ScheduleTrigger" Value="ScheduleTrigger.Daily">@L["Daily"]</MudSelectItem>
@@ -140,10 +162,13 @@
     private bool _byWeekday;
     private int _monthDay = 1;
     private List<Package> _packages = [];
+    private List<Report> _reports = [];
+    private List<NotificationChannel> _channels = [];
     private List<CollectionSummary> _collections = [];
 
     private bool CanSave => !string.IsNullOrWhiteSpace(_s.Name)
-        && (_s.Action == ScheduleAction.Scan || _s.PackageId is not null)
+        && (_s.Action != ScheduleAction.Deploy || _s.PackageId is not null)
+        && (_s.Action != ScheduleAction.Report || _s.ReportId is not null)
         && (_s.Trigger != ScheduleTrigger.Weekly || _s.DaysOfWeek != 0)
         && (_s.Trigger is ScheduleTrigger.Interval or ScheduleTrigger.OnMembership || _time is not null)
         && (_s.Trigger != ScheduleTrigger.OnMembership || _s.Action == ScheduleAction.Deploy)
@@ -152,6 +177,8 @@
     protected override async Task OnInitializedAsync()
     {
         _packages = (await PackageService.ListAsync()).Where(p => p.Steps.Count > 0).ToList();
+        _reports = await SavedReports.ListAsync();
+        _channels = await Channels.ListAsync();
         _collections = await CollectionService.ListAsync();
         if (Schedule is null)
             return;
@@ -165,6 +192,7 @@
             LastRunUtc = Schedule.LastRunUtc, LastResult = Schedule.LastResult,
             MonthDay = Schedule.MonthDay, MonthWeek = Schedule.MonthWeek, MonthWeekday = Schedule.MonthWeekday, MonthOffsetDays = Schedule.MonthOffsetDays,
             EndLocal = Schedule.EndLocal, CatchUpMissed = Schedule.CatchUpMissed, RecheckDays = Schedule.RecheckDays,
+            ReportId = Schedule.ReportId, NotificationChannelId = Schedule.NotificationChannelId,
         };
         _byWeekday = Schedule.MonthDay <= 0;
         _monthDay = Math.Max(Schedule.MonthDay, 1);

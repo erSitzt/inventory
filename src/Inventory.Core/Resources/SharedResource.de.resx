@@ -86,6 +86,12 @@
   <data name="A password is required for new credentials." xml:space="preserve">
     <value>Für neue Zugangsdaten ist ein Passwort erforderlich.</value>
   </data>
+  <data name="A report is a saved list: a source, optionally limited to a collection, with the columns and the order you choose. Open it here, download it as CSV or Excel, or have a schedule send it by e-mail." xml:space="preserve">
+    <value>Ein Bericht ist eine gespeicherte Liste: eine Quelle, auf Wunsch auf eine Sammlung beschränkt, mit den Spalten und der Reihenfolge Ihrer Wahl. Hier öffnen, als CSV oder Excel herunterladen oder per Zeitplan als E-Mail verschicken lassen.</value>
+  </data>
+  <data name='A report named "{0}" already exists.' xml:space="preserve">
+    <value>Ein Bericht namens „{0}“ existiert bereits.</value>
+  </data>
   <data name='A rule named "{0}" already exists.' xml:space="preserve">
     <value>Eine Regel namens „{0}“ existiert bereits.</value>
   </data>
@@ -167,6 +173,9 @@
   <data name="Add credentials" xml:space="preserve">
     <value>Zugangsdaten hinzufügen</value>
   </data>
+  <data name="Add report" xml:space="preserve">
+    <value>Bericht hinzufügen</value>
+  </data>
   <data name="Add rule" xml:space="preserve">
     <value>Regel hinzufügen</value>
   </data>
@@ -187,6 +196,9 @@
   </data>
   <data name="Adopt new versions automatically" xml:space="preserve">
     <value>Neue Versionen automatisch übernehmen</value>
+  </data>
+  <data name="After" xml:space="preserve">
+    <value>Nachher</value>
   </data>
   <data name="after restart" xml:space="preserve">
     <value>nach Neustart</value>
@@ -245,8 +257,14 @@
   <data name="all" xml:space="preserve">
     <value>alle</value>
   </data>
+  <data name="all columns" xml:space="preserve">
+    <value>alle Spalten</value>
+  </data>
   <data name="All computers" xml:space="preserve">
     <value>Alle Rechner</value>
+  </data>
+  <data name="all computers" xml:space="preserve">
+    <value>alle Rechner</value>
   </data>
   <data name="all enabled channels" xml:space="preserve">
     <value>alle eingeschalteten Kanäle</value>
@@ -419,6 +437,9 @@
   <data name="Battery health (%)" xml:space="preserve">
     <value>Akkuzustand (%)</value>
   </data>
+  <data name="Before" xml:space="preserve">
+    <value>Vorher</value>
+  </data>
   <data name="BIOS date" xml:space="preserve">
     <value>BIOS-Datum</value>
   </data>
@@ -458,6 +479,12 @@
   <data name="cancelled" xml:space="preserve">
     <value>abgebrochen</value>
   </data>
+  <data name="Cancelled" xml:space="preserve">
+    <value>Abgebrochen</value>
+  </data>
+  <data name="Change" xml:space="preserve">
+    <value>Änderung</value>
+  </data>
   <data name="changed" xml:space="preserve">
     <value>geändert</value>
   </data>
@@ -466,6 +493,9 @@
   </data>
   <data name="Changes and download" xml:space="preserve">
     <value>Änderungen und Download</value>
+  </data>
+  <data name="Channel" xml:space="preserve">
+    <value>Kanal</value>
   </data>
   <data name="Channel {0} not found" xml:space="preserve">
     <value>Kanal {0} nicht gefunden</value>
@@ -538,6 +568,9 @@
   </data>
   <data name="Collections may refer to each other at most {0} levels deep." xml:space="preserve">
     <value>Sammlungen dürfen höchstens {0} Ebenen tief aufeinander verweisen.</value>
+  </data>
+  <data name="Columns" xml:space="preserve">
+    <value>Spalten</value>
   </data>
   <data name="Combination" xml:space="preserve">
     <value>Verknüpfung</value>
@@ -800,6 +833,9 @@
   <data name="Delete package" xml:space="preserve">
     <value>Paket löschen</value>
   </data>
+  <data name="Delete report" xml:space="preserve">
+    <value>Bericht löschen</value>
+  </data>
   <data name="Delete rule" xml:space="preserve">
     <value>Regel löschen</value>
   </data>
@@ -850,6 +886,9 @@
   </data>
   <data name="Deployments that respect maintenance windows run on the members only during this period. A computer in several collections may run as soon as one of their windows is open." xml:space="preserve">
     <value>Deployments, die Wartungsfenster beachten, laufen auf den Mitgliedern nur in diesem Zeitraum. Ein Rechner in mehreren Sammlungen darf laufen, sobald eines ihrer Fenster offen ist.</value>
+  </data>
+  <data name="descending" xml:space="preserve">
+    <value>absteigend</value>
   </data>
   <data name="Description" xml:space="preserve">
     <value>Beschreibung</value>
@@ -950,6 +989,9 @@
   <data name="E-mail" xml:space="preserve">
     <value>E-Mail</value>
   </data>
+  <data name="E-mail channels get the report as an Excel attachment, webhooks a note with the number of rows and a link." xml:space="preserve">
+    <value>E-Mail-Kanäle bekommen den Bericht als Excel-Anhang, Webhooks einen Hinweis mit der Zeilenzahl und einem Link.</value>
+  </data>
   <data name="E.g. %ProgramData%\Company\ – a trailing \ means folder. Existing files are overwritten." xml:space="preserve">
     <value>Z. B. %ProgramData%\Firma\ – ein abschließender \ bedeutet Ordner. Vorhandene Dateien werden überschrieben.</value>
   </data>
@@ -1037,6 +1079,9 @@
   <data name="failed" xml:space="preserve">
     <value>fehlgeschlagen</value>
   </data>
+  <data name="Failed" xml:space="preserve">
+    <value>Fehlgeschlagen</value>
+  </data>
   <data name="fallback attempt via {0}: {1}" xml:space="preserve">
     <value>Ausweichversuch über {0}: {1}</value>
   </data>
@@ -1078,6 +1123,9 @@
   </data>
   <data name="finished" xml:space="preserve">
     <value>beendet</value>
+  </data>
+  <data name="Finished (UTC)" xml:space="preserve">
+    <value>Beendet (UTC)</value>
   </data>
   <data name="finished {0}" xml:space="preserve">
     <value>beendet {0}</value>
@@ -1277,6 +1325,9 @@
   <data name="Installed program (name)" xml:space="preserve">
     <value>Installiertes Programm (Name)</value>
   </data>
+  <data name="Installed software" xml:space="preserve">
+    <value>Installierte Software</value>
+  </data>
   <data name="Installed version:" xml:space="preserve">
     <value>Installierte Version:</value>
   </data>
@@ -1456,6 +1507,9 @@
   </data>
   <data name="Loading versions …" xml:space="preserve">
     <value>Versionen werden geladen …</value>
+  </data>
+  <data name="Loading …" xml:space="preserve">
+    <value>Lädt …</value>
   </data>
   <data name="Local administrator" xml:space="preserve">
     <value>Lokaler Administrator</value>
@@ -1715,6 +1769,9 @@
   <data name="No deployments yet. A package can be deployed here or directly from the package or computer list." xml:space="preserve">
     <value>Noch keine Deployments. Ein Paket lässt sich hier oder direkt aus der Paket- bzw. Rechnerliste bereitstellen.</value>
   </data>
+  <data name="No enabled notification channel to send the report to." xml:space="preserve">
+    <value>Kein eingeschalteter Benachrichtigungskanal, an den der Bericht gehen könnte.</value>
+  </data>
   <data name="No entries match the filter." xml:space="preserve">
     <value>Kein Eintrag passt zum Filter.</value>
   </data>
@@ -1759,6 +1816,12 @@
   </data>
   <data name="No real-time antivirus active" xml:space="preserve">
     <value>Kein Echtzeit-Virenschutz aktiv</value>
+  </data>
+  <data name="No report selected" xml:space="preserve">
+    <value>Kein Bericht ausgewählt</value>
+  </data>
+  <data name="No reports saved yet." xml:space="preserve">
+    <value>Noch keine Berichte gespeichert.</value>
   </data>
   <data name="No rules set up yet." xml:space="preserve">
     <value>Noch keine Regeln eingerichtet.</value>
@@ -1850,6 +1913,9 @@
   <data name="Nothing happens? Set up the launcher / show commands …" xml:space="preserve">
     <value>Passiert nichts? Starter einrichten / Befehle anzeigen …</value>
   </data>
+  <data name="Nothing selected = all columns. The order follows the source." xml:space="preserve">
+    <value>Nichts ausgewählt = alle Spalten. Die Reihenfolge folgt der Quelle.</value>
+  </data>
   <data name="Notification channel changed" xml:space="preserve">
     <value>Benachrichtigungskanal geändert</value>
   </data>
@@ -1864,6 +1930,9 @@
   </data>
   <data name="notify without dimming the desktop" xml:space="preserve">
     <value>benachrichtigen, ohne den Desktop abzublenden</value>
+  </data>
+  <data name="Number" xml:space="preserve">
+    <value>Nummer</value>
   </data>
   <data name="of {0}" xml:space="preserve">
     <value>von {0}</value>
@@ -2005,6 +2074,9 @@
   </data>
   <data name="Or paste the table here" xml:space="preserve">
     <value>Oder die Tabelle hier einfügen</value>
+  </data>
+  <data name="order of the source" xml:space="preserve">
+    <value>Reihenfolge der Quelle</value>
   </data>
   <data name="Outlook will be closed in two minutes for an update. Please save your work." xml:space="preserve">
     <value>Outlook wird in zwei Minuten für ein Update geschlossen. Bitte Arbeit speichern.</value>
@@ -2150,6 +2222,9 @@
   <data name="Period" xml:space="preserve">
     <value>Zeitraum</value>
   </data>
+  <data name="Period (days back)" xml:space="preserve">
+    <value>Zeitraum (Tage zurück)</value>
+  </data>
   <data name="Physical disk" xml:space="preserve">
     <value>Physischer Datenträger</value>
   </data>
@@ -2285,6 +2360,9 @@
   <data name='Really delete "{0}"? Computers using these credentials fall back to the default.' xml:space="preserve">
     <value>„{0}“ wirklich löschen? Rechner, die diese Zugangsdaten nutzen, fallen auf den Standard zurück.</value>
   </data>
+  <data name='Really delete "{0}"? Schedules that send reports through this channel are deleted with it.' xml:space="preserve">
+    <value>„{0}“ wirklich löschen? Zeitpläne, die Berichte über diesen Kanal verschicken, werden mit gelöscht.</value>
+  </data>
   <data name='Really delete "{0}"? The computers themselves are kept.' xml:space="preserve">
     <value>„{0}“ wirklich löschen? Die Rechner selbst bleiben erhalten.</value>
   </data>
@@ -2408,6 +2486,30 @@
   <data name="Renew secret" xml:space="preserve">
     <value>Geheimnis erneuern</value>
   </data>
+  <data name="Report" xml:space="preserve">
+    <value>Bericht</value>
+  </data>
+  <data name='Report "{0}"' xml:space="preserve">
+    <value>Bericht „{0}“</value>
+  </data>
+  <data name="Report changed" xml:space="preserve">
+    <value>Bericht geändert</value>
+  </data>
+  <data name="Report created" xml:space="preserve">
+    <value>Bericht angelegt</value>
+  </data>
+  <data name="Report deleted" xml:space="preserve">
+    <value>Bericht gelöscht</value>
+  </data>
+  <data name="Report with {0} rows sent via {1} channels" xml:space="preserve">
+    <value>Bericht mit {0} Zeilen über {1} Kanäle verschickt</value>
+  </data>
+  <data name="Report with {0} rows sent via {1} of {2} channels; failed: {3}" xml:space="preserve">
+    <value>Bericht mit {0} Zeilen über {1} von {2} Kanälen verschickt; fehlgeschlagen: {3}</value>
+  </data>
+  <data name="Report {0} not found" xml:space="preserve">
+    <value>Bericht {0} nicht gefunden</value>
+  </data>
   <data name="Reported name" xml:space="preserve">
     <value>Gemeldeter Name</value>
   </data>
@@ -2416,6 +2518,9 @@
   </data>
   <data name="Reported once when the number reaches the threshold, and again after it had dropped below." xml:space="preserve">
     <value>Gemeldet wird einmal, wenn die Zahl die Schwelle erreicht, und erneut, nachdem sie darunter gefallen war.</value>
+  </data>
+  <data name="Reports" xml:space="preserve">
+    <value>Berichte</value>
   </data>
   <data name="required for every member" xml:space="preserve">
     <value>Pflicht für jedes Mitglied</value>
@@ -2485,6 +2590,9 @@
   </data>
   <data name="Rows per page" xml:space="preserve">
     <value>Zeilen pro Seite</value>
+  </data>
+  <data name="Rows per page:" xml:space="preserve">
+    <value>Zeilen je Seite:</value>
   </data>
   <data name="RPC server unreachable – the target computer's Service Control Manager does not respond (check firewall)" xml:space="preserve">
     <value>RPC-Server nicht erreichbar – der Dienststeuerungs-Manager des Zielrechners antwortet nicht (Firewall prüfen)</value>
@@ -2681,6 +2789,9 @@
   <data name="Self-update is only available on Windows." xml:space="preserve">
     <value>Die Selbstaktualisierung gibt es nur unter Windows.</value>
   </data>
+  <data name="Send report" xml:space="preserve">
+    <value>Bericht versenden</value>
+  </data>
   <data name="Send test" xml:space="preserve">
     <value>Test senden</value>
   </data>
@@ -2855,6 +2966,9 @@
   <data name="Software" xml:space="preserve">
     <value>Software</value>
   </data>
+  <data name="Sort by" xml:space="preserve">
+    <value>Sortieren nach</value>
+  </data>
   <data name="Source" xml:space="preserve">
     <value>Quelle</value>
   </data>
@@ -2872,6 +2986,9 @@
   </data>
   <data name="Started" xml:space="preserve">
     <value>Gestartet</value>
+  </data>
+  <data name="Started (UTC)" xml:space="preserve">
+    <value>Gestartet (UTC)</value>
   </data>
   <data name="Started {0}" xml:space="preserve">
     <value>Gestartet {0}</value>
@@ -2906,6 +3023,9 @@
   <data name="Steps after the restart continue automatically once the computer is reachable again (within the wait time from the settings); the final inventory scan runs then as well." xml:space="preserve">
     <value>Schritte nach dem Neustart laufen automatisch weiter, sobald der Rechner wieder erreichbar ist (innerhalb der Wartezeit aus den Einstellungen); auch der abschließende Inventar-Scan läuft dann.</value>
   </data>
+  <data name="Still open" xml:space="preserve">
+    <value>Noch offen</value>
+  </data>
   <data name="Stop" xml:space="preserve">
     <value>Beenden</value>
   </data>
@@ -2918,6 +3038,9 @@
   <data name="stopped" xml:space="preserve">
     <value>beendet</value>
   </data>
+  <data name="Stopped because" xml:space="preserve">
+    <value>Angehalten wegen</value>
+  </data>
   <data name="Stopped: {0} of {1} finished computers failed" xml:space="preserve">
     <value>Angehalten: {0} von {1} abgeschlossenen Rechnern fehlgeschlagen</value>
   </data>
@@ -2926,6 +3049,9 @@
   </data>
   <data name="succeeded" xml:space="preserve">
     <value>erfolgreich</value>
+  </data>
+  <data name="Succeeded" xml:space="preserve">
+    <value>Erfolgreich</value>
   </data>
   <data name="Success codes" xml:space="preserve">
     <value>Erfolgscodes</value>
@@ -3098,6 +3224,12 @@
   <data name="the remaining computers were not started." xml:space="preserve">
     <value>die übrigen Rechner wurden nicht gestartet.</value>
   </data>
+  <data name="The report could not be sent: {0}" xml:space="preserve">
+    <value>Der Bericht konnte nicht verschickt werden: {0}</value>
+  </data>
+  <data name="The report has no rows." xml:space="preserve">
+    <value>Der Bericht hat keine Zeilen.</value>
+  </data>
   <data name="The runner has changed since the last allowance (server update). Allow it again." xml:space="preserve">
     <value>Der Runner hat sich seit der letzten Freigabe geändert (Server-Update). Bitte erneut freigeben.</value>
   </data>
@@ -3209,6 +3341,9 @@
   <data name="This page does not exist." xml:space="preserve">
     <value>Diese Seite gibt es nicht.</value>
   </data>
+  <data name="This report does not exist (any more)." xml:space="preserve">
+    <value>Diesen Bericht gibt es nicht (mehr).</value>
+  </data>
   <data name="This setup installs into the user profile only. The step therefore runs in the context of the logged-on user and needs a logged-on session on the target computer." xml:space="preserve">
     <value>Dieses Setup installiert nur ins Benutzerprofil. Der Schritt läuft deshalb im Kontext des angemeldeten Benutzers und braucht eine angemeldete Sitzung am Zielrechner.</value>
   </data>
@@ -3220,6 +3355,9 @@
   </data>
   <data name="Time" xml:space="preserve">
     <value>Zeit</value>
+  </data>
+  <data name="Time (UTC)" xml:space="preserve">
+    <value>Zeit (UTC)</value>
   </data>
   <data name="Time of day" xml:space="preserve">
     <value>Uhrzeit</value>
@@ -3299,11 +3437,17 @@
   <data name="unknown" xml:space="preserve">
     <value>unbekannt</value>
   </data>
+  <data name='Unknown column "{0}".' xml:space="preserve">
+    <value>Unbekannte Spalte „{0}“.</value>
+  </data>
   <data name="Unknown installer" xml:space="preserve">
     <value>Unbekannter Installer</value>
   </data>
   <data name="unknown publisher" xml:space="preserve">
     <value>unbekanntem Hersteller</value>
+  </data>
+  <data name="Unknown report source." xml:space="preserve">
+    <value>Unbekannte Berichtsquelle.</value>
   </data>
   <data name="unlimited" xml:space="preserve">
     <value>unbegrenzt</value>
@@ -3749,6 +3893,9 @@
   <data name="{0} not in AD" xml:space="preserve">
     <value>{0} nicht im AD</value>
   </data>
+  <data name="{0} of {1} columns" xml:space="preserve">
+    <value>{0} von {1} Spalten</value>
+  </data>
   <data name="{0} of {1} computers have no pending security updates." xml:space="preserve">
     <value>{0} von {1} Rechnern haben keine ausstehenden Sicherheitsupdates.</value>
   </data>
@@ -3778,6 +3925,12 @@
   </data>
   <data name="{0} retries" xml:space="preserve">
     <value>{0} Wiederholungen</value>
+  </data>
+  <data name="{0} rows" xml:space="preserve">
+    <value>{0} Zeilen</value>
+  </data>
+  <data name="{0} rows, as of {1}." xml:space="preserve">
+    <value>{0} Zeilen, Stand {1}.</value>
   </data>
   <data name="{0} scanned, {1} failed" xml:space="preserve">
     <value>{0} gescannt, {1} fehlgeschlagen</value>

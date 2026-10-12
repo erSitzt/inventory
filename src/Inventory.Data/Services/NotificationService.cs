@@ -90,10 +90,14 @@ public sealed class NotificationService(IDbContextFactory<InventoryDbContext> db
     /// Verschickt an die genannten Kanäle (null = alle eingeschalteten). Wirft nie wegen eines Zustellfehlers: das Ergebnis
     /// je Kanal kommt zurück und steht am Kanal.
     /// </summary>
-    public Task<List<NotificationResult>> SendAsync(Notification notification, IReadOnlyCollection<int>? channelIds = null, CancellationToken ct = default) =>
-        SendCoreAsync(notification, channelIds, includeDisabled: false, ct);
+    /// <param name="attachment">
+    /// Geht an E-Mail-Kanäle; Webhooks bekommen nur den Text (mit dem Link, falls vorhanden). Wird erst erzeugt, wenn der
+    /// erste E-Mail-Kanal an der Reihe ist, und dann für alle weiteren wiederverwendet.
+    /// </param>
+    public Task<List<NotificationResult>> SendAsync(Notification notification, IReadOnlyCollection<int>? channelIds = null, CancellationToken ct = default, Func<MailAttachment>? attachment = null) =>
+        SendCoreAsync(notification, channelIds, includeDisabled: false, ct, attachment);
 
-    private async Task<List<NotificationResult>> SendCoreAsync(Notification notification, IReadOnlyCollection<int>? channelIds, bool includeDisabled, CancellationToken ct)
+    private async Task<List<NotificationResult>> SendCoreAsync(Notification notification, IReadOnlyCollection<int>? channelIds, bool includeDisabled, CancellationToken ct, Func<MailAttachment>? attachment = null)
     {
         List<NotificationChannel> channels;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
@@ -103,6 +107,7 @@ public sealed class NotificationService(IDbContextFactory<InventoryDbContext> db
         }
 
         var results = new List<NotificationResult>();
+        MailAttachment? built = null;
         foreach (var channel in channels)
         {
             string? error = null;
@@ -112,7 +117,7 @@ public sealed class NotificationService(IDbContextFactory<InventoryDbContext> db
                 {
                     var login = channel.CredentialId is null ? null : await credentials.GetAsync(channel.CredentialId, ct);
                     await mail.SendAsync(new MailServer(channel.SmtpHost!, channel.SmtpPort, channel.SmtpSecurity, login),
-                        new MailMessage(channel.Sender!, NotificationChannel.ParseRecipients(channel.Recipients), Subject(notification), Body(notification)), ct);
+                        new MailMessage(channel.Sender!, NotificationChannel.ParseRecipients(channel.Recipients), Subject(notification), Body(notification), attachment is null ? null : built ??= attachment()), ct);
                 }
                 else
                 {

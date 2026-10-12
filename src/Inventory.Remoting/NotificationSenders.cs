@@ -16,7 +16,10 @@ public sealed class MailKitSender : IMailSender
     {
         try
         {
-            var mail = new MimeMessage { Subject = message.Subject, Body = new TextPart("plain") { Text = message.Body } };
+            var builder = new BodyBuilder { TextBody = message.Body };
+            if (message.Attachment is { } attachment)
+                builder.Attachments.Add(attachment.FileName, attachment.Content, ContentType.Parse(attachment.ContentType));
+            var mail = new MimeMessage { Subject = message.Subject, Body = builder.ToMessageBody() };
             mail.From.Add(MailboxAddress.Parse(message.Sender));
             foreach (var recipient in message.Recipients)
                 mail.To.Add(MailboxAddress.Parse(recipient));

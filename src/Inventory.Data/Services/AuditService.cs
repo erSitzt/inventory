@@ -55,9 +55,9 @@ public sealed class AuditService(IDbContextFactory<InventoryDbContext> dbFactory
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var csv = new StringBuilder();
-        ReportService.Row(csv, L["Time"], L["User"], L["Role"], L["Source"], L["Action"], L["Details"]);
+        ReportExport.Row(csv, L["Time"], L["User"], L["Role"], L["Source"], L["Action"], L["Details"]);
         await foreach (var e in Query(db, filter).OrderByDescending(e => e.Id).Take(MaxExportRows).AsAsyncEnumerable().WithCancellation(ct))
-            ReportService.Row(csv, DateTime.SpecifyKind(e.TimeUtc, DateTimeKind.Utc).ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
+            ReportExport.Row(csv, DateTime.SpecifyKind(e.TimeUtc, DateTimeKind.Utc).ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
                 e.User, e.Role?.ToString(), e.Source == AuditSource.Unknown ? null : e.Source.ToString(), e.Action, e.Details);
         return csv.ToString();
     }

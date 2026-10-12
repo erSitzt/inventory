@@ -193,6 +193,14 @@ public class NotificationTests
         Assert.Contains(transcript, l => l.StartsWith("RCPT TO:<anna@example.local>", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Subject: [Inventory] Test", transcript);
 
+        // Ein Anhang reist als eigener Teil der Nachricht mit.
+        transcript.Clear();
+        serving = ServeAsync(acceptRecipient: true);
+        await sender.SendAsync(server, message with { Attachment = new MailAttachment("Bericht 2026-10-12.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", [1, 2, 3]) });
+        await serving;
+        Assert.Contains(transcript, l => l.StartsWith("Content-Type: multipart/mixed", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(transcript, l => l.Contains("Bericht 2026-10-12.xlsx"));
+
         serving = ServeAsync(acceptRecipient: false);
         var refused = await Assert.ThrowsAsync<RemoteException>(() => sender.SendAsync(server, message));
         Assert.Contains("Relay access denied", refused.Message);

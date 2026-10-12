@@ -29,10 +29,15 @@
     <Columns>
         <PropertyColumn Property="s => s.Name" Title="@L["Name"]" />
         <TemplateColumn Title="@L["Action"]">
-            <CellTemplate>@(context.Item.Action == ScheduleAction.Scan ? L["Inventory scan"] : L["Package \"{0}\"", context.Item.Package?.Name])</CellTemplate>
+            <CellTemplate>@(context.Item.Action switch
+                {
+                    ScheduleAction.Scan => L["Inventory scan"],
+                    ScheduleAction.Report => L["Report \"{0}\"", context.Item.Report?.Name],
+                    _ => L["Package \"{0}\"", context.Item.Package?.Name],
+                })</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Target"]">
-            <CellTemplate>@(context.Item.Collection?.Name ?? L["All computers"])</CellTemplate>
+            <CellTemplate>@(context.Item.Action == ScheduleAction.Report ? context.Item.NotificationChannel?.Name ?? L["all enabled channels"] : context.Item.Collection?.Name ?? L["All computers"])</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Rhythm"]">
             <CellTemplate>@Display.Trigger(context.Item)</CellTemplate>
