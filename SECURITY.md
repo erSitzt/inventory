@@ -14,7 +14,9 @@ Please report vulnerabilities privately via GitHub's "Report a vulnerability" fo
 - Zugriff auf Oberfläche und API nur für die konfigurierten Gruppen; die Anmeldung nie abschalten, wenn der Server
   im Netz erreichbar ist.
 - HTTPS verwenden, sobald von anderen Rechnern zugegriffen wird oder Agenten im Einsatz sind.
-- Releases sind derzeit nicht signiert. Die automatische Aktualisierung ist deshalb standardmäßig aus; siehe
-  Abschnitt „Aktualisieren“ in der README.
+- Releases sind mit einem selbstsignierten Zertifikat des Projekts signiert; die Selbstaktualisierung nimmt nur Setups
+  an, die von einem Zertifikat der installierten Version stammen. Das belegt die Herkunft vom selben Schlüssel, nicht
+  die Identität des Herausgebers. Die automatische Aktualisierung ist standardmäßig aus; siehe Abschnitt
+  „Aktualisieren“ in der README.
 - Das Datenverzeichnis (`C:\ProgramData\Inventory`) enthält verschlüsselte Zugangsdaten und die Schlüssel dazu und
   ist nur für SYSTEM und Administratoren zugänglich.

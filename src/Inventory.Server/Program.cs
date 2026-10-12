@@ -19,9 +19,9 @@ using MudBlazor.Services;
 using Scalar.AspNetCore;
 
 // Diagnose: prüft die Signatur einer Datei so, wie es die Selbstaktualisierung tut.
-if (args is ["--verify-signature", var signedFile, var publisher] && OperatingSystem.IsWindows())
+if (args is ["--verify-signature", var signedFile, ..] && OperatingSystem.IsWindows())
 {
-    var problem = SelfUpdate.VerifySignature(signedFile, publisher);
+    var problem = SelfUpdate.VerifySignature(signedFile, args.Length > 2 ? args[2] : null, SelfUpdate.TrustedThumbprints(AppContext.BaseDirectory, null));
     Console.WriteLine(problem ?? "Signature valid.");
     return problem is null ? 0 : 1;
 }
@@ -97,6 +97,7 @@ builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbC
 builder.Services.AddScoped<Auditor>();
 builder.Services.AddScoped<Access>();
 builder.Services.AddSingleton<IReleaseSource>(new GitHubReleaseSource(new HttpClient { Timeout = TimeSpan.FromMinutes(15) }));
+var trustedSigners = SelfUpdate.TrustedThumbprints(AppContext.BaseDirectory, options.Update.TrustedThumbprints);
 builder.Services.AddSingleton(new UpdateOptions
 {
     Repository = options.Update.Repository,
@@ -105,9 +106,10 @@ builder.Services.AddSingleton(new UpdateOptions
     UpdatesDirectory = Path.Combine(dataDirectory, "updates"),
     CannotInstallReason = SelfUpdate.CannotInstallReason(),
     Launch = SelfUpdate.Launch,
-    VerifySignature = string.IsNullOrWhiteSpace(options.Update.RequiredPublisher)
+    // Bringt die Version Zertifikate mit (oder ist ein Herausgeber konfiguriert), wird ohne gültige Signatur nichts eingespielt.
+    VerifySignature = options.Update.AllowUnsigned || (trustedSigners.Count == 0 && string.IsNullOrWhiteSpace(options.Update.RequiredPublisher))
         ? null
-        : setup => OperatingSystem.IsWindows() ? SelfUpdate.VerifySignature(setup, options.Update.RequiredPublisher) : "Signature verification is only available on Windows.",
+        : setup => OperatingSystem.IsWindows() ? SelfUpdate.VerifySignature(setup, options.Update.RequiredPublisher, trustedSigners) : "Signature verification is only available on Windows.",
 });
 builder.Services.AddSingleton<UpdateService>();
 builder.Services.AddSingleton(new DefenderClient(new HttpClient { Timeout = TimeSpan.FromSeconds(30) }));

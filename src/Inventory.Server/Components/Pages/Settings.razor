@@ -247,6 +247,11 @@
     <MudStack Spacing="3">
         <MudText Typo="Typo.h6">@L["Updates"]</MudText>
         <MudText Typo="Typo.body2">@L["Installed version:"] <b>@Updates.CurrentVersion</b></MudText>
+        <MudText Typo="Typo.caption">
+            @(Updates.VerifiesSignature
+                ? L["Updates are only installed if the setup carries a valid signature of a release certificate shipped with this version."]
+                : L["Updates are not signature-checked; only the checksum secures the download."])
+        </MudText>
         @if (Updates.IsDevelopmentBuild)
         {
             <MudAlert Severity="Severity.Info" Dense="true">@L["Locally built development version – no update check."]</MudAlert>

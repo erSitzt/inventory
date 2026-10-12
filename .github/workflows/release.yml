@@ -31,11 +31,24 @@ jobs:
       - name: Veröffentlichen
         run: dotnet publish src/Inventory.Server -c Release -r win-x64 --self-contained true -p:Version=${{ env.VERSION }} -o publish
 
+      # Der Server nimmt nur Setups an, die mit einem der eingecheckten Zertifikate signiert sind. Ein Release, das
+      # nicht oder mit einem anderen Zertifikat signiert wäre, könnte niemand per Selbstaktualisierung einspielen.
+      - name: Signaturzertifikat prüfen
+        shell: pwsh
+        run: |
+          $expected = @(Get-ChildItem installer/signing -Filter *.cer -ErrorAction SilentlyContinue |
+            ForEach-Object { [Security.Cryptography.X509Certificates.X509Certificate2]::new($_.FullName).Thumbprint })
+          if ($expected.Count -eq 0) { Write-Host 'Keine Release-Zertifikate eingecheckt: dieses Release wird nicht gegen ein Zertifikat geprüft.'; exit 0 }
+          if (-not $env:SIGNING_CERT_PFX) { throw 'installer/signing enthält Zertifikate, aber das Secret SIGNING_CERT_PFX fehlt.' }
+          $signer = [Security.Cryptography.X509Certificates.X509Certificate2]::new([Convert]::FromBase64String($env:SIGNING_CERT_PFX), $env:SIGNING_CERT_PASSWORD)
+          if ($expected -notcontains $signer.Thumbprint) { throw "Das Zertifikat aus SIGNING_CERT_PFX ($($signer.Thumbprint)) liegt nicht in installer/signing." }
+          Write-Host "Signiert wird mit $($signer.Subject) ($($signer.Thumbprint))."
+
       # Läuft nur, wenn ein Zertifikat als Secret hinterlegt ist (Base64 der PFX-Datei und ihr Passwort).
       - name: Programmdateien signieren
         if: env.SIGNING_CERT_PFX != ''
         shell: pwsh
-        run: ./installer/sign.ps1 -Files publish/Inventory.Server.exe, publish/runner/InventoryRunner.exe, publish/launcher/InventoryLauncher.exe
+        run: ./installer/sign.ps1 -Files publish/Inventory.Server.exe, publish/runner/InventoryRunner.exe, publish/launcher/InventoryLauncher.exe, publish/runner/Inventory.Contracts.dll
 
       - name: Setup bauen
         shell: pwsh
