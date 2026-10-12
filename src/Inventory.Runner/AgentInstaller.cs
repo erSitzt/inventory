@@ -55,8 +55,9 @@ namespace Inventory.Runner
             }
 
             Stop();
-            if (!Directory.Exists(target))
-                CreateProtectedDirectory(target);
+            // Auch ein schon vorhandener Ordner (von Hand angelegt, Rest einer alten Installation) wird abgeschottet,
+            // bevor das Anmeldegeheimnis hineinkommt.
+            ProtectDirectory(target);
             foreach (var file in Directory.GetFiles(sourceDir).Where(IsAgentFile))
                 File.Copy(file, Path.Combine(target, Path.GetFileName(file)), true);
 
@@ -88,7 +89,12 @@ namespace Inventory.Runner
             if (ServiceExists())
             {
                 Stop();
-                Sc("delete " + AgentProtocol.ServiceName);
+                if (Sc("delete " + AgentProtocol.ServiceName) != 0)
+                {
+                    // Der Ordner bleibt, sonst zeigte der Dienst auf ein Programm, das es nicht mehr gibt.
+                    Console.Error.WriteLine("The service " + AgentProtocol.ServiceName + " could not be deleted.");
+                    return 1;
+                }
             }
             var target = TargetDir;
             try
@@ -130,14 +136,17 @@ namespace Inventory.Runner
         }
 
         /// <summary>Im Ordner liegen Anmeldegeheimnis und Schlüssel, und der Dienst läuft als SYSTEM: nur SYSTEM und Administratoren.</summary>
-        private static void CreateProtectedDirectory(string path)
+        private static void ProtectDirectory(string path)
         {
             var security = new DirectorySecurity();
             security.SetAccessRuleProtection(true, false);
             const InheritanceFlags inherit = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
             foreach (var sid in new[] { WellKnownSidType.LocalSystemSid, WellKnownSidType.BuiltinAdministratorsSid })
                 security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(sid, null), FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
-            Directory.CreateDirectory(path, security);
+            if (Directory.Exists(path))
+                Directory.SetAccessControl(path, security);
+            else
+                Directory.CreateDirectory(path, security);
         }
 
         private static bool ServiceExists()
