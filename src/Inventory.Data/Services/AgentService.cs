@@ -137,7 +137,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             Steps = [new JobStep { Name = "Agent installieren", Type = StepType.PowerShell, Script = script, TimeoutSeconds = 300 }],
         };
         var files = runnerFiles.Select(f => new JobFile(f, $@"{InstallFolder}\{Path.GetFileName(f)}")).ToList();
-        return new BuiltJob(manifest, files);
+        return new BuiltJob(manifest, files) { InstallsAgent = true };
     }
 
     /// <summary>

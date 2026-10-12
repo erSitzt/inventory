@@ -142,15 +142,17 @@ public class TransportTests
         await computers.UpdateAsync(managed.Id, null, TransportKind.Agent, null);
         await settings.SetTransportFallbackAsync(true);
         JobManifest Job() => new() { Steps = [new JobStep { Type = StepType.InventoryScan }] };
+        await settings.SetAsync(SettingKeys.AgentServerUrl, "https://inventory.example.local:5100");
+        var install = await new AgentService(db, settings, TimeProvider.System).BuildInstallJobAsync([], "abc");
 
         // Nur die Installation des Agenten: sie darf agentenlos laufen, auch auf Rechnern, die schon einen Agenten haben.
         await settings.SetAgentlessPolicyAsync(AgentlessPolicy.AgentInstallOnly);
-        Assert.Contains("no agent", (await jobs.RunAsync(plain.Id, Job())).Error);
+        Assert.Contains("only allowed for installing the agent", (await jobs.RunAsync(plain.Id, Job())).Error);
         Assert.Null(smb.Last);
         Assert.Null(winRm.Last);
-        Assert.True((await jobs.RunAsync(plain.Id, Job(), agentless: true)).Success);
+        Assert.True((await jobs.RunAgentInstallAsync(plain.Id, install)).Success);
         Assert.Equal("pc-01", winRm.Last!.Host);
-        Assert.True((await jobs.RunAsync(managed.Id, Job(), agentless: true)).Success);
+        Assert.True((await jobs.RunAgentInstallAsync(managed.Id, install)).Success);
         Assert.Equal("pc-02", winRm.Last!.Host);
         Assert.True((await jobs.RunAsync(managed.Id, Job())).Success);
         Assert.Equal("pc-02", agent.Last!.Host);
@@ -159,7 +161,9 @@ public class TransportTests
         await settings.SetAgentlessPolicyAsync(AgentlessPolicy.Never);
         (smb.Last, winRm.Last, agent.Last) = (null, null, null);
         Assert.Contains("switched off", (await jobs.RunAsync(plain.Id, Job())).Error);
-        Assert.Contains("switched off", (await jobs.RunAsync(managed.Id, Job(), agentless: true)).Error);
+        Assert.Contains("switched off", (await jobs.RunAgentInstallAsync(managed.Id, install)).Error);
+        // Die Ausnahme gilt nur für Jobs, die der AgentService als Installation gebaut hat.
+        await Assert.ThrowsAsync<ArgumentException>(() => jobs.RunAgentInstallAsync(plain.Id, new BuiltJob(Job(), [])));
         Assert.Null(smb.Last);
         Assert.Null(winRm.Last);
         Assert.True((await jobs.RunAsync(managed.Id, Job())).Success);

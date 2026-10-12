@@ -179,8 +179,11 @@
   <data name="Agentless access" xml:space="preserve">
     <value>Agentenloser Zugriff</value>
   </data>
-  <data name="Agentless access is switched off in the settings and this computer has no agent." xml:space="preserve">
-    <value>Der agentenlose Zugriff ist in den Einstellungen abgeschaltet, und dieser Rechner hat keinen Agenten.</value>
+  <data name="Agentless access ({0}) is only allowed for installing the agent (see settings). Other jobs reach this computer only through an agent." xml:space="preserve">
+    <value>Agentenloser Zugriff ({0}) ist nur für die Installation des Agenten erlaubt (siehe Einstellungen). Andere Jobs erreichen diesen Rechner nur über einen Agenten.</value>
+  </data>
+  <data name="Agentless access ({0}) is switched off in the settings. Jobs reach this computer only through an agent." xml:space="preserve">
+    <value>Der agentenlose Zugriff ({0}) ist in den Einstellungen abgeschaltet. Jobs erreichen diesen Rechner nur über einen Agenten.</value>
   </data>
   <data name="Agents" xml:space="preserve">
     <value>Agenten</value>
@@ -2908,9 +2911,6 @@
   </data>
   <data name="This computer does not exist (anymore)." xml:space="preserve">
     <value>Dieser Rechner existiert nicht (mehr).</value>
-  </data>
-  <data name="This computer has no agent. Agentless access is only allowed for installing the agent (see settings)." xml:space="preserve">
-    <value>Dieser Rechner hat keinen Agenten. Agentenloser Zugriff ist nur für die Installation des Agenten erlaubt (siehe Einstellungen).</value>
   </data>
   <data name="This computer has not been scanned yet." xml:space="preserve">
     <value>Dieser Rechner wurde noch nicht gescannt.</value>
