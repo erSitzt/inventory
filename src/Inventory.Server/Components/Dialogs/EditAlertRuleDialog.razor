@@ -1,0 +1,106 @@
+@inject AlertService Alerts
+@inject CollectionService CollectionService
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
+            <MudSelect T="AlertKind" @bind-Value="_kind" Label="@L["Trigger"]" Variant="Variant.Outlined">
+                @foreach (var kind in Enum.GetValues<AlertKind>())
+                {
+                    <MudSelectItem T="AlertKind" Value="kind">@Display.AlertKind(kind)</MudSelectItem>
+                }
+            </MudSelect>
+            @if (AlertRule.NeedsCollection(_kind))
+            {
+                <MudSelect T="int?" @bind-Value="_collectionId" Label="@L["Collection"]" Variant="Variant.Outlined">
+                    @foreach (var collection in _collections)
+                    {
+                        <MudSelectItem T="int?" Value="collection.Id">@collection.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            @if (AlertRule.NeedsThreshold(_kind))
+            {
+                <MudNumericField T="int" @bind-Value="_threshold" Label="@L["Threshold (number of computers)"]" Variant="Variant.Outlined" Min="1"
+                                 HelperText="@L["Reported once when the number reaches the threshold, and again after it had dropped below."]" />
+            }
+            <MudNumericField T="int" @bind-Value="_cooldown" Label="@L["Pause after a message (minutes)"]" Variant="Variant.Outlined" Min="0" Max="10080"
+                             HelperText="@L["During the pause this rule sends nothing; 0 = report every time."]" />
+            <MudSelect T="int" MultiSelection="true" SelectedValues="_channelIds" SelectedValuesChanged="@(ids => _channelIds = ids.ToHashSet())" Label="@L["Channels"]" Variant="Variant.Outlined"
+                       Placeholder="@L["all enabled channels"]" MultiSelectionTextFunc="@(_ => string.Join(", ", AvailableChannels.Where(c => _channelIds.Contains(c.Id)).Select(c => c.Name)))">
+                @foreach (var channel in AvailableChannels)
+                {
+                    <MudSelectItem T="int" Value="channel.Id">@channel.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSwitch T="bool" @bind-Value="_enabled" Color="Color.Primary" Label="@L["Enabled"]" />
+            @if (AvailableChannels.Count == 0)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@L["No channel is set up yet; without one the rule cannot send anything."]</MudAlert>
+            }
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neue Regel anlegen.</summary>
+    [Parameter] public AlertRule? Rule { get; set; }
+    [Parameter] public List<NotificationChannel> AvailableChannels { get; set; } = [];
+
+    private string _name = "";
+    private AlertKind _kind;
+    private bool _enabled = true;
+    private int? _collectionId;
+    private int _threshold = 1;
+    private int _cooldown;
+    private HashSet<int> _channelIds = [];
+    private string? _error;
+    private List<Collection> _collections = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _collections = (await CollectionService.ListAsync()).Select(s => s.Collection).ToList();
+        if (Rule is null)
+            return;
+        (_name, _kind, _enabled, _collectionId) = (Rule.Name, Rule.Kind, Rule.Enabled, Rule.CollectionId);
+        (_threshold, _cooldown) = (Rule.Threshold ?? 1, Rule.CooldownMinutes);
+        _channelIds = Rule.Channels.Select(c => c.Id).ToHashSet();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        try
+        {
+            var saved = await Alerts.SaveAsync(new AlertRule
+            {
+                Id = Rule?.Id ?? 0, Name = _name, Kind = _kind, Enabled = _enabled, CollectionId = _collectionId, Threshold = _threshold, CooldownMinutes = _cooldown,
+            }, _channelIds);
+            await Audit.LogAsync(Rule is null ? L["Alert rule created"] : L["Alert rule changed"], $"{saved.Name} ({Display.AlertKind(saved.Kind)})");
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            _error = L["A rule named \"{0}\" already exists.", _name.Trim()];
+        }
+    }
+}

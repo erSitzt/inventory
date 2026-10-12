@@ -34,7 +34,7 @@ public sealed record AdSyncPreview(int Total, List<string> NewNames, int Disable
 /// das Verzeichnis nie gekannt hat, bleiben unberührt.
 /// </summary>
 public sealed class AdSyncService(IDirectorySource directory, SettingsService settings, CredentialService credentials, ComputerService computers, TimeProvider time,
-    AuditService? audit = null, IStringLocalizer<SharedResource>? localizer = null)
+    AuditService? audit = null, IStringLocalizer<SharedResource>? localizer = null, IAlertSink? alerts = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
@@ -104,6 +104,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         catch (RemoteException ex)
         {
             result = L["Error"] + $": {ex.Message}";
+            alerts?.Raise(new(AlertKind.AdSyncFailed, L["Active Directory synchronization failed"], ex.Message, "settings"));
         }
         await settings.SetAsync(SettingKeys.AdSyncLastRunUtc, time.GetUtcNow().UtcDateTime.ToString("O", CultureInfo.InvariantCulture), ct);
         await settings.SetAsync(SettingKeys.AdSyncLastResult, result, ct);

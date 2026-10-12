@@ -36,6 +36,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
+    public DbSet<AlertRule> AlertRules => Set<AlertRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +79,15 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasIndex(c => c.Name).IsUnique();
             // Gelöschte Zugangsdaten: der Kanal bleibt, meldet sich aber nicht mehr an (und der nächste Versand zeigt den Fehler).
             e.HasOne(c => c.Credential).WithMany().HasForeignKey(c => c.CredentialId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<AlertRule>(e =>
+        {
+            e.Property(r => r.Name).UseCollation("NOCASE").HasMaxLength(200);
+            e.HasIndex(r => r.Name).IsUnique();
+            // Ohne ihre Sammlung kann die Regel nichts mehr prüfen; sie bleibt sichtbar und ruht.
+            e.HasOne(r => r.Collection).WithMany().HasForeignKey(r => r.CollectionId).OnDelete(DeleteBehavior.SetNull);
+            e.HasMany(r => r.Channels).WithMany().UsingEntity("AlertRuleChannels");
         });
 
         modelBuilder.Entity<Credential>(e =>

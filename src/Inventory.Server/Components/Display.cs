@@ -22,6 +22,31 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         _ => kind.ToString(),
     };
 
+    public string AlertKind(AlertKind kind) => kind switch
+    {
+        Inventory.Core.Model.AlertKind.CollectionEntered => T("A computer enters a collection"),
+        Inventory.Core.Model.AlertKind.CollectionCount => T("A collection reaches a number of members"),
+        Inventory.Core.Model.AlertKind.DeploymentFailed => T("A deployment finishes with failures"),
+        Inventory.Core.Model.AlertKind.ScheduleFailed => T("A schedule fails or is missed"),
+        Inventory.Core.Model.AlertKind.AdSyncFailed => T("The Active Directory synchronization fails"),
+        Inventory.Core.Model.AlertKind.BackupFailed => T("The database backup fails"),
+        Inventory.Core.Model.AlertKind.UpdateFailed => T("The update of the server fails"),
+        Inventory.Core.Model.AlertKind.NewComputer => T("A computer is added"),
+        Inventory.Core.Model.AlertKind.ScanErrors => T("Scan errors reach a number of computers"),
+        _ => kind.ToString(),
+    };
+
+    /// <summary>Der Auslöser einer Regel samt Sammlung und Schwelle.</summary>
+    public string Alert(AlertRule rule)
+    {
+        var text = AlertKind(rule.Kind);
+        if (AlertRule.NeedsCollection(rule.Kind))
+            text += $": {rule.Collection?.Name ?? "–"}";
+        if (AlertRule.NeedsThreshold(rule.Kind))
+            text += $" (≥ {rule.Threshold})";
+        return text;
+    }
+
     public string Webhook(WebhookFormat format) => format switch
     {
         WebhookFormat.Teams => "Microsoft Teams",

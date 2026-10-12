@@ -17,6 +17,21 @@ namespace Inventory.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("AlertRuleChannels", b =>
+                {
+                    b.Property<int>("AlertRuleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ChannelsId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("AlertRuleId", "ChannelsId");
+
+                    b.HasIndex("ChannelsId");
+
+                    b.ToTable("AlertRuleChannels");
+                });
+
             modelBuilder.Entity("CollectionMembers", b =>
                 {
                     b.Property<int>("CollectionsId")
@@ -30,6 +45,58 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("MembersId");
 
                     b.ToTable("CollectionMembers");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.AlertRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CollectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CooldownMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastCheckedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastFiredUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("State")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Threshold")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollectionId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("AlertRules");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.ApiToken", b =>
@@ -1371,6 +1438,21 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Settings");
                 });
 
+            modelBuilder.Entity("AlertRuleChannels", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.AlertRule", null)
+                        .WithMany()
+                        .HasForeignKey("AlertRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Core.Model.NotificationChannel", null)
+                        .WithMany()
+                        .HasForeignKey("ChannelsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CollectionMembers", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Collection", null)
@@ -1384,6 +1466,16 @@ namespace Inventory.Data.Migrations
                         .HasForeignKey("MembersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.AlertRule", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Collection", "Collection")
+                        .WithMany()
+                        .HasForeignKey("CollectionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Collection");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Computer", b =>

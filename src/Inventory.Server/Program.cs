@@ -127,6 +127,9 @@ builder.Services.AddSingleton<CredentialService>();
 builder.Services.AddSingleton<IMailSender, MailKitSender>();
 builder.Services.AddSingleton<IWebhookSender>(new HttpWebhookSender(new HttpClient { Timeout = TimeSpan.FromSeconds(20) }));
 builder.Services.AddSingleton<NotificationService>();
+builder.Services.AddSingleton<AlertQueue>();
+builder.Services.AddSingleton<IAlertSink>(sp => sp.GetRequiredService<AlertQueue>());
+builder.Services.AddSingleton<AlertService>();
 builder.Services.AddSingleton<SettingsService>();
 builder.Services.AddSingleton<ExampleData>();
 

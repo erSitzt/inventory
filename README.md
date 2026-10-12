@@ -62,6 +62,9 @@ credentials. The user interface is available in English and German; translations
 - **Deployments** in parallel with live status, cancel, retry, and catching up on offline computers
 - **Notifications**: channels for e-mail (SMTP with STARTTLS/TLS, optional sign-in with stored credentials) and
   webhooks (Microsoft Teams, Slack or plain JSON), each with a test button
+- **Alert rules**: a message when a computer enters a collection, a collection or the scan errors reach a number, a
+  deployment finishes with failures, a computer is added, or a schedule, the directory synchronization, the backup
+  or the server update fails – with a pause per rule and a choice of channels
 - **Audit log**: sign-ins, commands, deployments and every change with user, role and source (web interface, API,
   API token); filters, CSV export and a retention period
 - **Schedules**: daily, weekly, monthly (a day of the month or e.g. "three days after the second Tuesday"), at fixed
@@ -472,6 +475,22 @@ Under *Notifications* administrators set up the channels the server sends messag
 A webhook address usually contains the secret that allows posting, so it is stored encrypted like passwords and never
 shown again; error messages do not repeat it. *Send test* delivers a sample message through one channel, also through
 a disabled one. The outcome of the last delivery is shown per channel.
+
+**Alert rules** on the same page decide what is reported:
+
+| Trigger | Reports |
+|---|---|
+| A computer enters a collection | the computers that are new in the collection since the last check. Dynamic collections are the rule language: "antivirus off", "not seen in AD for 60 days" or "disk nearly full" are collections, the rule reports who enters them. |
+| A collection reaches a number of members / scan errors reach a number of computers | once when the number reaches the threshold, and again only after it had dropped below. |
+| A deployment finishes with failures | every finished deployment with failed computers, with a link to it. |
+| A computer is added | new computers, however they arrive (by hand, import, directory synchronization, agent). |
+| A schedule fails or is missed, the Active Directory synchronization, the database backup or the server update fails | the failure with its reason. |
+
+Only changes are reported: what already applies when a rule is created is its starting point, and earlier deployments
+are not reported afterwards. Collections and the inventory are checked every five minutes, failures of services are
+reported within a minute. *Pause after a message* keeps a rule quiet for a while; what happens during the pause is
+not reported later. A rule sends to all enabled channels or to the ones chosen. Links in messages use the address
+from *Settings → Agents* (the address under which the server is reached).
 
 The server needs an outbound connection to the mail server or the webhook service. Webhooks use the proxy from the
 system settings of the service account; mail is sent directly.

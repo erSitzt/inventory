@@ -65,6 +65,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
 - **Benachrichtigungen**: Kanäle für E-Mail (SMTP mit STARTTLS/TLS, auf Wunsch Anmeldung mit gespeicherten
   Zugangsdaten) und Webhooks (Microsoft Teams, Slack oder schlichtes JSON), jeweils mit Testknopf
+- **Alarmregeln**: eine Nachricht, wenn ein Rechner in eine Sammlung kommt, eine Sammlung oder die Scan-Fehler eine
+  Anzahl erreichen, eine Verteilung mit Fehlern endet, ein Rechner hinzukommt oder ein Zeitplan, der
+  Verzeichnisabgleich, die Sicherung oder die Server-Aktualisierung fehlschlägt – mit Pause je Regel und Wahl der Kanäle
 - **Protokoll**: Anmeldungen, Befehle, Deployments und jede Änderung mit Benutzer, Rolle und Herkunft (Weboberfläche,
   API, API-Token); Filter, CSV-Export und Aufbewahrungsfrist
 - **Zeitpläne**: täglich, wöchentlich, monatlich (ein Tag des Monats oder z. B. „drei Tage nach dem zweiten
@@ -488,6 +491,22 @@ Unter *Benachrichtigungen* richten Administratoren die Kanäle ein, über die de
 Eine Webhook-Adresse enthält meist das Geheimnis, das das Schreiben erlaubt; sie wird deshalb wie Passwörter
 verschlüsselt gespeichert und nie wieder angezeigt, und Fehlermeldungen wiederholen sie nicht. *Test senden* schickt
 eine Probenachricht über einen Kanal, auch über einen abgeschalteten. Je Kanal steht das Ergebnis des letzten Versands.
+
+**Alarmregeln** auf derselben Seite legen fest, was gemeldet wird:
+
+| Auslöser | Meldet |
+|---|---|
+| Ein Rechner kommt in eine Sammlung | die Rechner, die seit der letzten Prüfung neu in der Sammlung sind. Dynamische Sammlungen sind die Regelsprache: „Virenschutz aus“, „seit 60 Tagen nicht im AD gesehen“ oder „Platte fast voll“ sind Sammlungen, die Regel meldet, wer hineinkommt. |
+| Eine Sammlung erreicht eine Mitgliederzahl / Scan-Fehler erreichen eine Anzahl Rechner | einmal, wenn die Zahl die Schwelle erreicht, und erst wieder, nachdem sie darunter gefallen war. |
+| Eine Verteilung endet mit Fehlern | jede abgeschlossene Verteilung mit fehlgeschlagenen Rechnern, mit Link dorthin. |
+| Ein Rechner kommt hinzu | neue Rechner, gleich auf welchem Weg (von Hand, Import, Verzeichnisabgleich, Agent). |
+| Ein Zeitplan schlägt fehl oder wird verpasst, der Active-Directory-Abgleich, die Datenbanksicherung oder die Server-Aktualisierung schlägt fehl | den Fehler mit seinem Grund. |
+
+Gemeldet werden nur Veränderungen: was beim Anlegen einer Regel schon zutrifft, ist ihr Ausgangsstand, und frühere
+Verteilungen werden nicht nachgemeldet. Sammlungen und Bestand werden alle fünf Minuten geprüft, Fehler von Diensten
+binnen einer Minute gemeldet. *Pause nach einer Nachricht* hält eine Regel eine Weile still; was in der Pause
+geschieht, wird nicht nachgereicht. Eine Regel schickt an alle eingeschalteten Kanäle oder an die gewählten. Links in
+Nachrichten verwenden die Adresse aus *Einstellungen → Agenten* (die Adresse, unter der der Server erreichbar ist).
 
 Der Server braucht eine ausgehende Verbindung zum Mailserver bzw. zum Webhook-Dienst. Webhooks nutzen den Proxy aus
 den Systemeinstellungen des Dienstkontos; E-Mail geht direkt.
