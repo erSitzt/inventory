@@ -27,7 +27,27 @@ internal sealed class TestDb : IDbContextFactory<InventoryDbContext>, IDisposabl
     {
         SqliteConnection.ClearAllPools();
         foreach (var file in new[] { _path, _path + "-wal", _path + "-shm" })
-            File.Delete(file);
+            TryDelete(file);
+    }
+
+    /// <summary>
+    /// Unter Windows lässt sich eine noch geöffnete Datei nicht löschen, und manche Tests starten Hintergrundarbeit
+    /// (Deployments), die beim Ende des Tests noch kurz läuft. Das Aufräumen einer Temp-Datei darf keinen Test scheitern lassen.
+    /// </summary>
+    private static void TryDelete(string file)
+    {
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            try
+            {
+                File.Delete(file);
+                return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(100);
+            }
+        }
     }
 }
 
