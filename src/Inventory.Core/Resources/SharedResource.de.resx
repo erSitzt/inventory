@@ -3758,8 +3758,8 @@
   <data name="Website" xml:space="preserve">
     <value>Webseite</value>
   </data>
-  <data name="Week from {0}: {1} succeeded, {2} failed" xml:space="preserve">
-    <value>Woche ab {0}: {1} erfolgreich, {2} fehlgeschlagen</value>
+  <data name="Week from {0}: {1} succeeded, {2} failed or cancelled" xml:space="preserve">
+    <value>Woche ab {0}: {1} erfolgreich, {2} fehlgeschlagen oder abgebrochen</value>
   </data>
   <data name="Weekday" xml:space="preserve">
     <value>Wochentag</value>
@@ -3988,6 +3988,9 @@
   </data>
   <data name="{0} failed" xml:space="preserve">
     <value>{0} fehlgeschlagen</value>
+  </data>
+  <data name="{0} failed or cancelled" xml:space="preserve">
+    <value>{0} fehlgeschlagen oder abgebrochen</value>
   </data>
   <data name="{0} is already imported." xml:space="preserve">
     <value>{0} ist bereits importiert.</value>

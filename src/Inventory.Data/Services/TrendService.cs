@@ -5,6 +5,7 @@ namespace Inventory.Data.Services;
 
 /// <param name="WeekStart">Montag der Woche (Ortszeit des Servers).</param>
 /// <param name="Succeeded">Rechner, auf denen ein in dieser Woche gestartetes Deployment gelang oder nichts zu tun hatte.</param>
+/// <param name="Failed">Rechner, auf denen es fehlschlug oder abgebrochen wurde.</param>
 public sealed record DeploymentWeek(DateOnly WeekStart, int Succeeded, int Failed);
 
 /// <param name="Label">Schlüssel für die Übersetzung, z. B. "today".</param>
@@ -78,7 +79,8 @@ public sealed class TrendService(IDbContextFactory<InventoryDbContext> dbFactory
     {
         var today = Today;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var from = today.AddDays(-TrendDays);
+        // Heute mitgezählt: genau TrendDays Tage.
+        var from = today.AddDays(-(TrendDays - 1));
         var days = await db.DailySnapshots.AsNoTracking().Where(s => s.Date >= from).OrderBy(s => s.Date).ToListAsync(ct);
 
         // Wochen beginnen am Montag der Ortszeit; gezählt wird nach dem Start des Deployments.
@@ -94,7 +96,9 @@ public sealed class TrendService(IDbContextFactory<InventoryDbContext> dbFactory
                 var local = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t.CreatedUtc, DateTimeKind.Utc), time.LocalTimeZone));
                 return local >= start && local < start.AddDays(7);
             }).ToList();
-            return new DeploymentWeek(start, inWeek.Count(t => t.Status is TargetStatus.Succeeded or TargetStatus.AlreadyInstalled), inWeek.Count(t => t.Status == TargetStatus.Failed));
+            return new DeploymentWeek(start, inWeek.Count(t => t.Status is TargetStatus.Succeeded or TargetStatus.AlreadyInstalled), 
+                // Abgebrochene zählen wie in der Übersicht und der Deployment-Liste zu den fehlgeschlagenen.
+                inWeek.Count(t => t.Status is TargetStatus.Failed or TargetStatus.Cancelled));
         }).ToList();
 
         var now = time.GetUtcNow().UtcDateTime;

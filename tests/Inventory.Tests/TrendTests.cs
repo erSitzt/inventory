@@ -45,6 +45,17 @@ public class TrendTests
             await context.Computers.Where(c => c.Id == computers[1].Id).ExecuteUpdateAsync(s => s.SetProperty(c => c.UpdatePendingCount, 1));
         Assert.True(await trends.TakeIfDueAsync());
 
+        // Der Zeitraum umfasst genau 30 Tage einschließlich heute.
+        await using (var context = db.CreateDbContext())
+        {
+            context.DailySnapshots.Add(new DailySnapshot { Date = new DateOnly(2026, 10, 15).AddDays(-TrendService.TrendDays), WithPendingUpdates = 99 });
+            context.DailySnapshots.Add(new DailySnapshot { Date = new DateOnly(2026, 10, 15).AddDays(-(TrendService.TrendDays - 1)), WithPendingUpdates = 7 });
+            await context.SaveChangesAsync();
+        }
+        Assert.Equal([7, 1, 2], (await trends.TrendsAsync()).Days.Select(d => d.WithPendingUpdates));
+        await using (var context = db.CreateDbContext())
+            await context.DailySnapshots.Where(s => s.WithPendingUpdates >= 7).ExecuteDeleteAsync();
+
         var days = (await trends.TrendsAsync()).Days;
         Assert.Equal([1, 2], days.Select(d => d.WithPendingUpdates));
         await using (var context = db.CreateDbContext())
@@ -67,7 +78,7 @@ public class TrendTests
                 Targets = targets.Select((status, i) => new DeploymentTarget { ComputerName = $"pc-{i}", Status = status }).ToList(),
             };
             context.Deployments.AddRange(
-                At(now.AddDays(-1), TargetStatus.Succeeded, TargetStatus.AlreadyInstalled, TargetStatus.Failed, TargetStatus.WaitingOffline),
+                At(now.AddDays(-1), TargetStatus.Succeeded, TargetStatus.AlreadyInstalled, TargetStatus.Failed, TargetStatus.Cancelled, TargetStatus.WaitingOffline),
                 At(new DateTime(2026, 10, 11, 23, 0, 0, DateTimeKind.Utc), TargetStatus.Failed),
                 At(now.AddDays(-7 * TrendService.Weeks - 3), TargetStatus.Succeeded));
             foreach (var (name, age) in new (string, double?)[] { ("a", 0.2), ("b", 2), ("c", 5), ("d", 20), ("e", 90), ("f", null) })
@@ -78,10 +89,10 @@ public class TrendTests
         var result = await trends.TrendsAsync();
 
         Assert.Equal(TrendService.Weeks, result.Weeks.Count);
-        Assert.Equal(new DeploymentWeek(new DateOnly(2026, 10, 12), 2, 1), result.Weeks[^1]);
+        Assert.Equal(new DeploymentWeek(new DateOnly(2026, 10, 12), 2, 2), result.Weeks[^1]);
         // Sonntagabend gehört noch zur Vorwoche; was älter als der Zeitraum ist, zählt nicht.
         Assert.Equal(new DeploymentWeek(new DateOnly(2026, 10, 5), 0, 1), result.Weeks[^2]);
-        Assert.Equal(4, result.Weeks.Sum(w => w.Succeeded + w.Failed));
+        Assert.Equal(5, result.Weeks.Sum(w => w.Succeeded + w.Failed));
         Assert.Equal([1, 1, 1, 1, 1, 1], result.ScanAges.Select(a => a.Computers));
         Assert.Equal("never", result.ScanAges[^1].Label);
     }
