@@ -13,6 +13,9 @@ public sealed record BuiltJob(JobManifest Manifest, List<JobFile> Files, IReadOn
 {
     /// <summary>Job ohne Paket dahinter, z. B. die Installation des Agenten.</summary>
     public BuiltJob(JobManifest manifest, List<JobFile> files) : this(manifest, files, []) { }
+
+    /// <summary>Nur vom <see cref="AgentService"/> gesetzt: dieser Job darf auch dann agentenlos laufen, wenn sonst nur der Agent erlaubt ist.</summary>
+    public bool InstallsAgent { get; internal init; }
 }
 
 public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFactory, PackageRepository repository, IStringLocalizer<SharedResource>? localizer = null)

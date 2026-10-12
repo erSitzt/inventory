@@ -7,5 +7,9 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Releases setzen die Version aus dem Git-Tag (-p:Version=…); lokal gebaute Stände sind als Entwicklungsversion erkennbar. -->
     <Version>0.0.0-dev</Version>
+    <!-- Herstellerangaben in jeder Datei: Endpoint-Schutz und Analysten sehen daran, wozu eine Datei gehört. -->
+    <Company>Inventory</Company>
+    <Product>Inventory</Product>
+    <Copyright>Copyright (c) 2026 Inventory contributors. MIT License.</Copyright>
   </PropertyGroup>
 </Project>

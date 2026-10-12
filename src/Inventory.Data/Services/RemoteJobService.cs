@@ -20,9 +20,23 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
     };
 
     /// <summary>Liefert immer ein Ergebnis; Zustellfehler stehen in <see cref="JobResult.Error"/>.</summary>
-    /// <param name="agentless">Den Agenten umgehen, auch wenn der Rechner einen hat (z. B. um den Agenten selbst zu installieren).</param>
-    public async Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default,
-        IReadOnlyList<JobFile>? files = null, bool agentless = false)
+    public Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default,
+        IReadOnlyList<JobFile>? files = null) => RunCoreAsync(computerId, job, progress, ct, files, agentInstall: false);
+
+    /// <summary>
+    /// Installiert oder aktualisiert den Agenten. Das läuft immer agentenlos (der Agent kann sich nicht selbst ersetzen)
+    /// und bleibt bei <see cref="AgentlessPolicy.AgentInstallOnly"/> erlaubt – deshalb nur für Jobs, die der <see cref="AgentService"/> gebaut hat.
+    /// </summary>
+    public Task<JobResult> RunAgentInstallAsync(int computerId, BuiltJob job, CancellationToken ct = default)
+    {
+        if (!job.InstallsAgent)
+            throw new ArgumentException("Not an agent installation job.", nameof(job));
+        // Jeder Rechner braucht eine eigene Job-ID.
+        return RunCoreAsync(computerId, new JobManifest { Steps = job.Manifest.Steps }, null, ct, job.Files, agentInstall: true);
+    }
+
+    private async Task<JobResult> RunCoreAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct,
+        IReadOnlyList<JobFile>? files, bool agentInstall)
     {
         try
         {
@@ -31,8 +45,17 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
                 return JobResult.Failed(job.JobId, L["Computer {0} not found", computerId]);
 
             var kind = computer.Transport ?? await settings.GetDefaultTransportAsync(ct);
-            if (agentless && kind == TransportKind.Agent)
+            if (agentInstall && kind == TransportKind.Agent)
                 kind = await settings.GetDefaultTransportAsync(ct);
+            if (kind != TransportKind.Agent)
+            {
+                // Vor jedem Zugriff prüfen: auch der Ausweichweg unten ist agentenlos und damit mit abgedeckt.
+                var policy = await settings.GetAgentlessPolicyAsync(ct);
+                if (policy == AgentlessPolicy.Never)
+                    return JobResult.Failed(job.JobId, L["Agentless access ({0}) is switched off in the settings. Jobs reach this computer only through an agent.", kind]);
+                if (policy == AgentlessPolicy.AgentInstallOnly && !agentInstall)
+                    return JobResult.Failed(job.JobId, L["Agentless access ({0}) is only allowed for installing the agent (see settings). Other jobs reach this computer only through an agent.", kind]);
+            }
             var transport = transports.FirstOrDefault(t => t.Kind == kind);
             if (transport is null)
                 return JobResult.Failed(job.JobId, L["The transport {0} is not available on this server", kind]);

@@ -443,9 +443,8 @@
             var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
             await Parallel.ForEachAsync(targets, new ParallelOptions { MaxDegreeOfParallelism = 8 }, async (computer, ct) =>
             {
-                // Jeder Rechner braucht eine eigene Job-ID; der Agent selbst kann sich nicht aktualisieren, daher immer agentenlos.
-                var manifest = new JobManifest { Steps = job.Manifest.Steps };
-                var result = await Jobs.RunAsync(computer.Id, manifest, null, ct, job.Files, agentless: true);
+                // Der Agent selbst kann sich nicht aktualisieren, daher immer agentenlos.
+                var result = await Jobs.RunAgentInstallAsync(computer.Id, job, ct);
                 if (!result.Success)
                     failures.Add($"{computer.Name}: {result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error ?? result.Steps.LastOrDefault()?.Output}");
             });

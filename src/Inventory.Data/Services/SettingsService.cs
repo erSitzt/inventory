@@ -18,6 +18,13 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
     public Task SetTransportFallbackAsync(bool enabled, CancellationToken ct = default) =>
         SetAsync(SettingKeys.TransportFallback, enabled.ToString(), ct);
 
+    /// <summary>Wann Jobs ohne Agenten laufen dürfen. Standard: immer.</summary>
+    public async Task<AgentlessPolicy> GetAgentlessPolicyAsync(CancellationToken ct = default) =>
+        Enum.TryParse<AgentlessPolicy>(await GetAsync(SettingKeys.AgentlessPolicy, ct), out var policy) && Enum.IsDefined(policy) ? policy : AgentlessPolicy.Always;
+
+    public Task SetAgentlessPolicyAsync(AgentlessPolicy policy, CancellationToken ct = default) =>
+        SetAsync(SettingKeys.AgentlessPolicy, policy.ToString(), ct);
+
     /// <summary>Der Runner bricht ab, wenn er auf einem anders heißenden Rechner landet (Schutz vor veralteten DNS-Einträgen). Standard: an.</summary>
     public async Task<bool> GetVerifyTargetNameAsync(CancellationToken ct = default)
     {

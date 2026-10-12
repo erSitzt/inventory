@@ -110,6 +110,8 @@ Drei Dinge halten die Sicherheitskonsole ruhig, ohne echte Angriffe zu verdecken
 1. **Den Agenten bevorzugen**, wo Meldungen stören. Er verbindet sich ausgehend und braucht weder `ADMIN$` noch
    Dienststeuerung aus der Ferne. Rechner auswählen und *Agent installieren* wählen; nur diese eine Installation läuft
    noch über den agentenlosen Weg.
+   Unter *Einstellungen → Agentenloser Zugriff* lässt sich das erzwingen: auf die Installation des Agenten beschränkt
+   oder ganz abgeschaltet erreichen Scans, Verteilungen und Zeitpläne keine Rechner ohne Agent mehr.
 2. **Ein fester Fußabdruck.** Dienstname (`InventoryRunner`), Pfad (`%SystemRoot%\Inventory\Runner\`) und Dateiname
    (`InventoryRunner.exe`) ändern sich nie, und der Dienst wird einmal je Rechner angelegt statt einmal je Job. Der
    erste Job auf einem Rechner und der erste nach einem Server-Update (neuer Runner) können weiterhin eine Meldung
@@ -123,6 +125,10 @@ Drei Dinge halten die Sicherheitskonsole ruhig, ohne echte Angriffe zu verdecken
 Produkte mit automatischer Reaktion belassen es nicht bei Meldungen: sie können das für den Zugriff verwendete Konto
 deaktivieren und die beteiligten Rechner isolieren. Solange keine Freigabe eingerichtet ist, agentenlose Jobs nicht
 mit einem Konto ausführen, von dem andere Systeme abhängen, und das Werkzeug zuerst an wenigen Rechnern ausprobieren.
+
+[docs/defender.de.md](docs/defender.de.md) enthält die Schritte für Microsoft Defender for Endpoint: was die
+Meldungen bedeuten, ein PowerShell-Skript, das die Runner-Datei über ihren Hash freigibt (er steht unter
+*Einstellungen*), und wie sich die Verhaltensmeldungen im Portal abstimmen lassen.
 
 Die veröffentlichten Programmdateien sind noch nicht signiert, eine Regel nach Herausgeber-Zertifikat ist daher nicht
 möglich; das ist zusammen mit signierten Updates geplant (siehe Roadmap). PowerShell-Schritte laufen als

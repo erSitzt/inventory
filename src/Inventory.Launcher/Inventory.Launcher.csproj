@@ -8,6 +8,9 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
+    <AssemblyTitle>Inventory Launcher</AssemblyTitle>
+    <Description>Inventory Launcher: opens remote access tools from links of the Inventory server</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseWindowsForms>false</UseWindowsForms>
   </PropertyGroup>
 

@@ -104,6 +104,8 @@ the security console quiet without hiding real attacks:
 
 1. **Prefer the agent** where alerts matter. It connects outbound and needs neither `ADMIN$` nor remote service
    control. Select the computers and choose *Install agent*; only this one installation still uses the agentless way.
+   Under *Settings → Agentless access* you can enforce that: restricted to installing the agent, or switched off
+   entirely, scans, deployments and schedules no longer reach computers without an agent.
 2. **A stable footprint.** The service name (`InventoryRunner`), the path (`%SystemRoot%\Inventory\Runner\`) and the
    file name (`InventoryRunner.exe`) never change, and the service is created once per computer instead of once per
    job. The first job on a computer and the first one after a server update (new runner) can still raise an alert.
@@ -115,6 +117,10 @@ the security console quiet without hiding real attacks:
 Products with an automatic response go further than alerting: they can disable the account used for the access and
 isolate the computers involved. Until an allow rule is in place, do not run agentless jobs with an account that other
 systems depend on, and try the tool on a few computers first.
+
+[docs/defender.md](docs/defender.md) has the steps for Microsoft Defender for Endpoint: what the alerts mean, a
+PowerShell script that allows the runner file by its hash (shown under *Settings*), and how to tune the behaviour
+alerts in the portal.
 
 The released binaries are not code-signed yet, so a rule by publisher certificate is not possible; that is planned
 together with signed updates (see the roadmap). PowerShell steps run as

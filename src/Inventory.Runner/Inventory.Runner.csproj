@@ -8,6 +8,9 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
+    <AssemblyTitle>Inventory Runner</AssemblyTitle>
+    <Description>Inventory Runner: runs inventory scans and deployment jobs for the Inventory server</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
