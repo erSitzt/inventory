@@ -29,7 +29,7 @@ Rechner mit Agent verbinden sich ausgehend; nichts von dem obigen Verhalten trit
 Entwicklungsstände nicht gegen Rechner testen, die in Defender eingebunden sind: jeder Build ist eine Datei, die noch
 niemand gesehen hat.
 
-## 2. Die Runner-Datei freigeben (PowerShell)
+## 2. Die Runner-Datei freigeben
 
 Ein Indikator *Zulassen* für den Datei-Hash beendet das Schadsoftware-Urteil für diesen Runner. Die
 Verhaltensmeldungen bringt er nicht zum Schweigen; das ist Schritt 3.
@@ -45,6 +45,22 @@ signiert sind. Indikatoren setzen auf den Clients Microsoft Defender Antivirus m
 Funktion *Datei zulassen oder blockieren* (*Einstellungen → Endpunkte → Erweiterte Features*).
 
 **Im Portal:** *Einstellungen → Endpunkte → Indikatoren → Dateihashes → Element hinzufügen*, Aktion *Zulassen*.
+
+**Aus den Inventory-Einstellungen:** *Einstellungen → Microsoft Defender* legt den Indikator für den aktuellen Runner
+an und entfernt die der früheren Runner. Sie melden sich mit Ihrem eigenen Konto bei Microsoft an, indem Sie auf der
+Anmeldeseite von Microsoft einen Code eingeben; der Server sieht nie ein Kennwort und bewahrt das Token nicht auf.
+Einmalig vorzubereiten:
+
+1. Microsoft Entra Admin Center → *App-Registrierungen → Neue Registrierung*, einzelner Mandant, keine Umleitungs-URI.
+2. *Authentifizierung → Öffentliche Clientflows zulassen*: **Ja**.
+3. *API-Berechtigungen → Berechtigung hinzufügen → Von meiner Organisation verwendete APIs → WindowsDefenderATP →
+   Delegierte Berechtigungen → `Ti.ReadWrite`*, dann *Administratorzustimmung erteilen*.
+4. Mandanten-ID und Anwendungs-ID (Client) in den Inventory-Einstellungen eintragen.
+
+Die Anwendung hat kein Geheimnis und keine eigenen Rechte: was sie darf, ist auf das beschränkt, was die angemeldete
+Person in Defender darf; dieses Konto braucht also eine Rolle, die Indikatoren verwaltet. Eine Richtlinie für
+bedingten Zugriff, die den Gerätecode-Ablauf sperrt, sperrt auch diese Anmeldung; dann das Skript unten oder das
+Portal verwenden. Die Einstellungsseite zeigt an, wenn sich der Runner seit der letzten Freigabe geändert hat.
 
 **Per Skript:** die Indikator-Schnittstelle nimmt ein Anwendungstoken. Dafür einmalig eine Anwendung in Microsoft
 Entra ID registrieren, die API-Berechtigung *WindowsDefenderATP → Anwendung → `Ti.ReadWrite.All`* hinzufügen, die

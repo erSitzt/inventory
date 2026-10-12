@@ -28,7 +28,7 @@ choose:
 Do not test development builds against computers that are onboarded to Defender: every build is a file nobody has
 seen before.
 
-## 2. Allow the runner file (PowerShell)
+## 2. Allow the runner file
 
 An *allow* indicator for the file hash ends the malware verdict for this runner. It does not silence the behaviour
 alerts; that is step 3.
@@ -44,6 +44,21 @@ code-signed. Indicators need Microsoft Defender Antivirus with cloud-delivered p
 feature *Allow or block file* (*Settings → Endpoints → Advanced features*).
 
 **In the portal:** *Settings → Endpoints → Indicators → File hashes → Add item*, action *Allow*.
+
+**From the Inventory settings:** *Settings → Microsoft Defender* creates the indicator for the current runner and
+removes those of earlier runners. You sign in at Microsoft with your own account by entering a code on Microsoft's
+sign-in page; the server never sees a password and does not keep the token. Prepare once:
+
+1. Microsoft Entra admin center → *App registrations → New registration*, single tenant, no redirect URI.
+2. *Authentication → Allow public client flows*: **Yes**.
+3. *API permissions → Add a permission → APIs my organization uses → WindowsDefenderATP → Delegated permissions →
+   `Ti.ReadWrite`*, then *Grant admin consent*.
+4. Enter the tenant ID and the application (client) ID in the Inventory settings.
+
+The application has no secret and no rights of its own: what it may do is limited to what the signed-in person may do
+in Defender, so that account needs a role that manages indicators. A Conditional Access policy that blocks the device
+code flow also blocks this sign-in; use the script below or the portal then. The settings page shows when the runner
+has changed since the last allowance.
 
 **By script:** the indicator API takes an application token. Register an application in Microsoft Entra ID once, add
 the API permission *WindowsDefenderATP → Application → `Ti.ReadWrite.All`*, grant admin consent and create a client

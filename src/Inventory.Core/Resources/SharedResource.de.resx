@@ -245,6 +245,9 @@
   <data name="AND" xml:space="preserve">
     <value>UND</value>
   </data>
+  <data name="and enter this code:" xml:space="preserve">
+    <value>und geben Sie diesen Code ein:</value>
+  </data>
   <data name="Another job has been running on {0} for more than {1} minutes; this job was not started." xml:space="preserve">
     <value>Auf {0} läuft seit über {1} Minuten ein anderer Job; dieser Job wurde nicht gestartet.</value>
   </data>
@@ -271,6 +274,9 @@
   </data>
   <data name="Appearance" xml:space="preserve">
     <value>Darstellung</value>
+  </data>
+  <data name="Application (client) ID" xml:space="preserve">
+    <value>Anwendungs-ID (Client)</value>
   </data>
   <data name="Applies to all computers without a transport of their own." xml:space="preserve">
     <value>Gilt für alle Rechner, bei denen kein eigener Transport eingestellt ist.</value>
@@ -1808,6 +1814,9 @@
   <data name="Only within the maintenance window (computers outside wait until it opens)" xml:space="preserve">
     <value>Nur im Wartungsfenster (Rechner außerhalb warten, bis es beginnt)</value>
   </data>
+  <data name="Open" xml:space="preserve">
+    <value>Öffnen Sie</value>
+  </data>
   <data name="Open package" xml:space="preserve">
     <value>Paket öffnen</value>
   </data>
@@ -1828,6 +1837,9 @@
   </data>
   <data name='Optional: a permanently installed agent fetches jobs over an outbound connection – useful for computers the server cannot reach directly (notebooks on the road, other networks). It is installed via "Computers → Actions → Install agent". After a server update the agents update themselves on their next request.' xml:space="preserve">
     <value>Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“. Nach einem Update des Servers aktualisieren sich die Agenten bei ihrer nächsten Anfrage selbst.</value>
+  </data>
+  <data name="Optional: allows the runner file in Microsoft Defender for Endpoint by its hash, so that it is no longer rated as malware. You sign in at Microsoft with your own account; the server stores neither password nor token. This needs an application registration in your tenant (see docs/defender.md) and has to be repeated after every server update. Alerts about the agentless way itself are tuned in the Defender portal." xml:space="preserve">
+    <value>Optional: gibt die Runner-Datei in Microsoft Defender for Endpoint über ihren Hash frei, damit sie nicht mehr als Schadsoftware eingestuft wird. Sie melden sich mit Ihrem eigenen Konto bei Microsoft an; der Server speichert weder Kennwort noch Token. Das setzt eine Anwendungsregistrierung in Ihrem Mandanten voraus (siehe docs/defender.de.md) und muss nach jedem Server-Update wiederholt werden. Meldungen über den agentenlosen Weg selbst werden im Defender-Portal abgestimmt.</value>
   </data>
   <data name="OR" xml:space="preserve">
     <value>ODER</value>
@@ -2216,6 +2228,9 @@
   <data name="Remove rule" xml:space="preserve">
     <value>Regel entfernen</value>
   </data>
+  <data name="Remove the indicators of earlier runners" xml:space="preserve">
+    <value>Indikatoren früherer Runner entfernen</value>
+  </data>
   <data name="removed" xml:space="preserve">
     <value>entfernt</value>
   </data>
@@ -2332,6 +2347,9 @@
   </data>
   <data name="Run package" xml:space="preserve">
     <value>Paket ausführen</value>
+  </data>
+  <data name="Runner allowed in Microsoft Defender" xml:space="preserve">
+    <value>Runner in Microsoft Defender freigegeben</value>
   </data>
   <data name="running" xml:space="preserve">
     <value>läuft</value>
@@ -2543,6 +2561,9 @@
   <data name="SHA-256 of InventoryRunner.exe" xml:space="preserve">
     <value>SHA-256 von InventoryRunner.exe</value>
   </data>
+  <data name="SHA-256 {0}, {1} earlier indicators removed" xml:space="preserve">
+    <value>SHA-256 {0}, {1} frühere Indikatoren entfernt</value>
+  </data>
   <data name="Shadow session" xml:space="preserve">
     <value>Sitzung spiegeln</value>
   </data>
@@ -2572,6 +2593,9 @@
   </data>
   <data name="Sign in again" xml:space="preserve">
     <value>Erneut anmelden</value>
+  </data>
+  <data name="Sign in and allow the runner" xml:space="preserve">
+    <value>Anmelden und Runner freigeben</value>
   </data>
   <data name="Sign in with another account" xml:space="preserve">
     <value>Mit anderem Konto anmelden</value>
@@ -2750,6 +2774,9 @@
   <data name="Target computers" xml:space="preserve">
     <value>Zielrechner</value>
   </data>
+  <data name="Tenant ID" xml:space="preserve">
+    <value>Mandanten-ID</value>
+  </data>
   <data name="That is who had an interactive session (console or Remote Desktop) on the most days during scans of the last {0} days. Accounts stored as credentials never count; services and scheduled tasks do not either." xml:space="preserve">
     <value>Das ist, wer bei Scans der letzten {0} Tage an den meisten Tagen eine interaktive Sitzung hatte (Konsole oder Remotedesktop). Als Zugangsdaten hinterlegte Konten zählen nie, Dienste und geplante Aufgaben ebenso wenig.</value>
   </data>
@@ -2791,6 +2818,9 @@
   </data>
   <data name="The computer was deleted" xml:space="preserve">
     <value>Der Rechner wurde gelöscht</value>
+  </data>
+  <data name="The current runner has been allowed in Defender." xml:space="preserve">
+    <value>Der aktuelle Runner ist in Defender freigegeben.</value>
   </data>
   <data name="The database is backed up before every update; running deployments are awaited. The interface is briefly unavailable meanwhile; agents update themselves afterwards. Note: this path brings new program code onto the server and, via the agents, onto all computers. As long as releases are unsigned, the checksum only secures the transfer, not the origin – which is why automatic updates are off by default." xml:space="preserve">
     <value>Vor jeder Aktualisierung wird die Datenbank gesichert; laufende Deployments werden abgewartet. Die Oberfläche ist währenddessen kurz nicht erreichbar, Agenten aktualisieren sich danach selbst. Hinweis: Über diesen Weg gelangt neuer Programmcode auf den Server und über die Agenten auf alle Rechner. Solange Releases unsigniert sind, sichert die Prüfsumme nur die Übertragung, nicht die Herkunft – die Automatik ist deshalb standardmäßig aus.</value>
@@ -2845,6 +2875,12 @@
   </data>
   <data name="the remaining computers were not started." xml:space="preserve">
     <value>die übrigen Rechner wurden nicht gestartet.</value>
+  </data>
+  <data name="The runner has changed since the last allowance (server update). Allow it again." xml:space="preserve">
+    <value>Der Runner hat sich seit der letzten Freigabe geändert (Server-Update). Bitte erneut freigeben.</value>
+  </data>
+  <data name="The runner is allowed in Defender; {0} earlier indicators removed." xml:space="preserve">
+    <value>Der Runner ist in Defender freigegeben; {0} frühere Indikatoren entfernt.</value>
   </data>
   <data name="The runner on {0} exited without delivering a result (exit code {1}). Possible causes: .NET Framework 4.8 is missing, or antivirus or AppLocker blocks execution." xml:space="preserve">
     <value>Der Runner auf {0} wurde beendet, ohne ein Ergebnis zu liefern (Exitcode {1}). Mögliche Ursachen: .NET Framework 4.8 fehlt, Virenscanner oder AppLocker blockiert die Ausführung.</value>

@@ -23,6 +23,11 @@ public static class SettingKeys
     public const string AutoApproveLibraryUpdates = "Packages.AutoApproveLibraryUpdates";
     /// <summary>Protokolleinträge werden so viele Tage aufbewahrt; "0" = unbegrenzt.</summary>
     public const string AuditRetentionDays = "Audit.RetentionDays";
+    /// <summary>Mandant und Anwendung (öffentlicher Client) für die Freigabe des Runners in Microsoft Defender.</summary>
+    public const string DefenderTenant = "Defender.Tenant";
+    public const string DefenderClientId = "Defender.ClientId";
+    /// <summary>SHA-256 des Runners, der zuletzt in Defender freigegeben wurde.</summary>
+    public const string DefenderAllowedHash = "Defender.AllowedHash";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>
