@@ -117,6 +117,7 @@ builder.Services.AddSingleton<ICatalogSource>(new HttpCatalogSource(new HttpClie
 builder.Services.AddSingleton(sp => new CatalogService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), sp.GetRequiredService<ICatalogSource>(),
     sp.GetRequiredService<PackageService>(), sp.GetRequiredService<CollectionService>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, options.Catalog.Url, options.Catalog.IndexUrl, options.Catalog.VersionsUrl));
 builder.Services.AddHostedService<SchedulerWorker>();
+builder.Services.AddHostedService<AlertWorker>();
 
 var windowsAuthentication = options.ResolveWindowsAuthentication();
 builder.Services.AddSingleton<ApiTokenService>();

@@ -4,7 +4,11 @@ using Inventory.Core.Model;
 namespace Inventory.Core.Abstractions;
 
 /// <param name="Path">Seite der Oberfläche zum Ereignis, z. B. "schedules"; daraus wird mit der Server-Adresse ein Link.</param>
-public sealed record AlertEvent(AlertKind Kind, string Title, string Text, string? Path = null);
+public sealed record AlertEvent(AlertKind Kind, string Title, string Text, string? Path = null)
+{
+    /// <summary>So oft wurde schon vergeblich versucht, das Ereignis zuzustellen.</summary>
+    public int Attempts { get; init; }
+}
 
 /// <summary>Hier melden Dienste Ereignisse, für die es Alarmregeln geben kann. Melden blockiert nie und schlägt nie fehl.</summary>
 public interface IAlertSink

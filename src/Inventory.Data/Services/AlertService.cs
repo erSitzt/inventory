@@ -45,8 +45,12 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
         }
         var collectionId = AlertRule.NeedsCollection(input.Kind) ? input.CollectionId : null;
         var threshold = AlertRule.NeedsThreshold(input.Kind) ? input.Threshold : null;
-        if (rule.Kind != input.Kind || rule.CollectionId != collectionId || rule.Threshold != threshold)
-            (rule.State, rule.LastCheckedUtc) = (null, null);
+        if (input.Id == 0 || rule.Kind != input.Kind || rule.CollectionId != collectionId || rule.Threshold != threshold)
+        {
+            // Regeln, die auf Neues achten, sehen ab jetzt hin: nichts Älteres wird nachgemeldet, und nichts geht bis zum ersten Durchlauf verloren.
+            rule.State = input.Kind is AlertKind.DeploymentFailed or AlertKind.NewComputer ? Stamp(time.GetUtcNow().UtcDateTime) : null;
+            rule.LastCheckedUtc = null;
+        }
         rule.Name = input.Name.Trim();
         rule.Kind = input.Kind;
         rule.Enabled = input.Enabled;
@@ -65,7 +69,10 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
         await db.AlertRules.Where(r => r.Id == id).ExecuteDeleteAsync(ct);
     }
 
-    /// <summary>Ein Durchlauf: gemeldete Ereignisse verteilen und fällige Regeln am Datenbestand prüfen. Liefert die Zahl verschickter Nachrichten.</summary>
+    /// <summary>So oft wird ein gemeldetes Ereignis erneut versucht, wenn kein Kanal es annimmt (ein Versuch je Durchlauf).</summary>
+    public const int MaxEventAttempts = 20;
+
+    /// <summary>Ein Durchlauf: gemeldete Ereignisse verteilen und fällige Regeln am Datenbestand prüfen. Liefert die Zahl zugestellter Nachrichten.</summary>
     public async Task<int> EvaluateAsync(CancellationToken ct = default)
     {
         var events = queue.Drain();
@@ -78,47 +85,75 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
 
         var baseUrl = (await settings.GetAsync(SettingKeys.AgentServerUrl, ct))?.TrimEnd('/');
         var sent = 0;
+        // Ereignisse, die eine Regel verschicken wollte, und ob irgendein Kanal sie angenommen hat.
+        var attempted = new HashSet<AlertEvent>();
+        var accepted = new HashSet<AlertEvent>();
         foreach (var rule in rules)
         {
-            List<Notification> messages;
-            var state = rule.State;
-            var polled = false;
-            if (AlertRule.IsEvent(rule.Kind))
-            {
-                messages = events.Where(e => e.Kind == rule.Kind)
-                    .Select(e => new Notification(e.Title, e.Text, NotificationSeverity.Error, Link(baseUrl, e.Path))).ToList();
-            }
-            else if (rule.LastCheckedUtc is { } last && now - last < PollInterval)
-            {
+            var isEvent = AlertRule.IsEvent(rule.Kind);
+            if (!isEvent && rule.LastCheckedUtc is { } last && now - last < PollInterval)
                 continue;
-            }
-            else
-            {
-                polled = true;
-                (messages, state) = await PollAsync(rule, now, baseUrl, ct);
-            }
-
             var inCooldown = rule.LastFiredUtc is { } fired && now - fired < TimeSpan.FromMinutes(rule.CooldownMinutes);
-            var fire = messages.Count > 0 && !inCooldown;
-            if (fire)
-            {
-                var channelIds = rule.Channels.Count == 0 ? null : rule.Channels.Select(c => c.Id).ToList();
-                foreach (var message in messages)
-                    await notifications.SendAsync(message with { Title = $"{rule.Name}: {message.Title}" }, channelIds, ct);
-                sent += messages.Count;
-            }
-            if (!polled && !fire)
-                continue;
+            var channelIds = rule.Channels.Count == 0 ? null : rule.Channels.Select(c => c.Id).ToList();
+            var prefix = $"{rule.Name}: ";
 
-            var lastMessage = fire ? messages[^1].Title : null;
-            await using var db = await dbFactory.CreateDbContextAsync(ct);
-            await db.AlertRules.Where(r => r.Id == rule.Id).ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.State, state)
-                .SetProperty(r => r.LastCheckedUtc, r => polled ? now : r.LastCheckedUtc)
-                .SetProperty(r => r.LastFiredUtc, r => fire ? now : r.LastFiredUtc)
-                .SetProperty(r => r.LastMessage, r => fire ? lastMessage : r.LastMessage), ct);
+            if (isEvent)
+            {
+                // In der Pause verfällt, was geschieht; das ist ihr Zweck.
+                if (inCooldown)
+                    continue;
+                string? lastTitle = null;
+                foreach (var alert in events.Where(e => e.Kind == rule.Kind))
+                {
+                    attempted.Add(alert);
+                    var message = new Notification(prefix + alert.Title, alert.Text, NotificationSeverity.Error, Link(baseUrl, alert.Path));
+                    if (!Delivered(await notifications.SendAsync(message, channelIds, ct)))
+                        continue;
+                    accepted.Add(alert);
+                    lastTitle = alert.Title;
+                    sent++;
+                }
+                if (lastTitle is not null)
+                    await StoreAsync(rule.Id, rule.State, checkedUtc: null, firedUtc: now, lastTitle, ct);
+                continue;
+            }
+
+            var (messages, state) = await PollAsync(rule, now, baseUrl, ct);
+            if (messages.Count == 0 || inCooldown)
+            {
+                await StoreAsync(rule.Id, state, now, firedUtc: null, null, ct);
+                continue;
+            }
+            var delivered = 0;
+            foreach (var message in messages)
+            {
+                if (Delivered(await notifications.SendAsync(message with { Title = prefix + message.Title }, channelIds, ct)))
+                    delivered++;
+            }
+            sent += delivered;
+            // Nahm kein Kanal etwas an, bleibt der Ausgangsstand stehen: der nächste Durchlauf findet dieselbe Veränderung wieder.
+            if (delivered == 0)
+                await StoreAsync(rule.Id, rule.State, now, firedUtc: null, null, ct);
+            else
+                await StoreAsync(rule.Id, state, now, now, messages[^1].Title, ct);
         }
+
+        // Was niemand annehmen konnte (Mailserver nicht erreichbar), kommt beim nächsten Durchlauf noch einmal.
+        foreach (var alert in attempted.Where(a => !accepted.Contains(a) && a.Attempts + 1 < MaxEventAttempts))
+            queue.Raise(alert with { Attempts = alert.Attempts + 1 });
         return sent;
+    }
+
+    private static bool Delivered(List<NotificationResult> results) => results.Any(r => r.Error is null);
+
+    private async Task StoreAsync(int ruleId, string? state, DateTime? checkedUtc, DateTime? firedUtc, string? lastMessage, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await db.AlertRules.Where(r => r.Id == ruleId).ExecuteUpdateAsync(s => s
+            .SetProperty(r => r.State, state)
+            .SetProperty(r => r.LastCheckedUtc, r => checkedUtc ?? r.LastCheckedUtc)
+            .SetProperty(r => r.LastFiredUtc, r => firedUtc ?? r.LastFiredUtc)
+            .SetProperty(r => r.LastMessage, r => firedUtc != null ? lastMessage : r.LastMessage), ct);
     }
 
     /// <summary>Liest den Datenbestand für eine Regel ab und liefert die Nachrichten samt neuem Ausgangsstand.</summary>
@@ -138,7 +173,8 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                 if (rule.Kind == AlertKind.CollectionCount)
                 {
                     var above = members.Count >= rule.Threshold;
-                    if (above && rule.State != bool.TrueString)
+                    // Gemeldet wird der Übergang von "darunter" zu "erreicht"; der erste Durchlauf legt nur den Stand fest.
+                    if (above && rule.State == bool.FalseString)
                         messages.Add(new Notification(L["{0} computers in \"{1}\"", members.Count, collection.Name],
                             L["The collection \"{0}\" now has {1} members (threshold {2}).", collection.Name, members.Count, rule.Threshold!], NotificationSeverity.Warning, link));
                     return (messages, above.ToString());
@@ -162,7 +198,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
             {
                 var count = await db.Computers.CountAsync(c => c.LastScanError != null, ct);
                 var above = count >= rule.Threshold;
-                if (above && rule.State != bool.TrueString)
+                if (above && rule.State == bool.FalseString)
                     messages.Add(new Notification(L["{0} computers with scan errors", count],
                         L["{0} computers failed their last scan (threshold {1}).", count, rule.Threshold!], NotificationSeverity.Warning, Link(baseUrl, "computers")));
                 return (messages, above.ToString());
@@ -193,7 +229,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
         }
     }
 
-    /// <summary>Ab wann eine Regel hinsieht: ab dem zuletzt Gesehenen, beim ersten Durchlauf ab jetzt (kein Rückblick auf Altes).</summary>
+    /// <summary>Ab wann eine Regel hinsieht: ab dem zuletzt Gesehenen; <see cref="SaveAsync"/> setzt den Beginn auf den Zeitpunkt des Anlegens.</summary>
     private static DateTime Since(AlertRule rule, DateTime now) =>
         DateTime.TryParse(rule.State, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var since) ? since : now;
 

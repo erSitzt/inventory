@@ -505,7 +505,9 @@ eine Probenachricht über einen Kanal, auch über einen abgeschalteten. Je Kanal
 Gemeldet werden nur Veränderungen: was beim Anlegen einer Regel schon zutrifft, ist ihr Ausgangsstand, und frühere
 Verteilungen werden nicht nachgemeldet. Sammlungen und Bestand werden alle fünf Minuten geprüft, Fehler von Diensten
 binnen einer Minute gemeldet. *Pause nach einer Nachricht* hält eine Regel eine Weile still; was in der Pause
-geschieht, wird nicht nachgereicht. Eine Regel schickt an alle eingeschalteten Kanäle oder an die gewählten. Links in
+geschieht, wird nicht nachgereicht. Nimmt kein Kanal eine Nachricht an (Mailserver nicht erreichbar), geht nichts
+verloren: die Regel findet die Veränderung bei der nächsten Prüfung wieder, und Fehler von Diensten werden etwa zehn
+Minuten lang erneut versucht. Eine Regel schickt an alle eingeschalteten Kanäle oder an die gewählten. Links in
 Nachrichten verwenden die Adresse aus *Einstellungen → Agenten* (die Adresse, unter der der Server erreichbar ist).
 
 Der Server braucht eine ausgehende Verbindung zum Mailserver bzw. zum Webhook-Dienst. Webhooks nutzen den Proxy aus

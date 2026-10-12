@@ -489,7 +489,9 @@ a disabled one. The outcome of the last delivery is shown per channel.
 Only changes are reported: what already applies when a rule is created is its starting point, and earlier deployments
 are not reported afterwards. Collections and the inventory are checked every five minutes, failures of services are
 reported within a minute. *Pause after a message* keeps a rule quiet for a while; what happens during the pause is
-not reported later. A rule sends to all enabled channels or to the ones chosen. Links in messages use the address
+not reported later. If no channel accepts a message (mail server down), nothing is lost:
+the rule finds the change again at the next check, and failures of services are retried for about ten minutes. A rule
+sends to all enabled channels or to the ones chosen. Links in messages use the address
 from *Settings → Agents* (the address under which the server is reached).
 
 The server needs an outbound connection to the mail server or the webhook service. Webhooks use the proxy from the

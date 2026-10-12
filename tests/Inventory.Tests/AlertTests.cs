@@ -161,6 +161,63 @@ public class AlertTests
     }
 
     [Fact]
+    public async Task What_no_channel_accepts_is_tried_again_instead_of_being_lost()
+    {
+        using var rig = new Rig();
+        await rig.ChannelAsync();
+        var added = await rig.Computers.ImportAsync("pc-01");
+        var collection = await rig.Collections.SaveAsync(null, "Sammlung", null, false, true, []);
+        await rig.Alerts.SaveAsync(new AlertRule { Name = "Sammlung", Kind = AlertKind.CollectionEntered, CollectionId = collection.Id }, []);
+        await rig.Alerts.SaveAsync(new AlertRule { Name = "Abgleich", Kind = AlertKind.AdSyncFailed }, []);
+        await rig.NextAsync();
+
+        rig.Webhook.Fail = "HTTP 503";
+        await rig.Collections.AddMembersAsync(collection.Id, [added[0].Id]);
+        rig.Queue.Raise(new AlertEvent(AlertKind.AdSyncFailed, "AD", "LDAP unreachable"));
+        Assert.Equal(0, await rig.NextAsync());
+        Assert.All(await rig.Alerts.ListAsync(), rule => Assert.Null(rule.LastFiredUtc));
+
+        rig.Webhook.Fail = null;
+        Assert.Equal(2, await rig.NextAsync());
+        Assert.Equal(0, await rig.NextAsync());
+        Assert.Equal(["Sammlung: 1 new in \"Sammlung\"", "Abgleich: AD"], rig.Titles);
+
+        // Ein Ereignis wird nicht endlos mitgeschleppt, wenn der Kanal dauerhaft ausfällt.
+        rig.Webhook.Fail = "HTTP 503";
+        rig.Queue.Raise(new AlertEvent(AlertKind.AdSyncFailed, "AD", "LDAP unreachable"));
+        for (var i = 0; i < AlertService.MaxEventAttempts + 2; i++)
+            await rig.Alerts.EvaluateAsync();
+        Assert.Empty(rig.Queue.Drain());
+    }
+
+    [Fact]
+    public async Task A_threshold_that_is_already_reached_and_events_before_the_first_check_are_handled_as_documented()
+    {
+        using var rig = new Rig();
+        await rig.ChannelAsync();
+        var added = await rig.Computers.ImportAsync("pc-01 pc-02");
+        var collection = await rig.Collections.SaveAsync(null, "Voll", null, false, true, []);
+        await rig.Collections.AddMembersAsync(collection.Id, [added[0].Id]);
+        await rig.Alerts.SaveAsync(new AlertRule { Name = "Schwelle", Kind = AlertKind.CollectionCount, CollectionId = collection.Id, Threshold = 1 }, []);
+        await rig.Alerts.SaveAsync(new AlertRule { Name = "Verteilung", Kind = AlertKind.DeploymentFailed }, []);
+
+        // Zwischen dem Anlegen der Regel und ihrem ersten Durchlauf abgeschlossen: wird gemeldet.
+        rig.Time.Advance(TimeSpan.FromSeconds(10));
+        await AddDeploymentAsync(rig, "Früh", TargetStatus.Failed);
+
+        // Die Schwelle war beim Anlegen schon erreicht: Ausgangsstand, keine Meldung.
+        Assert.Equal(1, await rig.Alerts.EvaluateAsync());
+        Assert.Equal(0, await rig.NextAsync());
+        Assert.Single(rig.Titles, t => t.EndsWith("\"Früh\": 1 of 1 failed"));
+
+        await rig.Collections.RemoveMembersAsync(collection.Id, [added[0].Id]);
+        Assert.Equal(0, await rig.NextAsync());
+        await rig.Collections.AddMembersAsync(collection.Id, [added[1].Id]);
+        Assert.Equal(1, await rig.NextAsync());
+        Assert.Equal("Schwelle: 1 computers in \"Voll\"", rig.Titles[^1]);
+    }
+
+    [Fact]
     public async Task Rules_need_their_collection_and_threshold_and_restart_when_their_subject_changes()
     {
         using var rig = new Rig();
@@ -232,9 +289,12 @@ public class AlertTests
     private sealed class RecordingWebhook : IWebhookSender
     {
         public List<(string Url, string Json)> Sent { get; } = [];
+        public string? Fail { get; set; }
 
         public Task PostAsync(string url, string json, CancellationToken ct = default)
         {
+            if (Fail is not null)
+                throw new RemoteException(Fail);
             Sent.Add((url, json));
             return Task.CompletedTask;
         }

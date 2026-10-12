@@ -3,7 +3,7 @@ using Inventory.Data.Services;
 namespace Inventory.Server.Services;
 
 /// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, Heartbeat, AD-Synchronisation, Datensicherung.</summary>
-public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, AuditService audit, SettingsService settings, UpdateService updates, CatalogService catalog, AlertService alerts, Inventory.Core.Abstractions.IAlertSink alertSink, ILogger<SchedulerWorker> logger) : BackgroundService
+public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, AuditService audit, SettingsService settings, UpdateService updates, CatalogService catalog, Inventory.Core.Abstractions.IAlertSink alertSink, ILogger<SchedulerWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(5);
@@ -31,14 +31,10 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                 await updates.ReportPreviousAsync(startup: false, stoppingToken);
                 await updates.ApplyIfDueAsync(stoppingToken);
                 await catalog.UpdateDueAsync(stoppingToken);
-                // Einmal täglich, zusammen mit der Sicherung: Verlauf auf die Aufbewahrungsfrist kürzen.
+                var backedUp = false;
                 try
                 {
-                    if (await backups.BackupIfDueAsync(stoppingToken))
-                    {
-                        await inventory.CleanupChangesAsync(HistoryRetention, stoppingToken);
-                        await audit.CleanupAsync(await settings.GetAuditRetentionDaysAsync(stoppingToken), stoppingToken);
-                    }
+                    backedUp = await backups.BackupIfDueAsync(stoppingToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -50,7 +46,12 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                         alertSink.Raise(new(Inventory.Core.Model.AlertKind.BackupFailed, "Database backup failed", ex.Message, "settings"));
                     }
                 }
-                await alerts.EvaluateAsync(stoppingToken);
+                // Einmal täglich, zusammen mit der Sicherung: Verlauf auf die Aufbewahrungsfrist kürzen.
+                if (backedUp)
+                {
+                    await inventory.CleanupChangesAsync(HistoryRetention, stoppingToken);
+                    await audit.CleanupAsync(await settings.GetAuditRetentionDaysAsync(stoppingToken), stoppingToken);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
