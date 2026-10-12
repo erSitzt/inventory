@@ -207,6 +207,15 @@ Agenten.
    installiert neu. Das ZIP enthält das Anmeldegeheimnis: die Freigabe nur für die Rechner lesbar machen, die es
    brauchen (z. B. *Domänencomputer*), und das Geheimnis unter *Einstellungen* erneuern, falls es in falsche Hände
    geraten ist.
+   **Vom neuen Rechner aus:** unter *Einstellungen → Agenten → Download-Seite ohne Anmeldung* öffnet ein
+   Administrator die Seite `<Server-Adresse>/agent` für eine Stunde, einen Tag, eine Woche oder dauerhaft. Im Browser
+   eines neuen Rechners geöffnet bietet sie das Setup, fertig für diesen Server eingerichtet, und einen einzeiligen
+   Befehl für eine PowerShell mit Administratorrechten (`irm <Server-Adresse>/agent/install.ps1 | iex`), der es
+   herunterlädt, entpackt und installiert. Niemand muss sich anmelden. Solange die Seite offen ist, kann jeder, der
+   den Server erreicht, das Setup mit dem Anmeldegeheimnis holen und einen Rechner anmelden – auch unter dem Namen
+   eines vorhandenen, der dann dessen Jobs bekäme. Deshalb: nur so lange öffnen wie nötig, oder den Port des Servers
+   per Firewall auf die Netze beschränken, die ihn brauchen; jeder Download steht mit der Herkunftsadresse im
+   Protokoll, ebenso jede Anmeldung eines Agenten. Geschlossen antwortet die Seite mit 404.
 3. Sobald sich der Dienst angemeldet hat, steht der Rechner auf Transport „Agent“ (grüner Chip „Agent“). Je Rechner
    lässt sich der Transport wieder auf SMB oder WinRM stellen; der Agent fragt trotzdem weiter ab.
 

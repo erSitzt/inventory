@@ -45,6 +45,43 @@ public class AgentTests
     }
 
     [Fact]
+    public async Task The_public_download_is_closed_by_default_and_closes_again_after_its_period()
+    {
+        using var db = new TestDb();
+        var clock = new MovingClock(new DateTimeOffset(2026, 10, 12, 8, 0, 0, TimeSpan.Zero));
+        var agents = new AgentService(db, new SettingsService(db), clock);
+
+        Assert.Null(await agents.GetPublicDownloadUntilAsync());
+
+        await agents.SetPublicDownloadAsync(TimeSpan.FromHours(1));
+        Assert.Equal(new DateTime(2026, 10, 12, 9, 0, 0, DateTimeKind.Utc), await agents.GetPublicDownloadUntilAsync());
+        clock.Advance(TimeSpan.FromMinutes(61));
+        Assert.Null(await agents.GetPublicDownloadUntilAsync());
+
+        await agents.SetPublicDownloadAsync(Timeout.InfiniteTimeSpan);
+        clock.Advance(TimeSpan.FromDays(3650));
+        Assert.Equal(AgentService.PublicDownloadForever, await agents.GetPublicDownloadUntilAsync());
+        await agents.SetPublicDownloadAsync(null);
+        Assert.Null(await agents.GetPublicDownloadUntilAsync());
+
+        // Das Skript holt das Setup von der Adresse, die auch die Agenten verwenden, und braucht nur Cmdlets.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildInstallScriptAsync());
+        await agents.SetServerUrlAsync("https://inventory.example.local:5100/");
+        var script = await agents.BuildInstallScriptAsync();
+        Assert.Contains("Invoke-WebRequest -Uri 'https://inventory.example.local:5100/agent/setup.zip'", script);
+        Assert.Contains($"'{JobFiles.RunnerExe}') {RunnerModes.InstallAgent}", script);
+        Assert.DoesNotContain("::", script);
+        Assert.DoesNotContain("New-Object", script);
+    }
+
+    private sealed class MovingClock(DateTimeOffset now) : TimeProvider
+    {
+        private DateTimeOffset _now = now;
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(TimeSpan by) => _now += by;
+    }
+
+    [Fact]
     public async Task Enrollment_requires_the_token_links_existing_computers_and_switches_them_to_the_agent()
     {
         using var db = new TestDb();

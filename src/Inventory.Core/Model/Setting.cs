@@ -30,6 +30,8 @@ public static class SettingKeys
     public const string DefenderAllowedHash = "Defender.AllowedHash";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
+    /// <summary>Bis zu diesem Zeitpunkt (UTC, ISO 8601) ist die Download-Seite für den Agenten ohne Anmeldung erreichbar; leer = geschlossen.</summary>
+    public const string AgentPublicDownloadUntilUtc = "Agent.PublicDownloadUntilUtc";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>
     public const string ExampleSchedulesCreated = "Examples.SchedulesCreated";
     /// <summary>Gesetzt, sobald die Beispiel-Berichte einmal angelegt wurden.</summary>

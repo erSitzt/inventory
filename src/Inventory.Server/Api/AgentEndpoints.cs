@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Localization;
 using Inventory.Server.Services;
 using Inventory.Core.Model;
 using Inventory.Core;
@@ -20,6 +21,8 @@ public static class AgentEndpoints
 
     public static IEndpointRouteBuilder MapAgentEndpoints(this IEndpointRouteBuilder app)
     {
+        MapPublicDownload(app);
+
         // Nicht in der API-Dokumentation: internes Protokoll zwischen Agent und Server (siehe Inventory.Contracts/AgentProtocol.cs).
         var group = app.MapGroup("/api/agent").AllowAnonymous().ExcludeFromDescription();
 
@@ -102,4 +105,101 @@ public static class AgentEndpoints
     }
 
     private static IResult Json<T>(T value) => Results.Content(JobJson.Serialize(value), "application/json");
+
+    /// <summary>
+    /// Download-Seite für den Agenten ohne Anmeldung, wenn ein Administrator sie geöffnet hat: gedacht, um an einem neuen
+    /// Rechner die Seite aufzurufen und den Agenten fertig eingerichtet zu installieren. Geschlossen antwortet alles mit 404.
+    /// </summary>
+    private static void MapPublicDownload(IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/" + AgentService.PublicPagePath).AllowAnonymous().ExcludeFromDescription();
+
+        group.MapGet("", async (AgentService agents, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
+        {
+            if (await agents.GetPublicDownloadUntilAsync(ct) is null)
+                return Results.NotFound();
+            var serverUrl = await agents.GetServerUrlAsync(ct);
+            return string.IsNullOrWhiteSpace(serverUrl)
+                ? Results.Content(Page(L, L["The server address for agents is not set yet. An administrator can enter it under Settings → Agents."], null), "text/html; charset=utf-8")
+                : Results.Content(Page(L, null, $"irm {serverUrl}/{AgentService.PublicScriptPath} | iex"), "text/html; charset=utf-8");
+        });
+
+        group.MapGet("setup.zip", async (HttpContext http, AgentService agents, RunnerPackage runner, AuditService audit, CancellationToken ct) =>
+        {
+            if (await agents.GetPublicDownloadUntilAsync(ct) is null)
+                return Results.NotFound();
+            try
+            {
+                var setup = await agents.BuildSetupAsync(runner.Files, runner.Hash, ct);
+                // Das Paket enthält das Anmeldegeheimnis: wer es geholt hat, soll nachvollziehbar sein.
+                await audit.LogAsync(new AuditActor("(anonymous)", null, AuditSource.Agent), "Agent setup downloaded from the public page", $"from {http.Connection.RemoteIpAddress}", ct);
+                return Results.File(setup, "application/zip", AgentService.SetupFileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+            }
+        });
+
+        group.MapGet("install.ps1", async (AgentService agents, CancellationToken ct) =>
+        {
+            if (await agents.GetPublicDownloadUntilAsync(ct) is null)
+                return Results.NotFound();
+            try
+            {
+                return Results.Text(await agents.BuildInstallScriptAsync(ct), "text/plain; charset=utf-8");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+            }
+        });
+    }
+
+    /// <summary>Eine Seite ohne Skripte und ohne die Oberfläche der Anwendung: sie soll auf einem frischen Rechner in jedem Browser laufen.</summary>
+    private static string Page(IStringLocalizer<SharedResource> L, string? problem, string? command)
+    {
+        static string H(string text) => System.Net.WebUtility.HtmlEncode(text);
+        var body = problem is not null
+            ? $"<p class=\"warn\">{H(problem)}</p>"
+            : $"""
+               <ol>
+                 <li>{H(L["Download the agent setup."])}<br><a class="button" href="/{AgentService.PublicSetupPath}">{H(L["Download agent setup"])}</a></li>
+                 <li>{H(L["Unpack the ZIP file."])}</li>
+                 <li>{H(L["Right-click Install-Agent.cmd and choose \"Run as administrator\"."])}</li>
+               </ol>
+               <h2>{H(L["Or in one step"])}</h2>
+               <p>{H(L["Open Windows PowerShell as administrator and run:"])}</p>
+               <pre>{H(command!)}</pre>
+               <p class="note">{H(L["The computer appears in Inventory under \"Computers\" a few seconds after the installation. The setup is configured for this server; nothing has to be entered."])}</p>
+               """;
+        return $$"""
+            <!DOCTYPE html>
+            <html lang="{{H(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName)}}">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <meta name="robots" content="noindex">
+              <title>{{H(L["Install the Inventory agent"])}}</title>
+              <style>
+                body { font-family: "Segoe UI", system-ui, sans-serif; background: #f4f5fa; color: #1e1b4b; margin: 0; }
+                main { max-width: 640px; margin: 8vh auto; background: #fff; border-radius: 14px; padding: 32px 40px; box-shadow: 0 6px 24px rgba(30, 27, 75, .08); }
+                h1 { font-size: 1.5rem; margin-top: 0; }
+                h2 { font-size: 1.05rem; margin-top: 2rem; }
+                li { margin-bottom: 1rem; line-height: 1.5; }
+                .button { display: inline-block; margin-top: .5rem; padding: .65rem 1.2rem; border-radius: 8px; background: #4f46e5; color: #fff; text-decoration: none; font-weight: 600; }
+                pre { background: #1e1b4b; color: #e0e7ff; padding: 12px 16px; border-radius: 8px; overflow-x: auto; user-select: all; }
+                .note { color: #555; font-size: .9rem; }
+                .warn { color: #b45309; }
+              </style>
+            </head>
+            <body>
+              <main>
+                <h1>{{H(L["Install the Inventory agent"])}}</h1>
+                {{body}}
+              </main>
+            </body>
+            </html>
+            """;
+    }
 }
