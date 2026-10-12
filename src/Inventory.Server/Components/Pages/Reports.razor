@@ -1,0 +1,77 @@
+@page "/reports"
+@inject SavedReportService Saved
+@inject IDialogService Dialogs
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+
+<PageTitle>@L["Reports"] – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">@L["Reports"]</MudText>
+    <MudSpacer />
+    <AdminOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditAsync(null))">@L["Add"]</MudButton>
+    </AdminOnly>
+</MudStack>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    @L["A report is a saved list: a source, optionally limited to a collection, with the columns and the order you choose. Open it here, download it as CSV or Excel, or have a schedule send it by e-mail."]
+</MudText>
+
+<MudDataGrid T="Report" Items="_reports" Dense="true" Hover="true" SortMode="SortMode.None">
+    <Columns>
+        <TemplateColumn Title="@L["Name"]">
+            <CellTemplate>
+                <MudLink Href="@($"reports/{context.Item.Id}")">@context.Item.Name</MudLink>
+                @if (context.Item.Description is not null)
+                {
+                    <MudText Typo="Typo.caption" Class="d-block">@context.Item.Description</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Source"]">
+            <CellTemplate>@Display.Report(context.Item.Source)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Collection"]">
+            <CellTemplate>@(context.Item.Collection?.Name ?? (Report.HasCollectionFilter(context.Item.Source) ? L["all computers"] : ""))</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
+            <CellTemplate>
+                <MudTooltip Text="CSV"><MudIconButton Icon="@Icons.Material.Filled.Download" Size="Size.Small" aria-label="CSV" Href="@($"api/reports/saved/{context.Item.Id}.csv")" Target="_blank" /></MudTooltip>
+                <MudTooltip Text="Excel"><MudIconButton Icon="@Icons.Material.Filled.GridOn" Size="Size.Small" aria-label="Excel" Href="@($"api/reports/saved/{context.Item.Id}.xlsx")" Target="_blank" /></MudTooltip>
+                <AdminOnly>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item))" />
+                </AdminOnly>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Class="pa-4">@L["No reports saved yet."]</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<Report> _reports = [];
+
+    protected override async Task OnInitializedAsync() => _reports = await Saved.ListAsync();
+
+    private async Task EditAsync(Report? report)
+    {
+        var parameters = new DialogParameters<EditReportDialog> { { d => d.Report, report } };
+        var dialog = await Dialogs.ShowAsync<EditReportDialog>(report?.Name ?? L["Add report"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            _reports = await Saved.ListAsync();
+    }
+
+    private async Task DeleteAsync(Report report)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete report"], L["Really delete \"{0}\"?", report.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
+        if (confirmed != true)
+            return;
+        await Saved.DeleteAsync(report.Id);
+        await Audit.LogAsync(L["Report deleted"], report.Name);
+        _reports = await Saved.ListAsync();
+    }
+}

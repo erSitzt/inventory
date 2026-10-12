@@ -321,7 +321,7 @@ public class ScheduleTests
     {
         var csv = new StringBuilder();
 
-        ReportService.Row(csv, "PC;01", "sagt \"hallo\"", null, "=SUMME(A1)", "normal");
+        ReportExport.Row(csv, "PC;01", "sagt \"hallo\"", null, "=SUMME(A1)", "normal");
 
         Assert.Equal("\"PC;01\";\"sagt \"\"hallo\"\"\";;'=SUMME(A1);normal\r\n", csv.ToString());
     }

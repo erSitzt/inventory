@@ -1,0 +1,71 @@
+@page "/reports/{Id:int}"
+@inject SavedReportService Saved
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+
+<PageTitle>@(_report?.Name ?? L["Report"]) – Inventory</PageTitle>
+
+@if (_report is null)
+{
+    <MudText>@(_loaded ? L["This report does not exist (any more)."] : L["Loading …"])</MudText>
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.h5">@_report.Name</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="@($"api/reports/saved/{Id}.csv")" Target="_blank" Class="d-print-none">CSV</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.GridOn" Href="@($"api/reports/saved/{Id}.xlsx")" Target="_blank" Class="d-print-none">Excel</MudButton>
+    </MudStack>
+    <MudText Typo="Typo.body2" Class="mb-4">
+        @Display.Report(_report.Source)@(_report.Collection is null ? "" : $" · {_report.Collection.Name}") · @L["{0} rows", _table?.Rows.Count ?? 0] · @L["as of {0}", Display.LocalTime(_asOfUtc)]
+        @if (_report.Description is not null)
+        {
+            <span> · @_report.Description</span>
+        }
+    </MudText>
+    @if (_table is not null)
+    {
+        <MudTable T="string?[]" Items="_table.Rows" Dense="true" Hover="true" Striped="true" RowsPerPage="100" FixedHeader="true" HorizontalScrollbar="true">
+            <HeaderContent>
+                @foreach (var column in _table.Columns)
+                {
+                    <MudTh Style="white-space: nowrap">@column.Title</MudTh>
+                }
+            </HeaderContent>
+            <RowTemplate>
+                @for (var i = 0; i < _table.Columns.Count; i++)
+                {
+                    var index = i;
+                    <MudTd Style="@(_table.Columns[index].Numeric ? "text-align: right; white-space: nowrap" : "white-space: nowrap; max-width: 420px; overflow: hidden; text-overflow: ellipsis")">@context[index]</MudTd>
+                }
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4">@L["The report has no rows."]</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new[] { 50, 100, 500 }" RowsPerPageString="@L["Rows per page:"]" Class="d-print-none" />
+            </PagerContent>
+        </MudTable>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Report? _report;
+    private ReportTable? _table;
+    private DateTime _asOfUtc;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _report = await Saved.GetAsync(Id);
+        if (_report is not null)
+        {
+            _table = await Saved.RunAsync(_report);
+            _asOfUtc = DateTime.UtcNow;
+        }
+        _loaded = true;
+    }
+}

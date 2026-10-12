@@ -1,0 +1,126 @@
+@inject SavedReportService Saved
+@inject ReportService Reports
+@inject CollectionService CollectionService
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
+            <MudTextField @bind-Value="_description" Label="@L["Description"]" Variant="Variant.Outlined" />
+            <MudSelect T="ReportSource" Value="_source" ValueChanged="SetSource" Label="@L["Source"]" Variant="Variant.Outlined">
+                @foreach (var source in Enum.GetValues<ReportSource>())
+                {
+                    <MudSelectItem T="ReportSource" Value="source">@Display.Report(source)</MudSelectItem>
+                }
+            </MudSelect>
+            @if (Report.HasCollectionFilter(_source))
+            {
+                <MudSelect T="int?" @bind-Value="_collectionId" Label="@L["Collection"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["all computers"]">
+                    @foreach (var collection in _collections)
+                    {
+                        <MudSelectItem T="int?" Value="collection.Id">@collection.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            @if (Report.HasPeriod(_source))
+            {
+                <MudNumericField T="int" @bind-Value="_days" Label="@L["Period (days back)"]" Variant="Variant.Outlined" Min="1" Max="3650" />
+            }
+            <MudSelect T="string" MultiSelection="true" SelectedValues="_columns" SelectedValuesChanged="@(keys => _columns = Ordered(keys))" Label="@L["Columns"]" Variant="Variant.Outlined"
+                       Placeholder="@L["all columns"]" MultiSelectionTextFunc="@(_ => L["{0} of {1} columns", _columns.Count, _available.Count])" SelectAll="true" SelectAllText="@L["Select all"]"
+                       HelperText="@L["Nothing selected = all columns. The order follows the source."]">
+                @foreach (var column in _available)
+                {
+                    <MudSelectItem T="string" Value="column.Key">@column.Title</MudSelectItem>
+                }
+            </MudSelect>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudSelect T="string" @bind-Value="_sort" Label="@L["Sort by"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["order of the source"]" Style="flex: 3">
+                    @foreach (var column in _available)
+                    {
+                        <MudSelectItem T="string" Value="column.Key">@column.Title</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSwitch T="bool" @bind-Value="_descending" Color="Color.Primary" Label="@L["descending"]" />
+            </MudStack>
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neuen Bericht anlegen.</summary>
+    [Parameter] public Report? Report { get; set; }
+
+    private string _name = "";
+    private string? _description;
+    private ReportSource _source;
+    private int? _collectionId;
+    private int _days = ReportService.DefaultDays;
+    private HashSet<string> _columns = [];
+    private string? _sort;
+    private bool _descending;
+    private string? _error;
+    private List<Collection> _collections = [];
+    private IReadOnlyList<ReportColumn> _available = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _collections = (await CollectionService.ListAsync()).Select(s => s.Collection).ToList();
+        if (Report is not null)
+        {
+            (_name, _description, _source, _collectionId) = (Report.Name, Report.Description, Report.Source, Report.CollectionId);
+            (_days, _sort, _descending) = (Report.Days ?? ReportService.DefaultDays, Report.SortColumn, Report.SortDescending);
+            _columns = Report.ColumnKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        _available = Reports.ColumnsOf(_source);
+    }
+
+    private void SetSource(ReportSource source)
+    {
+        _source = source;
+        _available = Reports.ColumnsOf(source);
+        // Spalten und Sortierung gehören zur alten Quelle.
+        (_columns, _sort) = ([], null);
+    }
+
+    private HashSet<string> Ordered(IEnumerable<string?>? keys) => (keys ?? []).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        try
+        {
+            // Die Auswahl in der Reihenfolge der Quelle ablegen, nicht in der des Anklickens.
+            var columns = _columns.Count == _available.Count ? null : string.Join(',', _available.Where(c => _columns.Contains(c.Key)).Select(c => c.Key));
+            var saved = await Saved.SaveAsync(new Report
+            {
+                Id = Report?.Id ?? 0, Name = _name, Description = _description, Source = _source, CollectionId = _collectionId, Days = _days,
+                Columns = columns, SortColumn = _sort, SortDescending = _descending,
+            });
+            await Audit.LogAsync(Report is null ? L["Report created"] : L["Report changed"], $"{saved.Name} ({Display.Report(saved.Source)})");
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            _error = L["A report named \"{0}\" already exists.", _name.Trim()];
+        }
+    }
+}

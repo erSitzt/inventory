@@ -5,7 +5,9 @@ namespace Inventory.Core.Abstractions;
 
 public sealed record MailServer(string Host, int Port, SmtpSecurity Security, NetworkCredential? Credential);
 
-public sealed record MailMessage(string Sender, IReadOnlyList<string> Recipients, string Subject, string Body);
+public sealed record MailAttachment(string FileName, string ContentType, byte[] Content);
+
+public sealed record MailMessage(string Sender, IReadOnlyList<string> Recipients, string Subject, string Body, MailAttachment? Attachment = null);
 
 /// <summary>Verschickt eine E-Mail; Zustellfehler kommen als <see cref="RemoteException"/>.</summary>
 public interface IMailSender

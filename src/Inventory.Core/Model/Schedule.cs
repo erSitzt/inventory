@@ -4,6 +4,8 @@ public enum ScheduleAction
 {
     Scan,
     Deploy,
+    /// <summary>Einen gespeicherten Bericht über die Benachrichtigungskanäle verschicken.</summary>
+    Report = 2,
 }
 
 public enum ScheduleTrigger
@@ -30,6 +32,12 @@ public class Schedule
     public ScheduleAction Action { get; set; }
     public int? PackageId { get; set; }
     public Package? Package { get; set; }
+    /// <summary>Für <see cref="ScheduleAction.Report"/>: der Bericht.</summary>
+    public int? ReportId { get; set; }
+    public Report? Report { get; set; }
+    /// <summary>Für <see cref="ScheduleAction.Report"/>: der Kanal; null = alle eingeschalteten.</summary>
+    public int? NotificationChannelId { get; set; }
+    public NotificationChannel? NotificationChannel { get; set; }
     public bool ScanAfter { get; set; } = true;
     /// <summary>Bei Deployments: Offline-Rechner nachholen, sobald sie erreichbar sind.</summary>
     public bool RetryOffline { get; set; } = true;

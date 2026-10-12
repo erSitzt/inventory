@@ -170,7 +170,7 @@
 
     private async Task DeleteAsync(NotificationChannel channel)
     {
-        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete channel"], L["Really delete \"{0}\"?", channel.Name],
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete channel"], L["Really delete \"{0}\"? Schedules that send reports through this channel are deleted with it.", channel.Name],
             yesText: L["Delete"], cancelText: L["Cancel"]);
         if (confirmed != true)
             return;

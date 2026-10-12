@@ -9,6 +9,11 @@ namespace Inventory.Server.Api;
 
 public sealed record AuditDto(long Id, DateTime TimeUtc, string User, AccessRole? Role, AuditSource Source, string Action, string? Details);
 
+public sealed record SavedReportDto(int Id, string Name, string? Description, ReportSource Source, int? CollectionId, int? Days, IReadOnlyList<string> Columns, string? SortColumn, bool SortDescending);
+
+public sealed record SavedReportRequest(string Name, ReportSource Source, string? Description = null, int? CollectionId = null, int? Days = null, IReadOnlyList<string>? Columns = null,
+    string? SortColumn = null, bool SortDescending = false);
+
 public static class ReportEndpoints
 {
     public static IEndpointRouteBuilder MapReportEndpoints(this IEndpointRouteBuilder app)
@@ -35,6 +40,53 @@ public static class ReportEndpoints
             (await reports.ComputersMissingUpdateAsync(key, ct)).Select(c => new { c.Id, c.Name, c.UpdateLastSearchUtc, c.UpdateLastInstallUtc }))
             .WithTags("Reports").WithSummary("Computers missing an update").WithDescription("key as returned by the pending updates overview.");
 
+        var saved = app.MapGroup("/api/reports/saved").WithTags("Reports").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
+
+        saved.MapPost("", async (SavedReportRequest request, SavedReportService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            var report = await service.SaveAsync(ToReport(0, request), ct);
+            await audit.LogAsync(http.Actor(), "Report created via API", report.Name, ct);
+            return Results.Created($"/api/reports/saved/{report.Id}", ToDto(report));
+        }).WithSummary("Create a saved report").WithDescription("source: Computers, Software, PendingUpdates, Deployments or Changes. columns: keys as returned by running a report, empty = all. days only for Deployments and Changes.");
+
+        saved.MapPut("{id:int}", async (int id, SavedReportRequest request, SavedReportService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            var report = await service.SaveAsync(ToReport(id, request), ct);
+            await audit.LogAsync(http.Actor(), "Report changed via API", report.Name, ct);
+            return Results.Ok(ToDto(report));
+        }).WithSummary("Change a saved report");
+
+        saved.MapDelete("{id:int}", async (int id, SavedReportService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if (await service.GetAsync(id, ct) is not { } report)
+                return Results.NotFound();
+            await service.DeleteAsync(id, ct);
+            await audit.LogAsync(http.Actor(), "Report deleted via API", report.Name, ct);
+            return Results.NoContent();
+        }).WithSummary("Delete a saved report");
+
+        saved.MapGet("", async (SavedReportService service, CancellationToken ct) =>
+            (await service.ListAsync(ct)).Select(ToDto))
+            .WithSummary("Saved reports").WithDescription("The reports set up under Reports. columns is empty when the report shows all columns of its source.");
+
+        saved.MapGet("{id:int}", async (int id, SavedReportService service, CancellationToken ct) =>
+            await service.GetAsync(id, ct) is { } report && await service.RunAsync(report, ct) is var table
+                ? Results.Ok(new { columns = table.Columns, rows = table.Rows })
+                : Results.NotFound())
+            .WithSummary("Run a saved report").WithDescription("columns with key, title and numeric; rows as arrays of text in the order of the columns.");
+
+        saved.MapGet("{id:int}.csv", async (int id, SavedReportService service, CancellationToken ct) =>
+            await service.GetAsync(id, ct) is { } report
+                ? Results.File(ReportExport.CsvBytes(await service.RunAsync(report, ct)), "text/csv; charset=utf-8", SavedReportService.FileName(report) + ".csv")
+                : Results.NotFound())
+            .WithSummary("Saved report as CSV").Produces<string>(200, "text/csv");
+
+        saved.MapGet("{id:int}.xlsx", async (int id, SavedReportService service, CancellationToken ct) =>
+            await service.GetAsync(id, ct) is { } report
+                ? Results.File(ReportExport.Xlsx(await service.RunAsync(report, ct), report.Name), ReportExport.XlsxContentType, SavedReportService.FileName(report) + ".xlsx")
+                : Results.NotFound())
+            .WithSummary("Saved report as Excel workbook").WithDescription("One sheet with a fixed, filterable header row; numeric columns are stored as numbers.");
+
         var audit = app.MapGroup("/api/audit").WithTags("Audit log").RequireOperator();
 
         audit.MapGet("", async (AuditService service, string? user, string? action, DateTime? from, DateTime? to, string? q, int? take, CancellationToken ct) =>
@@ -50,6 +102,34 @@ public static class ReportEndpoints
         }).WithSummary("Audit log as CSV").WithDescription($"Same filters as the list; at most {AuditService.MaxExportRows} rows, newest first. The export itself is logged.").Produces<string>(200, "text/csv");
 
         return app;
+    }
+
+    private static Report ToReport(int id, SavedReportRequest r) => new()
+    {
+        Id = id, Name = r.Name ?? "", Description = r.Description, Source = r.Source, CollectionId = r.CollectionId, Days = r.Days,
+        Columns = r.Columns is { Count: > 0 } ? string.Join(',', r.Columns) : null, SortColumn = r.SortColumn, SortDescending = r.SortDescending,
+    };
+
+    private static SavedReportDto ToDto(Report r) => new(r.Id, r.Name, r.Description, r.Source, r.CollectionId, r.Days, r.ColumnKeys, r.SortColumn, r.SortDescending);
+
+    private static async ValueTask<object?> MapErrors(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        try
+        {
+            return await next(context);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return Results.NotFound(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            return Results.Conflict("A report with this name already exists, or the collection does not exist.");
+        }
     }
 
     private static AuditFilter Filter(string? user, string? action, DateTime? from, DateTime? to, string? q) =>

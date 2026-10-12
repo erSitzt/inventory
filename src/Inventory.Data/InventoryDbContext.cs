@@ -37,6 +37,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<AlertRule> AlertRules => Set<AlertRule>();
+    public DbSet<Report> Reports => Set<Report>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,6 +89,14 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             // Ohne ihre Sammlung kann die Regel nichts mehr prüfen; sie bleibt sichtbar und ruht.
             e.HasOne(r => r.Collection).WithMany().HasForeignKey(r => r.CollectionId).OnDelete(DeleteBehavior.SetNull);
             e.HasMany(r => r.Channels).WithMany().UsingEntity("AlertRuleChannels");
+        });
+
+        modelBuilder.Entity<Report>(e =>
+        {
+            e.Property(r => r.Name).UseCollation("NOCASE").HasMaxLength(200);
+            e.HasIndex(r => r.Name).IsUnique();
+            // Ohne ihre Sammlung zeigt der Bericht wieder alle Rechner; das ist auf der Berichtsseite zu sehen.
+            e.HasOne(r => r.Collection).WithMany().HasForeignKey(r => r.CollectionId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Credential>(e =>
@@ -158,6 +167,9 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         {
             e.HasOne(s => s.Package).WithMany().HasForeignKey(s => s.PackageId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(s => s.Collection).WithMany().HasForeignKey(s => s.CollectionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(s => s.Report).WithMany().HasForeignKey(s => s.ReportId).OnDelete(DeleteBehavior.Cascade);
+            // Mit dem Kanal geht auch der Zeitplan: ohne ihn fiele der Versand auf "alle Kanäle" zurück und der Bericht erreichte mehr Empfänger als gewollt.
+            e.HasOne(s => s.NotificationChannel).WithMany().HasForeignKey(s => s.NotificationChannelId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ApiToken>().HasIndex(t => t.TokenHash).IsUnique();

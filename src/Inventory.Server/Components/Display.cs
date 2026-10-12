@@ -47,6 +47,16 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         return text;
     }
 
+    public string Report(ReportSource source) => source switch
+    {
+        ReportSource.Computers => T("Computers"),
+        ReportSource.Software => T("Installed software"),
+        ReportSource.PendingUpdates => T("Pending updates"),
+        ReportSource.Deployments => T("Deployments"),
+        ReportSource.Changes => T("Changes"),
+        _ => source.ToString(),
+    };
+
     public string Webhook(WebhookFormat format) => format switch
     {
         WebhookFormat.Teams => "Microsoft Teams",

@@ -69,7 +69,7 @@ public sealed class DashboardStats
     public int AttentionItems => FirewallOff + AntivirusProblems + RebootRequired + WithPendingUpdates + ScanErrors + NameMismatch + MissingInDirectory;
 }
 
-public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactory, IStringLocalizer<SharedResource>? localizer = null)
+public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> dbFactory, IStringLocalizer<SharedResource>? localizer = null, CollectionService? collectionService = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
@@ -164,51 +164,9 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
         };
     }
 
-    public async Task<string> ComputersCsvAsync(CancellationToken ct = default)
-    {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var csv = new StringBuilder();
-        Row(csv, L["Name"], L["Reported name"], L["Online"], L["IP address"], L["Operating system"], L["Version"], L["Feature update"], L["Manufacturer"], L["Model"], L["Serial number"],
-            L["Processor"], L["Memory (GB)"], L["User"], L["Last boot (UTC)"], L["Last scan (UTC)"], L["Description"],
-            L["Firewall domain"], L["Firewall private"], L["Firewall public"], L["Defender real-time protection"], L["Defender signature (UTC)"], L["Antivirus"],
-            L["Last update installation (UTC)"], L["Pending updates"], L["Pending security updates"], L["Reboot pending"],
-            L["Device type"], L["Firmware"], "Secure Boot", "TPM", L["TPM ready"], L["BitLocker (system drive)"], L["Graphics"], L["Battery health (%)"], L["BIOS date"],
-            L["Remote Desktop"], L["Network level authentication"], L["User Account Control"], L["User Account Control level"], "SMB 1", "Credential Guard", L["Memory integrity"], L["LSA protection"],
-            L["Built-in administrator account"], L["Built-in administrator: password age (days)"], L["Windows activated"],
-            L["AD organizational unit"], L["AD groups"], L["AD description"], L["Last AD logon (UTC)"],
-            L["Primary user"], L["Owner"], L["Location"], L["Cost center"], L["Inventory number"], L["Purchase date"], L["Warranty until"], L["Tags"], L["Notes"]);
-        foreach (var c in await db.Computers.AsNoTracking().OrderBy(c => c.Name).ToListAsync(ct))
-        {
-            Row(csv, c.Name, c.ReportedName, YesNo(c.IsOnline), c.IpAddress, c.OsName, c.OsVersion, c.OsRelease, c.Manufacturer, c.Model, c.SerialNumber,
-                c.CpuName, c.MemoryBytes is { } bytes ? Math.Round(bytes / 1024d / 1024 / 1024).ToString() : null, c.LoggedOnUser,
-                c.LastBootUtc?.ToString("yyyy-MM-dd HH:mm"), c.LastScanUtc?.ToString("yyyy-MM-dd HH:mm"), c.Description,
-                YesNo(c.FirewallDomain), YesNo(c.FirewallPrivate), YesNo(c.FirewallPublic), YesNo(c.DefenderRealTime),
-                c.DefenderSignatureUpdatedUtc?.ToString("yyyy-MM-dd HH:mm"), c.AntivirusProducts,
-                c.UpdateLastInstallUtc?.ToString("yyyy-MM-dd HH:mm"), c.UpdatePendingCount?.ToString(), c.UpdatePendingSecurityCount?.ToString(), YesNo(c.UpdateRebootRequired),
-                c.ChassisType is null ? null : L[Chassis.Label(Chassis.Kind(c.ChassisType, c.Model))], c.FirmwareType, YesNo(c.SecureBoot),
-                c.TpmPresent == false ? L["none"] : c.TpmVersion, YesNo(c.TpmReady), YesNo(c.SystemDriveProtected), c.Gpu,
-                c.BatteryHealthPercent?.ToString(), c.BiosDateUtc?.ToString("yyyy-MM-dd"),
-                YesNo(c.RdpEnabled), YesNo(c.RdpNla), YesNo(c.UacEnabled), c.UacLevel is >= 0 and <= 3 ? L[InventoryDiff.UacLevels[c.UacLevel.Value]] : null,
-                YesNo(c.Smb1Enabled), YesNo(c.CredentialGuard), YesNo(c.MemoryIntegrity), YesNo(c.LsaProtection),
-                YesNo(c.BuiltinAdminEnabled), c.BuiltinAdminPasswordAgeDays?.ToString(), YesNo(c.WindowsActivated),
-                c.DirectoryOu, string.Join(", ", c.DirectoryGroupNames), c.DirectoryDescription, c.DirectoryLastLogonUtc?.ToString("yyyy-MM-dd HH:mm"),
-                c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate?.ToString("yyyy-MM-dd"), c.WarrantyUntil?.ToString("yyyy-MM-dd"), c.Tags, c.Notes);
-        }
-        return csv.ToString();
-    }
+    public async Task<string> ComputersCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await TableAsync(new ReportQuery(ReportSource.Computers), ct));
 
-    public async Task<string> SoftwareCsvAsync(CancellationToken ct = default)
-    {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var rows = await db.Software.AsNoTracking()
-            .Join(db.Computers, s => s.ComputerId, c => c.Id, (s, c) => new { Computer = c.Name, s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser })
-            .OrderBy(r => r.Computer).ThenBy(r => r.Name).ToListAsync(ct);
-        var csv = new StringBuilder();
-        Row(csv, L["Computer"], L["Program"], L["Version"], L["Publisher"], L["Installed"], L["Architecture"], L["Per user"]);
-        foreach (var r in rows)
-            Row(csv, r.Computer, r.Name, r.Version, r.Publisher, r.InstallDate, r.Is64Bit ? "64 Bit" : "32 Bit", YesNo(r.PerUser));
-        return csv.ToString();
-    }
+    public async Task<string> SoftwareCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await TableAsync(new ReportQuery(ReportSource.Software), ct));
 
     public async Task<PatchCompliance> PatchComplianceAsync(CancellationToken ct = default)
     {
@@ -236,37 +194,7 @@ public sealed class ReportService(IDbContextFactory<InventoryDbContext> dbFactor
         return await db.Computers.AsNoTracking().Where(c => ids.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
     }
 
-    public async Task<string> PendingUpdatesCsvAsync(CancellationToken ct = default)
-    {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var rows = await db.PendingUpdates.AsNoTracking()
-            .Join(db.Computers, u => u.ComputerId, c => c.Id, (u, c) => new { Computer = c.Name, c.UpdateLastSearchUtc, Update = u })
-            .OrderBy(r => r.Computer).ThenBy(r => r.Update.Title).ToListAsync(ct);
-        var csv = new StringBuilder();
-        Row(csv, L["Computer"], "KB", L["Update title"], L["Classification"], L["Severity"], L["Security-relevant"], L["Downloaded"], L["Size (MB)"], L["Last search (UTC)"]);
-        foreach (var r in rows)
-        {
-            Row(csv, r.Computer, r.Update.KbIds, r.Update.Title, r.Update.Classification is null ? null : L[r.Update.Classification], r.Update.Severity is null ? null : L[r.Update.Severity],
-                YesNo(r.Update.IsSecurity), YesNo(r.Update.IsDownloaded), r.Update.SizeBytes > 0 ? Math.Round(r.Update.SizeBytes / 1024d / 1024).ToString() : null,
-                r.UpdateLastSearchUtc?.ToString("yyyy-MM-dd HH:mm"));
-        }
-        return csv.ToString();
-    }
+    public async Task<string> PendingUpdatesCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await TableAsync(new ReportQuery(ReportSource.PendingUpdates), ct));
 
     private string? YesNo(bool? value) => value is null ? null : value.Value ? L["yes"] : L["no"];
-
-    /// <summary>Semikolon-getrennt, wie es ein deutsches Excel beim Doppelklick erwartet.</summary>
-    internal static void Row(StringBuilder csv, params string?[] values)
-    {
-        csv.AppendJoin(';', values.Select(Escape)).Append("\r\n");
-
-        static string Escape(string? value)
-        {
-            value ??= "";
-            // Ein führendes =, +, - oder @ würde Excel als Formel ausführen.
-            if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@')
-                value = "'" + value;
-            return value.IndexOfAny([';', '"', '\r', '\n']) >= 0 ? $"\"{value.Replace("\"", "\"\"")}\"" : value;
-        }
-    }
 }

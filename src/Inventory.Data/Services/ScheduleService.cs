@@ -6,14 +6,14 @@ using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
-public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, ScanService scans, DeploymentService deployments, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null, Inventory.Core.Abstractions.IAlertSink? alerts = null)
+public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, ScanService scans, DeploymentService deployments, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null, Inventory.Core.Abstractions.IAlertSink? alerts = null, ReportMailer? reportMailer = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
     public async Task<List<Schedule>> ListAsync(CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        return await db.Schedules.AsNoTracking().Include(s => s.Package).Include(s => s.Collection).OrderBy(s => s.Name).ToListAsync(ct);
+        return await db.Schedules.AsNoTracking().Include(s => s.Package).Include(s => s.Collection).Include(s => s.Report).Include(s => s.NotificationChannel).OrderBy(s => s.Name).ToListAsync(ct);
     }
 
     /// <summary>Speichert den Zeitplan und berechnet den nächsten Lauf neu.</summary>
@@ -21,9 +21,15 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
     {
         schedule.Package = null;
         schedule.Collection = null;
+        schedule.Report = null;
+        schedule.NotificationChannel = null;
         schedule.Name = schedule.Name.Trim();
-        if (schedule.Action == ScheduleAction.Scan)
+        if (schedule.Action != ScheduleAction.Deploy)
             schedule.PackageId = null;
+        if (schedule.Action == ScheduleAction.Report)
+            schedule.CollectionId = null;
+        else
+            (schedule.ReportId, schedule.NotificationChannelId) = (null, null);
         schedule.RecheckDays = schedule.RecheckDays <= 0 ? 0 : Math.Clamp(schedule.RecheckDays, MinRecheckDays, 365);
         schedule.NextRunUtc = schedule.Enabled ? NextUtc(schedule) : null;
 
@@ -178,6 +184,13 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
         {
             if (schedule.Trigger == ScheduleTrigger.OnMembership)
                 return await RunMembershipAsync(schedule, ct);
+
+            if (schedule.Action == ScheduleAction.Report)
+            {
+                if (schedule.ReportId is not { } reportId)
+                    return L["No report selected"];
+                return await (reportMailer ?? throw new InvalidOperationException("Report delivery is not available.")).SendAsync(reportId, schedule.NotificationChannelId, ct);
+            }
 
             var ids = await TargetIdsAsync(schedule, ct);
             if (ids.Count == 0)

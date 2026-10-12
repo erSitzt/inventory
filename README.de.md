@@ -65,6 +65,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
 - **Benachrichtigungen**: Kanäle für E-Mail (SMTP mit STARTTLS/TLS, auf Wunsch Anmeldung mit gespeicherten
   Zugangsdaten) und Webhooks (Microsoft Teams, Slack oder schlichtes JSON), jeweils mit Testknopf
+- **Berichte**: gespeicherte Listen von Rechnern, Software, ausstehenden Updates, Verteilungen oder Änderungen – auf
+  eine Sammlung beschränkt, mit gewählten Spalten und Sortierung; im Browser, als CSV oder Excel, oder per Zeitplan
+  als E-Mail
 - **Alarmregeln**: eine Nachricht, wenn ein Rechner in eine Sammlung kommt, eine Sammlung oder die Scan-Fehler eine
   Anzahl erreichen, eine Verteilung mit Fehlern endet, ein Rechner hinzukommt oder ein Zeitplan, der
   Verzeichnisabgleich, die Sicherung oder die Server-Aktualisierung fehlschlägt – mit Pause je Regel und Wahl der Kanäle
@@ -512,6 +515,28 @@ Nachrichten verwenden die Adresse aus *Einstellungen → Agenten* (die Adresse, 
 
 Der Server braucht eine ausgehende Verbindung zum Mailserver bzw. zum Webhook-Dienst. Webhooks nutzen den Proxy aus
 den Systemeinstellungen des Dienstkontos; E-Mail geht direkt.
+
+### Berichte
+
+Ein Bericht ist eine gespeicherte Liste. Administratoren richten ihn unter *Berichte* ein; öffnen kann ihn jeder, der
+die Oberfläche nutzen darf.
+
+| Einstellung | Bedeutung |
+|---|---|
+| Quelle | *Rechner* (eine Zeile je Rechner, rund 60 Spalten aus Inventar, Sicherheit, Verzeichnis und Bestandsdaten), *Installierte Software* und *Ausstehende Updates* (eine Zeile je Rechner und Eintrag), *Verteilungen* (je eine Zeile mit den Zahlen erfolgreicher, fehlgeschlagener, abgebrochener und offener Rechner) oder *Änderungen* (der Verlauf des Inventars) |
+| Sammlung | beschränkt die Zeilen auf die Rechner einer Sammlung – dynamische Sammlungen werden bei jedem Lauf des Berichts ausgewertet |
+| Zeitraum | bei Verteilungen und Änderungen: die Zahl der Tage zurück (Standard 30) |
+| Spalten und Sortierung | welche Spalten erscheinen und nach welcher sortiert wird. Zahlen werden als Zahlen sortiert; leere Werte stehen am Ende. |
+
+Jeder Bericht lässt sich im Browser öffnen, als CSV (Semikolon-getrennt, UTF-8 mit BOM) oder als Excel-Arbeitsmappe
+herunterladen (fixierte, filterbare Kopfzeile; Zahlenspalten sind Zahlen, alles andere Text, sodass nie etwas als
+Formel ausgewertet wird) und über die API abrufen (`/api/reports/saved`). Ein Bericht liefert höchstens 100.000 Zeilen.
+
+**Per E-Mail nach Zeitplan:** ein Zeitplan mit der Aktion *Bericht versenden* führt den Bericht täglich, wöchentlich,
+monatlich oder in Abständen aus und verschickt ihn über einen Benachrichtigungskanal oder alle eingeschalteten.
+E-Mail-Kanäle bekommen die Arbeitsmappe als Anhang, Webhooks einen Hinweis mit der Zeilenzahl und einem Link. Nimmt
+kein Kanal ihn an, steht der Grund am Zeitplan, und eine Alarmregel für fehlgeschlagene Zeitpläne meldet ihn. Mit
+einem Bericht oder einem Kanal werden auch die Zeitpläne gelöscht, die darüber verschicken.
 
 ### Protokoll
 
