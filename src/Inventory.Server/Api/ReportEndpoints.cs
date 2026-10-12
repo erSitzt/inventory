@@ -14,6 +14,11 @@ public sealed record SavedReportDto(int Id, string Name, string? Description, Re
 public sealed record SavedReportRequest(string Name, ReportSource Source, string? Description = null, int? CollectionId = null, int? Days = null, IReadOnlyList<string>? Columns = null,
     string? SortColumn = null, bool SortDescending = false);
 
+public sealed record LicenseRequest(string Name, string Pattern, int Owned, decimal? CostPerLicense = null, DateOnly? ValidUntil = null, string? Notes = null);
+
+public sealed record LicenseDto(int Id, string Name, string Pattern, int Owned, int Installed, int Missing, decimal? CostPerLicense, DateOnly? ValidUntil, string? Notes,
+    IReadOnlyList<string> Computers, IReadOnlyList<string> Programs);
+
 public static class ReportEndpoints
 {
     public static IEndpointRouteBuilder MapReportEndpoints(this IEndpointRouteBuilder app)
@@ -91,6 +96,32 @@ public static class ReportEndpoints
             });
         }
 
+        var licenses = app.MapGroup("/api/licenses").WithTags("Licences").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
+
+        licenses.MapGet("", async (LicenseService service, CancellationToken ct) => (await service.UsageAsync(ct)).Select(ToDto))
+            .WithSummary("Licences with their usage").WithDescription("installed = computers with at least one matching program; missing > 0 means more installations than licences. programs lists the installed program names the pattern matches.");
+
+        licenses.MapPost("", async (LicenseRequest request, LicenseService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            var license = await service.SaveAsync(ToLicense(0, request), ct);
+            await audit.LogAsync(http.Actor(), "Licence created via API", license.Name, ct);
+            return Results.Created($"/api/licenses/{license.Id}", license);
+        }).WithSummary("Record a licence").WithDescription("pattern: text the program name must contain; with * the whole name must match.");
+
+        licenses.MapPut("{id:int}", async (int id, LicenseRequest request, LicenseService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            var license = await service.SaveAsync(ToLicense(id, request), ct);
+            await audit.LogAsync(http.Actor(), "Licence changed via API", license.Name, ct);
+            return Results.Ok(license);
+        }).WithSummary("Change a licence");
+
+        licenses.MapDelete("{id:int}", async (int id, LicenseService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            await service.DeleteAsync(id, ct);
+            await audit.LogAsync(http.Actor(), "Licence deleted via API", $"Licence {id}", ct);
+            return Results.NoContent();
+        }).WithSummary("Delete a licence");
+
         var audit = app.MapGroup("/api/audit").WithTags("Audit log").RequireOperator();
 
         audit.MapGet("", async (AuditService service, string? user, string? action, DateTime? from, DateTime? to, string? q, int? take, CancellationToken ct) =>
@@ -107,6 +138,14 @@ public static class ReportEndpoints
 
         return app;
     }
+
+    private static SoftwareLicense ToLicense(int id, LicenseRequest r) => new()
+    {
+        Id = id, Name = r.Name ?? "", Pattern = r.Pattern ?? "", Owned = r.Owned, CostPerLicense = r.CostPerLicense, ValidUntil = r.ValidUntil, Notes = r.Notes,
+    };
+
+    private static LicenseDto ToDto(LicenseUsage u) => new(u.License.Id, u.License.Name, u.License.Pattern, u.License.Owned, u.Installed, u.Missing,
+        u.License.CostPerLicense, u.License.ValidUntil, u.License.Notes, u.Computers, u.Programs);
 
     private static Report ToReport(int id, SavedReportRequest r) => new()
     {
@@ -132,7 +171,7 @@ public static class ReportEndpoints
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)
         {
-            return Results.Conflict("A report with this name already exists, or the collection does not exist.");
+            return Results.Conflict("An entry with this name already exists, or a referenced entry does not exist.");
         }
     }
 

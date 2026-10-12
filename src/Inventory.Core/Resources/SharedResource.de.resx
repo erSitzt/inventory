@@ -8,6 +8,9 @@
   <data name='"{0}" contains no KB number.' xml:space="preserve">
     <value>„{0}“ enthält keine KB-Nummer.</value>
   </data>
+  <data name='"{0}" is installed on {1} computers, but only {2} licences are recorded.' xml:space="preserve">
+    <value>„{0}“ ist auf {1} Rechnern installiert, erfasst sind aber nur {2} Lizenzen.</value>
+  </data>
   <data name='"{0}" is not a valid e-mail address.' xml:space="preserve">
     <value>„{0}“ ist keine gültige E-Mail-Adresse.</value>
   </data>
@@ -88,6 +91,12 @@
   </data>
   <data name="A different computer responds at this name's address; the listed one is therefore unreachable." xml:space="preserve">
     <value>Unter der Adresse dieses Namens antwortet ein anderer Rechner; der eingetragene ist damit nicht erreichbar.</value>
+  </data>
+  <data name="A licence is exceeded" xml:space="preserve">
+    <value>Eine Lizenz ist überschritten</value>
+  </data>
+  <data name='A licence named "{0}" already exists.' xml:space="preserve">
+    <value>Eine Lizenz namens „{0}“ existiert bereits.</value>
   </data>
   <data name='A package named "{0}" already exists.' xml:space="preserve">
     <value>Es gibt bereits ein Paket mit dem Namen „{0}“.</value>
@@ -181,6 +190,9 @@
   </data>
   <data name="Add credentials" xml:space="preserve">
     <value>Zugangsdaten hinzufügen</value>
+  </data>
+  <data name="Add licence" xml:space="preserve">
+    <value>Lizenz hinzufügen</value>
   </data>
   <data name="Add report" xml:space="preserve">
     <value>Bericht hinzufügen</value>
@@ -449,6 +461,9 @@
   <data name="Back to the overview" xml:space="preserve">
     <value>Zur Übersicht</value>
   </data>
+  <data name="Balance" xml:space="preserve">
+    <value>Bilanz</value>
+  </data>
   <data name="Battery" xml:space="preserve">
     <value>Akku</value>
   </data>
@@ -704,8 +719,20 @@
   <data name="Cores / threads" xml:space="preserve">
     <value>Kerne / Threads</value>
   </data>
+  <data name="Cost" xml:space="preserve">
+    <value>Kosten</value>
+  </data>
   <data name="Cost center" xml:space="preserve">
     <value>Kostenstelle</value>
+  </data>
+  <data name="Cost per licence" xml:space="preserve">
+    <value>Kosten je Lizenz</value>
+  </data>
+  <data name="Counted programs" xml:space="preserve">
+    <value>Gezählte Programme</value>
+  </data>
+  <data name='Counts every program whose name contains this text. With *, the whole name must match, e.g. "Microsoft Office * 2021*".' xml:space="preserve">
+    <value>Zählt jedes Programm, dessen Name diesen Text enthält. Mit * muss der ganze Name passen, z. B. „Microsoft Office * 2021*“.</value>
   </data>
   <data name="Create" xml:space="preserve">
     <value>Anlegen</value>
@@ -850,6 +877,9 @@
   </data>
   <data name="Delete file" xml:space="preserve">
     <value>Datei löschen</value>
+  </data>
+  <data name="Delete licence" xml:space="preserve">
+    <value>Lizenz löschen</value>
   </data>
   <data name="Delete package" xml:space="preserve">
     <value>Paket löschen</value>
@@ -1034,6 +1064,9 @@
   <data name='E.g. 3 with "2. Tuesday": three days after the monthly Microsoft patch day.' xml:space="preserve">
     <value>Z. B. 3 beim „2. Dienstag“: drei Tage nach dem monatlichen Patchday von Microsoft.</value>
   </data>
+  <data name="E.g. contract number, supplier, where the keys are kept." xml:space="preserve">
+    <value>Z. B. Vertragsnummer, Lieferant, Ablageort der Schlüssel.</value>
+  </data>
   <data name="Edit" xml:space="preserve">
     <value>Bearbeiten</value>
   </data>
@@ -1096,6 +1129,9 @@
   </data>
   <data name="Everything, including packages, credentials, settings and commands on target computers." xml:space="preserve">
     <value>Alles, einschließlich Paketen, Zugangsdaten, Einstellungen und Befehlen auf Zielrechnern.</value>
+  </data>
+  <data name="exactly covered" xml:space="preserve">
+    <value>genau gedeckt</value>
   </data>
   <data name="Example: " xml:space="preserve">
     <value>Beispiel: </value>
@@ -1547,6 +1583,30 @@
   <data name="less than" xml:space="preserve">
     <value>kleiner als</value>
   </data>
+  <data name="Licence" xml:space="preserve">
+    <value>Lizenz</value>
+  </data>
+  <data name='Licence "{0}" exceeded: {1} installed, {2} owned' xml:space="preserve">
+    <value>Lizenz „{0}“ überschritten: {1} installiert, {2} vorhanden</value>
+  </data>
+  <data name="Licence changed" xml:space="preserve">
+    <value>Lizenz geändert</value>
+  </data>
+  <data name="Licence created" xml:space="preserve">
+    <value>Lizenz angelegt</value>
+  </data>
+  <data name="Licence deleted" xml:space="preserve">
+    <value>Lizenz gelöscht</value>
+  </data>
+  <data name="Licence {0} not found" xml:space="preserve">
+    <value>Lizenz {0} nicht gefunden</value>
+  </data>
+  <data name="Licences" xml:space="preserve">
+    <value>Lizenzen</value>
+  </data>
+  <data name="Licences owned" xml:space="preserve">
+    <value>Vorhandene Lizenzen</value>
+  </data>
   <data name="License" xml:space="preserve">
     <value>Lizenz</value>
   </data>
@@ -1630,6 +1690,9 @@
   </data>
   <data name='Marked computers appear in the computer list under the filter "Not (anymore) in AD" and can be used in dynamic collections via the rule field "Not (anymore) in Active Directory", e.g. to exclude them from schedules.' xml:space="preserve">
     <value>Gekennzeichnete Rechner stehen in der Rechnerliste unter dem Filter „Nicht (mehr) im AD“ und lassen sich über das Regelfeld „Nicht (mehr) im Active Directory“ in dynamischen Sammlungen verwenden, etwa um sie von Zeitplänen auszunehmen.</value>
+  </data>
+  <data name="Matches {0} programs: {1}" xml:space="preserve">
+    <value>Trifft {0} Programme: {1}</value>
   </data>
   <data name="Member" xml:space="preserve">
     <value>Mitglied</value>
@@ -1850,8 +1913,17 @@
   <data name="No further match." xml:space="preserve">
     <value>Kein weiterer Treffer.</value>
   </data>
+  <data name='No installed program matches "{0}".' xml:space="preserve">
+    <value>Kein installiertes Programm passt auf „{0}“.</value>
+  </data>
+  <data name="No installed program matches at the moment." xml:space="preserve">
+    <value>Derzeit passt kein installiertes Programm.</value>
+  </data>
   <data name='No inventory data yet. A scan can be started under "Computers".' xml:space="preserve">
     <value>Noch keine Inventardaten. Unter „Rechner“ lässt sich ein Scan starten.</value>
+  </data>
+  <data name="No licences recorded yet." xml:space="preserve">
+    <value>Noch keine Lizenzen erfasst.</value>
   </data>
   <data name="no longer present" xml:space="preserve">
     <value>nicht mehr vorhanden</value>
@@ -2150,6 +2222,9 @@
   <data name="Overview" xml:space="preserve">
     <value>Übersicht</value>
   </data>
+  <data name="Owned" xml:space="preserve">
+    <value>Vorhanden</value>
+  </data>
   <data name="Owner" xml:space="preserve">
     <value>Zuständig</value>
   </data>
@@ -2318,6 +2393,9 @@
   <data name="Please choose how to sign in." xml:space="preserve">
     <value>Bitte einen Anmeldeweg wählen.</value>
   </data>
+  <data name="Please enter the program name to count." xml:space="preserve">
+    <value>Bitte den zu zählenden Programmnamen eintragen.</value>
+  </data>
   <data name="Please enter the server address for agents under Settings first." xml:space="preserve">
     <value>Bitte zuerst unter Einstellungen die Server-Adresse für Agenten eintragen.</value>
   </data>
@@ -2389,6 +2467,9 @@
   </data>
   <data name='Program name contains "{0}"' xml:space="preserve">
     <value>Programmname enthält „{0}“</value>
+  </data>
+  <data name="Program name to count" xml:space="preserve">
+    <value>Zu zählender Programmname</value>
   </data>
   <data name="Program not installed" xml:space="preserve">
     <value>Programm nicht installiert</value>
@@ -2467,6 +2548,9 @@
   </data>
   <data name="Recommended silent parameters:" xml:space="preserve">
     <value>Empfohlene Silent-Parameter:</value>
+  </data>
+  <data name="Record how many licences you own, and the inventory counts on how many computers the software is installed. Counted per computer: several versions or editions on one computer use one licence. What is used on a computer is not measured – only what is installed." xml:space="preserve">
+    <value>Tragen Sie ein, wie viele Lizenzen vorhanden sind; das Inventar zählt, auf wie vielen Rechnern die Software installiert ist. Gezählt wird je Rechner: mehrere Versionen oder Editionen auf einem Rechner verbrauchen eine Lizenz. Gemessen wird nicht, was genutzt wird – nur, was installiert ist.</value>
   </data>
   <data name="Registered but off: {0}" xml:space="preserve">
     <value>Registriert, aber aus: {0}</value>
@@ -3464,6 +3548,9 @@
   <data name="Tools" xml:space="preserve">
     <value>Tools</value>
   </data>
+  <data name="Total cost of the recorded licences: {0}" xml:space="preserve">
+    <value>Gesamtkosten der erfassten Lizenzen: {0}</value>
+  </data>
   <data name="TPM" xml:space="preserve">
     <value>TPM</value>
   </data>
@@ -3992,6 +4079,9 @@
   <data name="{0} failed or cancelled" xml:space="preserve">
     <value>{0} fehlgeschlagen oder abgebrochen</value>
   </data>
+  <data name="{0} free" xml:space="preserve">
+    <value>{0} frei</value>
+  </data>
   <data name="{0} is already imported." xml:space="preserve">
     <value>{0} ist bereits importiert.</value>
   </data>
@@ -4000,6 +4090,9 @@
   </data>
   <data name="{0} is too large for the browser upload – please place it directly in the repository folder." xml:space="preserve">
     <value>{0} ist zu groß für den Upload im Browser – bitte direkt im Repository-Ordner ablegen.</value>
+  </data>
+  <data name="{0} missing" xml:space="preserve">
+    <value>{0} fehlen</value>
   </data>
   <data name="{0} new computers" xml:space="preserve">
     <value>{0} neue Rechner</value>
@@ -4039,6 +4132,9 @@
   </data>
   <data name="{0} outdated" xml:space="preserve">
     <value>{0} veraltet</value>
+  </data>
+  <data name="{0} per licence" xml:space="preserve">
+    <value>{0} je Lizenz</value>
   </data>
   <data name="{0} retries" xml:space="preserve">
     <value>{0} Wiederholungen</value>

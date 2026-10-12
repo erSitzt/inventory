@@ -1,0 +1,94 @@
+@inject LicenseService Licenses
+@inject ReportService Reports
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
+            <MudTextField @bind-Value="_pattern" Label="@L["Program name to count"]" Variant="Variant.Outlined" Immediate="true"
+                          HelperText="@L["Counts every program whose name contains this text. With *, the whole name must match, e.g. \"Microsoft Office * 2021*\"."]" />
+            <MudText Typo="Typo.body2" Color="@(_matches.Count == 0 ? Color.Warning : Color.Default)">
+                @if (string.IsNullOrWhiteSpace(_pattern))
+                {
+                    <span>&nbsp;</span>
+                }
+                else if (_matches.Count == 0)
+                {
+                    <span>@L["No installed program matches at the moment."]</span>
+                }
+                else
+                {
+                    <span>@L["Matches {0} programs: {1}", _matches.Count, string.Join(" · ", _matches.Take(6)) + (_matches.Count > 6 ? " …" : "")]</span>
+                }
+            </MudText>
+            <MudStack Row="true" Spacing="2">
+                <MudNumericField T="int" @bind-Value="_owned" Label="@L["Licences owned"]" Variant="Variant.Outlined" Min="0" />
+                <MudNumericField T="decimal?" @bind-Value="_cost" Label="@L["Cost per licence"]" Variant="Variant.Outlined" Min="0" HideSpinButtons="true" Format="N2" />
+            </MudStack>
+            <MudDatePicker @bind-Date="_validUntil" Label="@L["Valid until"]" Variant="Variant.Outlined" Clearable="true" Editable="true" />
+            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="2" HelperText="@L["E.g. contract number, supplier, where the keys are kept."]" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_pattern))" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neue Lizenz anlegen.</summary>
+    [Parameter] public SoftwareLicense? License { get; set; }
+
+    private string _name = "";
+    private string _pattern = "";
+    private int _owned;
+    private decimal? _cost;
+    private DateTime? _validUntil;
+    private string? _notes;
+    private string? _error;
+    private List<string> _programs = [];
+
+    /// <summary>Schon beim Tippen sichtbar: welche gefundenen Programme das Muster trifft.</summary>
+    private List<string> _matches => string.IsNullOrWhiteSpace(_pattern) ? [] : _programs.Where(p => SoftwareLicense.Matches(_pattern, p)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _programs = (await Reports.SoftwareAsync()).Select(s => s.Name).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
+        if (License is null)
+            return;
+        (_name, _pattern, _owned, _cost, _notes) = (License.Name, License.Pattern, License.Owned, License.CostPerLicense, License.Notes);
+        _validUntil = License.ValidUntil?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        try
+        {
+            var saved = await Licenses.SaveAsync(new SoftwareLicense
+            {
+                Id = License?.Id ?? 0, Name = _name, Pattern = _pattern, Owned = _owned, CostPerLicense = _cost, Notes = _notes,
+                ValidUntil = _validUntil is { } date ? DateOnly.FromDateTime(date) : null,
+            });
+            await Audit.LogAsync(License is null ? L["Licence created"] : L["Licence changed"], $"{saved.Name} ({saved.Pattern}): {saved.Owned}");
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            _error = L["A licence named \"{0}\" already exists.", _name.Trim()];
+        }
+    }
+}

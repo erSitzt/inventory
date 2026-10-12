@@ -1,0 +1,128 @@
+@page "/licenses"
+@inject LicenseService LicenseService
+@inject IDialogService Dialogs
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+
+<PageTitle>@L["Licences"] – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">@L["Licences"]</MudText>
+    <MudSpacer />
+    <AdminOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditAsync(null))">@L["Add"]</MudButton>
+    </AdminOnly>
+</MudStack>
+
+<MudText Typo="Typo.body2" Class="mb-4">
+    @L["Record how many licences you own, and the inventory counts on how many computers the software is installed. Counted per computer: several versions or editions on one computer use one licence. What is used on a computer is not measured – only what is installed."]
+</MudText>
+
+<MudDataGrid T="LicenseUsage" Items="_usage" Dense="true" Hover="true" SortMode="SortMode.Single">
+    <Columns>
+        <HierarchyColumn T="LicenseUsage" />
+        <TemplateColumn Title="@L["Licence"]" SortBy="u => u.License.Name">
+            <CellTemplate>
+                <b>@context.Item.License.Name</b>
+                <MudText Typo="Typo.caption" Class="d-block" Style="color: var(--mud-palette-text-secondary)">@context.Item.License.Pattern</MudText>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Owned"]" SortBy="u => u.License.Owned" CellStyle="text-align: right">
+            <CellTemplate>@context.Item.License.Owned</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Installed"]" SortBy="u => u.Installed" CellStyle="text-align: right">
+            <CellTemplate>@context.Item.Installed</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Balance"]" SortBy="u => u.Missing">
+            <CellTemplate>
+                @if (context.Item.Exceeded)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error">@L["{0} missing", context.Item.Missing]</MudChip>
+                }
+                else if (context.Item.Missing == 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">@L["exactly covered"]</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">@L["{0} free", -context.Item.Missing]</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Cost"]" SortBy="u => u.License.Owned * (u.License.CostPerLicense ?? 0)" CellStyle="text-align: right; white-space: nowrap">
+            <CellTemplate>
+                @if (context.Item.License.CostPerLicense is { } cost)
+                {
+                    <span title="@L["{0} per licence", cost.ToString("N2")]">@((cost * context.Item.License.Owned).ToString("N2"))</span>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Valid until"]" SortBy="u => u.License.ValidUntil">
+            <CellTemplate>
+                @if (context.Item.License.ValidUntil is { } until)
+                {
+                    var days = until.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+                    <MudText Typo="Typo.body2" Color="@(days < 0 ? Color.Error : days <= 60 ? Color.Warning : Color.Default)">@until.ToString("d")</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Notes"]" Sortable="false">
+            <CellTemplate>@context.Item.License.Notes</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn CellStyle="width: 1%; white-space: nowrap" Sortable="false">
+            <CellTemplate>
+                <AdminOnly>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item.License))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item.License))" />
+                </AdminOnly>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <ChildRowContent>
+        <div class="pa-3">
+            @if (context.Item.Programs.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["No installed program matches \"{0}\".", context.Item.License.Pattern]</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Counted programs"]</MudText>
+                <MudText Typo="Typo.body2" Class="mb-2">@string.Join(" · ", context.Item.Programs)</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Computers"]</MudText>
+                <MudText Typo="Typo.body2">@string.Join(", ", context.Item.Computers)</MudText>
+            }
+        </div>
+    </ChildRowContent>
+    <NoRecordsContent>
+        <MudText Class="pa-4">@L["No licences recorded yet."]</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@if (_usage.Any(u => u.License.CostPerLicense is not null))
+{
+    <MudText Typo="Typo.body2" Class="mt-3">@L["Total cost of the recorded licences: {0}", _usage.Sum(u => (u.License.CostPerLicense ?? 0) * u.License.Owned).ToString("N2")]</MudText>
+}
+
+@code {
+    private List<LicenseUsage> _usage = [];
+
+    protected override async Task OnInitializedAsync() => _usage = await LicenseService.UsageAsync();
+
+    private async Task EditAsync(SoftwareLicense? license)
+    {
+        var parameters = new DialogParameters<EditLicenseDialog> { { d => d.License, license } };
+        var dialog = await Dialogs.ShowAsync<EditLicenseDialog>(license?.Name ?? L["Add licence"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            _usage = await LicenseService.UsageAsync();
+    }
+
+    private async Task DeleteAsync(SoftwareLicense license)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete licence"], L["Really delete \"{0}\"?", license.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
+        if (confirmed != true)
+            return;
+        await LicenseService.DeleteAsync(license.Id);
+        await Audit.LogAsync(L["Licence deleted"], license.Name);
+        _usage = await LicenseService.UsageAsync();
+    }
+}

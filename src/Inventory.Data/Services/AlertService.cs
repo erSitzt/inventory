@@ -10,7 +10,7 @@ namespace Inventory.Data.Services;
 
 /// <summary>Verwaltet die Alarmregeln und wertet sie aus: gemeldet wird nur, was sich seit dem letzten Durchlauf geändert hat.</summary>
 public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, NotificationService notifications,
-    AlertQueue queue, SettingsService settings, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null)
+    AlertQueue queue, SettingsService settings, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null, LicenseService? licenses = null)
 {
     private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
@@ -223,6 +223,22 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                     messages.Add(new Notification(L["{0} new computers", created.Count], L["New computers: {0}", Names(created.Select(c => c.Name).ToList())],
                         NotificationSeverity.Info, Link(baseUrl, "computers")));
                 return (messages, Stamp(created.Count == 0 ? since : created[^1].CreatedUtc));
+            }
+            case AlertKind.LicenseExceeded:
+            {
+                if (licenses is null)
+                    return (messages, rule.State);
+                var exceeded = (await licenses.UsageAsync(ct)).Where(u => u.Exceeded).ToList();
+                // Gemeldet wird eine Lizenz, wenn sie neu überschritten ist; der erste Durchlauf legt nur den Stand fest.
+                if (rule.State is not null)
+                {
+                    var known = JsonSerializer.Deserialize<HashSet<int>>(rule.State) ?? [];
+                    foreach (var usage in exceeded.Where(u => !known.Contains(u.License.Id)))
+                        messages.Add(new Notification(L["Licence \"{0}\" exceeded: {1} installed, {2} owned", usage.License.Name, usage.Installed, usage.License.Owned],
+                            L["\"{0}\" is installed on {1} computers, but only {2} licences are recorded.", usage.License.Name, usage.Installed, usage.License.Owned],
+                            NotificationSeverity.Warning, Link(baseUrl, "licenses")));
+                }
+                return (messages, JsonSerializer.Serialize(exceeded.Select(u => u.License.Id).Order()));
             }
             default:
                 return (messages, rule.State);
