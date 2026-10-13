@@ -89,6 +89,10 @@ else if (_computer.ReverseDnsMismatch)
                 <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
                     <tbody>
                         @Row(L["Reported name"], _computer.ReportedName)
+                        @if (_computer.DnsName is not null)
+                        {
+                            @Row(L["DNS name"], _computer.DnsName)
+                        }
                         @Row(L["Operating system"], Display.Os(_computer))
                         @Row(L["Version"], $"{_computer.OsVersion} {_computer.OsArchitecture}".Trim())
                         @Row(L["Installed on"], Display.LocalTime(_computer.OsInstalledUtc))

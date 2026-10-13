@@ -14,6 +14,26 @@ public static class MachineNames
     public static bool Differs(string entered, string? actual) =>
         actual is not null && Expected(entered) is { } expected && !string.Equals(expected, Label(actual), StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Unter welchem Namen der Rechner im Netz angesprochen wird: der volle DNS-Name, wenn einer bekannt ist. Ein Eintrag,
+    /// der selbst schon ein DNS-Name oder eine Adresse ist, gilt so, wie er eingetragen wurde. Ein DNS-Name, der nicht (mehr)
+    /// zum Eintrag passt – etwa nach dem Umbenennen des Eintrags –, wird nicht verwendet.
+    /// </summary>
+    public static string Address(string entered, string? dnsName) =>
+        string.IsNullOrWhiteSpace(dnsName) || entered.Contains('.') || System.Net.IPAddress.TryParse(entered, out _) || Differs(dnsName, entered) ? entered : dnsName;
+
+    /// <summary>
+    /// Der DNS-Name, wenn er plausibel zum Rechner gehört: ein Hostname mit Domäne, dessen erster Teil der Rechnername ist.
+    /// Sonst null – so lenkt weder ein falscher Eintrag im Verzeichnis noch ein sich anmeldender Agent Verbindungen auf einen anderen Rechner.
+    /// </summary>
+    public static string? ValidDnsName(string? dnsName, string machineName)
+    {
+        var name = dnsName?.Trim().TrimEnd('.');
+        if (string.IsNullOrEmpty(name) || name.Length > 253 || !name.Contains('.') || System.Net.IPAddress.TryParse(name, out _) || Differs(name, machineName))
+            return null;
+        return name.Split('.').All(l => l.Length is > 0 and <= 63 && l.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_') && l[0] != '-' && l[^1] != '-') ? name : null;
+    }
+
     private static string Label(string name)
     {
         var label = name.Split('.')[0];

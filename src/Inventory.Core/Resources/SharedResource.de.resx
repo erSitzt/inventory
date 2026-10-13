@@ -1013,6 +1013,9 @@
   <data name="Display name" xml:space="preserve">
     <value>Anzeigename</value>
   </data>
+  <data name="DNS name" xml:space="preserve">
+    <value>DNS-Name</value>
+  </data>
   <data name="DNS servers" xml:space="preserve">
     <value>DNS-Server</value>
   </data>

@@ -59,7 +59,7 @@ namespace Inventory.Runner
             if (File.Exists(keyPath))
                 return File.ReadAllText(keyPath).Trim();
 
-            var request = new AgentEnrollRequest { EnrollmentToken = config.EnrollmentToken, HostName = Environment.MachineName, Version = _version };
+            var request = new AgentEnrollRequest { EnrollmentToken = config.EnrollmentToken, HostName = Environment.MachineName, DnsName = DnsName(), Version = _version };
             using (var response = _http.PostAsync(AgentProtocol.EnrollPath, Json(request)).GetAwaiter().GetResult())
             {
                 if (!response.IsSuccessStatusCode)
@@ -68,6 +68,20 @@ namespace Inventory.Runner
                 File.WriteAllText(keyPath, key);
                 Log("Am Server angemeldet.");
                 return key;
+            }
+        }
+
+        /// <summary>Rechnername mit primärem DNS-Suffix, ohne Namensauflösung; null, wenn der Rechner kein Suffix hat.</summary>
+        private static string? DnsName()
+        {
+            try
+            {
+                var properties = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+                return string.IsNullOrWhiteSpace(properties.DomainName) ? null : properties.HostName + "." + properties.DomainName;
+            }
+            catch (System.Net.NetworkInformation.NetworkInformationException)
+            {
+                return null;
             }
         }
 

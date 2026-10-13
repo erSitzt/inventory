@@ -261,6 +261,13 @@ Jeder Aufruf steht im Protokoll. Antwortet unter dem eingetragenen Namen ein and
 
 Die Synchronisation (*Einstellungen → Active Directory*) legt Computerkonten als Rechner an und gleicht vorhandene ab:
 
+- **DNS-Name**: jeder Lauf speichert den vollen DNS-Namen (`dNSHostName`) des Kontos. Scans, Erreichbarkeitsprüfung,
+  Deployments und Fernzugriff verbinden sich über diesen Namen – `pc-01.corp.example` –, auch wenn der Eintrag als
+  `pc-01` geführt wird; er wird auch dort aufgelöst, wo kurze Namen es nicht werden, z. B. über VPN oder aus dem
+  Homeoffice. Ohne Verzeichnis stammt der Name vom Agenten (bei der Anmeldung) oder aus dem ersten Scan eines
+  Domänenmitglieds. Ein Eintrag, der selbst als DNS-Name oder Adresse eingetragen wurde, gilt wie eingetragen, und ein
+  DNS-Name, dessen Rechnerteil nicht zum Rechner passt, wird ignoriert. Die Rechnerseite zeigt den verwendeten Namen
+  als „DNS-Name“.
 - **Deaktivierte Computerkonten ausschließen** (Standard: an): deaktivierte Konten werden nicht angelegt; ist ein
   vorhandener Rechner im Verzeichnis deaktiviert, gilt er als nicht mehr gefunden.
 - **Angaben aus dem Verzeichnis**: jeder Lauf speichert auch die Organisationseinheit, die Gruppen, in denen das

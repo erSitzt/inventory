@@ -280,7 +280,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                     if (target.ComputerId is { } id && closed.ContainsKey(id))
                         continue;
                     // Wer auf sein Fenster gewartet hat, wird beim Start ohnehin auf Erreichbarkeit geprüft.
-                    if (target.Status == TargetStatus.WaitingWindow || await IsReachableAsync(target.ComputerName, ct))
+                    if (target.Status == TargetStatus.WaitingWindow || await IsReachableAsync(target, ct))
                         ready.Add(target);
                     else if (await WakeAsync(deployment, target, ct) && target.Error != WokenText)
                     {
@@ -499,7 +499,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                     await CheckFailureLimitAsync(deployment);
                     Changed?.Invoke(deployment.Id);
                 }
-                else if (await IsReachableAsync(target.ComputerName, ct))
+                else if (await IsReachableAsync(target, ct))
                 {
                     ready.Add(target);
                 }
@@ -631,7 +631,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 error = stopReason;
                 return;
             }
-            if (checkOnline && !await IsReachableAsync(target.ComputerName, ct))
+            if (checkOnline && !await IsReachableAsync(target, ct))
             {
                 status = TargetStatus.WaitingOffline;
                 error = await WakeAsync(deployment, target, ct) ? WokenText : WaitingText;
@@ -744,12 +744,15 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     }
 
     /// <summary>Erreichbar heißt: es antwortet der gemeinte Rechner, nicht bloß irgendeiner unter seiner alten Adresse.</summary>
-    private async Task<bool> IsReachableAsync(string computerName, CancellationToken ct)
+    private async Task<bool> IsReachableAsync(DeploymentTarget target, CancellationToken ct)
     {
-        var result = await probe.ProbeAsync(computerName, ct);
-        if (!result.Online || !MachineNames.Differs(computerName, result.MachineName))
-            return result.Online;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        // Gefragt wird unter dem Namen, unter dem auch der Job den Rechner anspricht.
+        var computer = target.ComputerId is { } id ? await db.Computers.AsNoTracking().Where(c => c.Id == id).Select(c => new { c.Name, c.DnsName }).FirstOrDefaultAsync(ct) : null;
+        var name = computer?.Name ?? target.ComputerName;
+        var result = await probe.ProbeAsync(MachineNames.Address(name, computer?.DnsName), ct);
+        if (!result.Online || !MachineNames.Differs(name, result.MachineName))
+            return result.Online;
         return !await SettingsService.VerifyTargetNameAsync(db, ct);
     }
 

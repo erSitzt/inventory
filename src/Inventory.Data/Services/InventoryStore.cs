@@ -62,6 +62,9 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.IsOnline = false;
         }
         computer.Domain = data.Domain;
+        // Ein Domänenmitglied meldet seine DNS-Domäne (eine Arbeitsgruppe hat keinen Punkt); nur als Lückenfüller, das Verzeichnis geht vor.
+        if (computer.DnsName is null && data.ComputerName is { } own && data.Domain is { } domain && domain.Contains('.'))
+            computer.DnsName = MachineNames.ValidDnsName($"{own}.{domain}", computer.Name);
         computer.Manufacturer = data.Manufacturer;
         computer.Model = data.Model;
         computer.SerialNumber = data.SerialNumber;

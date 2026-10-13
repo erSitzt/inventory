@@ -29,6 +29,8 @@ namespace Inventory.Contracts
     {
         public string EnrollmentToken { get; set; } = "";
         public string HostName { get; set; } = "";
+        /// <summary>Voller DNS-Name (Rechnername + primäres DNS-Suffix); leer ohne Suffix und bei älteren Agenten.</summary>
+        public string? DnsName { get; set; }
         public string? Version { get; set; }
     }
 

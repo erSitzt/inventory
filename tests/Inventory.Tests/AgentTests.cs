@@ -178,4 +178,39 @@ public class AgentTests
     {
         public void Report(ProgressEvent value) => events.Add(value.Text);
     }
+
+    [Fact]
+    public async Task An_enrolling_agent_reports_its_dns_name_and_keeps_the_name_of_its_entry()
+    {
+        using var db = new TestDb();
+        var agents = new AgentService(db, new SettingsService(db), TimeProvider.System);
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var token = await agents.GetEnrollmentTokenAsync();
+        await computers.ImportAsync("alt-01");
+        AgentEnrollRequest Request(string host, string? dns) => new() { EnrollmentToken = token, HostName = host, DnsName = dns, Version = "1.0" };
+
+        await agents.EnrollAsync(Request("PC-01", "pc-01.corp.example"));
+        await agents.EnrollAsync(Request("ALT-01", "alt-01.corp.example."));
+        // Kein Suffix, ein fremder Name und Zeichen, die in keinem Hostnamen stehen: kein DNS-Name.
+        await agents.EnrollAsync(Request("PC-03", null));
+        await agents.EnrollAsync(Request("PC-04", "server.corp.example"));
+        await agents.EnrollAsync(Request("PC-05", "pc-05.corp.example/../x"));
+
+        // Den Namen aus dem Verzeichnis überschreibt ein Agent nicht.
+        await using (var context = db.CreateDbContext())
+        {
+            var known = context.Computers.Single(c => c.Name == "PC-01");
+            (known.DnsName, known.DirectorySeenUtc) = ("pc-01.corp.example", DateTime.UtcNow);
+            await context.SaveChangesAsync();
+        }
+        await agents.EnrollAsync(Request("PC-01", "pc-01.branch.example"));
+        await agents.EnrollAsync(Request("ALT-01", "alt-01.branch.example"));
+
+        var stored = (await computers.ListAsync()).ToDictionary(c => c.Name, c => c.DnsName);
+        Assert.Equal("pc-01.corp.example", stored["PC-01"]);
+        Assert.Equal("alt-01.branch.example", stored["alt-01"]);
+        Assert.Null(stored["PC-03"]);
+        Assert.Null(stored["PC-04"]);
+        Assert.Null(stored["PC-05"]);
+    }
 }

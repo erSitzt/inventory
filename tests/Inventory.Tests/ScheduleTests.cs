@@ -93,6 +93,40 @@ public class ScheduleTests
     }
 
     [Fact]
+    public async Task Ad_sync_stores_the_dns_name_of_the_account_and_leaves_the_name_of_the_entry()
+    {
+        using var db = new TestDb();
+        var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var directory = new FakeDirectory
+        {
+            Computers =
+            [
+                new("PC-01", "pc-01.corp.example", null, null), new("PC-02", "PC-02.corp.example.", null, null),
+                // Ohne DNS-Namen im Verzeichnis, und mit einem, der nicht zum Konto passt.
+                new("PC-03", null, null, null), new("PC-04", "anders.corp.example", null, null),
+            ],
+        };
+        var sync = new AdSyncService(directory, new SettingsService(db), new CredentialService(db, new ReversingProtector()), computers, clock);
+        await computers.ImportAsync("pc-01 pc-04");
+        await using (var context = db.CreateDbContext())
+        {
+            // Was Agent oder Scan gemeldet haben, bleibt, solange das Verzeichnis nichts Passendes nennt.
+            context.Computers.Single(c => c.Name == "pc-04").DnsName = "pc-04.agent.example";
+            await context.SaveChangesAsync();
+        }
+        await sync.SaveSettingsAsync(true, null, null, null, 24);
+
+        await sync.SyncAsync();
+
+        var stored = (await computers.ListAsync()).ToDictionary(c => c.Name, c => (c.DnsName, c.Address));
+        Assert.Equal(("pc-01.corp.example", "pc-01.corp.example"), stored["pc-01"]);
+        Assert.Equal(("PC-02.corp.example", "PC-02.corp.example"), stored["PC-02"]);
+        Assert.Equal((null, "PC-03"), stored["PC-03"]);
+        Assert.Equal(("pc-04.agent.example", "pc-04.agent.example"), stored["pc-04"]);
+    }
+
+    [Fact]
     public async Task Ad_sync_adds_only_unknown_computers_and_respects_interval()
     {
         using var db = new TestDb();

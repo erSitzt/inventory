@@ -197,6 +197,8 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         if (names.Any(n => n.Split('.')[0].Equals(name, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException(L["{0} is already listed as a computer of its own. This entry is a duplicate and can be deleted.", name]);
         computer.Name = name;
+        // Der gespeicherte DNS-Name gehörte zum alten Namen; der nächste Abgleich oder Scan liefert den passenden.
+        computer.DnsName = MachineNames.ValidDnsName(computer.DnsName, name);
         await db.SaveChangesAsync(ct);
         return name;
     }
@@ -218,6 +220,8 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
                 computer.DirectoryGroups = account.Groups is { Count: > 0 } groups ? string.Join('\n', groups) : null;
                 computer.DirectoryDescription = account.Description;
                 computer.DirectoryLastLogonUtc = account.LastLogonUtc;
+                // Das Verzeichnis ist die verlässlichste Quelle; ohne (passenden) Eintrag bleibt stehen, was Agent oder Scan gemeldet haben.
+                computer.DnsName = MachineNames.ValidDnsName(account.DnsHostName, computer.Name) ?? computer.DnsName;
             }
             if (present)
             {
@@ -250,7 +254,7 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         await Parallel.ForEachAsync(computers, new ParallelOptions { MaxDegreeOfParallelism = MaxParallelProbes, CancellationToken = ct },
             async (computer, token) =>
             {
-                var result = await probe.ProbeAsync(computer.Name, token);
+                var result = await probe.ProbeAsync(computer.Address, token);
                 var now = DateTime.UtcNow;
                 // Antwortet unter der Adresse ein anderer Rechner, ist der eingetragene nicht erreichbar – nur seine alte Adresse.
                 var online = result.Online && !(verifyName && MachineNames.Differs(computer.Name, result.MachineName));

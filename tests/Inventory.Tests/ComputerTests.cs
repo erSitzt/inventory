@@ -100,4 +100,31 @@ public class ComputerTests
         foreach (var link in new[] { RemoteAccessLinks.LaunchAssistance("pc-01"), RemoteAccessLinks.LaunchRdp("srv1.corp.local"), RemoteAccessLinks.LaunchShadow("PC_01", 2) })
             Assert.True(Inventory.Launcher.LinkParser.TryParse(link, out _, out _, out _), link);
     }
+
+    [Theory]
+    [InlineData("pc-01", "pc-01.corp.example", "pc-01.corp.example")]
+    [InlineData("pc-01", null, "pc-01")]
+    [InlineData("pc-01", " ", "pc-01")]
+    // Ein Eintrag, der selbst ein DNS-Name oder eine Adresse ist, gilt wie eingetragen.
+    [InlineData("pc-01.other.example", "pc-01.corp.example", "pc-01.other.example")]
+    [InlineData("10.1.2.3", "pc-01.corp.example", "10.1.2.3")]
+    [InlineData("fe80::1", "pc-01.corp.example", "fe80::1")]
+    // Ein DNS-Name, der zu einem anderen Rechner gehört (der Eintrag wurde umbenannt), wird nicht verwendet.
+    [InlineData("pc-new", "pc-old.corp.example", "pc-new")]
+    public void Connections_go_to_the_dns_name_if_one_is_known(string entered, string? dnsName, string expected) =>
+        Assert.Equal(expected, Inventory.Core.Model.MachineNames.Address(entered, dnsName));
+
+    [Theory]
+    [InlineData("pc-01.corp.example", "PC-01", "pc-01.corp.example")]
+    [InlineData("pc-01.corp.example.", "pc-01", "pc-01.corp.example")]
+    // Längere DNS-Namen meldet der Rechner auf 15 Zeichen gekürzt.
+    [InlineData("arbeitsplatz-buchhaltung.corp.example", "ARBEITSPLATZ-BU", "arbeitsplatz-buchhaltung.corp.example")]
+    [InlineData("server.corp.example", "pc-01", null)]
+    [InlineData("pc-01", "pc-01", null)]
+    [InlineData("pc-01.corp example", "pc-01", null)]
+    [InlineData("pc-01.-corp.example", "pc-01", null)]
+    [InlineData("10.1.2.3", "10", null)]
+    [InlineData(null, "pc-01", null)]
+    public void A_dns_name_only_counts_if_it_belongs_to_the_computer(string? dnsName, string machine, string? expected) =>
+        Assert.Equal(expected, Inventory.Core.Model.MachineNames.ValidDnsName(dnsName, machine));
 }
