@@ -87,8 +87,7 @@ namespace Inventory.Runner
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is XmlException)
             {
                 // Ohne lesbares Manifest bleibt der Paketname; bekannte Laufzeitbibliotheken verrät schon ihr Name.
-                if (app.Name.StartsWith("Microsoft.VCLibs.", StringComparison.OrdinalIgnoreCase) || app.Name.StartsWith("Microsoft.NET.", StringComparison.OrdinalIgnoreCase)
-                    || app.Name.StartsWith("Microsoft.UI.Xaml.", StringComparison.OrdinalIgnoreCase) || app.Name.StartsWith("Microsoft.WindowsAppRuntime.", StringComparison.OrdinalIgnoreCase))
+                if (AppNames.LibraryPrefixes.Any(prefix => app.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
                     return false;
             }
             return true;

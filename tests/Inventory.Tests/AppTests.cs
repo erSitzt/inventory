@@ -48,6 +48,10 @@ public sealed class AppTests : IDisposable
         Assert.Contains("-not $_.IsFramework", script);
         Assert.Contains("$_.SignatureKind -ne 'System'", script);
 
+        // Bereitgestellte Pakete: nichts, was installiert als geschützt gilt, und keine Laufzeitbibliotheken.
+        Assert.Contains("$protected -notcontains $name", script);
+        Assert.Contains("'Microsoft.VCLibs.*'", script);
+
         var keep = AppNames.RemovalScript("Microsoft.BingWeather", keepProvisioned: true);
         Assert.DoesNotContain("Get-AppxProvisionedPackage", keep);
 

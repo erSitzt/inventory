@@ -9,6 +9,12 @@ namespace Inventory.Contracts
         /// <summary>Trifft ein Muster mehr verschiedene Apps, wird nichts entfernt: dann war es zu weit gefasst.</summary>
         public const int MaxMatches = 5;
 
+        /// <summary>Laufzeitbibliotheken, von denen andere Apps abhängen; sie werden nie entfernt und nicht als App gezeigt.</summary>
+        public static readonly string[] LibraryPrefixes =
+        {
+            "Microsoft.VCLibs.", "Microsoft.NET.", "Microsoft.UI.Xaml.", "Microsoft.WindowsAppRuntime.", "Microsoft.DirectXRuntime", "Microsoft.Services.Store.Engagement",
+        };
+
         /// <summary>
         /// true, wenn das Muster an den Entfernen-Schritt gehen darf: nur Zeichen eines Paketnamens und *, und genug festen Text,
         /// dass es nicht "alles" oder "alles von Microsoft" bedeutet.
@@ -65,10 +71,15 @@ namespace Inventory.Contracts
             script.AppendLine("$ErrorActionPreference = 'Stop'");
             script.AppendLine("$ProgressPreference = 'SilentlyContinue'");
             script.AppendLine("$pattern = '" + pattern.Trim() + "'");
-            script.AppendLine("$installed = @(Get-AppxPackage -AllUsers -Name $pattern | Where-Object { -not $_.IsFramework -and -not $_.IsResourcePackage -and $_.SignatureKind -ne 'System' -and -not $_.NonRemovable })");
+            script.AppendLine("$matching = @(Get-AppxPackage -AllUsers -Name $pattern)");
+            script.AppendLine("$installed = @($matching | Where-Object { -not $_.IsFramework -and -not $_.IsResourcePackage -and $_.SignatureKind -ne 'System' -and -not $_.NonRemovable })");
+            // Bereitgestellte Pakete tragen diese Merkmale nicht: geschützt ist, was installiert als geschützt erkannt wurde,
+            // und was dem Namen nach eine Laufzeitbibliothek ist.
+            script.AppendLine("$protected = @($matching | Where-Object { $_.IsFramework -or $_.IsResourcePackage -or $_.SignatureKind -eq 'System' -or $_.NonRemovable } | ForEach-Object { $_.Name })");
+            script.AppendLine("$libraries = @(" + string.Join(", ", System.Linq.Enumerable.Select(LibraryPrefixes, prefix => "'" + prefix + "*'")) + ")");
             script.AppendLine(keepProvisioned
                 ? "$provisioned = @()"
-                : "$provisioned = @(Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -like $pattern })");
+                : "$provisioned = @(Get-AppxProvisionedPackage -Online | Where-Object { $name = $_.DisplayName; $name -like $pattern -and $protected -notcontains $name -and @($libraries | Where-Object { $name -like $_ }).Count -eq 0 })");
             script.AppendLine("$names = @(@($installed | ForEach-Object { $_.Name }) + @($provisioned | ForEach-Object { $_.DisplayName }) | Sort-Object -Unique)");
             script.AppendLine("if ($names.Count -eq 0) { Write-Output \"No app matches $pattern; nothing to remove.\"; exit 0 }");
             script.AppendLine("if ($names.Count -gt " + MaxMatches + ") { Write-Output (\"The pattern $pattern matches \" + $names.Count + \" apps: \" + ($names -join ', ') + \". Nothing was removed; narrow the pattern down.\"); exit 2 }");

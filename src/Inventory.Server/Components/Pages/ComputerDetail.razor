@@ -288,7 +288,7 @@ else if (_computer.ReverseDnsMismatch)
 
     <MudTabPanel Text="@($"{L["Apps"]} ({_computer.Apps.Count})")">
         <MudText Typo="Typo.body2" Class="mb-2">
-            @L["App packages (MSIX/AppX, also from the Store) registered on the computer, without parts of Windows and runtime libraries. An empty list means the computer has not been scanned with a current runner yet."]
+            @L["App packages (MSIX/AppX, also from the Store) registered on the computer, without parts of Windows and runtime libraries. If the list is empty, the computer has no such apps or has not been scanned with a current runner yet."]
         </MudText>
         <MudDataGrid T="ComputerApp" Items="_computer.Apps" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
             <Columns>

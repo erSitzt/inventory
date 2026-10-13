@@ -407,8 +407,8 @@
   <data name="App (MSIX/Store)" xml:space="preserve">
     <value>App (MSIX/Store)</value>
   </data>
-  <data name="App packages (MSIX/AppX, also from the Store) registered on the computer, without parts of Windows and runtime libraries. An empty list means the computer has not been scanned with a current runner yet." xml:space="preserve">
-    <value>App-Pakete (MSIX/AppX, auch aus dem Store), die auf dem Rechner registriert sind – ohne Bestandteile von Windows und Laufzeitbibliotheken. Eine leere Liste bedeutet, dass der Rechner noch nicht mit einem aktuellen Runner gescannt wurde.</value>
+  <data name="App packages (MSIX/AppX, also from the Store) registered on the computer, without parts of Windows and runtime libraries. If the list is empty, the computer has no such apps or has not been scanned with a current runner yet." xml:space="preserve">
+    <value>App-Pakete (MSIX/AppX, auch aus dem Store), die auf dem Rechner registriert sind – ohne Bestandteile von Windows und Laufzeitbibliotheken. Ist die Liste leer, hat der Rechner keine solchen Apps oder wurde noch nicht mit einem aktuellen Runner gescannt.</value>
   </data>
   <data name="Appearance" xml:space="preserve">
     <value>Darstellung</value>
