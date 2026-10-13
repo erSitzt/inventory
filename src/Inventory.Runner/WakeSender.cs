@@ -73,6 +73,7 @@ namespace Inventory.Runner
                 {
                     if (unicast.Address.AddressFamily != AddressFamily.InterNetwork || IPAddress.IsLoopback(unicast.Address))
                         continue;
+                    var reached = false;
                     try
                     {
                         using (var client = new UdpClient(new IPEndPoint(unicast.Address, 0)))
@@ -86,17 +87,26 @@ namespace Inventory.Runner
                                 var packet = Packet(mac);
                                 foreach (var target in targets)
                                 {
-                                    client.Send(packet, packet.Length, new IPEndPoint(target, Port));
-                                    sent++;
+                                    try
+                                    {
+                                        client.Send(packet, packet.Length, new IPEndPoint(target, Port));
+                                        sent++;
+                                        reached = true;
+                                    }
+                                    catch (SocketException)
+                                    {
+                                        // Dieses Ziel nimmt die Schnittstelle nicht an: die übrigen Adressen und Ziele bleiben.
+                                    }
                                 }
                             }
                         }
-                        interfaces++;
                     }
                     catch (SocketException)
                     {
                         // Schnittstelle ohne Verbindung: die übrigen bleiben.
                     }
+                    if (reached)
+                        interfaces++;
                 }
             }
             if (sent == 0)

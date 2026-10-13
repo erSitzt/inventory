@@ -14,6 +14,9 @@ public sealed record WakeResult(int ComputerId, string ComputerName, IReadOnlyLi
 {
     /// <summary>false trotz bekannter MAC-Adresse heißt: der Server hatte keinen Weg ins Netz und kein Agent stand bereit.</summary>
     public bool Sent => Macs.Count > 0 && (Packets > 0 || Relays.Count > 0);
+
+    /// <summary>Abgeschlossen, sobald die Aufträge dieses Aufrufs an die Agenten beantwortet oder verfallen sind. Niemand muss darauf warten.</summary>
+    public Task Relayed { get; init; } = Task.CompletedTask;
 }
 
 /// <summary>
@@ -34,9 +37,6 @@ public sealed class WakeService(IDbContextFactory<InventoryDbContext> dbFactory,
 
     private readonly IRemoteTransport? _agents = transports?.FirstOrDefault(t => t.Kind == TransportKind.Agent);
     private readonly TimeProvider _time = time ?? TimeProvider.System;
-
-    /// <summary>Die zuletzt an Agenten vergebenen Aufträge; abgeschlossen, sobald alle beantwortet oder verfallen sind.</summary>
-    public Task RelaysCompleted { get; private set; } = Task.CompletedTask;
 
     public async Task<WakeResult?> WakeAsync(int computerId, CancellationToken ct = default) =>
         (await WakeAsync([computerId], ct)).FirstOrDefault();
@@ -73,8 +73,8 @@ public sealed class WakeService(IDbContextFactory<InventoryDbContext> dbFactory,
             }
             results.Add(new WakeResult(computer.Id, computer.Name, macs, packets, asked));
         }
-        RelaysCompleted = Task.WhenAll(orders.Select(o => RelayAsync(o.Key, o.Value)));
-        return results;
+        var relayed = Task.WhenAll(orders.Select(o => RelayAsync(o.Key, o.Value)));
+        return [.. results.Select(r => r with { Relayed = relayed })];
     }
 
     private sealed record Relay(int Id, string Name, List<WakeOnLan.Adapter> Adapters);
@@ -93,10 +93,14 @@ public sealed class WakeService(IDbContextFactory<InventoryDbContext> dbFactory,
         var ids = online.Select(c => c.Id).ToList();
         var adapters = (await db.NetworkAdapters.AsNoTracking().Where(a => ids.Contains(a.ComputerId))
             .Select(a => new { a.ComputerId, a.IpAddresses, a.SubnetMasks }).ToListAsync(ct)).ToLookup(a => a.ComputerId);
-        // Ein noch nie gescannter Rechner hat keine Adapter: dann zählt seine zuletzt gesehene Adresse.
-        return [.. online.Select(c => new Relay(c.Id, c.Name, adapters[c.Id].Any()
-            ? [.. adapters[c.Id].Select(a => new WakeOnLan.Adapter(null, Split(a.IpAddresses), Split(a.SubnetMasks)))]
-            : [new WakeOnLan.Adapter(null, c.IpAddress is { } ip ? [ip] : [], [])]))];
+        return [.. online.Select(c =>
+        {
+            List<WakeOnLan.Adapter> known = [.. adapters[c.Id].Select(a => new WakeOnLan.Adapter(null, Split(a.IpAddresses), Split(a.SubnetMasks)))];
+            // Ohne IPv4-Adresse aus einem Scan (nie gescannt, nur IPv6 gemeldet) zählt die zuletzt gesehene Adresse.
+            if (c.IpAddress is { } ip && !known.Any(a => a.Addresses.Any(x => WakeOnLan.Broadcast(x) is not null)))
+                known.Add(new WakeOnLan.Adapter(null, [ip], []));
+            return new Relay(c.Id, c.Name, known);
+        })];
     }
 
     /// <summary>

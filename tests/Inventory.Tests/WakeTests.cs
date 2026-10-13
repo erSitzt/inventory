@@ -270,7 +270,7 @@ public sealed class WakeTests : IDisposable
         await AgentAsync("pc-far", "10.20.31.77");
 
         var result = await _wake.WakeAsync(off.Id);
-        await _wake.RelaysCompleted;
+        await result!.Relayed;
 
         Assert.Equal(["pc-near"], result!.Relays);
         var (host, step) = Assert.Single(_agents.Orders);
@@ -290,9 +290,24 @@ public sealed class WakeTests : IDisposable
         await AgentAsync("pc-other", "10.20.32.5", mask: "255.255.252.0");
 
         var result = await _wake.WakeAsync(off.Id);
-        await _wake.RelaysCompleted;
+        await result!.Relayed;
 
         Assert.Equal(["pc-wide"], result!.Relays);
+    }
+
+    [Fact]
+    public async Task An_agent_whose_scan_reported_no_ipv4_address_counts_with_its_last_seen_address()
+    {
+        var off = await ComputerAsync("pc-off", ip: "10.20.30.40", mask: "255.255.255.0");
+        var agent = await AgentAsync("pc-v6", "10.20.30.77");
+        await using (var db = _db.CreateDbContext())
+        {
+            var adapter = db.NetworkAdapters.Single(a => a.ComputerId == agent.Id);
+            (adapter.IpAddresses, adapter.SubnetMasks) = ("fe80::1", "64");
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(["pc-v6"], (await _wake.WakeAsync(off.Id))!.Relays);
     }
 
     [Fact]
@@ -305,7 +320,7 @@ public sealed class WakeTests : IDisposable
         await AgentAsync("pc-c", "10.20.30.13");
 
         var result = await _wake.WakeAsync(off.Id);
-        await _wake.RelaysCompleted;
+        await result!.Relayed;
 
         // Die zuletzt gemeldeten zuerst.
         Assert.Equal(["pc-c", "pc-b"], result!.Relays);
@@ -319,7 +334,7 @@ public sealed class WakeTests : IDisposable
         var agent = await AgentAsync("pc-agent", "10.20.30.77");
 
         var results = await _wake.WakeAsync([first.Id, second.Id, agent.Id]);
-        await _wake.RelaysCompleted;
+        await results[0].Relayed;
 
         var (host, step) = Assert.Single(_agents.Orders);
         Assert.Equal("pc-agent", host);
@@ -335,7 +350,7 @@ public sealed class WakeTests : IDisposable
         var wake = new WakeService(_db, new NoRoute(), [_agents]);
 
         var result = await wake.WakeAsync(off.Id);
-        await wake.RelaysCompleted;
+        await result!.Relayed;
 
         Assert.Equal(0, result!.Packets);
         Assert.True(result.Sent);
