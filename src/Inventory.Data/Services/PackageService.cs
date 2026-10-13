@@ -25,6 +25,12 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     /// <summary>So tief dürfen Pakete ineinander verschachtelt sein; fängt zugleich Zyklen ab.</summary>
     private const int MaxNestingDepth = 5;
 
+    /// <summary>
+    /// Änderungen am Geflecht aus Voraussetzungen und eingebetteten Paketen laufen nacheinander: sonst sähen zwei gleichzeitige
+    /// Änderungen (A braucht B, B braucht A) jeweils noch keinen Zyklus, und ein Löschen verpasste eine eben erst angelegte Voraussetzung.
+    /// </summary>
+    private static readonly SemaphoreSlim GraphLock = new(1, 1);
+
     public PackageRepository Repository => repository;
 
     public async Task<List<Package>> ListAsync(CancellationToken ct = default)
@@ -63,6 +69,19 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
 
     /// <summary>Ersetzt die Voraussetzungen des Pakets; die Reihenfolge der Liste ist die der Ausführung.</summary>
     public async Task SetDependenciesAsync(int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct = default)
+    {
+        await GraphLock.WaitAsync(ct);
+        try
+        {
+            await SetDependenciesCoreAsync(packageId, requiredPackageIds, ct);
+        }
+        finally
+        {
+            GraphLock.Release();
+        }
+    }
+
+    private async Task SetDependenciesCoreAsync(int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var wanted = requiredPackageIds.Distinct().ToList();
@@ -195,6 +214,19 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
+        await GraphLock.WaitAsync(ct);
+        try
+        {
+            await DeleteCoreAsync(id, ct);
+        }
+        finally
+        {
+            GraphLock.Release();
+        }
+    }
+
+    private async Task DeleteCoreAsync(int id, CancellationToken ct)
+    {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Pakete, die dieses voraussetzen oder einbetten, verlieren mit ihm einen Teil: sie sind nicht mehr das, was freigegeben wurde.
         var users = await db.PackageDependencies.Where(d => d.RequiredPackageId == id).Select(d => d.PackageId)
@@ -210,6 +242,25 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
 
     /// <summary>Legt einen Schritt an (stepId = null, ans Ende) oder ändert ihn.</summary>
     public async Task SaveStepAsync(int packageId, int? stepId, JobStep definition, int? nestedPackageId, CancellationToken ct = default)
+    {
+        // Nur ein eingebettetes Paket verändert das Geflecht; gewöhnliche Schritte warten nicht.
+        if (nestedPackageId is null)
+        {
+            await SaveStepCoreAsync(packageId, stepId, definition, null, ct);
+            return;
+        }
+        await GraphLock.WaitAsync(ct);
+        try
+        {
+            await SaveStepCoreAsync(packageId, stepId, definition, nestedPackageId, ct);
+        }
+        finally
+        {
+            GraphLock.Release();
+        }
+    }
+
+    private async Task SaveStepCoreAsync(int packageId, int? stepId, JobStep definition, int? nestedPackageId, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (nestedPackageId is not null && await ContainsAsync(db, nestedPackageId.Value, packageId, MaxNestingDepth, ct))
