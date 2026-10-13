@@ -304,7 +304,10 @@ namespace Inventory.Runner
                 case StepType.PowerShell:
                 case StepType.Install:
                 case StepType.Reboot:
+                case StepType.WindowsFeature:
                     return RunStep(index, step, progress);
+                case StepType.Registry:
+                    return RunRegistry(index, step, progress);
                 case StepType.Uninstall:
                     return RunUninstall(index, step, progress);
                 case StepType.WindowsUpdate:
@@ -333,6 +336,32 @@ namespace Inventory.Runner
             }
         }
 
+        /// <summary>Registrierungs-Schritt; für den angemeldeten Benutzer wird dessen Struktur unter HKEY_USERS angesprochen.</summary>
+        private static StepResult RunRegistry(int index, JobStep step, StreamWriter progress)
+        {
+            if (step.RunAs != StepRunAs.LoggedOnUser)
+                return RunInProcess(index, step, progress, () => RegistryStep.Run(step, null));
+            string? userName;
+            try
+            {
+                using (var session = UserSession.Open())
+                    userName = session?.UserName;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is System.ComponentModel.Win32Exception)
+            {
+                return new StepResult { Index = index, Name = step.Name, Status = StepStatus.Failed, Error = ex.Message };
+            }
+            if (userName == null)
+            {
+                return new StepResult
+                {
+                    Index = index, Name = step.Name, Status = StepStatus.Skipped,
+                    Output = "Kein Benutzer angemeldet; der Schritt läuft nur im Kontext eines angemeldeten Benutzers.",
+                };
+            }
+            return RunInProcess(index, step, progress, () => $"[Für {userName}] " + RegistryStep.Run(step, userName));
+        }
+
         /// <summary>Schritte ohne Kindprozess; die Rückgabe der Aktion wird zur Ausgabe des Schritts.</summary>
         private static StepResult RunInProcess(int index, JobStep step, StreamWriter progress, Func<string> action)
         {
@@ -356,9 +385,11 @@ namespace Inventory.Runner
 
         private string CopyFiles(JobStep step)
         {
-            if (string.IsNullOrWhiteSpace(step.File) || string.IsNullOrWhiteSpace(step.Destination))
+            var external = !string.IsNullOrWhiteSpace(step.SourcePath);
+            if ((!external && string.IsNullOrWhiteSpace(step.File)) || string.IsNullOrWhiteSpace(step.Destination))
                 throw new InvalidDataException("Quelle oder Ziel fehlt");
-            var source = Path.Combine(FilesDir, step.File!);
+            // Eine Quelle außerhalb des Pakets (Freigabe oder Pfad auf dem Rechner) liest der Runner mit seinem eigenen Konto.
+            var source = external ? Environment.ExpandEnvironmentVariables(step.SourcePath!.Trim()).TrimEnd('\\') : Path.Combine(FilesDir, step.File!);
             var destination = Environment.ExpandEnvironmentVariables(step.Destination!);
 
             if (File.Exists(source))
@@ -382,7 +413,9 @@ namespace Inventory.Runner
                 }
                 return $"{count} Dateien nach {destination} kopiert";
             }
-            throw new FileNotFoundException($"Paketdatei {step.File} nicht gefunden");
+            throw new FileNotFoundException(external
+                ? $"Quelle {step.SourcePath} nicht gefunden oder nicht lesbar (bei einer Freigabe braucht das Computerkonto des Rechners Leserechte)"
+                : $"Paketdatei {step.File} nicht gefunden");
         }
 
         private static string ControlService(JobStep step)
@@ -688,6 +721,20 @@ namespace Inventory.Runner
                     if (!string.IsNullOrWhiteSpace(step.Script))
                         arguments += " /c \"" + step.Script.Replace("\"", "'") + "\"";
                     break;
+                case StepType.WindowsFeature:
+                    if (step.FeatureNames == null || step.FeatureNames.Count == 0)
+                        throw new InvalidDataException("Kein Feature angegeben");
+                    fileName = Path.Combine(system, "dism.exe");
+                    arguments = step.FeatureDisable ? "/online /disable-feature" : "/online /enable-feature /all";
+                    foreach (var feature in step.FeatureNames)
+                    {
+                        // Der Name geht in eine Befehlszeile: nur, was ein Feature-Name sein kann.
+                        if (!RegistryData.IsFeatureName(feature))
+                            throw new InvalidDataException($"\"{feature}\" ist kein gültiger Feature-Name");
+                        arguments += " /featurename:" + feature.Trim();
+                    }
+                    arguments += " /norestart";
+                    break;
                 default:
                     throw new NotSupportedException($"Schritt-Typ {step.Type} wird von diesem Runner nicht unterstützt");
             }
@@ -751,7 +798,7 @@ namespace Inventory.Runner
             if (step.SuccessCodes != null && step.SuccessCodes.Count > 0)
                 return step.SuccessCodes;
             // 3010 = Neustart erforderlich, 1641 = Neustart eingeleitet: beides erfolgreiche Installationen.
-            return step.Type == StepType.Install ? new List<int> { 0, 3010, 1641 } : new List<int> { 0 };
+            return step.Type == StepType.Install || step.Type == StepType.WindowsFeature ? new List<int> { 0, 3010, 1641 } : new List<int> { 0 };
         }
 
         private static void Write(StreamWriter progress, ProgressEvent e)

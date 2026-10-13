@@ -218,6 +218,8 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.Uninstall => T("Uninstall"),
         StepType.WindowsUpdate => T("Windows Update"),
         StepType.WakeOnLan => "Wake-on-LAN",
+        StepType.Registry => T("Registry"),
+        StepType.WindowsFeature => T("Windows feature"),
         _ => type.ToString(),
     };
 
@@ -233,6 +235,8 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.InventoryScan => Icons.Material.Filled.ManageSearch,
         StepType.Uninstall => Icons.Material.Filled.DeleteSweep,
         StepType.WindowsUpdate => Icons.Material.Filled.SystemUpdateAlt,
+        StepType.Registry => Icons.Material.Filled.AccountTree,
+        StepType.WindowsFeature => Icons.Material.Filled.Extension,
         _ => Icons.Material.Filled.PlayArrow,
     };
 
@@ -248,7 +252,14 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     public string StepSummary(JobStep step) => step.Type switch
     {
         StepType.Install => $"{step.File} {step.Arguments}".Trim(),
-        StepType.FileCopy => $"{step.File} → {step.Destination}",
+        StepType.FileCopy => $"{(string.IsNullOrWhiteSpace(step.SourcePath) ? step.File : step.SourcePath)} → {step.Destination}",
+        StepType.Registry => step.RegistryAction switch
+        {
+            RegistryAction.DeleteKey => T("delete {0}", step.RegistryKey ?? ""),
+            RegistryAction.DeleteValue => T("delete {0}", $"{step.RegistryKey}\\{RegistryValueLabel(step)}"),
+            _ => $"{step.RegistryKey}\\{RegistryValueLabel(step)} = {step.RegistryData}",
+        },
+        StepType.WindowsFeature => $"{(step.FeatureDisable ? T("disable") : T("enable"))}: {string.Join(", ", step.FeatureNames)}",
         StepType.Service => $"{ServiceActionName(step.ServiceAction)}: {step.ServiceName}",
         StepType.Sleep => T("{0} seconds", step.Seconds),
         StepType.Reboot => step.Seconds > 0 ? T("after {0} seconds", step.Seconds) : T("immediately"),
@@ -256,6 +267,27 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.WindowsUpdate => UpdateStepSummary(step),
         StepType.Uninstall => $"{(string.IsNullOrWhiteSpace(step.ProductCode) ? step.SoftwareName : step.ProductCode)} {step.Arguments}".Trim(),
         _ => step.Script.Split('\n')[0].Trim(),
+    };
+
+    private string RegistryValueLabel(JobStep step) => string.IsNullOrEmpty(step.RegistryValueName) ? T("(default)") : step.RegistryValueName;
+
+    public string RegistryActionName(RegistryAction action) => action switch
+    {
+        RegistryAction.SetValue => T("Set value"),
+        RegistryAction.DeleteValue => T("Delete value"),
+        RegistryAction.DeleteKey => T("Delete key with all subkeys"),
+        _ => action.ToString(),
+    };
+
+    public string RegistryTypeName(RegistryDataType type) => type switch
+    {
+        RegistryDataType.String => "REG_SZ",
+        RegistryDataType.ExpandString => "REG_EXPAND_SZ",
+        RegistryDataType.DWord => "REG_DWORD",
+        RegistryDataType.QWord => "REG_QWORD",
+        RegistryDataType.MultiString => "REG_MULTI_SZ",
+        RegistryDataType.Binary => "REG_BINARY",
+        _ => type.ToString(),
     };
 
     public string Role(AccessRole role) => role switch
@@ -304,7 +336,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     };
 
     /// <summary>Schritt-Typen, bei denen sich der Ausführungskontext wählen lässt.</summary>
-    public bool SupportsRunAs(StepType type) => type is StepType.Command or StepType.PowerShell or StepType.Install;
+    public bool SupportsRunAs(StepType type) => type is StepType.Command or StepType.PowerShell or StepType.Install or StepType.Registry;
 
     public string ServiceActionName(ServiceAction action) => action switch
     {

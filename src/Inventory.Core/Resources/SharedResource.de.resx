@@ -11,6 +11,9 @@
   <data name='"{0}" is installed on {1} computers, but only {2} licences are recorded.' xml:space="preserve">
     <value>„{0}“ ist auf {1} Rechnern installiert, erfasst sind aber nur {2} Lizenzen.</value>
   </data>
+  <data name='"{0}" is not a feature name (letters, digits, dot, hyphen and underscore only).' xml:space="preserve">
+    <value>„{0}“ ist kein Feature-Name (nur Buchstaben, Ziffern, Punkt, Binde- und Unterstrich).</value>
+  </data>
   <data name='"{0}" is not a MAC address (expected like 00:1A:2B:3C:4D:5E).' xml:space="preserve">
     <value>„{0}“ ist keine MAC-Adresse (erwartet wie 00:1A:2B:3C:4D:5E).</value>
   </data>
@@ -28,6 +31,9 @@
   </data>
   <data name="(automatic)" xml:space="preserve">
     <value>(automatisch)</value>
+  </data>
+  <data name="(default)" xml:space="preserve">
+    <value>(Standard)</value>
   </data>
   <data name="(deleted collection)" xml:space="preserve">
     <value>(gelöschte Sammlung)</value>
@@ -61,6 +67,9 @@
   </data>
   <data name="3 to 7 days" xml:space="preserve">
     <value>3 bis 7 Tage</value>
+  </data>
+  <data name="32-bit view (WOW6432Node)" xml:space="preserve">
+    <value>32-Bit-Ansicht (WOW6432Node)</value>
   </data>
   <data name="7 to 30 days" xml:space="preserve">
     <value>7 bis 30 Tage</value>
@@ -815,6 +824,9 @@
   <data name="Dark" xml:space="preserve">
     <value>Dunkel</value>
   </data>
+  <data name="Data" xml:space="preserve">
+    <value>Daten</value>
+  </data>
   <data name="Data directory" xml:space="preserve">
     <value>Datenverzeichnis</value>
   </data>
@@ -841,6 +853,9 @@
   </data>
   <data name="Days since last update installation" xml:space="preserve">
     <value>Tage seit letzter Update-Installation</value>
+  </data>
+  <data name="Decimal, or hexadecimal with 0x" xml:space="preserve">
+    <value>Dezimal, oder hexadezimal mit 0x</value>
   </data>
   <data name="Default" xml:space="preserve">
     <value>Standard</value>
@@ -896,6 +911,9 @@
   <data name="Delete file" xml:space="preserve">
     <value>Datei löschen</value>
   </data>
+  <data name="Delete key with all subkeys" xml:space="preserve">
+    <value>Schlüssel mit allen Unterschlüsseln löschen</value>
+  </data>
   <data name="Delete licence" xml:space="preserve">
     <value>Lizenz löschen</value>
   </data>
@@ -910,6 +928,15 @@
   </data>
   <data name="Delete schedule" xml:space="preserve">
     <value>Zeitplan löschen</value>
+  </data>
+  <data name="Delete value" xml:space="preserve">
+    <value>Wert löschen</value>
+  </data>
+  <data name="delete {0}" xml:space="preserve">
+    <value>{0} löschen</value>
+  </data>
+  <data name="Deletes the key with everything below it. Keys directly below the hive are refused." xml:space="preserve">
+    <value>Löscht den Schlüssel mit allem darunter. Schlüssel direkt unter der Struktur werden abgelehnt.</value>
   </data>
   <data name="Deploy" xml:space="preserve">
     <value>Bereitstellen</value>
@@ -1000,6 +1027,9 @@
   </data>
   <data name="Device type, model, serial number, processor and memory of every computer" xml:space="preserve">
     <value>Gerätetyp, Modell, Seriennummer, Prozessor und Arbeitsspeicher jedes Rechners</value>
+  </data>
+  <data name="disable" xml:space="preserve">
+    <value>ausschalten</value>
   </data>
   <data name="disabled" xml:space="preserve">
     <value>deaktiviert</value>
@@ -1121,11 +1151,17 @@
   <data name="Empty = the domain this server belongs to" xml:space="preserve">
     <value>Leer = Domäne, der dieser Server angehört</value>
   </data>
+  <data name="Empty = the key's default value" xml:space="preserve">
+    <value>Leer = der Standardwert des Schlüssels</value>
+  </data>
   <data name="Empty = the network adapters of the last scan. Enter one if the computer wakes through another adapter or has never been scanned." xml:space="preserve">
     <value>Leer = die Netzwerkadapter des letzten Scans. Eintragen, wenn der Rechner über einen anderen Adapter aufwacht oder noch nie gescannt wurde.</value>
   </data>
   <data name="Empty result from {0}" xml:space="preserve">
     <value>Leeres Ergebnis von {0}</value>
+  </data>
+  <data name="enable" xml:space="preserve">
+    <value>einschalten</value>
   </data>
   <data name="Enabled" xml:space="preserve">
     <value>Aktiv</value>
@@ -1223,11 +1259,17 @@
   <data name="Feature update (e.g. 24H2)" xml:space="preserve">
     <value>Funktionsupdate (z. B. 24H2)</value>
   </data>
+  <data name="Features" xml:space="preserve">
+    <value>Features</value>
+  </data>
   <data name="Field" xml:space="preserve">
     <value>Feld</value>
   </data>
   <data name="File or folder from the package's files" xml:space="preserve">
     <value>Datei oder Ordner aus den Dateien des Pakets</value>
+  </data>
+  <data name="File or folder. For very large payloads that should not pass through the server. The step reads with the account it runs under: via SMB + service or agent that is the computer account, which needs read access to the share." xml:space="preserve">
+    <value>Datei oder Ordner. Für sehr große Dateien, die nicht über den Server laufen sollen. Der Schritt liest mit dem Konto, unter dem er läuft: über SMB + Dienst oder Agent ist das das Computerkonto, das Leserechte auf die Freigabe braucht.</value>
   </data>
   <data name="File system" xml:space="preserve">
     <value>Dateisystem</value>
@@ -1364,8 +1406,14 @@
   <data name="Healthy" xml:space="preserve">
     <value>in Ordnung</value>
   </data>
+  <data name="Hexadecimal, e.g. 01 0A FF" xml:space="preserve">
+    <value>Hexadezimal, z. B. 01 0A FF</value>
+  </data>
   <data name="History" xml:space="preserve">
     <value>Verlauf</value>
+  </data>
+  <data name='HKCU needs "Run as: Logged-on user". As Local System the step would change the settings of the system account.' xml:space="preserve">
+    <value>HKCU braucht „Ausführen als: Angemeldeter Benutzer“. Als Lokales System würde der Schritt die Einstellungen des Systemkontos ändern.</value>
   </data>
   <data name="Hotfix" xml:space="preserve">
     <value>Hotfix</value>
@@ -1537,6 +1585,9 @@
   </data>
   <data name="Keep up to date automatically" xml:space="preserve">
     <value>Automatisch aktuell halten</value>
+  </data>
+  <data name="Key" xml:space="preserve">
+    <value>Schlüssel</value>
   </data>
   <data name="Label" xml:space="preserve">
     <value>Bezeichnung</value>
@@ -1849,6 +1900,9 @@
   </data>
   <data name="Name is missing" xml:space="preserve">
     <value>Name fehlt</value>
+  </data>
+  <data name="Names as DISM lists them (dism /online /get-features), separated by commas." xml:space="preserve">
+    <value>Namen, wie DISM sie auflistet (dism /online /get-features), durch Komma getrennt.</value>
   </data>
   <data name="Needs attention" xml:space="preserve">
     <value>Handlungsbedarf</value>
@@ -2200,6 +2254,9 @@
   </data>
   <data name="once on {0}" xml:space="preserve">
     <value>einmalig am {0}</value>
+  </data>
+  <data name="One entry per line" xml:space="preserve">
+    <value>Ein Eintrag je Zeile</value>
   </data>
   <data name="One name per line; comma, semicolon or space work too. Names that already exist are skipped." xml:space="preserve">
     <value>Ein Name je Zeile; Komma, Semikolon oder Leerzeichen gehen auch. Bereits vorhandene Namen werden übersprungen.</value>
@@ -2660,6 +2717,9 @@
   <data name="Registered: {0}" xml:space="preserve">
     <value>Registriert: {0}</value>
   </data>
+  <data name="Registry" xml:space="preserve">
+    <value>Registrierung</value>
+  </data>
   <data name="Registry key exists" xml:space="preserve">
     <value>Registry-Schlüssel vorhanden</value>
   </data>
@@ -3116,6 +3176,9 @@
   <data name="session {0}" xml:space="preserve">
     <value>Sitzung {0}</value>
   </data>
+  <data name="Set value" xml:space="preserve">
+    <value>Wert setzen</value>
+  </data>
   <data name="Setting changed" xml:space="preserve">
     <value>Einstellung geändert</value>
   </data>
@@ -3242,6 +3305,12 @@
   <data name="Source" xml:space="preserve">
     <value>Quelle</value>
   </data>
+  <data name="Source outside the package (share or path on the computer)" xml:space="preserve">
+    <value>Quelle außerhalb des Pakets (Freigabe oder Pfad auf dem Rechner)</value>
+  </data>
+  <data name="Source path" xml:space="preserve">
+    <value>Quellpfad</value>
+  </data>
   <data name="Source: {0}" xml:space="preserve">
     <value>Quelle: {0}</value>
   </data>
@@ -3268,6 +3337,9 @@
   </data>
   <data name="starts with" xml:space="preserve">
     <value>beginnt mit</value>
+  </data>
+  <data name="Starts with HKLM, HKCU, HKU or HKCR. HKCU needs &quot;Run as: Logged-on user&quot; and then means that user's settings. Missing keys are created." xml:space="preserve">
+    <value>Beginnt mit HKLM, HKCU, HKU oder HKCR. HKCU braucht „Ausführen als: Angemeldeter Benutzer“ und meint dann dessen Einstellungen. Fehlende Schlüssel werden angelegt.</value>
   </data>
   <data name="State" xml:space="preserve">
     <value>Status</value>
@@ -3446,6 +3518,9 @@
   <data name="The current runner has been allowed in Defender." xml:space="preserve">
     <value>Der aktuelle Runner ist in Defender freigegeben.</value>
   </data>
+  <data name="The data does not fit the type {0}." xml:space="preserve">
+    <value>Die Daten passen nicht zum Typ {0}.</value>
+  </data>
   <data name="The database backup fails" xml:space="preserve">
     <value>Die Datenbanksicherung schlägt fehl</value>
   </data>
@@ -3463,6 +3538,9 @@
   </data>
   <data name="The installer technology was not recognized. Common silent parameters are /S, /silent, /quiet or /qn – when in doubt, check the vendor's documentation." xml:space="preserve">
     <value>Die Installer-Technik wurde nicht erkannt. Häufige Silent-Parameter sind /S, /silent, /quiet oder /qn – im Zweifel die Dokumentation des Herstellers prüfen.</value>
+  </data>
+  <data name="The key must start with HKLM, HKCU, HKU or HKCR and name a path below it." xml:space="preserve">
+    <value>Der Schlüssel muss mit HKLM, HKCU, HKU oder HKCR beginnen und einen Pfad darunter nennen.</value>
   </data>
   <data name="The launcher is not bundled with the server." xml:space="preserve">
     <value>Der Starter liegt dem Server nicht bei.</value>
@@ -3707,6 +3785,12 @@
   <data name="Try the other transport on delivery errors" xml:space="preserve">
     <value>Bei Zustellfehlern den anderen Transport versuchen</value>
   </data>
+  <data name="Turn the features off instead of on" xml:space="preserve">
+    <value>Die Features ausschalten statt einschalten</value>
+  </data>
+  <data name='Turning on includes the features a feature depends on. Files Windows does not have locally come from the update source configured on the computer. The step does not restart the computer: add a "Reboot" step with the condition "only if a restart is pending" after it.' xml:space="preserve">
+    <value>Beim Einschalten kommen die Features mit, von denen ein Feature abhängt. Dateien, die Windows nicht lokal hat, kommen aus der auf dem Rechner eingestellten Update-Quelle. Der Schritt startet den Rechner nicht neu: dahinter einen Schritt „Neustart“ mit der Bedingung „nur wenn ein Neustart aussteht“ einfügen.</value>
+  </data>
   <data name="Type" xml:space="preserve">
     <value>Art</value>
   </data>
@@ -3883,6 +3967,9 @@
   </data>
   <data name="Value" xml:space="preserve">
     <value>Wert</value>
+  </data>
+  <data name="Value name" xml:space="preserve">
+    <value>Name des Werts</value>
   </data>
   <data name="vendor-specific" xml:space="preserve">
     <value>herstellereigen</value>
@@ -4063,6 +4150,9 @@
   </data>
   <data name="Windows edition and feature update, the oldest first" xml:space="preserve">
     <value>Windows-Edition und Funktionsupdate, die ältesten zuerst</value>
+  </data>
+  <data name="Windows feature" xml:space="preserve">
+    <value>Windows-Feature</value>
   </data>
   <data name="Windows Firewall" xml:space="preserve">
     <value>Windows-Firewall</value>

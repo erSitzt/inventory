@@ -69,18 +69,71 @@
                         <MudAlert Severity="Severity.Info" Dense="true">@L["If the program is not installed, the step counts as done. If the name matches more than three programs, nothing is uninstalled and the step fails."]</MudAlert>
                         break;
                     case StepType.FileCopy:
-                        <MudSelect T="string" @bind-Value="_step.File" Label="@L["Source"]" HelperText="@L["File or folder from the package's files"]" Variant="Variant.Outlined" Margin="Margin.Dense">
-                            @foreach (var option in FileOptions)
-                            {
-                                <MudSelectItem T="string" Value="option">@option@(Files.Contains(option) || Folders.Contains(option) ? "" : $" ({L["no longer present"]})")</MudSelectItem>
-                            }
-                        </MudSelect>
-                        @if (FileOptions.Count == 0)
+                        <MudSwitch T="bool" Value="_externalSource" ValueChanged="SetExternalSource" Color="Color.Primary" Label="@L["Source outside the package (share or path on the computer)"]" />
+                        @if (_externalSource)
                         {
-                            <MudAlert Severity="Severity.Warning" Dense="true">@L["The package has no files yet. Please upload under \"Files\" first."]</MudAlert>
+                            <MudTextField @bind-Value="_step.SourcePath" Label="@L["Source path"]" Placeholder="\\\\fileserver\\software\\Product" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                          HelperText="@L["File or folder. For very large payloads that should not pass through the server. The step reads with the account it runs under: via SMB + service or agent that is the computer account, which needs read access to the share."]" />
+                        }
+                        else
+                        {
+                            <MudSelect T="string" @bind-Value="_step.File" Label="@L["Source"]" HelperText="@L["File or folder from the package's files"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                @foreach (var option in FileOptions)
+                                {
+                                    <MudSelectItem T="string" Value="option">@option@(Files.Contains(option) || Folders.Contains(option) ? "" : $" ({L["no longer present"]})")</MudSelectItem>
+                                }
+                            </MudSelect>
+                            @if (FileOptions.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Warning" Dense="true">@L["The package has no files yet. Please upload under \"Files\" first."]</MudAlert>
+                            }
                         }
                         <MudTextField @bind-Value="_step.Destination" Label="@L["Destination on the computer"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
                                       HelperText="@L["E.g. %ProgramData%\\Company\\ – a trailing \\ means folder. Existing files are overwritten."]" />
+                        break;
+                    case StepType.Registry:
+                        <MudSelect T="RegistryAction" @bind-Value="_step.RegistryAction" Label="@L["Action"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            @foreach (var action in Enum.GetValues<RegistryAction>())
+                            {
+                                <MudSelectItem T="RegistryAction" Value="action">@Display.RegistryActionName(action)</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudTextField @bind-Value="_step.RegistryKey" Label="@L["Key"]" Placeholder="HKLM\\SOFTWARE\\Company\\Product" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                      HelperText="@L["Starts with HKLM, HKCU, HKU or HKCR. HKCU needs \"Run as: Logged-on user\" and then means that user's settings. Missing keys are created."]" />
+                        @if (_step.RegistryAction != RegistryAction.DeleteKey)
+                        {
+                            <MudTextField @bind-Value="_step.RegistryValueName" Label="@L["Value name"]" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="@L["Empty = the key's default value"]" />
+                        }
+                        @if (_step.RegistryAction == RegistryAction.SetValue)
+                        {
+                            <MudSelect T="RegistryDataType" @bind-Value="_step.RegistryDataType" Label="@L["Type"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                @foreach (var type in Enum.GetValues<RegistryDataType>())
+                                {
+                                    <MudSelectItem T="RegistryDataType" Value="type">@Display.RegistryTypeName(type)</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTextField @bind-Value="_step.RegistryData" Label="@L["Data"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="@(_step.RegistryDataType == RegistryDataType.MultiString ? 3 : 1)"
+                                          HelperText="@(_step.RegistryDataType switch
+                                          {
+                                              RegistryDataType.DWord or RegistryDataType.QWord => L["Decimal, or hexadecimal with 0x"],
+                                              RegistryDataType.MultiString => L["One entry per line"],
+                                              RegistryDataType.Binary => L["Hexadecimal, e.g. 01 0A FF"],
+                                              _ => "",
+                                          })" />
+                        }
+                        <MudCheckBox T="bool" @bind-Value="_step.Registry32Bit" Label="@L["32-bit view (WOW6432Node)"]" Dense="true" />
+                        @if (_step.RegistryAction == RegistryAction.DeleteKey)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">@L["Deletes the key with everything below it. Keys directly below the hive are refused."]</MudAlert>
+                        }
+                        break;
+                    case StepType.WindowsFeature:
+                        <MudTextField @bind-Value="_featureNames" Label="@L["Features"]" Placeholder="NetFx3, TelnetClient" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                      HelperText="@L["Names as DISM lists them (dism /online /get-features), separated by commas."]" />
+                        <MudSwitch T="bool" @bind-Value="_step.FeatureDisable" Color="Color.Primary" Label="@L["Turn the features off instead of on"]" />
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            @L["Turning on includes the features a feature depends on. Files Windows does not have locally come from the update source configured on the computer. The step does not restart the computer: add a \"Reboot\" step with the condition \"only if a restart is pending\" after it."]
+                        </MudAlert>
                         break;
                     case StepType.Service:
                         <MudTextField @bind-Value="_step.ServiceName" Label="@L["Service name"]" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" HelperText="@L["Short name of the service, e.g. Spooler"]" />
@@ -253,6 +306,21 @@
     private string _successCodes = "";
     private string _closeProcesses = "";
     private string _updateKbIds = "";
+    private string _featureNames = "";
+    private bool _externalSource;
+
+    private void SetExternalSource(bool external)
+    {
+        _externalSource = external;
+        // Nur eine der beiden Quellen bleibt stehen, damit der Schritt eindeutig ist.
+        if (external)
+            _step.File = null;
+        else
+            _step.SourcePath = null;
+    }
+
+    private static List<string> Features(string text) =>
+        [.. text.Split([',', ';', ' ', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase)];
 
     private bool HasRobustness => _step.Retries > 0 || _step.MinFreeDiskMb > 0 || !string.IsNullOrWhiteSpace(_closeProcesses);
     private int? _nestedPackageId;
@@ -265,7 +333,9 @@
         {
             StepType.Command or StepType.PowerShell => !string.IsNullOrWhiteSpace(_step.Script),
             StepType.Install => !string.IsNullOrWhiteSpace(_step.File),
-            StepType.FileCopy => !string.IsNullOrWhiteSpace(_step.File) && !string.IsNullOrWhiteSpace(_step.Destination),
+            StepType.FileCopy => !string.IsNullOrWhiteSpace(_externalSource ? _step.SourcePath : _step.File) && !string.IsNullOrWhiteSpace(_step.Destination),
+            StepType.Registry => !string.IsNullOrWhiteSpace(_step.RegistryKey),
+            StepType.WindowsFeature => Features(_featureNames).Count > 0,
             StepType.Service => !string.IsNullOrWhiteSpace(_step.ServiceName),
             StepType.Uninstall => !string.IsNullOrWhiteSpace(_step.SoftwareName) || !string.IsNullOrWhiteSpace(_step.ProductCode),
             _ => true,
@@ -293,6 +363,8 @@
         _successCodes = string.Join(", ", _step.SuccessCodes);
         _closeProcesses = string.Join(", ", _step.CloseProcesses);
         _updateKbIds = string.Join(", ", _step.UpdateKbIds);
+        _featureNames = string.Join(", ", _step.FeatureNames);
+        _externalSource = !string.IsNullOrWhiteSpace(_step.SourcePath);
         if (Nested)
             _packages = (await PackageService.ListAsync()).Where(p => p.Id != PackageId).ToList();
         await DetectAsync();
@@ -365,6 +437,44 @@
         {
             _error = L["\"{0}\" contains no KB number.", _updateKbIds.Trim()];
             return;
+        }
+        _step.FeatureNames = Type == StepType.WindowsFeature ? Features(_featureNames) : [];
+        if (_step.FeatureNames.FirstOrDefault(f => !RegistryData.IsFeatureName(f)) is { } invalid)
+        {
+            _error = L["\"{0}\" is not a feature name (letters, digits, dot, hyphen and underscore only).", invalid];
+            return;
+        }
+        if (Type == StepType.Registry)
+        {
+            try
+            {
+                var hive = RegistryData.Split(_step.RegistryKey, out var path);
+                if (path.Length == 0)
+                    throw new InvalidDataException();
+                if (hive == RegistryData.Hive.CurrentUser && _step.RunAs != StepRunAs.LoggedOnUser)
+                {
+                    _error = L["HKCU needs \"Run as: Logged-on user\". As Local System the step would change the settings of the system account."];
+                    return;
+                }
+            }
+            catch (InvalidDataException)
+            {
+                _error = L["The key must start with HKLM, HKCU, HKU or HKCR and name a path below it."];
+                return;
+            }
+            if (_step.RegistryAction == RegistryAction.SetValue)
+            {
+                try
+                {
+                    RegistryData.Convert(_step.RegistryDataType, _step.RegistryData);
+                }
+                catch (InvalidDataException)
+                {
+                    _error = L["The data does not fit the type {0}.", Display.RegistryTypeName(_step.RegistryDataType)];
+                    return;
+                }
+            }
+            _step.RegistryKey = _step.RegistryKey!.Trim();
         }
         _step.Conditions = _conditions.IsEmpty ? null : _conditions;
         _step.Name = _step.Name.Trim();

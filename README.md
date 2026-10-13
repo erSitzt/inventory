@@ -33,9 +33,14 @@ credentials. The user interface is available in English and German; translations
   software, hardware, security state, updates, Active Directory, asset data, services, network and scan age; `*` works
   as a wildcard with "equals", and "member of collection" combines collections (up to three levels deep)
 - **Remote command** (cmd/PowerShell) with live output
-- **Packages** made of several steps: installation, command, PowerShell, copy files, service, wait, reboot, scan,
-  embedded package – each with conditions and error handling; steps after a reboot continue automatically once the
-  computer is back
+- **Packages** made of several steps: installation, command, PowerShell, copy files, registry, Windows feature,
+  service, wait, reboot, scan, embedded package – each with conditions and error handling; steps after a reboot
+  continue automatically once the computer is back
+- **Registry, Windows features, large payloads**: a registry step sets or deletes a value or deletes a key without
+  a script – typed (string, DWORD, QWORD, multi-string, binary), in the 64- or 32-bit view, and for `HKCU` in the
+  settings of the logged-on user; a feature step turns optional Windows features on or off (DISM) and reports a
+  pending restart; "copy files" can take its source from a share or a path on the computer instead of the package,
+  so that very large payloads do not pass through the server (the computer account needs read access to the share)
 - **Approval**: a package is "in progress" until an administrator approves it; operators and schedules deploy only
   approved packages, and every change to steps, detection or files withdraws the approval
 - **Limits per deployment**: stop starting further computers after a number or a rate of failures, and limit how

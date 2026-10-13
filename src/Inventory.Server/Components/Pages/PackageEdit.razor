@@ -230,7 +230,7 @@
     private const long MaxUploadBytes = 8L << 30;
 
     private static readonly StepType[] AddableTypes =
-        [StepType.Install, StepType.Uninstall, StepType.WindowsUpdate, StepType.Command, StepType.PowerShell, StepType.FileCopy, StepType.Service, StepType.Sleep, StepType.Reboot, StepType.InventoryScan];
+        [StepType.Install, StepType.Uninstall, StepType.WindowsUpdate, StepType.Command, StepType.PowerShell, StepType.FileCopy, StepType.Registry, StepType.WindowsFeature, StepType.Service, StepType.Sleep, StepType.Reboot, StepType.InventoryScan];
 
     [Parameter] public int Id { get; set; }
 

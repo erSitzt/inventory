@@ -32,9 +32,15 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
   Scan-Alter; `*` dient bei „ist gleich“ als Platzhalter, und „Mitglied der Sammlung“ kombiniert Sammlungen (bis zu
   drei Ebenen tief)
 - **Remote-Befehl** (cmd/PowerShell) mit Live-Ausgabe
-- **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Dienst, Warten, Neustart,
-  Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten; Schritte nach einem Neustart laufen
-  automatisch weiter, sobald der Rechner wieder da ist
+- **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Registrierung,
+  Windows-Feature, Dienst, Warten, Neustart, Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten;
+  Schritte nach einem Neustart laufen automatisch weiter, sobald der Rechner wieder da ist
+- **Registrierung, Windows-Features, große Dateien**: ein Registrierungs-Schritt setzt oder löscht einen Wert oder
+  löscht einen Schlüssel ohne Skript – typisiert (Zeichenfolge, DWORD, QWORD, mehrteilige Zeichenfolge, binär), in der
+  64- oder 32-Bit-Ansicht und bei `HKCU` in den Einstellungen des angemeldeten Benutzers; ein Feature-Schritt schaltet
+  optionale Windows-Features ein oder aus (DISM) und meldet einen ausstehenden Neustart; „Dateien kopieren“ kann seine
+  Quelle statt aus dem Paket von einer Freigabe oder einem Pfad auf dem Rechner nehmen, damit sehr große Dateien nicht
+  über den Server laufen (das Computerkonto braucht Leserechte auf die Freigabe)
 - **Freigabe**: Ein Paket ist „in Arbeit“, bis ein Administrator es freigibt; Operatoren und Zeitpläne verteilen nur
   freigegebene Pakete, und jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf
 - **Grenzen je Deployment**: nach einer Anzahl oder Quote von Fehlern keine weiteren Rechner mehr starten und

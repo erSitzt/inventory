@@ -1,0 +1,92 @@
+using System;
+using System.IO;
+using System.Security.Principal;
+using Inventory.Contracts;
+using Microsoft.Win32;
+
+namespace Inventory.Runner
+{
+    /// <summary>Führt einen Registrierungs-Schritt aus.</summary>
+    internal static class RegistryStep
+    {
+        /// <param name="userName">Für HKCU: das Konto des angemeldeten Benutzers (DOMÄNE\name); seine Struktur liegt unter HKEY_USERS.</param>
+        /// <returns>Zusammenfassung für die Ausgabe des Schritts.</returns>
+        public static string Run(JobStep step, string? userName)
+        {
+            var hive = RegistryData.Split(step.RegistryKey, out var path);
+            var view = step.Registry32Bit ? RegistryView.Registry32 : RegistryView.Registry64;
+            RegistryHive root;
+            switch (hive)
+            {
+                case RegistryData.Hive.LocalMachine:
+                    root = RegistryHive.LocalMachine;
+                    break;
+                case RegistryData.Hive.ClassesRoot:
+                    root = RegistryHive.ClassesRoot;
+                    break;
+                case RegistryData.Hive.Users:
+                    root = RegistryHive.Users;
+                    break;
+                default:
+                    // Der Runner läuft als Lokales System; dessen HKCU ist nicht die des Menschen am Rechner.
+                    if (userName == null)
+                        throw new InvalidDataException("HKCU braucht den Kontext \"als angemeldeter Benutzer\"");
+                    var sid = ((SecurityIdentifier)new NTAccount(userName).Translate(typeof(SecurityIdentifier))).Value;
+                    root = RegistryHive.Users;
+                    path = path.Length == 0 ? sid : sid + "\\" + path;
+                    break;
+            }
+            if (path.Length == 0)
+                throw new InvalidDataException("Der Schlüssel besteht nur aus der Struktur; ein Pfad darunter fehlt");
+
+            var shown = step.RegistryKey!.Trim();
+            var name = step.RegistryValueName ?? "";
+            var label = name.Length == 0 ? "(Standard)" : name;
+            using (var baseKey = RegistryKey.OpenBaseKey(root, view))
+            {
+                switch (step.RegistryAction)
+                {
+                    case RegistryAction.SetValue:
+                        var value = RegistryData.Convert(step.RegistryDataType, step.RegistryData);
+                        using (var key = baseKey.CreateSubKey(path, true))
+                            key.SetValue(name, value, Kind(step.RegistryDataType));
+                        return $"{shown}\\{label} gesetzt";
+                    case RegistryAction.DeleteValue:
+                        using (var key = baseKey.OpenSubKey(path, true))
+                        {
+                            if (key == null || key.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames) == null)
+                                return $"{shown}\\{label} war nicht vorhanden";
+                            key.DeleteValue(name, false);
+                        }
+                        return $"{shown}\\{label} gelöscht";
+                    case RegistryAction.DeleteKey:
+                        // Eine ganze Struktur oder ihre obersten Zweige zu löschen ist nie gemeint.
+                        if (path.IndexOf('\\') < 0)
+                            throw new InvalidDataException("Schlüssel direkt unter der Struktur werden nicht gelöscht");
+                        using (var key = baseKey.OpenSubKey(path, false))
+                        {
+                            if (key == null)
+                                return $"{shown} war nicht vorhanden";
+                        }
+                        baseKey.DeleteSubKeyTree(path, false);
+                        return $"{shown} gelöscht";
+                    default:
+                        throw new InvalidDataException($"Unbekannte Aktion {step.RegistryAction}");
+                }
+            }
+        }
+
+        private static RegistryValueKind Kind(RegistryDataType type)
+        {
+            switch (type)
+            {
+                case RegistryDataType.ExpandString: return RegistryValueKind.ExpandString;
+                case RegistryDataType.DWord: return RegistryValueKind.DWord;
+                case RegistryDataType.QWord: return RegistryValueKind.QWord;
+                case RegistryDataType.MultiString: return RegistryValueKind.MultiString;
+                case RegistryDataType.Binary: return RegistryValueKind.Binary;
+                default: return RegistryValueKind.String;
+            }
+        }
+    }
+}
