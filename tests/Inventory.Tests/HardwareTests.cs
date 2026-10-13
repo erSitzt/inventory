@@ -151,4 +151,16 @@ public class HardwareTests
         Assert.NotEmpty(hardware.PhysicalDisks);
         Assert.NotNull(hardware.ChassisType);
     }
+
+    [Theory]
+    [InlineData(3, "OptiPlex 7090", "Microsoft Windows 11 Enterprise", ChassisKind.Desktop)]
+    [InlineData(10, "Latitude 5520", "Microsoft Windows 11 Pro", ChassisKind.Laptop)]
+    [InlineData(23, "PowerEdge R650", "Microsoft Windows Server 2022 Standard", ChassisKind.Server)]
+    // Das Betriebssystem entscheidet: ein virtueller Server und einer im Desktop-Gehäuse sind Server.
+    [InlineData(1, "VMware7,1", "Microsoft Windows Server 2019 Datacenter", ChassisKind.Server)]
+    [InlineData(3, "OptiPlex 7090", "Microsoft Windows Server 2022 Standard", ChassisKind.Server)]
+    [InlineData(1, "VMware7,1", "Microsoft Windows 11 Enterprise", ChassisKind.VirtualMachine)]
+    [InlineData(null, null, null, ChassisKind.Unknown)]
+    public void The_device_role_follows_the_operating_system_then_the_chassis(int? type, string? model, string? os, ChassisKind expected) =>
+        Assert.Equal(expected, Chassis.Role(type, model, os));
 }

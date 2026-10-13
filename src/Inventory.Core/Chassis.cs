@@ -31,6 +31,13 @@ public static class Chassis
         };
     }
 
+    /// <summary>
+    /// Die Geräteklasse, wie man sie im Alltag nennt: ein Rechner mit Server-Betriebssystem ist ein Server, gleich in
+    /// welchem Gehäuse oder ob virtuell. Sonst entscheidet das Gehäuse.
+    /// </summary>
+    public static ChassisKind Role(int? type, string? model, string? osName) =>
+        osName is not null && osName.Contains("Server", StringComparison.OrdinalIgnoreCase) ? ChassisKind.Server : Kind(type, model);
+
     /// <summary>Englische Bezeichnung; zugleich der Schlüssel für die Übersetzung.</summary>
     public static string Label(ChassisKind kind) => kind switch
     {

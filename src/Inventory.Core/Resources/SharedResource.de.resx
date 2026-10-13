@@ -992,6 +992,12 @@
   <data name="Device type" xml:space="preserve">
     <value>Gerätetyp</value>
   </data>
+  <data name="Device type unknown" xml:space="preserve">
+    <value>Gerätetyp unbekannt</value>
+  </data>
+  <data name="Device type unknown – not scanned yet" xml:space="preserve">
+    <value>Gerätetyp unbekannt – noch nicht gescannt</value>
+  </data>
   <data name="Device type, model, serial number, processor and memory of every computer" xml:space="preserve">
     <value>Gerätetyp, Modell, Seriennummer, Prozessor und Arbeitsspeicher jedes Rechners</value>
   </data>
