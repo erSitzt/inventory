@@ -45,6 +45,8 @@ public class ComputerNetworkAdapter
     public string? MacAddress { get; set; }
     /// <summary>Mehrere Werte durch Komma getrennt.</summary>
     public string? IpAddresses { get; set; }
+    /// <summary>Je Adresse in <see cref="IpAddresses"/> die Subnetzmaske, in derselben Reihenfolge; null bei Scans älterer Runner.</summary>
+    public string? SubnetMasks { get; set; }
     public string? Gateways { get; set; }
     public string? DnsServers { get; set; }
     public bool DhcpEnabled { get; set; }

@@ -60,6 +60,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 if (options.ResolveSimulate())
 {
     builder.Services.AddSingleton<IHostProbe, SimulatedHostProbe>();
+    builder.Services.AddSingleton<IWakeSender, SimulatedWakeSender>();
     builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.SmbService));
     builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.WinRm));
     builder.Services.AddSingleton<IDirectorySource, SimulatedDirectorySource>();
@@ -67,6 +68,7 @@ if (options.ResolveSimulate())
 else
 {
     builder.Services.AddSingleton<IHostProbe, TcpHostProbe>();
+    builder.Services.AddSingleton<IWakeSender, UdpWakeSender>();
     builder.Services.AddSingleton<IDirectorySource, LdapDirectorySource>();
     if (OperatingSystem.IsWindows())
     {
@@ -86,6 +88,7 @@ builder.Services.AddSingleton<CollectionService>();
 builder.Services.AddSingleton<MaintenanceService>();
 builder.Services.AddSingleton(new PackageRepository(Path.Combine(dataDirectory, "repository")));
 builder.Services.AddSingleton<PackageService>();
+builder.Services.AddSingleton<WakeService>();
 builder.Services.AddSingleton<DeploymentService>();
 builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddSingleton<AdSyncService>();

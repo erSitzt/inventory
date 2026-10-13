@@ -302,13 +302,14 @@ namespace Inventory.Runner
 
         private static void ReadNetwork(InventoryData data)
         {
-            foreach (var o in Query("SELECT Description, MACAddress, IPAddress, DefaultIPGateway, DNSServerSearchOrder, DHCPEnabled FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = TRUE"))
+            foreach (var o in Query("SELECT Description, MACAddress, IPAddress, IPSubnet, DefaultIPGateway, DNSServerSearchOrder, DHCPEnabled FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = TRUE"))
             {
                 data.NetworkAdapters.Add(new NetworkAdapterItem
                 {
                     Name = Text(o, "Description") ?? "",
                     MacAddress = Text(o, "MACAddress"),
                     IpAddresses = List(o, "IPAddress"),
+                    SubnetMasks = List(o, "IPSubnet"),
                     Gateways = List(o, "DefaultIPGateway"),
                     DnsServers = List(o, "DNSServerSearchOrder"),
                     DhcpEnabled = o["DHCPEnabled"] is bool dhcp && dhcp,

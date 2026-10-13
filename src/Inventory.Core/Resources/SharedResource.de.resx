@@ -11,6 +11,9 @@
   <data name='"{0}" is installed on {1} computers, but only {2} licences are recorded.' xml:space="preserve">
     <value>„{0}“ ist auf {1} Rechnern installiert, erfasst sind aber nur {2} Lizenzen.</value>
   </data>
+  <data name='"{0}" is not a MAC address (expected like 00:1A:2B:3C:4D:5E).' xml:space="preserve">
+    <value>„{0}“ ist keine MAC-Adresse (erwartet wie 00:1A:2B:3C:4D:5E).</value>
+  </data>
   <data name='"{0}" is not a valid e-mail address.' xml:space="preserve">
     <value>„{0}“ ist keine gültige E-Mail-Adresse.</value>
   </data>
@@ -310,6 +313,9 @@
   </data>
   <data name="all rules" xml:space="preserve">
     <value>alle Regeln</value>
+  </data>
+  <data name="All selected computers are online." xml:space="preserve">
+    <value>Alle ausgewählten Rechner sind online.</value>
   </data>
   <data name="all users" xml:space="preserve">
     <value>alle Benutzer</value>
@@ -652,6 +658,9 @@
   </data>
   <data name="Computer renamed" xml:space="preserve">
     <value>Rechner umbenannt</value>
+  </data>
+  <data name="Computer unreachable – wake-up sent, will be retried as soon as it is online" xml:space="preserve">
+    <value>Rechner nicht erreichbar – Wecksignal gesendet, wird nachgeholt, sobald er online ist</value>
   </data>
   <data name="Computer unreachable – will be retried as soon as it is online" xml:space="preserve">
     <value>Rechner nicht erreichbar – wird nachgeholt, sobald er online ist</value>
@@ -1093,6 +1102,9 @@
   </data>
   <data name="Empty = the domain this server belongs to" xml:space="preserve">
     <value>Leer = Domäne, der dieser Server angehört</value>
+  </data>
+  <data name="Empty = the network adapters of the last scan. Enter one if the computer wakes through another adapter or has never been scanned." xml:space="preserve">
+    <value>Leer = die Netzwerkadapter des letzten Scans. Eintragen, wenn der Rechner über einen anderen Adapter aufwacht oder noch nie gescannt wurde.</value>
   </data>
   <data name="Empty result from {0}" xml:space="preserve">
     <value>Leeres Ergebnis von {0}</value>
@@ -1691,6 +1703,9 @@
   <data name="MAC address" xml:space="preserve">
     <value>MAC-Adresse</value>
   </data>
+  <data name="MAC address for Wake-on-LAN" xml:space="preserve">
+    <value>MAC-Adresse für Wake-on-LAN</value>
+  </data>
   <data name="Mail server (SMTP)" xml:space="preserve">
     <value>Mailserver (SMTP)</value>
   </data>
@@ -1945,6 +1960,9 @@
   </data>
   <data name="no longer present" xml:space="preserve">
     <value>nicht mehr vorhanden</value>
+  </data>
+  <data name="No MAC address is known for this computer: scan it once or enter one under Edit." xml:space="preserve">
+    <value>Für diesen Rechner ist keine MAC-Adresse bekannt: einmal scannen oder unter „Bearbeiten“ eine eintragen.</value>
   </data>
   <data name="No match in the base selection." xml:space="preserve">
     <value>Kein Treffer in der Grundauswahl.</value>
@@ -3503,6 +3521,9 @@
   <data name="The value for an allow rule by file hash in your endpoint protection. It changes with every server update." xml:space="preserve">
     <value>Der Wert für eine Freigabe per Datei-Hash in Ihrem Endpoint-Schutz. Er ändert sich mit jedem Server-Update.</value>
   </data>
+  <data name="The wake-up could not be sent: the server has no way into the network." xml:space="preserve">
+    <value>Das Wecksignal ließ sich nicht senden: der Server hat keinen Weg ins Netz.</value>
+  </data>
   <data name="The webhook address is missing." xml:space="preserve">
     <value>Die Webhook-Adresse fehlt.</value>
   </data>
@@ -3871,6 +3892,27 @@
   </data>
   <data name="Waiting for the maintenance window (opens {0})" xml:space="preserve">
     <value>Wartet auf das Wartungsfenster (beginnt {0})</value>
+  </data>
+  <data name="Wake" xml:space="preserve">
+    <value>Wecken</value>
+  </data>
+  <data name="Wake (Wake-on-LAN)" xml:space="preserve">
+    <value>Wecken (Wake-on-LAN)</value>
+  </data>
+  <data name="Wake computers that are switched off (Wake-on-LAN); they are retried for up to 3 days" xml:space="preserve">
+    <value>Ausgeschaltete Rechner wecken (Wake-on-LAN); sie werden bis zu 3 Tage lang nachgeholt</value>
+  </data>
+  <data name="Wake-up sent" xml:space="preserve">
+    <value>Wecksignal gesendet</value>
+  </data>
+  <data name="Wake-up sent to {0} computers." xml:space="preserve">
+    <value>Wecksignal an {0} Rechner gesendet.</value>
+  </data>
+  <data name="Wake-up sent to {0} computers; for {1} no MAC address is known." xml:space="preserve">
+    <value>Wecksignal an {0} Rechner gesendet; für {1} ist keine MAC-Adresse bekannt.</value>
+  </data>
+  <data name='Wake-up sent to {0}. Whether the computer starts shows after about two minutes under "Check reachability".' xml:space="preserve">
+    <value>Wecksignal an {0} gesendet. Ob der Rechner startet, zeigt sich nach etwa zwei Minuten unter „Erreichbarkeit prüfen“.</value>
   </data>
   <data name="Warn users before (seconds)" xml:space="preserve">
     <value>Benutzer vorher warnen (Sekunden)</value>

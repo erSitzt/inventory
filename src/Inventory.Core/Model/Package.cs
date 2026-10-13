@@ -98,6 +98,8 @@ public class Deployment
     public bool RetryOffline { get; set; }
     /// <summary>Rechner außerhalb ihres Wartungsfensters warten, bis es beginnt.</summary>
     public bool RespectMaintenanceWindow { get; set; }
+    /// <summary>Nicht erreichbare Rechner per Wake-on-LAN wecken, bevor sie als wartend gelten.</summary>
+    public bool WakeTargets { get; set; }
     /// <summary>Nach so vielen fehlgeschlagenen Rechnern werden keine weiteren mehr gestartet; null = keine Grenze.</summary>
     public int? MaxFailures { get; set; }
     /// <summary>

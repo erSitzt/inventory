@@ -48,6 +48,7 @@
                 </MudSelect>
                 <MudCheckBox T="bool" @bind-Value="_s.ScanAfter" Label="@L["Rescan inventory afterwards"]" Dense="true" />
                 <MudCheckBox T="bool" @bind-Value="_s.RetryOffline" Label="@L["Retry offline computers (up to 3 days)"]" Dense="true" />
+                <MudCheckBox T="bool" @bind-Value="_s.WakeTargets" Label="@L["Wake computers that are switched off (Wake-on-LAN); they are retried for up to 3 days"]" Dense="true" />
                 <MudCheckBox T="bool" @bind-Value="_s.RespectMaintenanceWindow" Label="@L["Only within the maintenance window (computers outside wait until it opens)"]" Dense="true" />
                 <DeploymentLimitsEditor @bind-MaxFailures="_s.MaxFailures" @bind-MaxFailurePercent="_s.MaxFailurePercent" @bind-MaxParallel="_s.MaxParallel" />
             }
@@ -191,7 +192,7 @@
         _s = new Schedule
         {
             Id = Schedule.Id, Name = Schedule.Name, Enabled = Schedule.Enabled, Action = Schedule.Action, PackageId = Schedule.PackageId,
-            ScanAfter = Schedule.ScanAfter, RetryOffline = Schedule.RetryOffline, RespectMaintenanceWindow = Schedule.RespectMaintenanceWindow,
+            ScanAfter = Schedule.ScanAfter, RetryOffline = Schedule.RetryOffline, RespectMaintenanceWindow = Schedule.RespectMaintenanceWindow, WakeTargets = Schedule.WakeTargets,
             MaxFailures = Schedule.MaxFailures, MaxFailurePercent = Schedule.MaxFailurePercent, MaxParallel = Schedule.MaxParallel, CollectionId = Schedule.CollectionId, Trigger = Schedule.Trigger,
             StartLocal = Schedule.StartLocal, IntervalMinutes = Schedule.IntervalMinutes, TimeOfDay = Schedule.TimeOfDay, DaysOfWeek = Schedule.DaysOfWeek,
             LastRunUtc = Schedule.LastRunUtc, LastResult = Schedule.LastResult,

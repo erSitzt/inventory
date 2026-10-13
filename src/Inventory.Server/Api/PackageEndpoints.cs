@@ -12,7 +12,7 @@ namespace Inventory.Server.Api;
 public static class PackageEndpoints
 {
     public sealed record DeployRequest(int PackageId, int[] ComputerIds, bool ScanAfter, bool RetryOffline = false, bool RespectMaintenanceWindow = false,
-        int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null);
+        int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null, bool WakeTargets = false);
 
     public sealed record PackageDto(int Id, string Name, string? Version, string? Description, int Steps, DateTime ModifiedUtc, bool Approved = false);
 
@@ -55,7 +55,7 @@ public static class PackageEndpoints
                 // Nur Administratoren dürfen ein noch nicht freigegebenes Paket verteilen.
                 var admin = (await authorization.AuthorizeAsync(http.User, Inventory.Server.Services.AccessControl.AdminPolicy)).Succeeded;
                 var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, new DeploymentOptions(request.ScanAfter, request.RetryOffline, request.RespectMaintenanceWindow,
-                    request.MaxFailures, request.MaxFailurePercent, request.MaxParallel) { RequireApproved = !admin }, ct);
+                    request.MaxFailures, request.MaxFailurePercent, request.MaxParallel) { RequireApproved = !admin, Wake = request.WakeTargets }, ct);
                 await audit.LogAsync(http.Actor(), L["Deployment started via API"],
                     L["#{0} {1} on {2}", deployment.Id, deployment.PackageName, string.Join(", ", deployment.Targets.Select(t => t.ComputerName))], ct);
                 return Results.Created($"/api/deployments/{deployment.Id}", ToDto(deployment));
@@ -64,7 +64,7 @@ public static class PackageEndpoints
             {
                 return Results.BadRequest(ex.Message);
             }
-        }).RequireOperator().WithTags("Deployments").WithSummary("Start deployment").WithDescription("Deploys the package to the computers and returns immediately; operators can only deploy approved packages. GET /api/deployments/{id} delivers the progress. ScanAfter: rescan inventory afterwards. RetryOffline: retry unreachable computers for up to 3 days. RespectMaintenanceWindow: computers outside their maintenance window wait until it opens (at most 8 days). MaxFailures / MaxFailurePercent: stop starting further computers once that many failed (the rate counts after five finished and two failed computers); MaxParallel: computers of this deployment running at once.")
+        }).RequireOperator().WithTags("Deployments").WithSummary("Start deployment").WithDescription("Deploys the package to the computers and returns immediately; operators can only deploy approved packages. GET /api/deployments/{id} delivers the progress. ScanAfter: rescan inventory afterwards. RetryOffline: retry unreachable computers for up to 3 days. RespectMaintenanceWindow: computers outside their maintenance window wait until it opens (at most 8 days). MaxFailures / MaxFailurePercent: stop starting further computers once that many failed (the rate counts after five finished and two failed computers); MaxParallel: computers of this deployment running at once. WakeTargets: send Wake-on-LAN to unreachable computers; implies RetryOffline.")
             .Produces<DeploymentDto>(201).Produces(400);
 
         app.MapGet("/api/deployments/{id:int}", async (int id, DeploymentService deployments, CancellationToken ct) =>
