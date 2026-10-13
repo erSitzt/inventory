@@ -1,3 +1,5 @@
+using Inventory.Core.Model;
+using Microsoft.EntityFrameworkCore;
 using Inventory.Data.Services;
 using Inventory.Remoting;
 
@@ -52,6 +54,125 @@ public class OperationsTests
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             Directory.Delete(dir, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task Backup_includes_the_keys_and_prunes_them_like_the_database()
+    {
+        using var db = new TestDb();
+        var dir = Directory.CreateTempSubdirectory("inventory-backup-").FullName;
+        var keys = Directory.CreateTempSubdirectory("inventory-keys-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(keys, "key-1.xml"), "<key />");
+            for (var i = 0; i < 16; i++)
+                File.WriteAllText(Path.Combine(dir, $"inventory-20200101-0000{i:D2}-keys.zip"), "alt");
+
+            var path = await new BackupService(db, dir, TimeProvider.System, keys).BackupAsync();
+
+            var archive = Path.ChangeExtension(path, null) + "-keys.zip";
+            using (var zip = System.IO.Compression.ZipFile.OpenRead(archive))
+                Assert.Equal(["key-1.xml"], zip.Entries.Select(e => e.FullName));
+            Assert.Equal(14, Directory.GetFiles(dir, "*-keys.zip").Length);
+            // Ohne Schlüssel (noch keiner angelegt) entsteht kein leeres Archiv.
+            var empty = Directory.CreateTempSubdirectory("inventory-keys-").FullName;
+            var other = Directory.CreateTempSubdirectory("inventory-backup-").FullName;
+            await new BackupService(db, other, TimeProvider.System, empty).BackupAsync();
+            Assert.Empty(Directory.GetFiles(other, "*-keys.zip"));
+            Directory.Delete(empty);
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            Directory.Delete(other, recursive: true);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            Directory.Delete(dir, recursive: true);
+            Directory.Delete(keys, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Optimizing_rewrites_the_file_only_when_much_of_it_is_free_and_nothing_runs()
+    {
+        using var db = new TestDb();
+        var backups = new BackupService(db, Path.GetTempPath(), TimeProvider.System);
+        // Eine kleine Datenbank bleibt, wie sie ist.
+        Assert.False(await backups.OptimizeAsync());
+
+        var audit = new AuditService(db);
+        await using (var context = db.CreateDbContext())
+        {
+            context.AuditEntries.AddRange(Enumerable.Range(0, 6000).Select(i => new Inventory.Core.Model.AuditEntry { User = "u", Action = "a", Details = new string('x', 4000) }));
+            await context.SaveChangesAsync();
+            await context.AuditEntries.Where(e => e.Id > 0).ExecuteDeleteAsync();
+        }
+
+        Assert.False(await backups.OptimizeAsync(busy: true));
+        Assert.True(await backups.OptimizeAsync());
+        Assert.False(await backups.OptimizeAsync());
+        Assert.Empty(await audit.ListAsync());
+    }
+
+    [Fact]
+    public async Task Old_finished_deployments_are_removed_but_not_waiting_ones_or_those_of_required_schedules()
+    {
+        using var db = new TestDb();
+        var repo = Directory.CreateTempSubdirectory("inventory-repo-").FullName;
+        try
+        {
+            var computers = new ComputerService(db, new SimulatedHostProbe());
+            var packages = new PackageService(db, new Inventory.Data.PackageRepository(repo));
+            var deployments = new DeploymentService(db, packages,
+                new RemoteJobService([new SimulatedTransport(Inventory.Core.Model.TransportKind.SmbService)], computers, new CredentialService(db, new ReversingProtector()), new SettingsService(db)),
+                new InventoryStore(db), new SimulatedHostProbe());
+            var old = DateTime.UtcNow.AddDays(-100);
+            await using (var context = db.CreateDbContext())
+            {
+                var required = new Inventory.Core.Model.Schedule { Name = "Pflicht", Action = Inventory.Core.Model.ScheduleAction.Deploy, Trigger = Inventory.Core.Model.ScheduleTrigger.OnMembership };
+                var weekly = new Inventory.Core.Model.Schedule { Name = "Woche", Action = Inventory.Core.Model.ScheduleAction.Deploy, Trigger = Inventory.Core.Model.ScheduleTrigger.Weekly };
+                context.Schedules.AddRange(required, weekly);
+                await context.SaveChangesAsync();
+                Inventory.Core.Model.Deployment Add(string name, DateTime created, Inventory.Core.Model.TargetStatus status, int? scheduleId = null) => new()
+                {
+                    PackageName = name, CreatedUtc = created, FinishedUtc = created.AddMinutes(5), ScheduleId = scheduleId,
+                    Targets = [new Inventory.Core.Model.DeploymentTarget { ComputerName = "pc-01", Status = status, FinishedUtc = status.IsWaiting() ? null : created.AddMinutes(5) }],
+                };
+                context.Deployments.AddRange(
+                    Add("alt", old, Inventory.Core.Model.TargetStatus.Succeeded),
+                    Add("alt-zeitplan", old, Inventory.Core.Model.TargetStatus.Failed, weekly.Id),
+                    Add("alt-wartet", old, Inventory.Core.Model.TargetStatus.WaitingOffline),
+                    Add("alt-pflicht", old, Inventory.Core.Model.TargetStatus.Succeeded, required.Id),
+                    Add("neu", DateTime.UtcNow.AddDays(-10), Inventory.Core.Model.TargetStatus.Succeeded));
+                await context.SaveChangesAsync();
+            }
+
+            Assert.Equal(0, await deployments.CleanupAsync(0));
+            Assert.Equal(2, await deployments.CleanupAsync(90));
+
+            await using var after = db.CreateDbContext();
+            Assert.Equal(["alt-pflicht", "alt-wartet", "neu"], after.Deployments.Select(d => d.PackageName).ToList().Order());
+            // Die Ziele gehen mit.
+            Assert.Equal(3, after.DeploymentTargets.Count());
+        }
+        finally
+        {
+            Directory.Delete(repo, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task The_deployment_retention_is_unlimited_or_at_least_thirty_days()
+    {
+        using var db = new TestDb();
+        var settings = new SettingsService(db);
+
+        Assert.Equal(SettingsService.DefaultDeploymentRetentionDays, await settings.GetDeploymentRetentionDaysAsync());
+        await settings.SetDeploymentRetentionDaysAsync(5);
+        Assert.Equal(30, await settings.GetDeploymentRetentionDaysAsync());
+        await settings.SetDeploymentRetentionDaysAsync(0);
+        Assert.Equal(0, await settings.GetDeploymentRetentionDaysAsync());
+        await settings.SetDeploymentRetentionDaysAsync(400);
+        Assert.Equal(400, await settings.GetDeploymentRetentionDaysAsync());
     }
 }
 

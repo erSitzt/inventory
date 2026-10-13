@@ -530,6 +530,30 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         return started;
     }
 
+    /// <summary>
+    /// Entfernt Deployments, die älter als die Frist und abgeschlossen sind, samt ihren Zielen und deren Ausgaben.
+    /// Bleiben dürfen: was noch läuft oder wartet, und die Deployments bestehender Pflicht-Zeitpläne – an ihnen erkennt
+    /// der Zeitplan, auf welchen Rechnern das Paket schon ist; ohne sie würde er es überall neu verteilen.
+    /// </summary>
+    /// <param name="days">0 = nichts entfernen.</param>
+    public async Task<int> CleanupAsync(int days, CancellationToken ct = default)
+    {
+        if (days <= 0)
+            return 0;
+        var limit = DateTime.UtcNow.AddDays(-days);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var required = await db.Schedules.Where(s => s.Trigger == ScheduleTrigger.OnMembership).Select(s => (int?)s.Id).ToListAsync(ct);
+        var old = await db.Deployments.Where(d => d.CreatedUtc < limit && d.FinishedUtc != null && d.FinishedUtc < limit
+                && !required.Contains(d.ScheduleId)
+                && !d.Targets.Any(t => t.FinishedUtc == null))
+            .Select(d => d.Id).ToListAsync(ct);
+        old.RemoveAll(_running.ContainsKey);
+        if (old.Count == 0)
+            return 0;
+        // Die Ziele hängen per Fremdschlüssel am Deployment und gehen mit.
+        return await db.Deployments.Where(d => old.Contains(d.Id)).ExecuteDeleteAsync(ct);
+    }
+
     /// <summary>Nach einem Neustart des Servers: Ziele, die noch als wartend oder laufend gespeichert sind, wurden nie beendet.</summary>
     public async Task MarkInterruptedAsync(CancellationToken ct = default)
     {

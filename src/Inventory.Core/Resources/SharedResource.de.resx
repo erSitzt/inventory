@@ -818,8 +818,8 @@
   <data name="Data directory" xml:space="preserve">
     <value>Datenverzeichnis</value>
   </data>
-  <data name="Database, keys, package files and daily backups (subfolder backups, 14 copies). Configurable via Inventory:DataDirectory." xml:space="preserve">
-    <value>Datenbank, Schlüssel, Paketdateien und tägliche Sicherungen (Unterordner backups, 14 Stück). Änderbar über Inventory:DataDirectory.</value>
+  <data name="Database, keys, package files and daily backups (subfolder backups, 14 copies of database and keys). Package files are not part of the backup – include the folder in the backup of the server if you need them. Configurable via Inventory:DataDirectory." xml:space="preserve">
+    <value>Datenbank, Schlüssel, Paketdateien und tägliche Sicherungen (Unterordner backups, 14 Stände von Datenbank und Schlüsseln). Paketdateien sind nicht Teil der Sicherung – wer sie braucht, nimmt den Ordner in die Sicherung des Servers auf. Einstellbar über Inventory:DataDirectory.</value>
   </data>
   <data name="Date" xml:space="preserve">
     <value>Datum</value>
@@ -1529,6 +1529,9 @@
   <data name="Keep audit log entries (days)" xml:space="preserve">
     <value>Protokolleinträge aufbewahren (Tage)</value>
   </data>
+  <data name="Keep finished deployments (days)" xml:space="preserve">
+    <value>Abgeschlossene Deployments aufbewahren (Tage)</value>
+  </data>
   <data name="Keep the approval when library packages update automatically" xml:space="preserve">
     <value>Freigabe behalten, wenn Bibliothekspakete sich automatisch aktualisieren</value>
   </data>
@@ -2149,6 +2152,9 @@
   </data>
   <data name="Offline computers are retried until {0}" xml:space="preserve">
     <value>Offline-Rechner werden bis {0} nachgeholt</value>
+  </data>
+  <data name="Older deployments are removed once a day, with their output. 0 keeps everything; otherwise at least 30 days. Deployments of required schedules stay." xml:space="preserve">
+    <value>Ältere Deployments werden einmal täglich entfernt, samt ihrer Ausgabe. 0 behält alles; sonst mindestens 30 Tage. Deployments von Pflicht-Zeitplänen bleiben.</value>
   </data>
   <data name="Older entries are removed once a day. 0 keeps everything." xml:space="preserve">
     <value>Ältere Einträge werden einmal täglich entfernt. 0 behält alles.</value>
@@ -3589,6 +3595,9 @@
   </data>
   <data name="There is no newer version with a setup." xml:space="preserve">
     <value>Es liegt keine neuere Version mit Setup vor.</value>
+  </data>
+  <data name="These are the default credentials. Make other credentials the default first." xml:space="preserve">
+    <value>Das sind die Standard-Zugangsdaten. Zuerst andere Zugangsdaten zum Standard machen.</value>
   </data>
   <data name="These entries are not part of the base selection and come unchanged from the winget manifests. The checksum secures the download, but only a test shows whether the silent parameters are right – try it on a single computer before deploying." xml:space="preserve">
     <value>Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download, aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.</value>

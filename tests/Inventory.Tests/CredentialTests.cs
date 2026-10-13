@@ -51,4 +51,22 @@ public class CredentialTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.SaveAsync(null, "Admin", "user", "", null));
     }
+
+    [Fact]
+    public async Task The_default_can_only_be_deleted_as_the_last_and_the_directory_setting_follows()
+    {
+        using var db = new TestDb();
+        var service = new CredentialService(db, new ReversingProtector());
+        var settings = new SettingsService(db);
+        var first = await service.SaveAsync(null, "Standard", @"CORP\a", "x", null);
+        var second = await service.SaveAsync(null, "AD", @"CORP\b", "y", null);
+        await settings.SetAsync(Inventory.Core.Model.SettingKeys.AdSyncCredentialId, second.Id.ToString());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteAsync(first.Id));
+        await service.DeleteAsync(second.Id);
+        // Die Synchronisation zeigt nicht länger auf Zugangsdaten, die es nicht mehr gibt.
+        Assert.Null(await settings.GetAsync(Inventory.Core.Model.SettingKeys.AdSyncCredentialId));
+        await service.DeleteAsync(first.Id);
+        Assert.Empty(await service.ListAsync());
+    }
 }
