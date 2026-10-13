@@ -144,6 +144,16 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         await db.LocalUsers.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
         await db.LocalAdmins.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
 
+        // null = ein älterer Runner hat die Apps nicht gelesen: dann bleibt der bisherige Stand.
+        if (data.Apps is { } apps)
+        {
+            await db.Apps.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            db.Apps.AddRange(apps.Select(a => new ComputerApp
+            {
+                ComputerId = computerId, Name = a.Name, DisplayName = a.DisplayName, Version = a.Version, Publisher = a.Publisher,
+                Architecture = a.Architecture, Provisioned = a.Provisioned,
+            }));
+        }
         db.Software.AddRange(data.Software.Select(s => new ComputerSoftware
         {
             ComputerId = computerId, Name = s.Name, Version = s.Version, Publisher = s.Publisher, InstallDate = s.InstallDate,

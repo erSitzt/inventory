@@ -65,7 +65,7 @@
                         }
                         else
                         {
-                            <MudTextField @bind-Value="rule.Value" Label="@(rule.Field switch { RuleField.Software => L["Program name"], RuleField.Service => L["Service name"], _ => L["Value"] })" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+                            <MudTextField @bind-Value="rule.Value" Label="@(rule.Field switch { RuleField.Software => L["Program name"], RuleField.App => L["Package or display name"], RuleField.Service => L["Service name"], _ => L["Value"] })" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
                         }
                         @if (rule.Field == RuleField.Service && rule.Operator is not RuleOperator.NotEquals)
                         {

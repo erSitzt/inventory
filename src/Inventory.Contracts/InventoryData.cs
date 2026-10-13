@@ -32,6 +32,8 @@ namespace Inventory.Contracts
         public List<string>? InteractiveUsers { get; set; }
 
         public List<SoftwareItem> Software { get; set; } = new List<SoftwareItem>();
+        /// <summary>App-Pakete; null = der Runner hat sie nicht gelesen (ältere Version).</summary>
+        public List<AppItem>? Apps { get; set; }
         public List<HotfixItem> Hotfixes { get; set; } = new List<HotfixItem>();
         public List<DiskItem> Disks { get; set; } = new List<DiskItem>();
         public List<NetworkAdapterItem> NetworkAdapters { get; set; } = new List<NetworkAdapterItem>();
@@ -66,6 +68,20 @@ namespace Inventory.Contracts
         public string? Name { get; set; }
         /// <summary>Letzte Nutzung des Profils laut Windows.</summary>
         public DateTime? LastUseUtc { get; set; }
+    }
+
+    /// <summary>App-Paket (MSIX/AppX, auch aus dem Store), das auf dem Rechner registriert ist; ohne Bestandteile von Windows und Laufzeitbibliotheken.</summary>
+    public sealed class AppItem
+    {
+        /// <summary>Name aus der Paketidentität, z. B. Microsoft.BingWeather; ihn erwartet der Entfernen-Schritt.</summary>
+        public string Name { get; set; } = "";
+        /// <summary>Anzeigename aus dem Manifest, soweit er dort im Klartext steht.</summary>
+        public string? DisplayName { get; set; }
+        public string? Version { get; set; }
+        public string? Publisher { get; set; }
+        public string? Architecture { get; set; }
+        /// <summary>Für neue Benutzer vorgesehen (im Abbild bereitgestellt).</summary>
+        public bool Provisioned { get; set; }
     }
 
     public sealed class SoftwareItem

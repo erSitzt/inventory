@@ -127,6 +127,14 @@
                             <MudAlert Severity="Severity.Warning" Dense="true">@L["Deletes the key with everything below it. Top-level branches such as HKCU\\Software or HKLM\\SOFTWARE\\Microsoft are refused."]</MudAlert>
                         }
                         break;
+                    case StepType.RemoveApp:
+                        <MudTextField @bind-Value="_step.AppName" Label="@L["Package name"]" Placeholder="Microsoft.BingWeather" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                      HelperText="@L["Name as the computer's \"Apps\" tab shows it. * stands for any text, e.g. Microsoft.Xbox*."]" />
+                        <MudSwitch T="bool" @bind-Value="_step.AppKeepProvisioned" Color="Color.Primary" Label="@L["Keep it provisioned for new users"]" />
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            @L["Removes the app for all users of the computer and, unless kept, also for users who log on later. Parts of Windows and runtime libraries are left alone. If the name matches more than {0} different apps, nothing is removed.", AppNames.MaxMatches]
+                        </MudAlert>
+                        break;
                     case StepType.WindowsFeature:
                         <MudTextField @bind-Value="_featureNames" Label="@L["Features"]" Placeholder="NetFx3, TelnetClient" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
                                       HelperText="@L["Names as DISM lists them (dism /online /get-features), separated by commas."]" />
@@ -338,6 +346,7 @@
             StepType.FileCopy => !string.IsNullOrWhiteSpace(_externalSource ? _step.SourcePath : _step.File) && !string.IsNullOrWhiteSpace(_step.Destination),
             StepType.Registry => !string.IsNullOrWhiteSpace(_step.RegistryKey),
             StepType.WindowsFeature => Features(_featureNames).Count > 0,
+            StepType.RemoveApp => !string.IsNullOrWhiteSpace(_step.AppName),
             StepType.Service => !string.IsNullOrWhiteSpace(_step.ServiceName),
             StepType.Uninstall => !string.IsNullOrWhiteSpace(_step.SoftwareName) || !string.IsNullOrWhiteSpace(_step.ProductCode),
             _ => true,
@@ -439,6 +448,15 @@
         {
             _error = L["\"{0}\" contains no KB number.", _updateKbIds.Trim()];
             return;
+        }
+        if (Type == StepType.RemoveApp)
+        {
+            _step.AppName = _step.AppName!.Trim();
+            if (!AppNames.IsRemovalPattern(_step.AppName))
+            {
+                _error = L["\"{0}\" is not usable as a package name: letters, digits, dot and hyphen, with * only next to enough of the name (not just the vendor).", _step.AppName];
+                return;
+            }
         }
         _step.FeatureNames = Type == StepType.WindowsFeature ? Features(_featureNames) : [];
         if (_step.FeatureNames.FirstOrDefault(f => !RegistryData.IsFeatureName(f)) is { } invalid)

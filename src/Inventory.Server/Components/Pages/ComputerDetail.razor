@@ -286,6 +286,28 @@ else if (_computer.ReverseDnsMismatch)
         </MudDataGrid>
     </MudTabPanel>
 
+    <MudTabPanel Text="@($"{L["Apps"]} ({_computer.Apps.Count})")">
+        <MudText Typo="Typo.body2" Class="mb-2">
+            @L["App packages (MSIX/AppX, also from the Store) registered on the computer, without parts of Windows and runtime libraries. If the list is empty, the computer has no such apps or has not been scanned with a current runner yet."]
+        </MudText>
+        <MudDataGrid T="ComputerApp" Items="_computer.Apps" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
+            <Columns>
+                <TemplateColumn Title="@L["Name"]" SortBy="@(a => a.DisplayName ?? a.Name)">
+                    <CellTemplate>@(context.Item.DisplayName ?? context.Item.Name)</CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="a => a.Name" Title="@L["Package name"]" />
+                <PropertyColumn Property="a => a.Version" Title="@L["Version"]" />
+                <PropertyColumn Property="a => a.Publisher" Title="@L["Publisher"]" />
+                <TemplateColumn Title="@L["New users"]" SortBy="@(a => a.Provisioned)">
+                    <CellTemplate>@(context.Item.Provisioned ? L["provisioned"] : "")</CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="ComputerApp" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudTabPanel>
+
     <MudTabPanel Text="@($"Hotfixes ({_computer.Hotfixes.Count})")">
         <MudDataGrid T="ComputerHotfix" Items="_computer.Hotfixes" Dense="true" Hover="true" SortMode="SortMode.Single">
             <Columns>

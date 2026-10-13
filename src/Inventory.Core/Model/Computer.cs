@@ -217,6 +217,7 @@ public class Computer
     public List<ComputerVolumeEncryption> Volumes { get; set; } = [];
     public List<ComputerMonitor> Monitors { get; set; } = [];
     public List<ComputerPrinter> Printers { get; set; } = [];
+    public List<ComputerApp> Apps { get; set; } = [];
 
     /// <summary>Statische Sammlungen, denen der Rechner fest zugeordnet ist.</summary>
     public List<Collection> Collections { get; set; } = [];

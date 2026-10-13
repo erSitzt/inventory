@@ -22,6 +22,7 @@ namespace Inventory.Runner
             Section(data, "Betriebssystem", () => ReadOperatingSystem(data));
             Section(data, "Prozessor", () => ReadProcessor(data));
             Section(data, "Software", () => ReadSoftware(data));
+            Section(data, "Apps", () => data.Apps = AppCollector.Read());
             Section(data, "Benutzerprofile", () => ReadUserProfiles(data));
             Section(data, "Angemeldete Benutzer", () => ReadInteractiveUsers(data));
             Section(data, "Hotfixes", () => ReadHotfixes(data));

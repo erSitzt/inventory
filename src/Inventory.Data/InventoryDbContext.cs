@@ -27,6 +27,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ComputerVolumeEncryption> Volumes => Set<ComputerVolumeEncryption>();
     public DbSet<ComputerMonitor> Monitors => Set<ComputerMonitor>();
     public DbSet<ComputerPrinter> Printers => Set<ComputerPrinter>();
+    public DbSet<ComputerApp> Apps => Set<ComputerApp>();
     public DbSet<InventoryChange> InventoryChanges => Set<InventoryChange>();
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
@@ -65,6 +66,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasMany(c => c.Volumes).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.Monitors).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.Printers).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.Apps).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany<InventoryChange>().WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -523,6 +523,41 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Computers");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerApp", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Architecture")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Provisioned")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Publisher")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("Apps");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerDisk", b =>
                 {
                     b.Property<int>("Id")
@@ -1703,6 +1738,15 @@ namespace Inventory.Data.Migrations
                     b.Navigation("Credential");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerApp", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("Apps")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerDisk", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -1968,6 +2012,8 @@ namespace Inventory.Data.Migrations
 
             modelBuilder.Entity("Inventory.Core.Model.Computer", b =>
                 {
+                    b.Navigation("Apps");
+
                     b.Navigation("Disks");
 
                     b.Navigation("Hotfixes");

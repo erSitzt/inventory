@@ -154,6 +154,21 @@ public class ComputerMonitor
     public int? Year { get; set; }
 }
 
+/// <summary>App-Paket (MSIX/AppX, auch aus dem Store) auf dem Rechner.</summary>
+public class ComputerApp
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    /// <summary>Name aus der Paketidentität, z. B. Microsoft.BingWeather.</summary>
+    public required string Name { get; set; }
+    public string? DisplayName { get; set; }
+    public string? Version { get; set; }
+    public string? Publisher { get; set; }
+    public string? Architecture { get; set; }
+    /// <summary>Für neue Benutzer vorgesehen (im Abbild bereitgestellt).</summary>
+    public bool Provisioned { get; set; }
+}
+
 public class ComputerPrinter
 {
     public int Id { get; set; }

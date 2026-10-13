@@ -36,6 +36,9 @@ credentials. The user interface is available in English and German; translations
 - **Packages** made of several steps: installation, command, PowerShell, copy files, registry, Windows feature,
   service, wait, reboot, scan, embedded package – each with conditions and error handling; steps after a reboot
   continue automatically once the computer is back
+- **Apps (MSIX/AppX, Store)**: the scan records the computer's app packages and whether they are provisioned for new
+  users; collections can filter on them, and a "remove app" step removes an app for all users and, if wanted, for
+  future ones – parts of Windows and runtime libraries are left alone, and a name that is too broad removes nothing
 - **Prerequisites**: a package names the packages it needs ("requires the .NET runtime"); they run before its
   steps, each only where its own detection does not already find it installed, and must be detectable afterwards if
   that package asks for verification
