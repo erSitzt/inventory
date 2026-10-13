@@ -62,6 +62,26 @@
     }
 </MudText>
 
+@if (DeploymentService.Pilot(_deployment) is { } pilot)
+{
+    <MudAlert Severity="@(pilot.Pending == 0 && !pilot.WithinLimit ? Severity.Warning : Severity.Info)" Dense="true" Class="mb-4">
+        @L["Phased rollout: {0} computers wait for the pilot group ({1} computers, {2} failed, at most {3} % allowed).", _deployment.Targets.Count(t => t.Status == TargetStatus.WaitingPilot), pilot.Total, pilot.Failed, pilot.MaxFailurePercent]
+        @if (pilot.ReleaseUtc is { } release)
+        {
+            <span>&nbsp;@(pilot.WithinLimit ? L["They follow {0}.", Display.LocalTime(release)] : L["Too many failed: the deployment stops."])</span>
+        }
+        else
+        {
+            <span>&nbsp;@L["{0} computers of the pilot group are not finished yet.", pilot.Pending]</span>
+        }
+        <OperatorOnly>
+            <div class="mt-2">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="Running" OnClick="ReleaseAsync">@L["Start the remaining computers now"]</MudButton>
+            </div>
+        </OperatorOnly>
+    </MudAlert>
+}
+
 @if (_deployment.StopReason is not null)
 {
     <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-4">@_deployment.StopReason – @L["the remaining computers were not started."]</MudAlert>
@@ -98,7 +118,7 @@
                 }
                 else if (target.Steps.Count == 0)
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(target.Status == TargetStatus.Queued ? L["Waiting for a free slot."] : target.Error ?? L["No step was executed."])</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(target.Status == TargetStatus.Queued ? L["Waiting for a free slot."] : target.Status == TargetStatus.WaitingPilot ? L["Waiting for the pilot group"] : target.Error ?? L["No step was executed."])</MudText>
                 }
                 else
                 {
@@ -174,6 +194,17 @@
             return;
         await Audit.LogAsync(L["Deployment cancelled"], $"#{Id} {_deployment!.PackageName}");
         await DeploymentService.CancelAsync(Id);
+    }
+
+    private async Task ReleaseAsync()
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        var started = await DeploymentService.ReleasePilotAsync(Id, force: true);
+        if (started > 0)
+            await Audit.LogAsync(L["Deployment released after the pilot group"], $"#{Id} {_deployment!.PackageName}: {started}");
+        else
+            Snackbar.Add(L["Nothing was started: computers of this deployment are still running."], Severity.Warning);
     }
 
     private async Task RetryAsync()

@@ -19,6 +19,12 @@ public sealed record DeploymentOptions(bool ScanAfter, bool RetryOffline = false
     public bool RequireApproved { get; init; }
     /// <summary>Nicht erreichbare Rechner per Wake-on-LAN wecken; sie warten dann wie mit <see cref="RetryOffline"/>.</summary>
     public bool Wake { get; init; }
+    /// <summary>Gestufter Rollout: die Mitglieder dieser Sammlung unter den Zielen laufen zuerst; null = alle zugleich.</summary>
+    public int? PilotCollectionId { get; init; }
+    /// <summary>Stunden zwischen dem letzten Rechner der Pilotgruppe und dem Start der übrigen.</summary>
+    public int PilotHoldHours { get; init; } = 24;
+    /// <summary>Höchste Fehlerquote der Pilotgruppe in Prozent, bei der die übrigen noch starten.</summary>
+    public int PilotMaxFailurePercent { get; init; }
     /// <summary>Der auslösende Zeitplan, damit sich später sagen lässt, auf welchen Rechnern er schon erfolgreich war.</summary>
     public int? ScheduleId { get; init; }
 }
@@ -27,6 +33,10 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
     private readonly MaintenanceService _maintenance = maintenance ?? new MaintenanceService(dbFactory, new CollectionService(dbFactory), new SettingsService(dbFactory));
 
+
+    /// <summary>Längste Wartezeit zwischen Pilotgruppe und den übrigen Rechnern: 30 Tage.</summary>
+    public const int MaxPilotHoldHours = 720;
+    private readonly CollectionService _collections = new(dbFactory);
 
     /// <summary>So lange werden Offline-Rechner nachgeholt, bevor das Ziel als fehlgeschlagen gilt.</summary>
     public static readonly TimeSpan RetryWindow = TimeSpan.FromDays(3);
@@ -160,6 +170,18 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             await DemandApprovedAsync(packageId, built.PackageIds, ct);
 
         var ids = computerIds.Distinct().ToList();
+        HashSet<int> pilot = [];
+        if (options.PilotCollectionId is { } pilotId)
+        {
+            // Eine gelöschte Pilot-Sammlung darf nicht dazu führen, dass stillschweigend alle Rechner zugleich starten.
+            await using var check = await dbFactory.CreateDbContextAsync(ct);
+            if (!await check.Collections.AnyAsync(c => c.Id == pilotId, ct))
+                throw new InvalidOperationException(L["The collection for the pilot group no longer exists."]);
+            pilot = [.. (await _collections.GetMemberIdsAsync(pilotId, ct)).Where(ids.Contains)];
+            // Niemand oder alle in der Pilotgruppe: es gibt nichts zu stufen.
+            if (pilot.Count == ids.Count)
+                pilot = [];
+        }
         Deployment deployment;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
@@ -176,13 +198,18 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 MaxFailurePercent = options.MaxFailurePercent is > 0 ? Math.Min(options.MaxFailurePercent.Value, 100) : null,
                 MaxParallel = options.MaxParallel is > 0 ? options.MaxParallel : null,
                 ScheduleId = options.ScheduleId,
-                Targets = computers.Select(c => new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.Queued }).ToList(),
+                PilotCollectionId = pilot.Count > 0 ? options.PilotCollectionId : null,
+                PilotHoldHours = Math.Clamp(options.PilotHoldHours, 0, MaxPilotHoldHours),
+                PilotMaxFailurePercent = Math.Clamp(options.PilotMaxFailurePercent, 0, 100),
+                Targets = computers.Select(c => pilot.Count == 0 || pilot.Contains(c.Id)
+                    ? new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.Queued, Pilot = pilot.Count > 0 }
+                    : new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.WaitingPilot }).ToList(),
             };
             db.Deployments.Add(deployment);
             await db.SaveChangesAsync(ct);
         }
 
-        Launch(deployment, deployment.Targets, built, checkOnline: retryOffline);
+        Launch(deployment, [.. deployment.Targets.Where(t => t.Status == TargetStatus.Queued)], built, checkOnline: retryOffline);
         return deployment;
     }
 
@@ -217,7 +244,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         if (_running.TryGetValue(deploymentId, out var cts))
             cts.Cancel();
         await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId
-                && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot || t.Status == TargetStatus.WaitingWindow))
+                && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot || t.Status == TargetStatus.WaitingWindow || t.Status == TargetStatus.WaitingPilot))
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, "Abgebrochen")
                 .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
         Changed?.Invoke(deploymentId);
@@ -302,6 +329,139 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         }
         return started;
     }
+
+    /// <summary>Stand der Pilotgruppe eines gestuften Rollouts.</summary>
+    /// <param name="ReleaseUtc">Wann die übrigen Rechner frühestens folgen; null, solange die Pilotgruppe noch läuft oder wartet.</param>
+    public sealed record PilotState(int Total, int Failed, int Pending, DateTime? ReleaseUtc, int MaxFailurePercent)
+    {
+        public bool WithinLimit => Failed * 100 <= MaxFailurePercent * Total;
+    }
+
+    /// <summary>Stand der Pilotgruppe; null, wenn das Deployment nicht (mehr) auf sie wartet.</summary>
+    public static PilotState? Pilot(Deployment deployment)
+    {
+        if (deployment.PilotCollectionId is null || deployment.PilotReleasedUtc is not null || !deployment.Targets.Any(t => t.Status == TargetStatus.WaitingPilot))
+            return null;
+        var pilot = deployment.Targets.Where(t => t.Pilot).ToList();
+        var pending = pilot.Count(t => t.Status is TargetStatus.Queued or TargetStatus.Running || t.Status.IsWaiting());
+        DateTime? release = pending == 0 && pilot.Count > 0
+            ? pilot.Max(t => t.FinishedUtc ?? deployment.CreatedUtc).AddHours(deployment.PilotHoldHours)
+            : null;
+        return new PilotState(pilot.Count, pilot.Count(t => t.Status == TargetStatus.Failed), pending, release, deployment.PilotMaxFailurePercent);
+    }
+
+    /// <summary>
+    /// Gestufter Rollout: ist die Pilotgruppe fertig und die Wartezeit um, starten die übrigen Rechner – oder das Deployment
+    /// hält an, wenn zu viele der Pilotgruppe fehlgeschlagen sind. Wird vom Zeitplaner in jedem Takt aufgerufen.
+    /// </summary>
+    /// <returns>Anzahl der gestarteten Ziele.</returns>
+    public async Task<int> ReleasePilotsAsync(CancellationToken ct = default)
+    {
+        List<int> waiting;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+            waiting = await db.Deployments.AsNoTracking().Where(d => d.PilotReleasedUtc == null && d.Targets.Any(t => t.Status == TargetStatus.WaitingPilot))
+                .Select(d => d.Id).ToListAsync(ct);
+        var started = 0;
+        foreach (var id in waiting)
+            started += await ReleasePilotAsync(id, force: false, ct);
+        return started;
+    }
+
+    /// <summary>Gibt die übrigen Rechner eines gestuften Rollouts frei.</summary>
+    /// <param name="force">
+    /// true = sofort und ohne Blick auf Wartezeit und Fehlerquote (Entscheidung eines Menschen); auf Rechner der Pilotgruppe,
+    /// die noch offline sind, wird dann nicht gewartet. Solange Rechner des Deployments gerade laufen, geschieht nichts.
+    /// </param>
+    /// <returns>Anzahl der gestarteten Ziele; 0, wenn es (noch) nichts freizugeben gab.</returns>
+    public async Task<int> ReleasePilotAsync(int deploymentId, bool force, CancellationToken ct = default)
+    {
+        // Freigabe und Start gehören zusammen: der Takt und "Jetzt freigeben" dürfen dieselben Rechner nicht zweimal starten.
+        await _pilotLock.WaitAsync(ct);
+        try
+        {
+            if (await GetAsync(deploymentId, ct) is not { } deployment || Pilot(deployment) is not { } state)
+                return 0;
+            // Ein laufendes Deployment hält genau eine Abbruchquelle; die zweite Stufe startet erst, wenn die erste abgelaufen ist.
+            if (_running.ContainsKey(deploymentId))
+                return 0;
+            if (!force && state.Pending > 0)
+                return 0;
+            // Zu viele Fehler halten sofort an; nur die Freigabe wartet die Frist ab.
+            var failed = !force && !state.WithinLimit;
+            if (!force && !failed && (state.ReleaseUtc is not { } release || release > DateTime.UtcNow))
+                return 0;
+
+            string? stop = null;
+            BuiltJob? built = null;
+            if (failed)
+                stop = L["Stopped after the pilot group: {0} of {1} computers failed", state.Failed, state.Total];
+            else
+            {
+                try
+                {
+                    built = deployment.PackageId is { } packageId
+                        ? await BuildAsync(packageId, deployment.ScanAfter, ct)
+                        : throw new InvalidOperationException(L["The package was deleted"]);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+                {
+                    stop = ex.Message;
+                }
+            }
+
+            var now = DateTime.UtcNow;
+            if (stop is not null)
+            {
+                _stopped.TryAdd(deploymentId, stop);
+                await UpdateAsync(async db =>
+                {
+                    await db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId && t.Status == TargetStatus.WaitingPilot)
+                        .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, stop).SetProperty(t => t.FinishedUtc, now));
+                    // Das neue Ende meldet den Halt auch den Alarmregeln für fehlgeschlagene Deployments.
+                    await db.Deployments.Where(d => d.Id == deploymentId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(d => d.StopReason, stop).SetProperty(d => d.FinishedUtc, now));
+                });
+                Changed?.Invoke(deploymentId);
+                return 0;
+            }
+
+            var rest = deployment.Targets.Where(t => t.Status == TargetStatus.WaitingPilot).ToList();
+            var restIds = rest.Select(t => t.Id).ToList();
+            // Die Fristen für Offline-Rechner und Wartungsfenster beginnen für die zweite Stufe neu.
+            DateTime? retryUntil = deployment.RespectMaintenanceWindow ? now + WindowWait : deployment.RetryOffline ? now + RetryWindow : null;
+            await UpdateAsync(async db =>
+            {
+                await db.DeploymentTargets.Where(t => restIds.Contains(t.Id) && t.Status == TargetStatus.WaitingPilot)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Queued).SetProperty(t => t.Error, (string?)null));
+                await db.Deployments.Where(d => d.Id == deploymentId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.PilotReleasedUtc, now).SetProperty(d => d.RetryUntilUtc, retryUntil).SetProperty(d => d.FinishedUtc, (DateTime?)null));
+            });
+            // Nur starten, was diese Freigabe wirklich umgestellt hat: ein gleichzeitiges "Abbrechen" kann Ziele schon verworfen haben.
+            await using (var db = await dbFactory.CreateDbContextAsync(ct))
+            {
+                var queued = (await db.DeploymentTargets.AsNoTracking().Where(t => restIds.Contains(t.Id) && t.Status == TargetStatus.Queued).Select(t => t.Id).ToListAsync(ct)).ToHashSet();
+                rest = [.. rest.Where(t => queued.Contains(t.Id))];
+            }
+            if (rest.Count == 0)
+            {
+                await UpdateAsync(db => db.Deployments.Where(d => d.Id == deploymentId).ExecuteUpdateAsync(s => s.SetProperty(d => d.FinishedUtc, now)));
+                Changed?.Invoke(deploymentId);
+                return 0;
+            }
+            foreach (var target in rest)
+                (target.Status, target.Error) = (TargetStatus.Queued, null);
+            (deployment.PilotReleasedUtc, deployment.RetryUntilUtc) = (now, retryUntil);
+            Launch(deployment, rest, built!, checkOnline: deployment.RetryOffline);
+            Changed?.Invoke(deploymentId);
+            return rest.Count;
+        }
+        finally
+        {
+            _pilotLock.Release();
+        }
+    }
+
+    private readonly SemaphoreSlim _pilotLock = new(1, 1);
 
     /// <summary>
     /// Setzt Ziele fort, deren Rechner nach einem Neustart-Schritt wieder erreichbar ist: der Folgejob enthält die restlichen
@@ -430,7 +590,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             return;
         await db.Deployments.Where(d => d.Id == deployment.Id).ExecuteUpdateAsync(s => s.SetProperty(d => d.StopReason, reason));
         // Wer noch auf seinen Rechner oder sein Fenster wartet, würde sonst später doch noch starten.
-        await db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingWindow))
+        await db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingWindow || t.Status == TargetStatus.WaitingPilot))
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, reason).SetProperty(t => t.FinishedUtc, DateTime.UtcNow));
     }
 

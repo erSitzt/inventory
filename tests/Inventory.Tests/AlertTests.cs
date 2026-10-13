@@ -118,6 +118,8 @@ public class AlertTests
         await AddDeploymentAsync(rig, "Gut", TargetStatus.Succeeded, TargetStatus.AlreadyInstalled);
         await AddDeploymentAsync(rig, "Schlecht", TargetStatus.Succeeded, TargetStatus.Failed, TargetStatus.Failed);
         await AddDeploymentAsync(rig, "Läuft", finished: false, TargetStatus.Failed, TargetStatus.Running);
+        // Ein gestufter Rollout, dessen übrige Rechner noch auf die Pilotgruppe warten, ist nicht zu Ende.
+        await AddDeploymentAsync(rig, "Gestuft", TargetStatus.Failed, TargetStatus.WaitingPilot);
         await using (var db = rig.Db.CreateDbContext())
         {
             db.Computers.Add(new Computer { Name = "neu-01", CreatedUtc = rig.Time.GetUtcNow().UtcDateTime });

@@ -61,6 +61,8 @@ public enum TargetStatus
     AlreadyInstalled = 7,
     /// <summary>Das Wartungsfenster des Rechners ist geschlossen; das Ziel startet, sobald es beginnt.</summary>
     WaitingWindow = 8,
+    /// <summary>Gestufter Rollout: das Ziel startet erst, wenn die Pilotgruppe fertig, die Wartezeit um und die Fehlerquote eingehalten ist.</summary>
+    WaitingPilot = 9,
 }
 
 public static class TargetStatusExtensions
@@ -68,8 +70,8 @@ public static class TargetStatusExtensions
     /// <summary>Das Paket ist auf dem Rechner vorhanden: gerade installiert oder schon vorher da.</summary>
     public static bool IsSuccess(this TargetStatus status) => status is TargetStatus.Succeeded or TargetStatus.AlreadyInstalled;
 
-    /// <summary>Noch nicht entschieden: das Ziel wartet auf den Rechner, einen Neustart oder sein Wartungsfenster.</summary>
-    public static bool IsWaiting(this TargetStatus status) => status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot or TargetStatus.WaitingWindow;
+    /// <summary>Noch nicht entschieden: das Ziel wartet auf den Rechner, einen Neustart, sein Wartungsfenster oder die Pilotgruppe.</summary>
+    public static bool IsWaiting(this TargetStatus status) => status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot or TargetStatus.WaitingWindow or TargetStatus.WaitingPilot;
 }
 
 public static class DeploymentLimits
@@ -100,6 +102,17 @@ public class Deployment
     public bool RespectMaintenanceWindow { get; set; }
     /// <summary>Nicht erreichbare Rechner per Wake-on-LAN wecken, bevor sie als wartend gelten.</summary>
     public bool WakeTargets { get; set; }
+    /// <summary>
+    /// Gestufter Rollout: die Sammlung, deren Mitglieder unter den Zielen zuerst laufen (Pilotgruppe); null = alle zugleich.
+    /// Die übrigen Ziele warten als <see cref="TargetStatus.WaitingPilot"/>.
+    /// </summary>
+    public int? PilotCollectionId { get; set; }
+    /// <summary>So viele Stunden nach dem letzten Rechner der Pilotgruppe folgen die übrigen.</summary>
+    public int PilotHoldHours { get; set; }
+    /// <summary>Höchstens so viel Prozent der Pilotgruppe dürfen fehlgeschlagen sein, sonst starten die übrigen nicht.</summary>
+    public int PilotMaxFailurePercent { get; set; }
+    /// <summary>Wann die übrigen Ziele freigegeben wurden; null = noch nicht (oder kein gestufter Rollout).</summary>
+    public DateTime? PilotReleasedUtc { get; set; }
     /// <summary>Nach so vielen fehlgeschlagenen Rechnern werden keine weiteren mehr gestartet; null = keine Grenze.</summary>
     public int? MaxFailures { get; set; }
     /// <summary>
@@ -124,6 +137,8 @@ public class DeploymentTarget
     public int DeploymentId { get; set; }
     public int? ComputerId { get; set; }
     public required string ComputerName { get; set; }
+    /// <summary>Gehört zur Pilotgruppe eines gestuften Rollouts.</summary>
+    public bool Pilot { get; set; }
     public TargetStatus Status { get; set; }
     public string? Error { get; set; }
     public DateTime? StartedUtc { get; set; }

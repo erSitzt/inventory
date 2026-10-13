@@ -80,10 +80,16 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     public bool AgentConnected(Computer c) => c.AgentLastSeenUtc is { } seen && DateTime.UtcNow - seen < TimeSpan.FromMinutes(5);
 
     /// <summary>Datum und Uhrzeit in der Schreibweise der aktuellen Sprache.</summary>
+    /// <summary>
+    /// Zeigt einen UTC-Zeitpunkt in Ortszeit. Werte aus der Datenbank tragen keine Kennzeichnung und gelten als UTC.
+    /// Bewusst nur diese eine Überladung: eine zweite für nicht-nullbare Werte würde von allen Pflichtfeldern (CreatedUtc,
+    /// TimeUtc) gewählt und zeigte sie unumgerechnet an.
+    /// </summary>
     public string LocalTime(DateTime? utc) =>
-        utc is null ? "–" : DateTime.SpecifyKind(utc.Value, DateTimeKind.Utc).ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+        utc is not { } value ? "–" : (value.Kind == DateTimeKind.Local ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc).ToLocalTime()).ToString("g", CultureInfo.CurrentCulture);
 
-    public string LocalTime(DateTime local) => local.ToString("g", CultureInfo.CurrentCulture);
+    /// <summary>Zeigt eine Uhrzeit, die schon in der Ortszeit des Servers gespeichert ist (z. B. <see cref="Schedule.StartLocal"/>).</summary>
+    public string WallTime(DateTime local) => local.ToString("g", CultureInfo.CurrentCulture);
 
     public string Bytes(long? bytes)
     {
@@ -319,6 +325,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.WaitingReboot => T("restarting"),
         TargetStatus.AlreadyInstalled => T("already installed"),
         TargetStatus.WaitingWindow => T("waiting for maintenance window"),
+        TargetStatus.WaitingPilot => T("waiting for pilot group"),
         _ => status.ToString(),
     };
 
@@ -332,6 +339,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.WaitingReboot => Color.Info,
         TargetStatus.AlreadyInstalled => Color.Success,
         TargetStatus.WaitingWindow => Color.Warning,
+        TargetStatus.WaitingPilot => Color.Default,
         _ => Color.Default,
     };
 
@@ -482,7 +490,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
 
     public string Trigger(Schedule s) => s.Trigger switch
     {
-        ScheduleTrigger.Once => T("once on {0}", s.StartLocal is { } start ? LocalTime(start) : "–"),
+        ScheduleTrigger.Once => T("once on {0}", s.StartLocal is { } start ? WallTime(start) : "–"),
         ScheduleTrigger.Interval => s.IntervalMinutes % 60 == 0 ? T("every {0} hours", s.IntervalMinutes / 60) : T("every {0} minutes", s.IntervalMinutes),
         ScheduleTrigger.Daily => T("daily at {0}", s.TimeOfDay.ToString(@"hh\:mm")),
         ScheduleTrigger.Weekly => T("{0} at {1}", string.Join(", ", WeekDays.Where(d => (s.DaysOfWeek & (1 << (int)d)) != 0).Select(Day)), s.TimeOfDay.ToString(@"hh\:mm")),

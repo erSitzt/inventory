@@ -932,8 +932,14 @@
   <data name="Deployment #{0} started on {1} computers" xml:space="preserve">
     <value>Deployment #{0} auf {1} Rechner gestartet</value>
   </data>
+  <data name="Deployment #{0} started on {1} computers of the pilot group; {2} more follow" xml:space="preserve">
+    <value>Deployment #{0} auf {1} Rechnern der Pilotgruppe gestartet; {2} weitere folgen</value>
+  </data>
   <data name="Deployment cancelled" xml:space="preserve">
     <value>Deployment abgebrochen</value>
+  </data>
+  <data name="Deployment released after the pilot group" xml:space="preserve">
+    <value>Deployment nach der Pilotgruppe freigegeben</value>
   </data>
   <data name="Deployment retried" xml:space="preserve">
     <value>Deployment wiederholt</value>
@@ -1189,6 +1195,9 @@
   </data>
   <data name="Failed" xml:space="preserve">
     <value>Fehlgeschlagen</value>
+  </data>
+  <data name="Failures allowed (%)" xml:space="preserve">
+    <value>Zulässige Fehler (%)</value>
   </data>
   <data name="fallback attempt via {0}: {1}" xml:space="preserve">
     <value>Ausweichversuch über {0}: {1}</value>
@@ -2093,6 +2102,9 @@
   <data name="Nothing selected = all columns. The order follows the source." xml:space="preserve">
     <value>Nichts ausgewählt = alle Spalten. Die Reihenfolge folgt der Quelle.</value>
   </data>
+  <data name="Nothing was started: computers of this deployment are still running." xml:space="preserve">
+    <value>Es wurde nichts gestartet: Rechner dieses Deployments laufen noch.</value>
+  </data>
   <data name="Notification channel changed" xml:space="preserve">
     <value>Benachrichtigungskanal geändert</value>
   </data>
@@ -2438,6 +2450,9 @@
   <data name="Period (days back)" xml:space="preserve">
     <value>Zeitraum (Tage zurück)</value>
   </data>
+  <data name="Phased rollout: {0} computers wait for the pilot group ({1} computers, {2} failed, at most {3} % allowed)." xml:space="preserve">
+    <value>Gestufter Rollout: {0} Rechner warten auf die Pilotgruppe ({1} Rechner, {2} fehlgeschlagen, höchstens {3} % zulässig).</value>
+  </data>
   <data name="Physical disk" xml:space="preserve">
     <value>Physischer Datenträger</value>
   </data>
@@ -2446,6 +2461,15 @@
   </data>
   <data name="Physical disks" xml:space="preserve">
     <value>Physische Datenträger</value>
+  </data>
+  <data name="Pilot group" xml:space="preserve">
+    <value>Pilotgruppe</value>
+  </data>
+  <data name="Pilot group (active)" xml:space="preserve">
+    <value>Pilotgruppe (aktiv)</value>
+  </data>
+  <data name="Pilot group (none)" xml:space="preserve">
+    <value>Pilotgruppe (keine)</value>
   </data>
   <data name="Platform security" xml:space="preserve">
     <value>Plattformsicherheit</value>
@@ -3212,6 +3236,9 @@
   <data name="Start of the maintenance window (2 hours)" xml:space="preserve">
     <value>Beginn des Wartungsfensters (2 Stunden)</value>
   </data>
+  <data name="Start the remaining computers now" xml:space="preserve">
+    <value>Übrige Rechner jetzt starten</value>
+  </data>
   <data name="Start type" xml:space="preserve">
     <value>Starttyp</value>
   </data>
@@ -3268,6 +3295,9 @@
   </data>
   <data name="stopped" xml:space="preserve">
     <value>beendet</value>
+  </data>
+  <data name="Stopped after the pilot group: {0} of {1} computers failed" xml:space="preserve">
+    <value>Nach der Pilotgruppe angehalten: {0} von {1} Rechnern fehlgeschlagen</value>
   </data>
   <data name="Stopped because" xml:space="preserve">
     <value>Angehalten wegen</value>
@@ -3367,6 +3397,9 @@
   </data>
   <data name='The collection "{0}" now has {1} members (threshold {2}).' xml:space="preserve">
     <value>Die Sammlung „{0}“ hat jetzt {1} Mitglieder (Schwelle {2}).</value>
+  </data>
+  <data name="The collection for the pilot group no longer exists." xml:space="preserve">
+    <value>Die Sammlung für die Pilotgruppe gibt es nicht mehr.</value>
   </data>
   <data name="The collection referenced by a rule does not exist (anymore)." xml:space="preserve">
     <value>Die Sammlung, auf die eine Regel verweist, gibt es nicht (mehr).</value>
@@ -3506,6 +3539,9 @@
   <data name="The table needs a header row and at least one data row." xml:space="preserve">
     <value>Die Tabelle braucht eine Kopfzeile und mindestens eine Datenzeile.</value>
   </data>
+  <data name="The targets that are members of this collection run first. The others follow once the last of them has finished and the wait is over – unless more of the pilot group failed than allowed; then the deployment stops. Computers of the pilot group that stay offline count as failed when their deadline expires." xml:space="preserve">
+    <value>Die Ziele, die Mitglied dieser Sammlung sind, laufen zuerst. Die übrigen folgen, sobald der letzte von ihnen fertig und die Wartezeit um ist – außer es sind mehr Rechner der Pilotgruppe fehlgeschlagen als zulässig; dann hält das Deployment an. Rechner der Pilotgruppe, die offline bleiben, zählen nach Ablauf ihrer Frist als fehlgeschlagen.</value>
+  </data>
   <data name="The threshold must be at least 1." xml:space="preserve">
     <value>Die Schwelle muss mindestens 1 sein.</value>
   </data>
@@ -3550,6 +3586,9 @@
   </data>
   <data name="These rules would make collections refer to each other in a circle." xml:space="preserve">
     <value>Mit diesen Regeln würden Sammlungen im Kreis aufeinander verweisen.</value>
+  </data>
+  <data name="They follow {0}." xml:space="preserve">
+    <value>Sie folgen {0}.</value>
   </data>
   <data name="This collection contains no computers." xml:space="preserve">
     <value>Diese Sammlung enthält keine Rechner.</value>
@@ -3622,6 +3661,9 @@
   </data>
   <data name="Token revoked." xml:space="preserve">
     <value>Token widerrufen.</value>
+  </data>
+  <data name="Too many failed: the deployment stops." xml:space="preserve">
+    <value>Zu viele fehlgeschlagen: das Deployment hält an.</value>
   </data>
   <data name="Tools" xml:space="preserve">
     <value>Tools</value>
@@ -3872,6 +3914,9 @@
   <data name="Wait" xml:space="preserve">
     <value>Warten</value>
   </data>
+  <data name="Wait (hours)" xml:space="preserve">
+    <value>Wartezeit (Stunden)</value>
+  </data>
   <data name="Wait for restart (minutes)" xml:space="preserve">
     <value>Wartezeit auf Neustart (Minuten)</value>
   </data>
@@ -3890,6 +3935,9 @@
   <data name="waiting for offline computers" xml:space="preserve">
     <value>wartet auf Offline-Rechner</value>
   </data>
+  <data name="waiting for pilot group" xml:space="preserve">
+    <value>wartet auf Pilotgruppe</value>
+  </data>
   <data name="waiting for restart" xml:space="preserve">
     <value>wartet auf Neustart</value>
   </data>
@@ -3898,6 +3946,9 @@
   </data>
   <data name="Waiting for the maintenance window (opens {0})" xml:space="preserve">
     <value>Wartet auf das Wartungsfenster (beginnt {0})</value>
+  </data>
+  <data name="Waiting for the pilot group" xml:space="preserve">
+    <value>Wartet auf die Pilotgruppe</value>
   </data>
   <data name="Wake" xml:space="preserve">
     <value>Wecken</value>
@@ -4135,6 +4186,9 @@
   </data>
   <data name='{0} computers in "{1}"' xml:space="preserve">
     <value>{0} Rechner in „{1}“</value>
+  </data>
+  <data name="{0} computers of the pilot group are not finished yet." xml:space="preserve">
+    <value>{0} Rechner der Pilotgruppe sind noch nicht fertig.</value>
   </data>
   <data name='{0} computers removed from "{1}".' xml:space="preserve">
     <value>{0} Rechner aus „{1}“ entfernt.</value>
