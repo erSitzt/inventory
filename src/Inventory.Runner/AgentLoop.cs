@@ -89,6 +89,7 @@ namespace Inventory.Runner
         {
             while (!_stop.IsCancellationRequested)
             {
+                DeliverPending();
                 using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash() }), _stop.Token).GetAwaiter().GetResult())
                 {
                     if (response.StatusCode == HttpStatusCode.NoContent)
@@ -210,9 +211,51 @@ namespace Inventory.Runner
                 _running = null;
             }
 
-            _http.PostAsync($"{AgentProtocol.JobsPath}/{jobId}/result", Json(result)).GetAwaiter().GetResult().Dispose();
+            // Erst ablegen, dann melden: ist der Server gerade nicht erreichbar, geht das Ergebnis nicht verloren.
+            Directory.CreateDirectory(PendingDir);
+            File.WriteAllText(Path.Combine(PendingDir, jobId + ".json"), JobJson.Serialize(result), new UTF8Encoding(false));
             try { Directory.Delete(jobDir, true); } catch (IOException) { /* wird beim nächsten Job nicht stören */ }
+            DeliverPending();
         }
+
+        private string PendingDir => Path.Combine(_baseDir, "pending");
+
+        /// <summary>
+        /// Meldet abgelegte Ergebnisse. Ein Ergebnis bleibt liegen, bis der Server es angenommen oder als unbekannt abgelehnt
+        /// hat – also auch über einen Neustart des Servers oder des Rechners hinweg –, höchstens aber <see cref="PendingDays"/> Tage.
+        /// </summary>
+        private void DeliverPending()
+        {
+            if (!Directory.Exists(PendingDir))
+                return;
+            foreach (var file in Directory.GetFiles(PendingDir, "*.json"))
+            {
+                try
+                {
+                    if (DateTime.UtcNow - File.GetLastWriteTimeUtc(file) > TimeSpan.FromDays(PendingDays))
+                    {
+                        File.Delete(file);
+                        continue;
+                    }
+                    var jobId = Path.GetFileNameWithoutExtension(file);
+                    using (var content = new StringContent(File.ReadAllText(file, Encoding.UTF8), Encoding.UTF8, "application/json"))
+                    using (var response = _http.PostAsync($"{AgentProtocol.JobsPath}/{jobId}/result", content, _stop.Token).GetAwaiter().GetResult())
+                    {
+                        var status = (int)response.StatusCode;
+                        // Angenommen, oder der Server will es nicht (Job unbekannt, Ergebnis unlesbar, Rechner gelöscht): beides ist endgültig.
+                        if (response.IsSuccessStatusCode || (status >= 400 && status < 500 && status != 408 && status != 429))
+                            File.Delete(file);
+                    }
+                }
+                catch (Exception ex) when (ex is HttpRequestException || ex is IOException || ex is UnauthorizedAccessException || ex is OperationCanceledException)
+                {
+                    // Server nicht erreichbar: beim nächsten Durchlauf erneut.
+                    return;
+                }
+            }
+        }
+
+        private const int PendingDays = 7;
 
         private long _progressOffset;
         private string? _progressJob;

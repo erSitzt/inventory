@@ -71,16 +71,24 @@ public static class AgentEndpoints
             return Results.NoContent();
         });
 
-        group.MapPost("jobs/{jobId}/result", async (string jobId, HttpContext http, AgentService agents, AgentHub hub, CancellationToken ct) =>
+        group.MapPost("jobs/{jobId}/result", async (string jobId, HttpContext http, AgentService agents, AgentHub hub, DeploymentService deployments, CancellationToken ct) =>
         {
-            if (await FindJobAsync(http, agents, hub, jobId, ct) is not { } job)
+            if (await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], null, ct) is not { } computer)
                 return Results.NotFound();
             // Ein Scan-Ergebnis mit mehreren hundert Programmen und Diensten ist größer als das Standardlimit erlaubt.
             http.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = 64 * 1024 * 1024;
-            if (await ReadAsync<JobResult>(http, ct) is not { } result)
+            if (hub.Find(jobId, computer.Name) is { } job)
+            {
+                if (await ReadAsync<JobResult>(http, ct) is not { } result)
+                    return Results.BadRequest();
+                hub.Complete(job, result);
+                return Results.NoContent();
+            }
+            // Der Server kennt den Job nicht mehr, weil er inzwischen neu gestartet wurde: das Ergebnis gehört dann zu einem
+            // unterbrochenen Ziel. Alles andere (unbekannt oder schon übernommen) meldet 404; der Agent verwirft es daraufhin.
+            if (await ReadAsync<JobResult>(http, ct) is not { } late)
                 return Results.BadRequest();
-            hub.Complete(job, result);
-            return Results.NoContent();
+            return await deployments.AdoptResultAsync(computer.Id, jobId, late, ct) ? Results.NoContent() : Results.NotFound();
         });
 
         return app;

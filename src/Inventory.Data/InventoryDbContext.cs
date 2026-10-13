@@ -174,6 +174,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         modelBuilder.Entity<DeploymentTarget>(e =>
         {
             e.HasOne<Computer>().WithMany().HasForeignKey(t => t.ComputerId).OnDelete(DeleteBehavior.SetNull);
+            // Ein nachgeliefertes Ergebnis wird über die Job-Kennung zugeordnet.
+            e.HasIndex(t => t.JobId);
             e.Property(t => t.Steps)
                 .HasConversion(
                     steps => JobJson.Serialize(steps, false),

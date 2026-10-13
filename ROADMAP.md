@@ -61,7 +61,7 @@ Collected in issue [#27](https://github.com/erSitzt/inventory/issues/27).
 **Deployment**
 
 - User notification with deferral ("install now / remind me in 1 h / tonight", limited number of deferrals) – needs state across jobs and an agent-side UI; agent-managed computers only.
-- Agent-local resume after reboot and result re-delivery after a server restart (the agent keeps the result until acknowledged).
+- Agent-local resume after reboot (the agent continues the remaining steps itself instead of waiting for the server).
 - Per-collection operator scoping ("may only deploy to Site B").
 
 **Inventory**

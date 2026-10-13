@@ -164,4 +164,11 @@ public class DeploymentTarget
     public DateTime? RebootUtc { get; set; }
     /// <summary>Betriebssystem-Startzeit des Rechners vor dem Neustart (seine eigene Uhr).</summary>
     public DateTime? BootTimeUtc { get; set; }
+    /// <summary>Kennung des zuletzt gestarteten Jobs; an ihr erkennt der Server ein Ergebnis, das ein Agent nachliefert.</summary>
+    public string? JobId { get; set; }
+    /// <summary>
+    /// Der Server wurde beendet, während dieser Job lief. Der Rechner hat womöglich weitergearbeitet: liefert sein Agent das
+    /// Ergebnis nach, ersetzt es den vorläufigen Fehlschlag.
+    /// </summary>
+    public bool Interrupted { get; set; }
 }

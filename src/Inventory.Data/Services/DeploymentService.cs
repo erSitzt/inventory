@@ -560,7 +560,13 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var now = DateTime.UtcNow;
         var serverStopped = L["The server was stopped during execution"].Value;
-        await db.DeploymentTargets.Where(t => t.Status == TargetStatus.Queued || t.Status == TargetStatus.Running)
+        // Ein laufender Job kann auf dem Rechner weitergelaufen sein: sein Agent darf das Ergebnis nachliefern.
+        await db.DeploymentTargets.Where(t => t.Status == TargetStatus.Running)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed)
+                .SetProperty(t => t.Error, serverStopped)
+                .SetProperty(t => t.Interrupted, true)
+                .SetProperty(t => t.FinishedUtc, now), ct);
+        await db.DeploymentTargets.Where(t => t.Status == TargetStatus.Queued)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed)
                 .SetProperty(t => t.Error, serverStopped)
                 .SetProperty(t => t.FinishedUtc, now), ct);
@@ -662,13 +668,17 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 return;
             }
             var live = _live[target.Id] = new LiveTarget();
+            // Jedes Ziel braucht eine eigene Job-ID: sie benennt Dienst und Verzeichnis auf dem Zielrechner. Gespeichert wird
+            // sie vor dem Start, damit ein Ergebnis auch nach einem Neustart des Servers noch zugeordnet werden kann.
+            var jobId = Guid.NewGuid().ToString("N");
             await UpdateAsync(db => db.DeploymentTargets.Where(t => t.Id == target.Id)
-                .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Running).SetProperty(t => t.StartedUtc, DateTime.UtcNow)));
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Running).SetProperty(t => t.StartedUtc, DateTime.UtcNow)
+                    .SetProperty(t => t.JobId, jobId).SetProperty(t => t.Interrupted, false)));
             Changed?.Invoke(deployment.Id);
 
-            // Jedes Ziel braucht eine eigene Job-ID: sie benennt Dienst und Verzeichnis auf dem Zielrechner.
             var job = new JobManifest
             {
+                JobId = jobId,
                 Steps = built.Manifest.Steps.Skip(resumeFrom).ToList(),
                 RequireBootAfterUtc = resumeFrom > 0 ? target.BootTimeUtc : null,
                 Detection = built.Manifest.Detection,
@@ -696,32 +706,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             var result = target.ComputerId is { } computerId
                 ? await jobs.RunAsync(computerId, job, progress, ct, built.Files)
                 : JobResult.Failed(job.JobId, L["The computer was deleted"]);
+            (status, error, steps, resumeNext, bootTime) = Evaluate(result, target.Steps, previousSteps, resumeFrom, bootTime, ct.IsCancellationRequested);
             if (result.NotRebootedYet)
-            {
-                // Der Rechner läuft noch mit dem alten Systemstart (z. B. Verzögerung des Neustarts): weiter warten.
-                status = TargetStatus.WaitingReboot;
-                steps = target.Steps;
-                resumeNext = resumeFrom;
                 return;
-            }
-            foreach (var step in result.Steps)
-                step.Index += resumeFrom;
-            steps = [.. previousSteps, .. result.Steps];
-            bootTime = result.BootTimeUtc ?? bootTime;
-            error = result.Error ?? (result.Success ? null : steps.FirstOrDefault(s => s.Status == StepStatus.Failed)?.Error);
-            status = result.Success ? TargetStatus.Succeeded : ct.IsCancellationRequested ? TargetStatus.Cancelled : TargetStatus.Failed;
-            if (result.Success && result.AlreadyInstalled)
-            {
-                status = TargetStatus.AlreadyInstalled;
-                error = L["Already installed – nothing was executed"];
-            }
-            if (result.Success && result.ResumeFromStep is { } next)
-            {
-                // Der Neustart läuft; die restlichen Schritte folgen, sobald der Rechner wieder erreichbar ist.
-                status = TargetStatus.WaitingReboot;
-                resumeNext = resumeFrom + next;
-                error = L["Restarting – the remaining steps follow once the computer is back"];
-            }
 
             if (result.Inventory is not null && target.ComputerId is { } scannedId)
                 await inventory.SaveAsync(scannedId, result.Inventory, CancellationToken.None);
@@ -781,6 +768,73 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         if (!result.Online || !MachineNames.Differs(name, result.MachineName))
             return result.Online;
         return !await SettingsService.VerifyTargetNameAsync(db, ct);
+    }
+
+    /// <summary>Was ein Job-Ergebnis für das Ziel bedeutet; gilt für den laufenden Job wie für ein nachgeliefertes Ergebnis.</summary>
+    /// <param name="storedSteps">Bisher gespeicherte Schritte des Ziels (bleiben, wenn der Rechner noch nicht neu gestartet ist).</param>
+    /// <param name="previousSteps">Ergebnisse der Schritte vor einer Fortsetzung.</param>
+    private (TargetStatus Status, string? Error, List<StepResult> Steps, int? ResumeNext, DateTime? BootTime) Evaluate(
+        JobResult result, List<StepResult> storedSteps, List<StepResult> previousSteps, int resumeFrom, DateTime? bootTime, bool cancelled)
+    {
+        if (result.NotRebootedYet)
+        {
+            // Der Rechner läuft noch mit dem alten Systemstart (z. B. Verzögerung des Neustarts): weiter warten.
+            return (TargetStatus.WaitingReboot, null, storedSteps, resumeFrom, bootTime);
+        }
+        foreach (var step in result.Steps)
+            step.Index += resumeFrom;
+        List<StepResult> steps = [.. previousSteps, .. result.Steps];
+        bootTime = result.BootTimeUtc ?? bootTime;
+        var error = result.Error ?? (result.Success ? null : steps.FirstOrDefault(s => s.Status == StepStatus.Failed)?.Error);
+        var status = result.Success ? TargetStatus.Succeeded : cancelled ? TargetStatus.Cancelled : TargetStatus.Failed;
+        int? resumeNext = null;
+        if (result.Success && result.AlreadyInstalled)
+        {
+            status = TargetStatus.AlreadyInstalled;
+            error = L["Already installed – nothing was executed"];
+        }
+        if (result.Success && result.ResumeFromStep is { } next)
+        {
+            // Der Neustart läuft; die restlichen Schritte folgen, sobald der Rechner wieder erreichbar ist.
+            status = TargetStatus.WaitingReboot;
+            resumeNext = resumeFrom + next;
+            error = L["Restarting – the remaining steps follow once the computer is back"];
+        }
+        return (status, error, steps, resumeNext, bootTime);
+    }
+
+    /// <summary>
+    /// Übernimmt ein Ergebnis, das ein Agent nachliefert, weil der Server beim Ende des Jobs nicht lief. Nur für ein Ziel,
+    /// dessen Job beim Beenden des Servers unterbrochen wurde, und nur einmal.
+    /// </summary>
+    /// <returns>false = kein solches Ziel; der Agent kann das Ergebnis verwerfen.</returns>
+    public async Task<bool> AdoptResultAsync(int computerId, string jobId, JobResult result, CancellationToken ct = default)
+    {
+        int deploymentId;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            var target = await db.DeploymentTargets.FirstOrDefaultAsync(t => t.JobId == jobId && t.ComputerId == computerId && t.Interrupted && t.Status == TargetStatus.Failed, ct);
+            if (target is null)
+                return false;
+            // Der unterbrochene Job war selbst schon eine Fortsetzung, wenn das Ziel noch einen Fortsetzungspunkt trägt.
+            var resumeFrom = target.ResumeFromStep ?? 0;
+            var previousSteps = resumeFrom > 0 ? target.Steps.Take(resumeFrom).ToList() : [];
+            var (status, error, steps, resumeNext, bootTime) = Evaluate(result, target.Steps, previousSteps, resumeFrom, target.BootTimeUtc, cancelled: false);
+            target.Status = status;
+            target.Error = error;
+            target.Steps = steps;
+            target.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
+            target.BootTimeUtc = bootTime;
+            target.RebootUtc = status == TargetStatus.WaitingReboot ? target.RebootUtc ?? DateTime.UtcNow : null;
+            target.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
+            target.Interrupted = false;
+            await db.SaveChangesAsync(ct);
+            deploymentId = target.DeploymentId;
+        }
+        if (result.Inventory is not null)
+            await inventory.SaveAsync(computerId, result.Inventory, CancellationToken.None);
+        Changed?.Invoke(deploymentId);
+        return true;
     }
 
     private async Task UpdateAsync(Func<InventoryDbContext, Task> update)

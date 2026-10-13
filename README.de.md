@@ -174,6 +174,11 @@ Für Rechner, die der Server nicht direkt erreicht (Notebooks unterwegs, andere 
 denselben Runner als dauerhaften Windows-Dienst. Er spricht immer nur *zum* Server – der Server verbindet sich nie zum
 Agenten.
 
+Das Ergebnis eines Jobs geht nicht verloren, wenn der Server in dem Moment nicht erreichbar ist: der Agent behält es
+und liefert es nach, sobald der Server wieder antwortet – bis zu sieben Tage lang. Wurde der Server neu gestartet,
+während der Job lief, zeigt das Deployment den Rechner zunächst als fehlgeschlagen („der Server wurde während der
+Ausführung beendet“), bis das Ergebnis eintrifft und das ersetzt.
+
 **So funktioniert er**
 
 | | |
