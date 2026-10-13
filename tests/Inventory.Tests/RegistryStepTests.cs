@@ -25,6 +25,35 @@ public class RegistryStepTests
     public void A_key_without_a_known_hive_is_refused(string? key) =>
         Assert.Throws<InvalidDataException>(() => RegistryData.Split(key, out _));
 
+    [Theory]
+    [InlineData(@"HKLM\SOFTWARE\Firma", true)]
+    [InlineData(@"HKLM\SOFTWARE\Firma\Programm", true)]
+    [InlineData(@"HKCU\Software\Firma", true)]
+    [InlineData(@"HKU\S-1-5-21-1-2-3-1001\Software\Firma", true)]
+    [InlineData(@"HKCR\.firma", true)]
+    [InlineData(@"HKLM\SYSTEM\CurrentControlSet\Services\FirmaDienst", true)]
+    // Die Struktur, ihre obersten Zweige und was Windows oder einen ganzen Hersteller enthält.
+    [InlineData("HKLM", false)]
+    [InlineData(@"HKLM\SOFTWARE", false)]
+    [InlineData(@"HKCU\Software", false)]
+    [InlineData(@"HKCU\software\", false)]
+    [InlineData(@"HKU\S-1-5-21-1-2-3-1001", false)]
+    [InlineData(@"HKU\S-1-5-21-1-2-3-1001\Software", false)]
+    [InlineData(@"HKU\.DEFAULT\Software", false)]
+    [InlineData(@"HKLM\SOFTWARE\Microsoft", false)]
+    [InlineData(@"HKCU\Software\Microsoft", false)]
+    [InlineData(@"HKCU\Software\Classes", false)]
+    [InlineData(@"HKLM\software\microsoft\windows\currentversion", false)]
+    [InlineData(@"HKLM\SOFTWARE\WOW6432Node", false)]
+    [InlineData(@"HKLM\SYSTEM\CurrentControlSet", false)]
+    [InlineData(@"HKLM\SYSTEM\CurrentControlSet\Services", false)]
+    [InlineData(@"HKU\S-1-5-21-1-2-3-1001\Software\Microsoft", false)]
+    public void Only_keys_below_the_top_level_branches_may_be_deleted(string key, bool allowed)
+    {
+        var hive = RegistryData.Split(key, out var path);
+        Assert.Equal(allowed, RegistryData.CanDeleteKey(hive, path));
+    }
+
     [Fact]
     public void Data_is_converted_to_what_the_registry_expects()
     {

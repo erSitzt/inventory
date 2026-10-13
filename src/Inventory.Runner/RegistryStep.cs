@@ -14,6 +14,9 @@ namespace Inventory.Runner
         public static string Run(JobStep step, string? userName)
         {
             var hive = RegistryData.Split(step.RegistryKey, out var path);
+            // Vor allem anderen und am eingetragenen Pfad: später steht bei HKCU die Benutzerkennung davor und verschiebt die Ebenen.
+            if (step.RegistryAction == RegistryAction.DeleteKey && !RegistryData.CanDeleteKey(hive, path))
+                throw new InvalidDataException("Dieser Schlüssel wird nicht gelöscht: er ist ein oberster Zweig der Registrierung oder enthält Windows bzw. alle Programme eines Herstellers");
             var view = step.Registry32Bit ? RegistryView.Registry32 : RegistryView.Registry64;
             RegistryHive root;
             switch (hive)
@@ -60,9 +63,6 @@ namespace Inventory.Runner
                         }
                         return $"{shown}\\{label} gelöscht";
                     case RegistryAction.DeleteKey:
-                        // Eine ganze Struktur oder ihre obersten Zweige zu löschen ist nie gemeint.
-                        if (path.IndexOf('\\') < 0)
-                            throw new InvalidDataException("Schlüssel direkt unter der Struktur werden nicht gelöscht");
                         using (var key = baseKey.OpenSubKey(path, false))
                         {
                             if (key == null)

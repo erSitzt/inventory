@@ -124,7 +124,7 @@
                         <MudCheckBox T="bool" @bind-Value="_step.Registry32Bit" Label="@L["32-bit view (WOW6432Node)"]" Dense="true" />
                         @if (_step.RegistryAction == RegistryAction.DeleteKey)
                         {
-                            <MudAlert Severity="Severity.Warning" Dense="true">@L["Deletes the key with everything below it. Keys directly below the hive are refused."]</MudAlert>
+                            <MudAlert Severity="Severity.Warning" Dense="true">@L["Deletes the key with everything below it. Top-level branches such as HKCU\\Software or HKLM\\SOFTWARE\\Microsoft are refused."]</MudAlert>
                         }
                         break;
                     case StepType.WindowsFeature:
@@ -451,6 +451,11 @@
                 var hive = RegistryData.Split(_step.RegistryKey, out var path);
                 if (path.Length == 0)
                     throw new InvalidDataException();
+                if (_step.RegistryAction == RegistryAction.DeleteKey && !RegistryData.CanDeleteKey(hive, path))
+                {
+                    _error = L["This key cannot be deleted: it is a top-level branch of the registry or holds Windows or all programs of a vendor."];
+                    return;
+                }
                 if (hive == RegistryData.Hive.CurrentUser && _step.RunAs != StepRunAs.LoggedOnUser)
                 {
                     _error = L["HKCU needs \"Run as: Logged-on user\". As Local System the step would change the settings of the system account."];

@@ -935,8 +935,8 @@
   <data name="delete {0}" xml:space="preserve">
     <value>{0} löschen</value>
   </data>
-  <data name="Deletes the key with everything below it. Keys directly below the hive are refused." xml:space="preserve">
-    <value>Löscht den Schlüssel mit allem darunter. Schlüssel direkt unter der Struktur werden abgelehnt.</value>
+  <data name="Deletes the key with everything below it. Top-level branches such as HKCU\Software or HKLM\SOFTWARE\Microsoft are refused." xml:space="preserve">
+    <value>Löscht den Schlüssel mit allem darunter. Oberste Zweige wie HKCU\Software oder HKLM\SOFTWARE\Microsoft werden abgelehnt.</value>
   </data>
   <data name="Deploy" xml:space="preserve">
     <value>Bereitstellen</value>
@@ -3706,6 +3706,9 @@
   </data>
   <data name="This instance was not installed with the setup and therefore cannot update itself." xml:space="preserve">
     <value>Diese Instanz wurde nicht mit dem Setup installiert und kann sich deshalb nicht selbst aktualisieren.</value>
+  </data>
+  <data name="This key cannot be deleted: it is a top-level branch of the registry or holds Windows or all programs of a vendor." xml:space="preserve">
+    <value>Dieser Schlüssel lässt sich nicht löschen: er ist ein oberster Zweig der Registrierung oder enthält Windows bzw. alle Programme eines Herstellers.</value>
   </data>
   <data name="This package does not exist (anymore)." xml:space="preserve">
     <value>Dieses Paket existiert nicht (mehr).</value>

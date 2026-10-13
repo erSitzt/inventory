@@ -48,6 +48,42 @@ namespace Inventory.Contracts
             }
         }
 
+        /// <summary>Schlüssel, unter denen ganze Programme oder das System liegen: sie zu löschen ist nie gemeint.</summary>
+        private static readonly string[] ProtectedKeys =
+        {
+            @"SOFTWARE\Microsoft", @"SOFTWARE\Classes", @"SOFTWARE\Policies", @"SOFTWARE\WOW6432Node", @"SOFTWARE\WOW6432Node\Microsoft",
+            @"SOFTWARE\Microsoft\Windows", @"SOFTWARE\Microsoft\Windows NT", @"SOFTWARE\Microsoft\Windows\CurrentVersion", @"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
+            @"SOFTWARE\Policies\Microsoft", @"SYSTEM\CurrentControlSet", @"SYSTEM\CurrentControlSet\Services", @"SYSTEM\CurrentControlSet\Control", @"SYSTEM\CurrentControlSet\Enum",
+        };
+
+        /// <summary>
+        /// true, wenn sich der Schlüssel samt Unterschlüsseln löschen lassen darf. Abgelehnt werden die Struktur selbst, ihre
+        /// obersten Zweige (HKLM\SOFTWARE, HKCU\Software, HKU\&lt;Benutzer&gt;\Software …) und die Schlüssel, unter denen
+        /// Windows und alle Programme eines Herstellers liegen. Geprüft wird der Pfad, wie er eingetragen ist – bevor HKCU auf
+        /// die Struktur des Benutzers umgeschrieben wird.
+        /// </summary>
+        public static bool CanDeleteKey(Hive hive, string path)
+        {
+            var parts = new List<string>(path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries));
+            // Unter HKEY_USERS steht zuerst der Benutzer; er zählt nicht als Ebene, und ihn selbst löscht niemand.
+            if (hive == Hive.Users)
+            {
+                if (parts.Count == 0)
+                    return false;
+                parts.RemoveAt(0);
+            }
+            // HKCR ist flach (Dateiendungen und Klassen direkt unter der Struktur); überall sonst ist die erste Ebene ein ganzer Zweig.
+            if (parts.Count < (hive == Hive.ClassesRoot ? 1 : 2))
+                return false;
+            var relative = string.Join("\\", parts.ToArray());
+            foreach (var key in ProtectedKeys)
+            {
+                if (string.Equals(key, relative, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+            return true;
+        }
+
         /// <summary>Wandelt den Text in den Wert, den die Registrierung für diesen Typ erwartet (string, int, long, string[] oder byte[]).</summary>
         /// <exception cref="InvalidDataException">Der Text passt nicht zum Typ.</exception>
         public static object Convert(RegistryDataType type, string? data)
