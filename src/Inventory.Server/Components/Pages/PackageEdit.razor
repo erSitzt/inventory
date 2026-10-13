@@ -143,6 +143,28 @@
         </MudPaper>
 
         <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                <MudText Typo="Typo.h6">@L["User notice"]</MudText>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(_package.AskUser ? Color.Success : Color.Default)">@(_package.AskUser ? L["on"] : L["off"])</MudChip>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mb-3">
+                @L["Before the first step the logged-on user is asked whether the installation may start now. \"No\" postpones it; once the postponements are used up, a notice appears and the installation starts. Without an answer it starts after {0} minutes; if nobody is logged on, it starts at once. Not over WinRM.", UserNotice.PromptSeconds / 60]
+            </MudText>
+            <MudStack Spacing="2" Style="max-width: 28rem">
+                <MudSwitch T="bool" @bind-Value="_askUser" Color="Color.Primary" Label="@L["Ask the logged-on user before starting"]" Disabled="@(!_isAdmin)" />
+                <MudNumericField T="int" @bind-Value="_maxDeferrals" Label="@L["Postponements allowed"]" Min="0" Max="@UserNotice.MaxDeferrals" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Disabled="@(!_askUser || !_isAdmin)" HelperText="@L["0 = notice only, the user cannot postpone"]" />
+                <MudNumericField T="int" @bind-Value="_deferMinutes" Label="@L["Ask again after (minutes)"]" Min="@UserNotice.MinMinutes" Max="@UserNotice.MaxMinutes" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Disabled="@(!_askUser || !_isAdmin)" />
+                <AdminOnly>
+                    <div>
+                        <MudButton Variant="Variant.Outlined" OnClick="SaveNoticeAsync">@L["Save"]</MudButton>
+                    </div>
+                </AdminOnly>
+            </MudStack>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
             <MudText Typo="Typo.h6" Class="mb-2">@L["Prerequisites"]</MudText>
             <MudText Typo="Typo.body2" Class="mb-3">
                 @L["These packages run before the steps of this package, each only where its own detection does not already find it installed."]
@@ -281,6 +303,9 @@
     private bool _uploading;
     private bool _isAdmin;
     private List<Package> _candidates = [];
+    private bool _askUser;
+    private int _maxDeferrals = UserNotice.DefaultDeferrals;
+    private int _deferMinutes = UserNotice.DefaultMinutes;
     private StepConditions _detection = new();
     private bool _verify;
 
@@ -297,6 +322,9 @@
             _name = _package.Name;
             _version = _package.Version;
             _description = _package.Description;
+            _askUser = _package.AskUser;
+            _maxDeferrals = _package.MaxDeferrals;
+            _deferMinutes = _package.DeferMinutes;
             LoadDetection();
         }
     }
@@ -307,6 +335,16 @@
         _files = _package is null ? [] : PackageService.Repository.List(Id);
         var used = _package?.Dependencies.Select(d => d.RequiredPackageId).ToHashSet() ?? [];
         _candidates = _package is null ? [] : (await PackageService.ListAsync()).Where(p => p.Id != Id && !used.Contains(p.Id)).ToList();
+    }
+
+    private async Task SaveNoticeAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await PackageService.SaveNoticeAsync(Id, _askUser, _maxDeferrals, _deferMinutes);
+        await Audit.LogAsync(L["Package user notice changed"], $"{_package!.Name}: {(_askUser ? L["{0} postponements, {1} minutes each", _maxDeferrals, _deferMinutes] : L["off"])}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+        await ReloadAsync();
     }
 
     private async Task AddDependencyAsync(int? requiredId)

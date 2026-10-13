@@ -8,9 +8,15 @@ using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
+/// <param name="Title">Name des Pakets, wie ihn der Benutzer zu sehen bekommt.</param>
+public sealed record UserNoticeOptions(string Title, int MaxDeferrals, int DeferMinutes);
+
 /// <param name="PackageIds">Alle Pakete, deren Schritte und Dateien im Job stecken: das verteilte und die eingebetteten.</param>
 public sealed record BuiltJob(JobManifest Manifest, List<JobFile> Files, IReadOnlyCollection<int> PackageIds)
 {
+    /// <summary>Gesetzt = das Paket fragt den angemeldeten Benutzer vor dem Start.</summary>
+    public UserNoticeOptions? Notice { get; init; }
+
     /// <summary>Job ohne Paket dahinter, z. B. die Installation des Agenten.</summary>
     public BuiltJob(JobManifest manifest, List<JobFile> files) : this(manifest, files, []) { }
 
@@ -47,6 +53,18 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
             .Include(p => p.Steps.OrderBy(s => s.Order)).ThenInclude(s => s.NestedPackage)
             .Include(p => p.Dependencies.OrderBy(d => d.Order)).ThenInclude(d => d.RequiredPackage)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
+    }
+
+    /// <summary>Hinweis an den Benutzer vor dem Start. Ändert nichts an dem, was das Paket ausführt: die Freigabe bleibt.</summary>
+    public async Task SaveNoticeAsync(int id, bool askUser, int maxDeferrals, int deferMinutes, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var package = await db.Packages.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Package {0} not found", id]);
+        package.AskUser = askUser;
+        package.MaxDeferrals = Math.Clamp(maxDeferrals, 0, UserNotice.MaxDeferrals);
+        package.DeferMinutes = Math.Clamp(deferMinutes, UserNotice.MinMinutes, UserNotice.MaxMinutes);
+        package.ModifiedUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>Prüft Voraussetzungen, ohne etwas zu speichern: jedes Paket muss existieren und darf dieses nicht selbst enthalten.</summary>
@@ -326,10 +344,14 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         if (manifest.Steps.Count == 0)
             throw new InvalidOperationException(L["The package contains no steps."]);
         // Maßgeblich ist die Erkennung des verteilten Pakets; eingebettete Pakete bringen nur ihre Schritte mit.
-        var header = await db.Packages.AsNoTracking().Where(p => p.Id == packageId).Select(p => new { p.Detection, p.VerifyAfterInstall }).FirstAsync(ct);
+        var header = await db.Packages.AsNoTracking().Where(p => p.Id == packageId)
+            .Select(p => new { p.Name, p.Detection, p.VerifyAfterInstall, p.AskUser, p.MaxDeferrals, p.DeferMinutes }).FirstAsync(ct);
         manifest.Detection = header.Detection;
         manifest.VerifyAfterInstall = header.VerifyAfterInstall;
-        return new BuiltJob(manifest, files, included);
+        return new BuiltJob(manifest, files, included)
+        {
+            Notice = header.AskUser ? new UserNoticeOptions(header.Name, header.MaxDeferrals, header.DeferMinutes) : null,
+        };
     }
 
     /// <param name="group">Die Voraussetzung, zu der die Schritte gehören; null = Schritte des verteilten Pakets.</param>

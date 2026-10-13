@@ -21,6 +21,7 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                 await schedules.RunDueAsync(stoppingToken);
                 await deployments.ResumeRebootedAsync(stoppingToken);
                 await deployments.ReleasePilotsAsync(stoppingToken);
+                await deployments.ResumeDeferredAsync(stoppingToken);
                 // Geweckte Rechner werden nachgeholt, sobald sie Zeit zum Hochfahren hatten.
                 if (DateTime.UtcNow - lastRetry >= RetryInterval || deployments.TakeWakeRecheck(DateTime.UtcNow))
                 {

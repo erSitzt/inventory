@@ -104,6 +104,22 @@ namespace Inventory.Contracts
         /// vor seinem ersten Schritt nach (<see cref="JobGroup.Verify"/>).
         /// </summary>
         public List<int> FinishedGroups { get; set; } = new List<int>();
+        /// <summary>Gesetzt = vor dem ersten Schritt den angemeldeten Benutzer fragen bzw. benachrichtigen.</summary>
+        public UserPrompt? UserPrompt { get; set; }
+    }
+
+    /// <summary>
+    /// Hinweis an den angemeldeten Benutzer vor dem ersten Schritt. Ist niemand angemeldet, läuft der Job sofort.
+    /// Den Text liefert der Server, damit er in dessen Sprache erscheint.
+    /// </summary>
+    public sealed class UserPrompt
+    {
+        public string Title { get; set; } = "";
+        public string Text { get; set; } = "";
+        /// <summary>true = Ja/Nein-Frage, "Nein" verschiebt (<see cref="JobResult.DeferredByUser"/>); false = bloßer Hinweis, danach beginnt der Job.</summary>
+        public bool CanDefer { get; set; }
+        /// <summary>Ohne Antwort beginnt der Job nach dieser Zeit: der Benutzer ist dann vermutlich nicht am Platz.</summary>
+        public int TimeoutSeconds { get; set; } = 300;
     }
 
     /// <summary>Schritte einer Voraussetzung: sie entfallen gemeinsam, wenn die Voraussetzung schon vorhanden ist.</summary>

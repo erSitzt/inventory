@@ -39,6 +39,10 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
   bereitgestellt sind; Sammlungen können danach filtern, und ein Schritt „App entfernen“ entfernt eine App für alle
   Benutzer und auf Wunsch auch für künftige – Bestandteile von Windows und Laufzeitbibliotheken bleiben unberührt, und
   ein zu weit gefasster Name entfernt nichts
+- **Hinweis an den Benutzer mit Aufschub**: ein Paket kann den angemeldeten Benutzer vor dem Start fragen; er darf
+  eine einstellbare Zahl von Malen verschieben (Vorgabe: dreimal um 60 Minuten), danach erscheint nur noch ein Hinweis
+  und die Installation beginnt. Ohne Antwort startet sie nach fünf Minuten, ohne angemeldeten Benutzer sofort.
+  Funktioniert über SMB + Dienst und Agent, nicht über WinRM
 - **Voraussetzungen**: ein Paket nennt die Pakete, die es braucht („benötigt die .NET-Runtime“); sie laufen vor seinen
   Schritten, jedes nur dort, wo seine eigene Erkennung es nicht schon als installiert ausweist, und müssen danach
   erkennbar sein, wenn das Paket die Überprüfung verlangt

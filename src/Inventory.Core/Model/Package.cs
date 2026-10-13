@@ -37,6 +37,26 @@ public class Package
     public string? ApprovedBy { get; set; }
     public DateTime? ApprovedUtc { get; set; }
     public bool IsApproved => ApprovedUtc is not null;
+
+    /// <summary>
+    /// Vor dem Start den angemeldeten Benutzer fragen; er darf <see cref="MaxDeferrals"/>-mal um <see cref="DeferMinutes"/>
+    /// Minuten verschieben. Ist niemand angemeldet, läuft das Paket sofort.
+    /// </summary>
+    public bool AskUser { get; set; }
+    public int MaxDeferrals { get; set; } = UserNotice.DefaultDeferrals;
+    public int DeferMinutes { get; set; } = UserNotice.DefaultMinutes;
+}
+
+/// <summary>Grenzen und Vorgaben für den Hinweis an den Benutzer.</summary>
+public static class UserNotice
+{
+    public const int DefaultDeferrals = 3;
+    public const int DefaultMinutes = 60;
+    public const int MaxDeferrals = 10;
+    public const int MinMinutes = 5;
+    public const int MaxMinutes = 24 * 60;
+    /// <summary>So lange steht die Frage auf dem Bildschirm; ohne Antwort beginnt die Installation.</summary>
+    public const int PromptSeconds = 300;
 }
 
 public class PackageDependency
@@ -77,6 +97,8 @@ public enum TargetStatus
     WaitingWindow = 8,
     /// <summary>Gestufter Rollout: das Ziel startet erst, wenn die Pilotgruppe fertig, die Wartezeit um und die Fehlerquote eingehalten ist.</summary>
     WaitingPilot = 9,
+    /// <summary>Der angemeldete Benutzer hat den Start verschoben; das Ziel startet erneut, sobald die Frist um ist.</summary>
+    WaitingUser = 10,
 }
 
 public static class TargetStatusExtensions
@@ -85,7 +107,7 @@ public static class TargetStatusExtensions
     public static bool IsSuccess(this TargetStatus status) => status is TargetStatus.Succeeded or TargetStatus.AlreadyInstalled;
 
     /// <summary>Noch nicht entschieden: das Ziel wartet auf den Rechner, einen Neustart, sein Wartungsfenster oder die Pilotgruppe.</summary>
-    public static bool IsWaiting(this TargetStatus status) => status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot or TargetStatus.WaitingWindow or TargetStatus.WaitingPilot;
+    public static bool IsWaiting(this TargetStatus status) => status is TargetStatus.WaitingOffline or TargetStatus.WaitingReboot or TargetStatus.WaitingWindow or TargetStatus.WaitingPilot or TargetStatus.WaitingUser;
 }
 
 public static class DeploymentLimits
@@ -164,6 +186,10 @@ public class DeploymentTarget
     public DateTime? RebootUtc { get; set; }
     /// <summary>Betriebssystem-Startzeit des Rechners vor dem Neustart (seine eigene Uhr).</summary>
     public DateTime? BootTimeUtc { get; set; }
+    /// <summary>Wie oft der Benutzer den Start schon verschoben hat.</summary>
+    public int Deferrals { get; set; }
+    /// <summary>Verschoben bis zu diesem Zeitpunkt (Status <see cref="TargetStatus.WaitingUser"/>).</summary>
+    public DateTime? NotBeforeUtc { get; set; }
     /// <summary>Kennung des zuletzt gestarteten Jobs; an ihr erkennt der Server ein Ergebnis, das ein Agent nachliefert.</summary>
     public string? JobId { get; set; }
     /// <summary>

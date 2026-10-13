@@ -244,7 +244,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         if (_running.TryGetValue(deploymentId, out var cts))
             cts.Cancel();
         await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId
-                && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot || t.Status == TargetStatus.WaitingWindow || t.Status == TargetStatus.WaitingPilot))
+                && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot || t.Status == TargetStatus.WaitingWindow || t.Status == TargetStatus.WaitingPilot || t.Status == TargetStatus.WaitingUser))
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, "Abgebrochen")
                 .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
         Changed?.Invoke(deploymentId);
@@ -620,7 +620,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             return;
         await db.Deployments.Where(d => d.Id == deployment.Id).ExecuteUpdateAsync(s => s.SetProperty(d => d.StopReason, reason));
         // Wer noch auf seinen Rechner oder sein Fenster wartet, würde sonst später doch noch starten.
-        await db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingWindow || t.Status == TargetStatus.WaitingPilot))
+        await db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingWindow || t.Status == TargetStatus.WaitingPilot || t.Status == TargetStatus.WaitingUser))
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, reason).SetProperty(t => t.FinishedUtc, DateTime.UtcNow));
     }
 
@@ -636,6 +636,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         var previousSteps = resumeFrom > 0 ? target.Steps.Take(resumeFrom).ToList() : [];
         int? resumeNext = null;
         DateTime? bootTime = target.BootTimeUtc;
+        var deferrals = target.Deferrals;
+        DateTime? notBefore = null;
         try
         {
             if (target.ComputerId is { } windowId && closed.TryGetValue(windowId, out var opens))
@@ -685,6 +687,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 VerifyAfterInstall = built.Manifest.VerifyAfterInstall,
                 // Nach einem Neustart ist das Paket oft schon erkennbar, obwohl noch Schritte ausstehen: dann nicht überspringen.
                 SkipIfDetected = resumeFrom == 0,
+                // Mitten im Paket (Fortsetzung nach einem Neustart) wird nicht mehr gefragt.
+                UserPrompt = resumeFrom == 0 ? Prompt(built.Notice, target.Deferrals) : null,
                 Groups = built.Manifest.Groups,
                 StartedGroups = StartedGroups(built.Manifest, resumeFrom),
                 FinishedGroups = FinishedGroups(built.Manifest, resumeFrom),
@@ -709,6 +713,11 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             (status, error, steps, resumeNext, bootTime) = Evaluate(result, target.Steps, previousSteps, resumeFrom, bootTime, ct.IsCancellationRequested);
             if (result.NotRebootedYet)
                 return;
+            if (status == TargetStatus.WaitingUser)
+            {
+                (deferrals, notBefore, error) = Deferred(target.Deferrals, built.Notice);
+                return;
+            }
 
             if (result.Inventory is not null && target.ComputerId is { } scannedId)
                 await inventory.SaveAsync(scannedId, result.Inventory, CancellationToken.None);
@@ -740,6 +749,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 else
                     stored.RebootUtc = null;
                 stored.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
+                stored.Deferrals = deferrals;
+                stored.NotBeforeUtc = status == TargetStatus.WaitingUser ? notBefore : null;
                 await db.SaveChangesAsync();
             });
             if (status == TargetStatus.Failed)
@@ -770,6 +781,83 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         return !await SettingsService.VerifyTargetNameAsync(db, ct);
     }
 
+    /// <summary>Die Frage an den Benutzer; ist das Verschieben aufgebraucht, nur noch ein Hinweis mit Frist.</summary>
+    internal UserPrompt? Prompt(UserNoticeOptions? notice, int deferrals)
+    {
+        if (notice is null)
+            return null;
+        var left = Math.Max(notice.MaxDeferrals - deferrals, 0);
+        var minutes = UserNotice.PromptSeconds / 60;
+        var warning = L["Programs may be closed or the computer restarted in the process."].Value;
+        string[] lines = left > 0
+            ?
+            [
+                L["\"{0}\" is about to be installed on this computer.", notice.Title], warning, "",
+                L["Start now?"], "",
+                L["Yes – start now"],
+                L["No – ask again in {0} minutes (possible {1} more time(s))", notice.DeferMinutes, left], "",
+                L["Without an answer the installation starts in {0} minutes.", minutes],
+            ]
+            :
+            [
+                L["\"{0}\" is now being installed on this computer and can no longer be postponed.", notice.Title], warning, "",
+                L["Please save your work. The installation starts when you choose OK, at the latest in {0} minutes.", minutes],
+            ];
+        var text = string.Join("\n", lines);
+        return new UserPrompt { Title = L["Software installation"], Text = text, CanDefer = left > 0, TimeoutSeconds = UserNotice.PromptSeconds };
+    }
+
+    /// <summary>Zähler, Wiedervorlage und Meldung nach einem "Nein" des Benutzers.</summary>
+    private (int Deferrals, DateTime NotBeforeUtc, string Error) Deferred(int deferrals, UserNoticeOptions? notice)
+    {
+        var count = deferrals + 1;
+        var until = DateTime.UtcNow.AddMinutes(notice?.DeferMinutes ?? UserNotice.DefaultMinutes);
+        return (count, until, L["Postponed by the user ({0} of {1}); next attempt at {2}", count, Math.Max(notice?.MaxDeferrals ?? count, count), until.ToLocalTime().ToString("HH:mm")]);
+    }
+
+    /// <summary>
+    /// Startet Ziele erneut, deren vom Benutzer gewählte Frist um ist. Wird vom Zeitplaner in jedem Takt aufgerufen.
+    /// </summary>
+    /// <returns>Anzahl der gestarteten Ziele.</returns>
+    public async Task<int> ResumeDeferredAsync(CancellationToken ct = default)
+    {
+        List<Deployment> waiting;
+        var now = DateTime.UtcNow;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            waiting = await db.Deployments.AsNoTracking()
+                .Include(d => d.Targets.Where(t => t.Status == TargetStatus.WaitingUser && (t.NotBeforeUtc == null || t.NotBeforeUtc <= now)))
+                .Where(d => d.Targets.Any(t => t.Status == TargetStatus.WaitingUser && (t.NotBeforeUtc == null || t.NotBeforeUtc <= now)))
+                .ToListAsync(ct);
+        }
+        var started = 0;
+        // Läuft das Deployment gerade für andere Rechner, kommt das Ziel im nächsten Takt an die Reihe.
+        foreach (var deployment in waiting.Where(d => !_running.ContainsKey(d.Id)))
+        {
+            BuiltJob built;
+            try
+            {
+                built = deployment.PackageId is { } packageId
+                    ? await BuildAsync(packageId, deployment.ScanAfter, ct)
+                    : throw new InvalidOperationException(L["The package was deleted"]);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+            {
+                var failure = ex.Message;
+                await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deployment.Id && t.Status == TargetStatus.WaitingUser)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, failure)
+                        .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+                await CheckFailureLimitAsync(deployment);
+                Changed?.Invoke(deployment.Id);
+                continue;
+            }
+            // Ist der Rechner inzwischen aus, wartet das Ziel wie jedes andere auf ihn.
+            Launch(deployment, deployment.Targets, built, checkOnline: true);
+            started += deployment.Targets.Count;
+        }
+        return started;
+    }
+
     /// <summary>Was ein Job-Ergebnis für das Ziel bedeutet; gilt für den laufenden Job wie für ein nachgeliefertes Ergebnis.</summary>
     /// <param name="storedSteps">Bisher gespeicherte Schritte des Ziels (bleiben, wenn der Rechner noch nicht neu gestartet ist).</param>
     /// <param name="previousSteps">Ergebnisse der Schritte vor einer Fortsetzung.</param>
@@ -780,6 +868,11 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         {
             // Der Rechner läuft noch mit dem alten Systemstart (z. B. Verzögerung des Neustarts): weiter warten.
             return (TargetStatus.WaitingReboot, null, storedSteps, resumeFrom, bootTime);
+        }
+        if (result.DeferredByUser)
+        {
+            // Nichts ausgeführt; Zähler, Frist und Meldung setzt der Aufrufer (er kennt die Vorgaben des Pakets).
+            return (TargetStatus.WaitingUser, null, storedSteps, null, result.BootTimeUtc ?? bootTime);
         }
         foreach (var step in result.Steps)
             step.Index += resumeFrom;
@@ -836,6 +929,12 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         target.BootTimeUtc = bootTime;
         target.RebootUtc = status == TargetStatus.WaitingReboot ? target.RebootUtc ?? DateTime.UtcNow : null;
         target.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
+        if (status == TargetStatus.WaitingUser)
+        {
+            var package = await db.Deployments.Where(d => d.Id == target.DeploymentId).Join(db.Packages, d => d.PackageId, p => p.Id, (_, p) => new { p.Name, p.MaxDeferrals, p.DeferMinutes }).FirstOrDefaultAsync(ct);
+            (target.Deferrals, var until, target.Error) = Deferred(target.Deferrals, new UserNoticeOptions(package?.Name ?? "", package?.MaxDeferrals ?? 0, package?.DeferMinutes ?? UserNotice.DefaultMinutes));
+            target.NotBeforeUtc = until;
+        }
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         Changed?.Invoke(target.DeploymentId);

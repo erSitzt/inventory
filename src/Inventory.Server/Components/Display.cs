@@ -362,6 +362,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.AlreadyInstalled => T("already installed"),
         TargetStatus.WaitingWindow => T("waiting for maintenance window"),
         TargetStatus.WaitingPilot => T("waiting for pilot group"),
+        TargetStatus.WaitingUser => T("postponed by the user"),
         _ => status.ToString(),
     };
 
@@ -376,6 +377,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         TargetStatus.AlreadyInstalled => Color.Success,
         TargetStatus.WaitingWindow => Color.Warning,
         TargetStatus.WaitingPilot => Color.Default,
+        TargetStatus.WaitingUser => Color.Warning,
         _ => Color.Default,
     };
 
