@@ -14,7 +14,13 @@ namespace Inventory.Runner
         public static string Run(JobStep step, string? userName)
         {
             var hive = RegistryData.Split(step.RegistryKey, out var path);
-            // Vor allem anderen und am eingetragenen Pfad: später steht bei HKCU die Benutzerkennung davor und verschiebt die Ebenen.
+            // Am eingetragenen Pfad prüfen: bei HKCU steht später die Benutzerkennung davor, der Pfad wäre dann nie leer.
+            if (path.Length == 0)
+                throw new InvalidDataException("Der Schlüssel besteht nur aus der Struktur; ein Pfad darunter fehlt");
+            // Der Schritt läuft im Prozess des Runners; der Benutzerkontext wählt nur die Struktur des Benutzers, nicht dessen Rechte.
+            if (userName != null && hive != RegistryData.Hive.CurrentUser)
+                throw new InvalidDataException("Der Kontext \"als angemeldeter Benutzer\" gilt nur für HKCU");
+            // Ebenfalls am eingetragenen Pfad: die Benutzerkennung würde die Ebenen verschieben.
             if (step.RegistryAction == RegistryAction.DeleteKey && !RegistryData.CanDeleteKey(hive, path))
                 throw new InvalidDataException("Dieser Schlüssel wird nicht gelöscht: er ist ein oberster Zweig der Registrierung oder enthält Windows bzw. alle Programme eines Herstellers");
             var view = step.Registry32Bit ? RegistryView.Registry32 : RegistryView.Registry64;
@@ -36,11 +42,9 @@ namespace Inventory.Runner
                         throw new InvalidDataException("HKCU braucht den Kontext \"als angemeldeter Benutzer\"");
                     var sid = ((SecurityIdentifier)new NTAccount(userName).Translate(typeof(SecurityIdentifier))).Value;
                     root = RegistryHive.Users;
-                    path = path.Length == 0 ? sid : sid + "\\" + path;
+                    path = sid + "\\" + path;
                     break;
             }
-            if (path.Length == 0)
-                throw new InvalidDataException("Der Schlüssel besteht nur aus der Struktur; ein Pfad darunter fehlt");
 
             var shown = step.RegistryKey!.Trim();
             var name = step.RegistryValueName ?? "";
@@ -74,6 +78,13 @@ namespace Inventory.Runner
                         throw new InvalidDataException($"Unbekannte Aktion {step.RegistryAction}");
                 }
             }
+        }
+
+        /// <summary>Ob der Schritt die Struktur des angemeldeten Benutzers meint; alles andere ist ungültig und wird in <see cref="Run"/> abgelehnt.</summary>
+        public static bool IsUserKey(JobStep step)
+        {
+            try { return RegistryData.Split(step.RegistryKey, out _) == RegistryData.Hive.CurrentUser; }
+            catch (InvalidDataException) { return false; }
         }
 
         private static RegistryValueKind Kind(RegistryDataType type)

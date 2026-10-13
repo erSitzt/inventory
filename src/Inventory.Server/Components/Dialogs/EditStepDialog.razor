@@ -461,6 +461,11 @@
                     _error = L["HKCU needs \"Run as: Logged-on user\". As Local System the step would change the settings of the system account."];
                     return;
                 }
+                if (hive != RegistryData.Hive.CurrentUser && _step.RunAs == StepRunAs.LoggedOnUser)
+                {
+                    _error = L["\"Run as: Logged-on user\" only applies to HKCU. Other keys are changed by the system account."];
+                    return;
+                }
             }
             catch (InvalidDataException)
             {

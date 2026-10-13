@@ -341,6 +341,9 @@ namespace Inventory.Runner
         {
             if (step.RunAs != StepRunAs.LoggedOnUser)
                 return RunInProcess(index, step, progress, () => RegistryStep.Run(step, null));
+            // Vor der Suche nach einer Sitzung: ein Schritt, der nie laufen darf, soll scheitern und nicht "übersprungen" melden.
+            if (!RegistryStep.IsUserKey(step))
+                return RunInProcess(index, step, progress, () => RegistryStep.Run(step, ""));
             string? userName;
             try
             {
@@ -383,13 +386,20 @@ namespace Inventory.Runner
             return result;
         }
 
+        /// <summary>Entfernt den abschließenden Trenner, außer beim Stamm eines Laufwerks: "C:" wäre das aktuelle Verzeichnis dort.</summary>
+        internal static string SourceRoot(string path)
+        {
+            var trimmed = path.TrimEnd('\\');
+            return trimmed.Length == 2 && trimmed[1] == ':' ? trimmed + "\\" : trimmed;
+        }
+
         private string CopyFiles(JobStep step)
         {
             var external = !string.IsNullOrWhiteSpace(step.SourcePath);
             if ((!external && string.IsNullOrWhiteSpace(step.File)) || string.IsNullOrWhiteSpace(step.Destination))
                 throw new InvalidDataException("Quelle oder Ziel fehlt");
             // Eine Quelle außerhalb des Pakets (Freigabe oder Pfad auf dem Rechner) liest der Runner mit seinem eigenen Konto.
-            var source = external ? Environment.ExpandEnvironmentVariables(step.SourcePath!.Trim()).TrimEnd('\\') : Path.Combine(FilesDir, step.File!);
+            var source = external ? SourceRoot(Environment.ExpandEnvironmentVariables(step.SourcePath!.Trim())) : Path.Combine(FilesDir, step.File!);
             var destination = Environment.ExpandEnvironmentVariables(step.Destination!);
 
             if (File.Exists(source))
