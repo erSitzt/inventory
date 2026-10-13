@@ -269,14 +269,22 @@ address of the computer's last known subnet and to its last known address. The M
 scan (all adapters that had an address); *Edit* on the computer page takes a fixed one, for a computer that has
 never been scanned or wakes through another adapter.
 
+**Other subnets.** A broadcast of the server usually ends at the router. The server therefore also asks computers
+with an agent to send the packet in their own network: up to two per target, chosen from the agents that reported
+within the last three minutes and have an address in the subnet where the target was last seen. So waking works in
+every subnet in which at least one computer with an agent is switched on – a server, or a PC that stays on, is
+enough. An agent that is busy with a job for more than a minute does not send; the request then lapses instead of
+waking the computer later. Nothing has to be configured.
+
 What has to be true outside Inventory:
 
 - Wake-on-LAN is enabled in the firmware and in the adapter's driver settings. With Windows fast startup switched
   on, many devices wake from sleep or hibernate only, not after a shutdown.
 - The computer is on a cable. Laptops on Wi-Fi or on battery rarely wake.
-- Computers in another subnet than the server only receive the packet if the router forwards directed broadcasts
-  for that subnet (off by default on most routers), or while the router still has the computer's address in its
-  ARP table. The subnet mask is known after a scan with the current runner; until then /24 is assumed.
+- In a subnet without a running agent, computers only receive the packet of the server if the router forwards
+  directed broadcasts for that subnet (off by default on most routers), or while the router still has the
+  computer's address in its ARP table. The subnet mask is known after a scan with the current runner; until then
+  /24 is assumed.
 
 Sending is not a confirmation: Wake-on-LAN has no answer. Whether the computer started shows in the reachability
 check.

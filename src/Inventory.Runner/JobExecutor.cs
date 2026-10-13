@@ -319,6 +319,8 @@ namespace Inventory.Runner
                     return RunInProcess(index, step, progress, () => CopyFiles(step));
                 case StepType.Service:
                     return RunInProcess(index, step, progress, () => ControlService(step));
+                case StepType.WakeOnLan:
+                    return RunInProcess(index, step, progress, () => WakeSender.Send(step.Script));
                 case StepType.Sleep:
                     return RunInProcess(index, step, progress, () =>
                     {

@@ -211,6 +211,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.InventoryScan => T("Inventory scan"),
         StepType.Uninstall => T("Uninstall"),
         StepType.WindowsUpdate => T("Windows Update"),
+        StepType.WakeOnLan => "Wake-on-LAN",
         _ => type.ToString(),
     };
 

@@ -62,6 +62,32 @@ public static class WakeOnLan
         return new IPAddress(bytes);
     }
 
+    /// <summary>
+    /// true, wenn <paramref name="other"/> im Subnetz der Adresse <paramref name="address"/> mit ihrer Maske liegt
+    /// (ohne brauchbare Maske /24). Nur IPv4.
+    /// </summary>
+    public static bool SameSubnet(string? address, string? mask, string? other)
+    {
+        if (Broadcast(address, mask) is not { } own || Broadcast(other, mask) is not { } theirs)
+            return false;
+        return own.Equals(theirs);
+    }
+
+    /// <summary>true, wenn einer der Adapter eine Adresse im selben Subnetz hat wie eine der Adressen <paramref name="targets"/>.</summary>
+    public static bool Reaches(IEnumerable<Adapter> adapters, IReadOnlyCollection<string> targets)
+    {
+        foreach (var adapter in adapters)
+        {
+            for (var i = 0; i < adapter.Addresses.Count; i++)
+            {
+                var mask = i < adapter.Masks.Count ? adapter.Masks[i] : null;
+                if (targets.Any(t => SameSubnet(adapter.Addresses[i], mask, t)))
+                    return true;
+            }
+        }
+        return false;
+    }
+
     /// <summary>Ein bekannter Netzwerkadapter eines Rechners; Adressen und Masken stehen in derselben Reihenfolge.</summary>
     public sealed record Adapter(string? Mac, IReadOnlyList<string> Addresses, IReadOnlyList<string> Masks);
 

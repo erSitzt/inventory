@@ -19,6 +19,8 @@
   <ItemGroup>
     <!-- Der Starter ist ein net48-Programm und lässt sich nicht referenzieren; die Link-Prüfung wird als Quelltext mitübersetzt. -->
     <Compile Include="..\..\src\Inventory.Launcher\LinkParser.cs" Link="Launcher\LinkParser.cs" />
+    <!-- Ebenso der Runner: das Weckrelais wird als Quelltext mitgeprüft. -->
+    <Compile Include="..\..\src\Inventory.Runner\WakeSender.cs" Link="Runner\WakeSender.cs" />
   </ItemGroup>
 
   <ItemGroup>

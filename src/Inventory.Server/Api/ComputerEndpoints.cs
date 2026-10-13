@@ -15,7 +15,7 @@ public static class ComputerEndpoints
         string? PrimaryUser = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
         DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string? WakeMac = null);
 
-    public sealed record WakeDto(bool Sent, IReadOnlyList<string> Macs, int Packets);
+    public sealed record WakeDto(bool Sent, IReadOnlyList<string> Macs, int Packets, IReadOnlyList<string> Relays);
 
     /// <summary>Jedes Feld ist optional: weggelassen oder null = unverändert, leerer Text = löschen. Die Datumsfelder löscht <c>Clear</c>.</summary>
     public sealed record AssetRequest(string? Description = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
@@ -141,8 +141,8 @@ public static class ComputerEndpoints
                 return Results.NotFound();
             if (result.Sent)
                 await audit.LogAsync(http.Actor(), "Wake-up sent via API", result.ComputerName, ct);
-            return Results.Ok(new WakeDto(result.Sent, result.Macs, result.Packets));
-        }).RequireOperator().WithSummary("Wake computer").WithDescription("Sends Wake-on-LAN magic packets (UDP port 9) to the MAC addresses of the last scan, or to the one entered for the computer. sent = false with empty macs: no MAC address known; sent = false with macs and packets = 0: no packet could be sent (the server has no way into the network). Sent does not mean awake: check reachability about two minutes later.").Produces<WakeDto>().Produces(404);
+            return Results.Ok(new WakeDto(result.Sent, result.Macs, result.Packets, result.Relays));
+        }).RequireOperator().WithSummary("Wake computer").WithDescription("Sends Wake-on-LAN magic packets (UDP port 9), from the server and through agents in the target's subnet, to the MAC addresses of the last scan, or to the one entered for the computer. sent = false with empty macs: no MAC address known; relays: computers with an agent in the target's subnet that were asked to send the packet there. sent = false with macs: the server could not send a packet and no agent was available. Sent does not mean awake: check reachability about two minutes later.").Produces<WakeDto>().Produces(404);
 
         group.MapPost("{id:int}/scan", async (int id, ScanService scans, CancellationToken ct) => await scans.ScanAsync(id, ct))
             .RequireOperator().WithSummary("Inventory scan").WithDescription("Scans the computer immediately and waits for the result (seconds to minutes depending on the transport).");

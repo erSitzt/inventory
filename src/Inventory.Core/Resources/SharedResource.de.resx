@@ -338,6 +338,9 @@
   <data name="Also drivers offered by Windows Update" xml:space="preserve">
     <value>Auch Treiber, die Windows Update anbietet</value>
   </data>
+  <data name="Also sent through the agent on {0}." xml:space="preserve">
+    <value>Zusätzlich über den Agenten auf {0} gesendet.</value>
+  </data>
   <data name="always notify" xml:space="preserve">
     <value>immer benachrichtigen</value>
   </data>
@@ -1282,6 +1285,9 @@
   </data>
   <data name="For {0} computers a different computer responds than listed – see the marker in the list." xml:space="preserve">
     <value>Bei {0} Rechnern antwortet ein anderer Rechner als eingetragen – siehe Markierung in der Liste.</value>
+  </data>
+  <data name="For {0} of them also through an agent in their subnet." xml:space="preserve">
+    <value>Bei {0} davon zusätzlich über einen Agenten in ihrem Subnetz.</value>
   </data>
   <data name="Forget agent" xml:space="preserve">
     <value>Agent vergessen</value>
@@ -3521,8 +3527,8 @@
   <data name="The value for an allow rule by file hash in your endpoint protection. It changes with every server update." xml:space="preserve">
     <value>Der Wert für eine Freigabe per Datei-Hash in Ihrem Endpoint-Schutz. Er ändert sich mit jedem Server-Update.</value>
   </data>
-  <data name="The wake-up could not be sent: the server has no way into the network." xml:space="preserve">
-    <value>Das Wecksignal ließ sich nicht senden: der Server hat keinen Weg ins Netz.</value>
+  <data name="The wake-up could not be sent: the server has no way into the network and no agent in the computer's subnet is online." xml:space="preserve">
+    <value>Das Wecksignal ließ sich nicht senden: der Server hat keinen Weg ins Netz, und im Subnetz des Rechners ist kein Agent online.</value>
   </data>
   <data name="The webhook address is missing." xml:space="preserve">
     <value>Die Webhook-Adresse fehlt.</value>
