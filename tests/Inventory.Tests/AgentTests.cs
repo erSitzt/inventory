@@ -178,4 +178,30 @@ public class AgentTests
     {
         public void Report(ProgressEvent value) => events.Add(value.Text);
     }
+
+    [Fact]
+    public async Task With_dns_names_an_enrolling_agent_is_listed_under_its_fqdn()
+    {
+        using var db = new TestDb();
+        var settings = new SettingsService(db);
+        var agents = new AgentService(db, settings, TimeProvider.System);
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var token = await agents.GetEnrollmentTokenAsync();
+        await computers.ImportAsync("alt-01");
+        AgentEnrollRequest Request(string host, string? dns) => new() { EnrollmentToken = token, HostName = host, DnsName = dns, Version = "1.0" };
+
+        // Ohne die Einstellung bleibt es beim kurzen Namen.
+        await agents.EnrollAsync(Request("PC-01", "pc-01.corp.example"));
+        await settings.SetAsync(SettingKeys.ComputersUseDnsNames, bool.TrueString);
+        await agents.EnrollAsync(Request("PC-02", "pc-02.corp.example"));
+        // Ein bestehender Eintrag unter dem kurzen Namen wird umgestellt.
+        await agents.EnrollAsync(Request("ALT-01", "alt-01.corp.example."));
+        // Kein Suffix, ein fremder Name und Zeichen, die in keinem Hostnamen stehen: der kurze Name gilt.
+        await agents.EnrollAsync(Request("PC-03", null));
+        await agents.EnrollAsync(Request("PC-04", "server.corp.example"));
+        await agents.EnrollAsync(Request("PC-05", "pc-05.corp.example/../x"));
+
+        Assert.Equal(["alt-01.corp.example", "PC-01", "pc-02.corp.example", "PC-03", "PC-04", "PC-05"],
+            (await computers.ListAsync()).Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase));
+    }
 }

@@ -119,17 +119,34 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         var name = request.HostName.Trim();
         // Auch unter dem FQDN eingetragene Rechner wiederfinden.
         var computer = (await db.Computers.ToListAsync(ct)).FirstOrDefault(c => c.Name.Split('.')[0].Equals(name, StringComparison.OrdinalIgnoreCase));
+        // Auf Wunsch unter dem vollen DNS-Namen führen: neue Einträge, und bestehende unter dem kurzen Namen.
+        var dnsName = await settings.GetAsync(SettingKeys.ComputersUseDnsNames, ct) == bool.TrueString ? ValidDnsName(request.DnsName, name) : null;
         if (computer is null)
         {
-            computer = new Computer { Name = name };
+            computer = new Computer { Name = dnsName ?? name };
             db.Computers.Add(computer);
         }
+        else if (dnsName is not null && !computer.Name.Contains('.'))
+            computer.Name = dnsName;
         computer.AgentKeyHash = Hash(key);
         computer.AgentVersion = request.Version;
         computer.AgentLastSeenUtc = time.GetUtcNow().UtcDateTime;
         computer.Transport = TransportKind.Agent;
         await db.SaveChangesAsync(ct);
         return key;
+    }
+
+    /// <summary>
+    /// Der vom Agenten gemeldete DNS-Name, wenn er plausibel ist: ein Hostname mit Domäne, dessen erster Teil der gemeldete
+    /// Rechnername ist. Sonst null – der Name stammt von einem Rechner, der sich nur mit dem gemeinsamen Geheimnis ausweist.
+    /// </summary>
+    internal static string? ValidDnsName(string? dnsName, string hostName)
+    {
+        var name = dnsName?.Trim().TrimEnd('.');
+        if (string.IsNullOrEmpty(name) || name.Length > 253 || !name.Contains('.') || MachineNames.Differs(name, hostName))
+            return null;
+        var labels = name.Split('.');
+        return labels.All(l => l.Length is > 0 and <= 63 && l.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_') && l[0] != '-' && l[^1] != '-') ? name : null;
     }
 
     /// <summary>Anzeigetext aus Programmversion und Stand der Dateien, z. B. "0.1.0.0 (3fa9c21b)".</summary>

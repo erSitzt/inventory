@@ -201,6 +201,36 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         return name;
     }
 
+    /// <summary>
+    /// Benennt Einträge um (Rechner-ID → neuer Name), z. B. vom kurzen Namen auf den vollen DNS-Namen. Inventar, Verlauf und
+    /// Agent bleiben am Eintrag. Ein Name, den schon ein anderer Eintrag trägt, wird ausgelassen.
+    /// </summary>
+    /// <returns>Die durchgeführten Umbenennungen.</returns>
+    public async Task<List<(string Old, string New)>> RenameAsync(IReadOnlyDictionary<int, string> names, CancellationToken ct = default)
+    {
+        if (names.Count == 0)
+            return [];
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var all = await db.Computers.ToListAsync(ct);
+        var taken = all.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var done = new List<(string Old, string New)>();
+        foreach (var computer in all.Where(c => names.ContainsKey(c.Id)).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var name = names[computer.Id].Trim();
+            if (name.Length == 0 || name.Equals(computer.Name, StringComparison.Ordinal) || (!name.Equals(computer.Name, StringComparison.OrdinalIgnoreCase) && !taken.Add(name)))
+                continue;
+            taken.Remove(computer.Name);
+            taken.Add(name);
+            done.Add((computer.Name, name));
+            computer.Name = name;
+            // Ziele, die noch auf diesen Rechner warten, prüfen seine Erreichbarkeit unter dem Namen, den sie tragen.
+            await db.DeploymentTargets.Where(t => t.ComputerId == computer.Id && t.FinishedUtc == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.ComputerName, name), ct);
+        }
+        await db.SaveChangesAsync(ct);
+        return done;
+    }
+
     /// <summary>Hält fest, was die Verzeichnis-Synchronisation über die Rechner herausgefunden hat.</summary>
     /// <param name="states">Je Rechner: im Verzeichnis vorhanden (und nicht ausgeschlossen), Konto deaktiviert, dazu das Konto selbst, soweit das Verzeichnis es geliefert hat.</param>
     public async Task SetDirectoryStateAsync(IReadOnlyDictionary<int, (bool Present, bool Disabled, DirectoryComputer? Account)> states, DateTime nowUtc, CancellationToken ct = default)
