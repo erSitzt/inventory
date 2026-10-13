@@ -1236,6 +1236,12 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("FinishedUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("Interrupted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("JobId")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("Pilot")
                         .HasColumnType("INTEGER");
 
@@ -1260,6 +1266,8 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("ComputerId");
 
                     b.HasIndex("DeploymentId");
+
+                    b.HasIndex("JobId");
 
                     b.ToTable("DeploymentTargets");
                 });

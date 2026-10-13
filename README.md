@@ -162,6 +162,10 @@ For computers the server cannot reach directly (notebooks on the road, other net
 runner is available as a permanent Windows service. It only ever talks *to* the server – the server never connects to
 the agent.
 
+A job's result is not lost when the server is unreachable at that moment: the agent keeps it and delivers it as soon
+as the server answers again, for up to seven days. If the server was restarted while the job ran, the deployment shows
+the computer as failed ("the server was stopped during execution") until the result arrives and replaces that.
+
 **How it works**
 
 | | |
