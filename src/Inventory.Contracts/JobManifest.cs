@@ -31,6 +31,8 @@ namespace Inventory.Contracts
         Registry = 11,
         /// <summary>Optionale Windows-Features ein- oder ausschalten (DISM); Exitcode 3010, wenn danach ein Neustart nötig ist.</summary>
         WindowsFeature = 12,
+        /// <summary>App-Paket (MSIX/AppX) für alle Benutzer entfernen, auf Wunsch samt Bereitstellung für neue Benutzer.</summary>
+        RemoveApp = 13,
     }
 
     public enum RegistryAction
@@ -154,6 +156,10 @@ namespace Inventory.Contracts
         public bool Registry32Bit { get; set; }
         /// <summary>WindowsFeature: Namen der Features wie bei DISM, z. B. NetFx3 oder TelnetClient.</summary>
         public List<string> FeatureNames { get; set; } = new List<string>();
+        /// <summary>RemoveApp: Name aus der Paketidentität, z. B. Microsoft.BingWeather; * als Platzhalter.</summary>
+        public string? AppName { get; set; }
+        /// <summary>RemoveApp: die Bereitstellung für neue Benutzer behalten; sonst bekäme jeder neue Benutzer die App wieder.</summary>
+        public bool AppKeepProvisioned { get; set; }
         /// <summary>WindowsFeature: ausschalten statt einschalten.</summary>
         public bool FeatureDisable { get; set; }
         public string? ServiceName { get; set; }

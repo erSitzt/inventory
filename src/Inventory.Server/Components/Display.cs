@@ -166,6 +166,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         RuleField.LoggedOnUser => T("Logged-on user"),
         RuleField.MemoryGb => T("Memory (GB)"),
         RuleField.Software => T("Software"),
+        RuleField.App => T("App (MSIX/Store)"),
         _ => field.ToString(),
     };
 
@@ -220,6 +221,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.WakeOnLan => "Wake-on-LAN",
         StepType.Registry => T("Registry"),
         StepType.WindowsFeature => T("Windows feature"),
+        StepType.RemoveApp => T("Remove app (MSIX/Store)"),
         _ => type.ToString(),
     };
 
@@ -237,6 +239,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         StepType.WindowsUpdate => Icons.Material.Filled.SystemUpdateAlt,
         StepType.Registry => Icons.Material.Filled.AccountTree,
         StepType.WindowsFeature => Icons.Material.Filled.Extension,
+        StepType.RemoveApp => Icons.Material.Filled.AppBlocking,
         _ => Icons.Material.Filled.PlayArrow,
     };
 
@@ -259,6 +262,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
             RegistryAction.DeleteValue => T("delete {0}", $"{step.RegistryKey}\\{RegistryValueLabel(step)}"),
             _ => $"{step.RegistryKey}\\{RegistryValueLabel(step)} = {step.RegistryData}",
         },
+        StepType.RemoveApp => step.AppName + (step.AppKeepProvisioned ? $" ({T("stays provisioned for new users")})" : ""),
         StepType.WindowsFeature => $"{(step.FeatureDisable ? T("disable") : T("enable"))}: {string.Join(", ", step.FeatureNames)}",
         StepType.Service => $"{ServiceActionName(step.ServiceAction)}: {step.ServiceName}",
         StepType.Sleep => T("{0} seconds", step.Seconds),

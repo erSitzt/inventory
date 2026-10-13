@@ -99,6 +99,15 @@ internal static class SimulatedInventory
             TeamViewerId = random.Next(3) == 0 ? null : random.Next(100_000_000, 999_999_999).ToString(),
             AnyDeskId = random.Next(4) == 0 ? random.Next(100_000_000, 999_999_999).ToString() : null,
         };
+        // Ohne den Zufallsgenerator: die übrigen simulierten Werte sollen sich dadurch nicht verschieben.
+        data.Apps =
+        [
+            new AppItem { Name = "Microsoft.WindowsCalculator", Version = "11.2405.2.0", Publisher = "Microsoft Corporation", Architecture = "x64", Provisioned = true },
+            new AppItem { Name = "Microsoft.BingWeather", Version = "4.53.52331.0", Publisher = "Microsoft Corporation", Architecture = "x64", Provisioned = true },
+            new AppItem { Name = "MSTeams", DisplayName = "Microsoft Teams", Version = "24137.2203.2869.6690", Publisher = "Microsoft", Architecture = "x64" },
+        ];
+        if (host.Length % 2 == 0)
+            data.Apps.Add(new AppItem { Name = "Microsoft.XboxGamingOverlay", DisplayName = "Game Bar", Version = "7.124.5142.0", Publisher = "Microsoft Corporation", Architecture = "x64", Provisioned = true });
         var laptop = model.Contains("Book") || model.Contains("Latitude") || model.Contains("ThinkPad");
         var modules = memoryGb >= 16 ? 2 : 1;
         data.Hardware = new HardwareInfo

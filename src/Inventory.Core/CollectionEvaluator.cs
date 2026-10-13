@@ -90,6 +90,7 @@ public static class CollectionEvaluator
         RuleField.Service => Service(rule, computer),
         RuleField.InCollection => context is not null && context.InCollection(rule, computer, depth),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
+        RuleField.App => AnyOrNone(rule, computer.Apps.SelectMany(a => a.DisplayName is null ? [a.Name] : new[] { a.Name, a.DisplayName })),
         _ => false,
     };
 
@@ -191,6 +192,7 @@ public static class CollectionEvaluator
     {
         RuleField.Software => [nameof(Computer.Software)],
         RuleField.LocalAdmin => [nameof(Computer.LocalAdmins)],
+        RuleField.App => [nameof(Computer.Apps)],
         RuleField.Hotfix => [nameof(Computer.Hotfixes)],
         RuleField.PendingUpdate => [nameof(Computer.PendingUpdates)],
         RuleField.Service => [nameof(Computer.Services)],

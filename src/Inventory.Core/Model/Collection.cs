@@ -97,6 +97,8 @@ public enum RuleField
     BatteryHealthPercent = 149,
     /// <summary>Mindestens ein physischer Datenträger meldet einen anderen Zustand als "in Ordnung".</summary>
     DiskHealthProblem = 150,
+    /// <summary>App-Paket (MSIX/AppX) vorhanden: Paketname oder Anzeigename.</summary>
+    App = 151,
     Online = 1,
     Scanned,
     OsName,

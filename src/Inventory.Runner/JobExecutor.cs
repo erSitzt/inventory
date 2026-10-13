@@ -329,6 +329,7 @@ namespace Inventory.Runner
                 case StepType.Install:
                 case StepType.Reboot:
                 case StepType.WindowsFeature:
+                case StepType.RemoveApp:
                     return RunStep(index, step, progress);
                 case StepType.Registry:
                     return RunRegistry(index, step, progress);
@@ -754,6 +755,13 @@ namespace Inventory.Runner
                     arguments = $"/r /t {Math.Max(step.Seconds, 0)} /d p:4:1";
                     if (!string.IsNullOrWhiteSpace(step.Script))
                         arguments += " /c \"" + step.Script.Replace("\"", "'") + "\"";
+                    break;
+                case StepType.RemoveApp:
+                    var removalPath = Path.Combine(baseDir, $"step-{index}.ps1");
+                    // Das Skript prüft erst, was das Muster trifft, und entfernt nur bei wenigen, entfernbaren Apps.
+                    File.WriteAllText(removalPath, AppNames.RemovalScript(step.AppName ?? "", step.AppKeepProvisioned), new UTF8Encoding(true));
+                    fileName = Path.Combine(system, @"WindowsPowerShell\v1.0\powershell.exe");
+                    arguments = "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" + removalPath + "\"";
                     break;
                 case StepType.WindowsFeature:
                     if (step.FeatureNames == null || step.FeatureNames.Count == 0)

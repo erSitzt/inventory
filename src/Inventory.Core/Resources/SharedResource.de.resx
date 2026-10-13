@@ -26,6 +26,9 @@
   <data name='"{0}" is not a valid exit code.' xml:space="preserve">
     <value>„{0}“ ist kein gültiger Exitcode.</value>
   </data>
+  <data name='"{0}" is not usable as a package name: letters, digits, dot and hyphen, with * only next to enough of the name (not just the vendor).' xml:space="preserve">
+    <value>„{0}“ ist als Paketname nicht verwendbar: Buchstaben, Ziffern, Punkt und Bindestrich, * nur neben genügend Namen (nicht nur dem Hersteller).</value>
+  </data>
   <data name="#{0} {1} on {2}" xml:space="preserve">
     <value>#{0} {1} auf {2}</value>
   </data>
@@ -401,6 +404,12 @@
   <data name="API tokens" xml:space="preserve">
     <value>API-Tokens</value>
   </data>
+  <data name="App (MSIX/Store)" xml:space="preserve">
+    <value>App (MSIX/Store)</value>
+  </data>
+  <data name="App packages (MSIX/AppX, also from the Store) registered on the computer, without parts of Windows and runtime libraries. An empty list means the computer has not been scanned with a current runner yet." xml:space="preserve">
+    <value>App-Pakete (MSIX/AppX, auch aus dem Store), die auf dem Rechner registriert sind – ohne Bestandteile von Windows und Laufzeitbibliotheken. Eine leere Liste bedeutet, dass der Rechner noch nicht mit einem aktuellen Runner gescannt wurde.</value>
+  </data>
   <data name="Appearance" xml:space="preserve">
     <value>Darstellung</value>
   </data>
@@ -430,6 +439,9 @@
   </data>
   <data name="Approved for deployment by {0} on {1}." xml:space="preserve">
     <value>Zum Verteilen freigegeben von {0} am {1}.</value>
+  </data>
+  <data name="Apps" xml:space="preserve">
+    <value>Apps</value>
   </data>
   <data name="Architecture" xml:space="preserve">
     <value>Architektur</value>
@@ -1586,6 +1598,9 @@
   <data name="Keep finished deployments (days)" xml:space="preserve">
     <value>Abgeschlossene Deployments aufbewahren (Tage)</value>
   </data>
+  <data name="Keep it provisioned for new users" xml:space="preserve">
+    <value>Für neue Benutzer bereitgestellt lassen</value>
+  </data>
   <data name="Keep the approval when library packages update automatically" xml:space="preserve">
     <value>Freigabe behalten, wenn Bibliothekspakete sich automatisch aktualisieren</value>
   </data>
@@ -1907,6 +1922,9 @@
   <data name='Name as shown in "Programs and Features". Without * it must occur as whole words, with * it is a pattern for the whole name.' xml:space="preserve">
     <value>Name wie unter „Programme und Features“. Ohne * muss er als ganze Wörter vorkommen, mit * ist er ein Muster für den ganzen Namen.</value>
   </data>
+  <data name="Name as the computer's &quot;Apps&quot; tab shows it. * stands for any text, e.g. Microsoft.Xbox*." xml:space="preserve">
+    <value>Name, wie ihn der Reiter „Apps“ des Rechners zeigt. * steht für beliebigen Text, z. B. Microsoft.Xbox*.</value>
+  </data>
   <data name="Name is missing" xml:space="preserve">
     <value>Name fehlt</value>
   </data>
@@ -1954,6 +1972,9 @@
   </data>
   <data name="New token" xml:space="preserve">
     <value>Neues Token</value>
+  </data>
+  <data name="New users" xml:space="preserve">
+    <value>Neue Benutzer</value>
   </data>
   <data name="New versions are adopted automatically" xml:space="preserve">
     <value>Neue Versionen werden automatisch übernommen</value>
@@ -2435,6 +2456,12 @@
   <data name="package library" xml:space="preserve">
     <value>Paketbibliothek</value>
   </data>
+  <data name="Package name" xml:space="preserve">
+    <value>Paketname</value>
+  </data>
+  <data name="Package or display name" xml:space="preserve">
+    <value>Paket- oder Anzeigename</value>
+  </data>
   <data name="Package prerequisite added" xml:space="preserve">
     <value>Paket-Voraussetzung hinzugefügt</value>
   </data>
@@ -2663,6 +2690,9 @@
   <data name="Properties" xml:space="preserve">
     <value>Eigenschaften</value>
   </data>
+  <data name="provisioned" xml:space="preserve">
+    <value>bereitgestellt</value>
+  </data>
   <data name="Public network" xml:space="preserve">
     <value>Öffentliches Netz</value>
   </data>
@@ -2813,6 +2843,9 @@
   <data name="Remove" xml:space="preserve">
     <value>Entfernen</value>
   </data>
+  <data name="Remove app (MSIX/Store)" xml:space="preserve">
+    <value>App entfernen (MSIX/Store)</value>
+  </data>
   <data name='Remove from "{0}"' xml:space="preserve">
     <value>Aus „{0}“ entfernen</value>
   </data>
@@ -2827,6 +2860,9 @@
   </data>
   <data name="Removes the agent's key on the server and resets the transport. Uninstall the service on the computer first (sc stop InventoryAgent, sc delete InventoryAgent), otherwise it enrolls again with the enrollment secret." xml:space="preserve">
     <value>Verwirft den Schlüssel des Agenten auf dem Server und setzt den Transport zurück. Vorher den Dienst auf dem Rechner deinstallieren (sc stop InventoryAgent, sc delete InventoryAgent), sonst meldet er sich mit dem Anmeldegeheimnis neu an.</value>
+  </data>
+  <data name="Removes the app for all users of the computer and, unless kept, also for users who log on later. Parts of Windows and runtime libraries are left alone. If the name matches more than {0} different apps, nothing is removed." xml:space="preserve">
+    <value>Entfernt die App für alle Benutzer des Rechners und – sofern nicht beibehalten – auch für Benutzer, die sich später anmelden. Bestandteile von Windows und Laufzeitbibliotheken bleiben unberührt. Trifft der Name mehr als {0} verschiedene Apps, wird nichts entfernt.</value>
   </data>
   <data name="Rename entry to {0}" xml:space="preserve">
     <value>Eintrag in {0} umbenennen</value>
@@ -3382,6 +3418,9 @@
   </data>
   <data name="Status" xml:space="preserve">
     <value>Status</value>
+  </data>
+  <data name="stays provisioned for new users" xml:space="preserve">
+    <value>bleibt für neue Benutzer bereitgestellt</value>
   </data>
   <data name="Step name" xml:space="preserve">
     <value>Name des Schritts</value>

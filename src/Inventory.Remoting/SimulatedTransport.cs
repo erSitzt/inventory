@@ -115,6 +115,7 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
         StepType.Install => $"{step.File} {step.Arguments}".Trim(),
         StepType.FileCopy => $"{step.SourcePath ?? step.File} → {step.Destination}",
         StepType.Registry => $"{step.RegistryAction} {step.RegistryKey}\\{step.RegistryValueName}",
+        StepType.RemoveApp => $"remove app {step.AppName}",
         StepType.WindowsFeature => $"{(step.FeatureDisable ? "disable" : "enable")} {string.Join(", ", step.FeatureNames)}",
         StepType.Service => $"{step.ServiceAction} {step.ServiceName}",
         StepType.Uninstall => $"{step.ProductCode ?? step.SoftwareName} {step.Arguments}".Trim(),

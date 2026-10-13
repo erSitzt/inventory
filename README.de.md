@@ -35,6 +35,10 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Registrierung,
   Windows-Feature, Dienst, Warten, Neustart, Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten;
   Schritte nach einem Neustart laufen automatisch weiter, sobald der Rechner wieder da ist
+- **Apps (MSIX/AppX, Store)**: der Scan erfasst die App-Pakete des Rechners samt der Angabe, ob sie für neue Benutzer
+  bereitgestellt sind; Sammlungen können danach filtern, und ein Schritt „App entfernen“ entfernt eine App für alle
+  Benutzer und auf Wunsch auch für künftige – Bestandteile von Windows und Laufzeitbibliotheken bleiben unberührt, und
+  ein zu weit gefasster Name entfernt nichts
 - **Voraussetzungen**: ein Paket nennt die Pakete, die es braucht („benötigt die .NET-Runtime“); sie laufen vor seinen
   Schritten, jedes nur dort, wo seine eigene Erkennung es nicht schon als installiert ausweist, und müssen danach
   erkennbar sein, wenn das Paket die Überprüfung verlangt
