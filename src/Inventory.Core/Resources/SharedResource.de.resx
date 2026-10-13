@@ -3596,6 +3596,9 @@
   <data name="There is no newer version with a setup." xml:space="preserve">
     <value>Es liegt keine neuere Version mit Setup vor.</value>
   </data>
+  <data name="These are the default credentials. Make other credentials the default first." xml:space="preserve">
+    <value>Das sind die Standard-Zugangsdaten. Zuerst andere Zugangsdaten zum Standard machen.</value>
+  </data>
   <data name="These entries are not part of the base selection and come unchanged from the winget manifests. The checksum secures the download, but only a test shows whether the silent parameters are right – try it on a single computer before deploying." xml:space="preserve">
     <value>Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download, aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.</value>
   </data>

@@ -244,6 +244,10 @@ public static class ManagementEndpoints
         credentials.MapGet("", async (CredentialService service, CancellationToken ct) => (await service.ListAsync(ct)).Select(Credential))
             .WithSummary("All credentials").WithDescription("Accounts the server uses to reach computers. Passwords are never returned.");
 
+        credentials.MapGet("{id:int}", async (int id, CredentialService service, CancellationToken ct) =>
+            (await service.ListAsync(ct)).FirstOrDefault(c => c.Id == id) is { } found ? Results.Ok(Credential(found)) : Results.NotFound())
+            .WithSummary("One set of credentials").Produces<CredentialDto>().Produces(404);
+
         credentials.MapPost("", async (CredentialRequest request, CredentialService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             Check(request);
@@ -255,10 +259,12 @@ public static class ManagementEndpoints
         credentials.MapPut("{id:int}", async (int id, CredentialRequest request, CredentialService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
             Check(request);
-            var saved = await service.SaveAsync(id, request.Name, request.Username, request.Password, request.Description, ct);
+            // Weggelassen = unverändert, leerer Text = löschen: wer nur das Passwort wechselt, soll die Beschreibung nicht verlieren.
+            var description = request.Description ?? (await service.ListAsync(ct)).FirstOrDefault(c => c.Id == id)?.Description;
+            var saved = await service.SaveAsync(id, request.Name, request.Username, request.Password, description, ct);
             await audit.LogAsync(http.Actor(), "Credentials changed via API", $"{saved.Name} ({saved.Username}){(string.IsNullOrEmpty(request.Password) ? "" : ", new password")}", ct);
             return Results.Ok(Credential(saved));
-        }).WithSummary("Change credentials").WithDescription("An empty or omitted password keeps the stored one, e.g. to rotate only the password send the unchanged name and username with the new password.").Produces<CredentialDto>().Produces(400).Produces(404).Produces(409);
+        }).WithSummary("Change credentials").WithDescription("An empty or omitted password keeps the stored one; an omitted description stays as well, an empty one clears it. To rotate the password, send the unchanged name and username with the new password.").Produces<CredentialDto>().Produces(400).Produces(404).Produces(409);
 
         credentials.MapPost("{id:int}/default", async (int id, CredentialService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
@@ -276,7 +282,7 @@ public static class ManagementEndpoints
             await service.DeleteAsync(id, ct);
             await audit.LogAsync(http.Actor(), "Credentials deleted via API", $"{credential.Name} ({credential.Username})", ct);
             return Results.NoContent();
-        }).WithSummary("Delete credentials").WithDescription("Computers and settings that used them fall back to the default.").Produces(204).Produces(404);
+        }).WithSummary("Delete credentials").WithDescription("Computers that used them fall back to the default; a directory synchronization that used them signs in with the account of the server service again. The default credentials can only be deleted when they are the last ones – make others the default first.").Produces(204).Produces(400).Produces(404);
 
         var maintenanceDefault = app.MapGroup("/api/settings/maintenance-window").WithTags("Settings").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
 

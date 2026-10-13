@@ -24,18 +24,20 @@ public sealed class BackupService(IDbContextFactory<InventoryDbContext> dbFactor
     {
         System.IO.Directory.CreateDirectory(backupDirectory);
         var path = Path.Combine(backupDirectory, $"inventory-{time.GetLocalNow():yyyyMMdd-HHmmss}.db");
-        await using (var db = await dbFactory.CreateDbContextAsync(ct))
-        {
-            // VACUUM INTO schreibt eine konsistente Kopie, auch während andere Verbindungen lesen und schreiben.
-            await db.Database.ExecuteSqlRawAsync("VACUUM INTO {0}", [path], ct);
-        }
-
+        // Zuerst die Schlüssel: scheitert das, gibt es noch keine Datenbankkopie, und der nächste Takt versucht die ganze Sicherung erneut.
         if (keysDirectory is not null && System.IO.Directory.Exists(keysDirectory) && System.IO.Directory.EnumerateFiles(keysDirectory).Any())
         {
             // Unter Windows sind die Schlüssel an den Rechner gebunden (DPAPI): sie helfen beim Zurückspielen auf demselben Server.
             var keys = Path.ChangeExtension(path, null) + KeysSuffix;
-            File.Delete(keys);
-            System.IO.Compression.ZipFile.CreateFromDirectory(keysDirectory, keys);
+            var partial = keys + ".tmp";
+            File.Delete(partial);
+            System.IO.Compression.ZipFile.CreateFromDirectory(keysDirectory, partial);
+            File.Move(partial, keys, overwrite: true);
+        }
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            // VACUUM INTO schreibt eine konsistente Kopie, auch während andere Verbindungen lesen und schreiben.
+            await db.Database.ExecuteSqlRawAsync("VACUUM INTO {0}", [path], ct);
         }
 
         foreach (var pattern in new[] { "inventory-*.db", "inventory-*" + KeysSuffix })

@@ -58,9 +58,18 @@ public sealed class CredentialService(IDbContextFactory<InventoryDbContext> dbFa
         await db.SaveChangesAsync(ct);
     }
 
+    /// <exception cref="InvalidOperationException">
+    /// Die Zugangsdaten sind der Standard und es gibt weitere: sonst stünden alle Rechner ohne eigene Zugangsdaten ohne da,
+    /// und welche stattdessen gelten sollen, entscheidet ein Mensch.
+    /// </exception>
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (await db.Credentials.AnyAsync(c => c.Id == id && c.IsDefault, ct) && await db.Credentials.AnyAsync(c => c.Id != id, ct))
+            throw new InvalidOperationException(L["These are the default credentials. Make other credentials the default first."]);
+        // Die AD-Synchronisation meldet sich ohne ihre Zugangsdaten wieder mit dem Konto des Server-Dienstes an; das soll die Einstellung auch zeigen.
+        var key = id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        await db.Settings.Where(s => s.Key == SettingKeys.AdSyncCredentialId && s.Value == key).ExecuteDeleteAsync(ct);
         await db.Credentials.Where(c => c.Id == id).ExecuteDeleteAsync(ct);
     }
 

@@ -634,6 +634,8 @@
 
     private async Task SetDeploymentDaysAsync(int days)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         await SettingsService.SetDeploymentRetentionDaysAsync(days);
         _deploymentDays = await SettingsService.GetDeploymentRetentionDaysAsync();
         await Audit.LogAsync(L["Setting changed"], $"{L["Keep finished deployments (days)"]}: {(_deploymentDays == 0 ? L["unlimited"] : _deploymentDays)}");
