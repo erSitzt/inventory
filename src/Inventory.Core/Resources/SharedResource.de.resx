@@ -2645,6 +2645,9 @@
   <data name="Postponed by the user ({0} of {1}); next attempt at {2}" xml:space="preserve">
     <value>Vom Benutzer verschoben ({0} von {1}); nächster Versuch um {2}</value>
   </data>
+  <data name="postponed by users" xml:space="preserve">
+    <value>von Benutzern verschoben</value>
+  </data>
   <data name="Postponements allowed" xml:space="preserve">
     <value>Erlaubte Verschiebungen</value>
   </data>
@@ -4447,6 +4450,9 @@
   </data>
   <data name="{0} computers updated." xml:space="preserve">
     <value>{0} Rechner aktualisiert.</value>
+  </data>
+  <data name="{0} computers were postponed by their users and are asked again later" xml:space="preserve">
+    <value>{0} Rechner wurden von ihren Benutzern verschoben und werden später erneut gefragt</value>
   </data>
   <data name="{0} computers with scan errors" xml:space="preserve">
     <value>{0} Rechner mit Scan-Fehlern</value>

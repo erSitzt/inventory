@@ -56,6 +56,10 @@
     {
         <span> · @L["{0} computers are waiting for their maintenance window", _deployment.Targets.Count(t => t.Status == TargetStatus.WaitingWindow)]</span>
     }
+    @if (_deployment.Targets.Any(t => t.Status == TargetStatus.WaitingUser))
+    {
+        <span> · @L["{0} computers were postponed by their users and are asked again later", _deployment.Targets.Count(t => t.Status == TargetStatus.WaitingUser)]</span>
+    }
     @if (_deployment.Targets.Any(t => t.Status == TargetStatus.WaitingReboot))
     {
         <span> · @L["{0} computers are restarting; the remaining steps follow automatically", _deployment.Targets.Count(t => t.Status == TargetStatus.WaitingReboot)]</span>

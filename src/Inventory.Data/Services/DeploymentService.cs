@@ -851,9 +851,21 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 Changed?.Invoke(deployment.Id);
                 continue;
             }
+            // Nur starten, was in diesem Augenblick noch wartet: ein inzwischen abgebrochenes Ziel bleibt abgebrochen.
+            var ready = new List<DeploymentTarget>();
+            foreach (var target in deployment.Targets)
+            {
+                var claimed = 0;
+                await UpdateAsync(async db => claimed = await db.DeploymentTargets.Where(t => t.Id == target.Id && t.Status == TargetStatus.WaitingUser)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Queued).SetProperty(t => t.NotBeforeUtc, (DateTime?)null)));
+                if (claimed == 1)
+                    ready.Add(target);
+            }
+            if (ready.Count == 0)
+                continue;
             // Ist der Rechner inzwischen aus, wartet das Ziel wie jedes andere auf ihn.
-            Launch(deployment, deployment.Targets, built, checkOnline: true);
-            started += deployment.Targets.Count;
+            Launch(deployment, ready, built, checkOnline: true);
+            started += ready.Count;
         }
         return started;
     }
