@@ -27,6 +27,30 @@ namespace Inventory.Contracts
         /// <see cref="JobStep.Script"/>. Kein Schritt für Pakete: der Server schickt ihn an einen Agenten als Weckrelais.
         /// </summary>
         WakeOnLan = 10,
+        /// <summary>Registrierungswert setzen oder löschen bzw. einen Schlüssel löschen.</summary>
+        Registry = 11,
+        /// <summary>Optionale Windows-Features ein- oder ausschalten (DISM); Exitcode 3010, wenn danach ein Neustart nötig ist.</summary>
+        WindowsFeature = 12,
+    }
+
+    public enum RegistryAction
+    {
+        SetValue,
+        DeleteValue,
+        /// <summary>Den Schlüssel samt Unterschlüsseln löschen.</summary>
+        DeleteKey,
+    }
+
+    public enum RegistryDataType
+    {
+        String,
+        ExpandString,
+        DWord,
+        QWord,
+        /// <summary>Mehrere Zeilen; je Zeile ein Eintrag.</summary>
+        MultiString,
+        /// <summary>Hexadezimal, z. B. "01 0A FF".</summary>
+        Binary,
     }
 
     /// <summary>Unter welchem Konto ein Schritt auf dem Zielrechner läuft.</summary>
@@ -86,6 +110,25 @@ namespace Inventory.Contracts
         public string? Arguments { get; set; }
         /// <summary>FileCopy: Zielpfad auf dem Rechner; Umgebungsvariablen wie %ProgramFiles% werden aufgelöst.</summary>
         public string? Destination { get; set; }
+        /// <summary>
+        /// FileCopy: Quelle außerhalb des Pakets – ein UNC-Pfad oder ein Pfad auf dem Zielrechner; hat Vorrang vor <see cref="File"/>.
+        /// Für sehr große Dateien, die nicht über den Server laufen sollen. Der Runner liest mit seinem eigenen Konto.
+        /// </summary>
+        public string? SourcePath { get; set; }
+        /// <summary>Registry: Schlüssel mit Struktur, z. B. HKLM\SOFTWARE\Firma\Programm. HKCU gilt für den angemeldeten Benutzer (<see cref="RunAs"/>).</summary>
+        public string? RegistryKey { get; set; }
+        /// <summary>Registry: Name des Werts; leer = der Standardwert des Schlüssels.</summary>
+        public string? RegistryValueName { get; set; }
+        public RegistryAction RegistryAction { get; set; }
+        public RegistryDataType RegistryDataType { get; set; }
+        /// <summary>Registry: der Wert als Text, passend zu <see cref="RegistryDataType"/>.</summary>
+        public string? RegistryData { get; set; }
+        /// <summary>Registry: die 32-Bit-Ansicht (WOW6432Node) statt der 64-Bit-Ansicht.</summary>
+        public bool Registry32Bit { get; set; }
+        /// <summary>WindowsFeature: Namen der Features wie bei DISM, z. B. NetFx3 oder TelnetClient.</summary>
+        public List<string> FeatureNames { get; set; } = new List<string>();
+        /// <summary>WindowsFeature: ausschalten statt einschalten.</summary>
+        public bool FeatureDisable { get; set; }
         public string? ServiceName { get; set; }
         public ServiceAction ServiceAction { get; set; }
         /// <summary>Sleep: Wartezeit; Reboot: Verzögerung bis zum Neustart.</summary>
