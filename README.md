@@ -45,6 +45,8 @@ credentials. The user interface is available in English and German; translations
 - **Maintenance windows**: weekdays and time of day per collection plus a default window; deployments and schedules
   with the option "only within the maintenance window" hold back computers whose window is closed and start them
   when it opens
+- **Phased rollout**: a deployment or schedule can name a pilot group; its computers run first and the others
+  follow after a wait – or not at all, if too many of the pilot group failed
 - **Wake-on-LAN**: deployments and schedules can wake computers that are switched off and run them once they
   answer; "Wake" on the computer page and in the actions of the computer list does the same by hand
 - **Windows Update**: a step type that searches, downloads and installs pending updates from the source configured
@@ -256,6 +258,26 @@ The synchronization (*Settings → Active Directory*) creates computers from com
   configurable grace period – including inventory data and history.
 - Manually added computers the directory never knew remain untouched. If the directory returns no accounts at all or
   conspicuously many computers would be deleted at once, the run changes or deletes nothing and reports it.
+
+### Phased rollout
+
+Under *Pilot group*, a deployment or schedule takes a collection, a wait in hours and the share of failures that is
+still acceptable. Of the chosen targets, the members of that collection run first; the others show "waiting for
+pilot group".
+
+- **Release:** once the last computer of the pilot group has finished and the wait is over, the others start by
+  themselves. Deadlines for offline computers and maintenance windows begin anew for them.
+- **Stop:** if more of the pilot group failed than allowed, the deployment stops as soon as the pilot group is
+  finished; the others are cancelled with that reason. An alert rule "A deployment finishes with failures" reports it.
+- **Offline pilots:** the pilot group counts as finished only when none of its computers is waiting any more. One
+  that stays off counts as failed when its deadline expires (three days, eight with maintenance windows) – so keep
+  computers in the pilot group that are reliably on.
+- **By hand:** the deployment page shows the state and offers "Start the remaining computers now", regardless of
+  wait and failures; "Cancel" drops them.
+
+If none or all of the targets belong to the pilot group, everything starts at once. A schedule whose pilot
+collection was deleted does not run and reports the error, instead of deploying to everyone. Required deployments
+(trigger "required for every member") do not stage. There are two stages, not more.
 
 ### Wake-on-LAN
 
@@ -599,7 +621,7 @@ addresses require the same sign-in as the rest of the API.
 |---|---|
 | Computers | create, query, delete, check reachability, wake (Wake-on-LAN), inventory scan, installed software, hardware details, RDP file, run command or PowerShell script |
 | Packages | list, create, change, delete; add, change, move and delete steps; upload and delete files (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); set the detection (`detection`, `verifyAfterInstall`) and read name, version and product code of an uploaded MSI (`…/api/packages/<id>/msi/setup.msi`) |
-| Deployments | start, list, query progress per computer, cancel |
+| Deployments | start (also with a pilot group), list, query progress per computer, cancel, release the computers waiting for the pilot group |
 | Collections | list, create, change, delete; add and remove members of static collections; maintenance window per collection (`maintenanceWindow`) and the default window (`/api/settings/maintenance-window`) |
 | Schedules | list, create, change, delete, run now |
 | API tokens | list, create with a role (the secret is shown once), delete – administrators only |

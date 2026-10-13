@@ -47,6 +47,12 @@ public class Schedule
     public bool RespectMaintenanceWindow { get; set; } = true;
     /// <summary>Bei Deployments: nicht erreichbare Rechner per Wake-on-LAN wecken. Scan-Zeitpläne wecken nicht.</summary>
     public bool WakeTargets { get; set; }
+    /// <summary>Wie <see cref="Deployment.PilotCollectionId"/>; gilt nicht für <see cref="ScheduleTrigger.OnMembership"/>.</summary>
+    public int? PilotCollectionId { get; set; }
+    /// <summary>Wie <see cref="Deployment.PilotHoldHours"/>.</summary>
+    public int PilotHoldHours { get; set; } = 24;
+    /// <summary>Wie <see cref="Deployment.PilotMaxFailurePercent"/>.</summary>
+    public int PilotMaxFailurePercent { get; set; }
     /// <summary>Wie <see cref="Deployment.MaxFailures"/>.</summary>
     public int? MaxFailures { get; set; }
     /// <summary>Wie <see cref="Deployment.MaxFailurePercent"/>; neue Zeitpläne halten ab 10 % Fehlern an, damit ein kaputtes Paket nachts nicht alle Rechner erreicht.</summary>

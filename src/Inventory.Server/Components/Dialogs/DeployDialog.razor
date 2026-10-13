@@ -43,6 +43,7 @@
                 <MudAlert Severity="Severity.Warning" Dense="true">@L["This package is not approved yet. As an administrator you can deploy it anyway, e.g. to test it."]</MudAlert>
             }
             <DeploymentLimitsEditor @bind-MaxFailures="_maxFailures" @bind-MaxFailurePercent="_maxFailurePercent" @bind-MaxParallel="_maxParallel" />
+            <PilotEditor Collections="_collections" @bind-CollectionId="_pilotCollectionId" @bind-HoldHours="_pilotHoldHours" @bind-MaxFailurePercent="_pilotMaxFailurePercent" />
             @if (_error is not null)
             {
                 <MudAlert Severity="Severity.Error">@_error</MudAlert>
@@ -75,6 +76,9 @@
     private bool _retryOffline;
     private bool _respectWindow;
     private bool _wake;
+    private int? _pilotCollectionId;
+    private int _pilotHoldHours = 24;
+    private int _pilotMaxFailurePercent;
     private int? _maxFailures;
     private int? _maxFailurePercent;
     private int? _maxParallel;
@@ -115,7 +119,10 @@
         try
         {
             var deployment = await DeploymentService.StartAsync(_packageId!.Value, _targets.Select(c => c.Id),
-                new DeploymentOptions(_scanAfter, _retryOffline, _respectWindow, _maxFailures, _maxFailurePercent, _maxParallel) { RequireApproved = !_isAdmin, Wake = _wake });
+                new DeploymentOptions(_scanAfter, _retryOffline, _respectWindow, _maxFailures, _maxFailurePercent, _maxParallel) {
+                    RequireApproved = !_isAdmin, Wake = _wake,
+                    PilotCollectionId = _pilotCollectionId, PilotHoldHours = _pilotHoldHours, PilotMaxFailurePercent = _pilotMaxFailurePercent,
+                });
             await Audit.LogAsync(L["Deployment started"], L["#{0} {1} on {2}", deployment.Id, $"{deployment.PackageName} {deployment.PackageVersion}", string.Join(", ", deployment.Targets.Select(t => t.ComputerName))]);
             MudDialog.Close(DialogResult.Ok(deployment.Id));
             Navigation.NavigateTo($"deployments/{deployment.Id}");

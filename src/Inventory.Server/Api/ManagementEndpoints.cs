@@ -35,13 +35,15 @@ public static class ManagementEndpoints
         bool ScanAfter = true, bool RetryOffline = true, DateTime? StartLocal = null, int IntervalMinutes = 60, TimeSpan? TimeOfDay = null, int DaysOfWeek = 0,
         bool RespectMaintenanceWindow = true, int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null,
         int MonthDay = 1, int MonthWeek = 2, int MonthWeekday = 2, int MonthOffsetDays = 0, DateTime? EndLocal = null, bool CatchUpMissed = true, int RecheckDays = 0,
-        int? ReportId = null, int? NotificationChannelId = null, ReportFormat ReportFormat = ReportFormat.Excel, bool WakeTargets = false);
+        int? ReportId = null, int? NotificationChannelId = null, ReportFormat ReportFormat = ReportFormat.Excel, bool WakeTargets = false,
+        int? PilotCollectionId = null, int PilotHoldHours = 24, int PilotMaxFailurePercent = 0);
 
     public sealed record ScheduleDto(int Id, string Name, bool Enabled, ScheduleAction Action, int? PackageId, int? CollectionId, bool ScanAfter, bool RetryOffline,
         ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult, bool RespectMaintenanceWindow,
         int? MaxFailures, int? MaxFailurePercent, int? MaxParallel,
         int MonthDay = 1, int MonthWeek = 2, int MonthWeekday = 2, int MonthOffsetDays = 0, DateTime? EndLocal = null, bool CatchUpMissed = true, int RecheckDays = 0,
-        int? ReportId = null, int? NotificationChannelId = null, ReportFormat ReportFormat = ReportFormat.Excel, bool WakeTargets = false);
+        int? ReportId = null, int? NotificationChannelId = null, ReportFormat ReportFormat = ReportFormat.Excel, bool WakeTargets = false,
+        int? PilotCollectionId = null, int PilotHoldHours = 24, int PilotMaxFailurePercent = 0);
 
     public sealed record DeploymentSummaryDto(int Id, int? PackageId, string PackageName, string? PackageVersion, DateTime CreatedUtc, DateTime? FinishedUtc,
         int Targets, int Succeeded, int AlreadyInstalled, int Failed, int Waiting);
@@ -186,6 +188,17 @@ public static class ManagementEndpoints
             return Results.NoContent();
         }).WithSummary("Cancel deployment").WithDescription("Stops running targets and drops targets waiting for an offline computer or a restart.").Produces(204).Produces(404);
 
+        deployments.MapPost("{id:int}/release", async (int id, DeploymentService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if (await service.GetAsync(id, ct) is not { } deployment)
+                return Results.NotFound();
+            var started = await service.ReleasePilotAsync(id, force: true, ct);
+            if (started == 0)
+                return Results.Problem("Nothing to release: the deployment is not waiting for a pilot group, or computers of it are still running.", statusCode: 409);
+            await audit.LogAsync(http.Actor(), "Deployment released after the pilot group via API", $"#{id} {deployment.PackageName}: {started}", ct);
+            return Results.NoContent();
+        }).WithSummary("Release the remaining computers").WithDescription("Phased rollout: starts the computers waiting for the pilot group now, regardless of the hold time and the failure rate.").Produces(204).Produces(404).Produces(409);
+
         var tokens = app.MapGroup("/api/tokens").WithTags("API tokens").AddEndpointFilter(MapErrors).RequireAdmin();
 
         tokens.MapGet("", async (ApiTokenService service, CancellationToken ct) =>
@@ -328,7 +341,7 @@ public static class ManagementEndpoints
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
         s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow, s.MaxFailures, s.MaxFailurePercent, s.MaxParallel,
-        s.MonthDay, s.MonthWeek, s.MonthWeekday, s.MonthOffsetDays, s.EndLocal, s.CatchUpMissed, s.RecheckDays, s.ReportId, s.NotificationChannelId, s.ReportFormat, s.WakeTargets);
+        s.MonthDay, s.MonthWeek, s.MonthWeekday, s.MonthOffsetDays, s.EndLocal, s.CatchUpMissed, s.RecheckDays, s.ReportId, s.NotificationChannelId, s.ReportFormat, s.WakeTargets, s.PilotCollectionId, s.PilotHoldHours, s.PilotMaxFailurePercent);
 
     private static Schedule Apply(Schedule s, ScheduleRequest r)
     {
@@ -356,6 +369,8 @@ public static class ManagementEndpoints
         s.TimeOfDay = r.TimeOfDay ?? s.TimeOfDay;
         s.RespectMaintenanceWindow = r.RespectMaintenanceWindow;
         s.WakeTargets = r.WakeTargets && r.Action == ScheduleAction.Deploy;
+        var staged = r.Action == ScheduleAction.Deploy && r.Trigger != ScheduleTrigger.OnMembership;
+        (s.PilotCollectionId, s.PilotHoldHours, s.PilotMaxFailurePercent) = (staged ? r.PilotCollectionId : null, Math.Clamp(r.PilotHoldHours, 0, DeploymentService.MaxPilotHoldHours), Math.Clamp(r.PilotMaxFailurePercent, 0, 100));
         (s.MaxFailures, s.MaxFailurePercent, s.MaxParallel) = (r.MaxFailures is > 0 ? r.MaxFailures : null, r.MaxFailurePercent is > 0 ? Math.Min(r.MaxFailurePercent.Value, 100) : null, r.MaxParallel is > 0 ? r.MaxParallel : null);
         return s;
     }

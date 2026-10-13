@@ -46,6 +46,8 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Wartungsfenster**: Wochentage und Uhrzeit je Sammlung sowie ein Standardfenster; Deployments und Zeitpläne mit
   der Option „Nur im Wartungsfenster“ halten Rechner zurück, deren Fenster geschlossen ist, und starten sie, sobald es
   beginnt
+- **Gestufter Rollout**: ein Deployment oder Zeitplan kann eine Pilotgruppe nennen; ihre Rechner laufen zuerst, die
+  übrigen folgen nach einer Wartezeit – oder gar nicht, wenn zu viele der Pilotgruppe fehlgeschlagen sind
 - **Wake-on-LAN**: Deployments und Zeitpläne können ausgeschaltete Rechner wecken und holen sie nach, sobald sie
   antworten; „Wecken“ auf der Rechnerseite und in den Aktionen der Rechnerliste tut dasselbe von Hand
 - **Windows Update**: ein Schritt-Typ, der ausstehende Updates aus der auf dem Rechner eingestellten Quelle (WSUS
@@ -271,6 +273,27 @@ Die Synchronisation (*Einstellungen → Active Directory*) legt Computerkonten a
   ununterbrochen gefehlt haben – samt Inventardaten und Verlauf.
 - Von Hand angelegte Rechner, die das Verzeichnis nie gekannt hat, bleiben unberührt. Liefert das Verzeichnis gar keine
   Konten oder wären auffällig viele Rechner auf einmal zu löschen, ändert bzw. löscht der Lauf nichts und meldet das.
+
+### Gestufter Rollout
+
+Unter *Pilotgruppe* nimmt ein Deployment oder Zeitplan eine Sammlung, eine Wartezeit in Stunden und den Anteil an
+Fehlern auf, der noch hinnehmbar ist. Von den gewählten Zielen laufen die Mitglieder dieser Sammlung zuerst; die
+übrigen zeigen „wartet auf Pilotgruppe“.
+
+- **Freigabe:** Sobald der letzte Rechner der Pilotgruppe fertig und die Wartezeit um ist, starten die übrigen von
+  selbst. Die Fristen für Offline-Rechner und Wartungsfenster beginnen für sie neu.
+- **Halt:** Sind mehr Rechner der Pilotgruppe fehlgeschlagen als zulässig, hält das Deployment an, sobald die
+  Pilotgruppe fertig ist; die übrigen werden mit diesem Grund abgebrochen. Eine Alarmregel „Eine Verteilung endet mit
+  Fehlern“ meldet das.
+- **Pilotrechner offline:** Die Pilotgruppe gilt erst als fertig, wenn keiner ihrer Rechner mehr wartet. Einer, der
+  aus bleibt, zählt nach Ablauf seiner Frist als fehlgeschlagen (drei Tage, mit Wartungsfenstern acht) – in die
+  Pilotgruppe gehören also Rechner, die verlässlich an sind.
+- **Von Hand:** Die Seite des Deployments zeigt den Stand und bietet „Übrige Rechner jetzt starten“, unabhängig von
+  Wartezeit und Fehlern; „Abbrechen“ verwirft sie.
+
+Gehört keines oder jedes der Ziele zur Pilotgruppe, startet alles zugleich. Ein Zeitplan, dessen Pilot-Sammlung
+gelöscht wurde, läuft nicht und meldet den Fehler, statt an alle zu verteilen. Pflicht-Verteilungen (Auslöser „für
+jedes Mitglied“) stufen nicht. Es gibt zwei Stufen, nicht mehr.
 
 ### Wake-on-LAN
 
@@ -621,7 +644,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 |---|---|
 | Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, wecken (Wake-on-LAN), Inventar-Scan, installierte Software, Hardware-Details, RDP-Datei, Befehl oder PowerShell-Skript ausführen |
 | Pakete | auflisten, anlegen, ändern, löschen; Schritte hinzufügen, ändern, verschieben und löschen; Dateien hochladen und löschen (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); Erkennung festlegen (`detection`, `verifyAfterInstall`) und Name, Version und Produktcode einer hochgeladenen MSI lesen (`…/api/packages/<id>/msi/setup.msi`) |
-| Deployments | starten, auflisten, Fortschritt je Rechner abfragen, abbrechen |
+| Deployments | starten (auch mit Pilotgruppe), auflisten, Fortschritt je Rechner abfragen, abbrechen, die auf die Pilotgruppe wartenden Rechner freigeben |
 | Sammlungen | auflisten, anlegen, ändern, löschen; Mitglieder statischer Sammlungen hinzufügen und entfernen; Wartungsfenster je Sammlung (`maintenanceWindow`) und das Standardfenster (`/api/settings/maintenance-window`) |
 | Zeitpläne | auflisten, anlegen, ändern, löschen, sofort ausführen |
 | API-Tokens | auflisten, mit einer Rolle anlegen (das Geheimnis wird einmal gezeigt), löschen – nur Administratoren |

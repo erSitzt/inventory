@@ -1131,6 +1131,18 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("PackageVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("PilotCollectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PilotHoldHours")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PilotMaxFailurePercent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("PilotReleasedUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("RespectMaintenanceWindow")
                         .HasColumnType("INTEGER");
 
@@ -1185,6 +1197,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<DateTime?>("FinishedUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("Pilot")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("RebootUtc")
                         .HasColumnType("TEXT");
@@ -1504,6 +1519,15 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("PackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PilotCollectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PilotHoldHours")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PilotMaxFailurePercent")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("RecheckDays")

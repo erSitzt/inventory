@@ -1,0 +1,36 @@
+@inject IStringLocalizer<SharedResource> L
+
+@* Gestufter Rollout: Pilotgruppe, Wartezeit und zulässige Fehlerquote; ohne Sammlung starten alle Rechner zugleich. *@
+<MudExpansionPanels Elevation="0" Outlined="true">
+    <MudExpansionPanel Text="@(CollectionId is not null ? L["Pilot group (active)"] : L["Pilot group (none)"])">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" Value="CollectionId" ValueChanged="CollectionIdChanged" Label="@L["Pilot group"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["none"]">
+                    @foreach (var summary in Collections)
+                    {
+                        <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <MudNumericField T="int" Value="HoldHours" ValueChanged="HoldHoursChanged" Label="@L["Wait (hours)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="@DeploymentService.MaxPilotHoldHours" Disabled="@(CollectionId is null)" />
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <MudNumericField T="int" Value="MaxFailurePercent" ValueChanged="MaxFailurePercentChanged" Label="@L["Failures allowed (%)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="100" Disabled="@(CollectionId is null)" />
+            </MudItem>
+        </MudGrid>
+        <MudText Typo="Typo.caption">
+            @L["The targets that are members of this collection run first. The others follow once the last of them has finished and the wait is over – unless more of the pilot group failed than allowed; then the deployment stops. Computers of the pilot group that stay offline count as failed when their deadline expires."]
+        </MudText>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    [Parameter, EditorRequired] public List<CollectionSummary> Collections { get; set; } = [];
+    [Parameter] public int? CollectionId { get; set; }
+    [Parameter] public EventCallback<int?> CollectionIdChanged { get; set; }
+    [Parameter] public int HoldHours { get; set; }
+    [Parameter] public EventCallback<int> HoldHoursChanged { get; set; }
+    [Parameter] public int MaxFailurePercent { get; set; }
+    [Parameter] public EventCallback<int> MaxFailurePercentChanged { get; set; }
+}

@@ -216,11 +216,12 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
             {
                 var since = Since(rule, now);
                 var finished = await db.Deployments.AsNoTracking().Where(d => d.FinishedUtc != null && d.FinishedUtc > since)
-                    .Select(d => new { d.Id, d.PackageName, d.FinishedUtc, Total = d.Targets.Count, Failed = d.Targets.Count(t => t.Status == TargetStatus.Failed) })
+                    .Select(d => new { d.Id, d.PackageName, d.FinishedUtc, d.StopReason, Total = d.Targets.Count, Failed = d.Targets.Count(t => t.Status == TargetStatus.Failed) })
                     .OrderBy(d => d.FinishedUtc).ToListAsync(ct);
                 foreach (var deployment in finished.Where(d => d.Failed > 0))
                     messages.Add(new Notification(L["Deployment #{0} \"{1}\": {2} of {3} failed", deployment.Id, deployment.PackageName, deployment.Failed, deployment.Total],
-                        L["The deployment of \"{0}\" has finished; {1} of {2} computers failed.", deployment.PackageName, deployment.Failed, deployment.Total],
+                        L["The deployment of \"{0}\" has finished; {1} of {2} computers failed.", deployment.PackageName, deployment.Failed, deployment.Total]
+                            + (deployment.StopReason is null ? "" : $" {deployment.StopReason}."),
                         NotificationSeverity.Error, Link(baseUrl, $"deployments/{deployment.Id}")));
                 return new Polled(messages, Stamp(finished.Count == 0 ? since : finished[^1].FinishedUtc!.Value));
             }
