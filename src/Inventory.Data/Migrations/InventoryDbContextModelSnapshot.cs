@@ -1227,6 +1227,9 @@ namespace Inventory.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Deferrals")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("DeploymentId")
                         .HasColumnType("INTEGER");
 
@@ -1240,6 +1243,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("JobId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("NotBeforeUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("Pilot")
@@ -1383,6 +1389,9 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("ApprovedUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("AskUser")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("CatalogAutoUpdate")
                         .HasColumnType("INTEGER");
 
@@ -1395,11 +1404,17 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("DeferMinutes")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Detection")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxDeferrals")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("ModifiedUtc")
                         .HasColumnType("TEXT");

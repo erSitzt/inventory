@@ -14,7 +14,8 @@ public static class ManagementEndpoints
 {
     /// <param name="RequiredPackageIds">Voraussetzungen in Ausführungsreihenfolge; null = unverändert lassen.</param>
     public sealed record PackageRequest(string Name, string? Version, string? Description, List<StepRequest>? Steps,
-        StepConditions? Detection = null, bool VerifyAfterInstall = false, List<int>? RequiredPackageIds = null);
+        StepConditions? Detection = null, bool VerifyAfterInstall = false, List<int>? RequiredPackageIds = null,
+        bool? AskUser = null, int? MaxDeferrals = null, int? DeferMinutes = null);
 
     /// <param name="NestedPackageId">Gesetzt = dieser Schritt führt ein anderes Paket aus; <paramref name="Definition"/> braucht dann nur den Namen.</param>
     public sealed record StepRequest(JobStep Definition, int? NestedPackageId = null);
@@ -25,7 +26,7 @@ public static class ManagementEndpoints
 
     public sealed record PackageDetailDto(int Id, string Name, string? Version, string? Description, DateTime ModifiedUtc, string? CatalogId,
         List<StepDto> Steps, List<FileDto> Files, StepConditions? Detection, bool VerifyAfterInstall, string? ApprovedBy = null, DateTime? ApprovedUtc = null,
-        List<int>? RequiredPackageIds = null);
+        List<int>? RequiredPackageIds = null, bool AskUser = false, int MaxDeferrals = 0, int DeferMinutes = 0);
 
     public sealed record CollectionRequest(string Name, string? Description, bool IsDynamic, bool MatchAll = true, List<CollectionRule>? Rules = null, MaintenanceWindow? MaintenanceWindow = null);
 
@@ -86,6 +87,8 @@ public static class ManagementEndpoints
                 await service.SaveDetectionAsync(package.Id, request.Detection, request.VerifyAfterInstall, ct);
                 if (request.RequiredPackageIds is { } required)
                     await service.SetDependenciesAsync(package.Id, required, ct);
+                if (request.AskUser is { } askUser)
+                    await service.SaveNoticeAsync(package.Id, askUser, request.MaxDeferrals ?? UserNotice.DefaultDeferrals, request.DeferMinutes ?? UserNotice.DefaultMinutes, ct);
             }
             catch
             {
@@ -107,9 +110,14 @@ public static class ManagementEndpoints
             await service.SaveDetectionAsync(id, request.Detection, request.VerifyAfterInstall, ct);
             if (request.RequiredPackageIds is { } required)
                 await service.SetDependenciesAsync(id, required, ct);
+            if (request.AskUser is { } askUser)
+            {
+                var current = (await service.GetAsync(id, ct))!;
+                await service.SaveNoticeAsync(id, askUser, request.MaxDeferrals ?? current.MaxDeferrals, request.DeferMinutes ?? current.DeferMinutes, ct);
+            }
             await audit.LogAsync(http.Actor(), "Package changed via API", request.Name, ct);
             return Results.Ok(ToDetail((await service.GetAsync(id, ct))!, service));
-        }).WithSummary("Change package header").WithDescription("Changes name, version, description and the detection (`detection`, `verifyAfterInstall`; omitting `detection` removes it) and the prerequisites (`requiredPackageIds` in execution order; omitting it leaves them unchanged, an empty array removes them). Steps are managed through the step endpoints; a `steps` array here is ignored.").Produces<PackageDetailDto>().Produces(404);
+        }).WithSummary("Change package header").WithDescription("Changes name, version, description and the detection (`detection`, `verifyAfterInstall`; omitting `detection` removes it) and the prerequisites (`requiredPackageIds` in execution order; omitting it leaves them unchanged, an empty array removes them) and the user notice (`askUser`, `maxDeferrals`, `deferMinutes`; omitting `askUser` leaves it unchanged). Steps are managed through the step endpoints; a `steps` array here is ignored.").Produces<PackageDetailDto>().Produces(404);
 
         packages.MapDelete("{id:int}", async (int id, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
@@ -404,7 +412,7 @@ public static class ManagementEndpoints
     private static PackageDetailDto ToDetail(Package p, PackageService service) => new(p.Id, p.Name, p.Version, p.Description, p.ModifiedUtc, p.CatalogId,
         [.. p.Steps.OrderBy(s => s.Order).Select(s => new StepDto(s.Id, s.Order, s.NestedPackageId, s.Definition))],
         [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall, p.ApprovedBy, p.ApprovedUtc,
-        [.. p.Dependencies.OrderBy(d => d.Order).Select(d => d.RequiredPackageId)]);
+        [.. p.Dependencies.OrderBy(d => d.Order).Select(d => d.RequiredPackageId)], p.AskUser, p.MaxDeferrals, p.DeferMinutes);
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
         s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow, s.MaxFailures, s.MaxFailurePercent, s.MaxParallel,

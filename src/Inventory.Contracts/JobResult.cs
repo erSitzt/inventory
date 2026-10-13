@@ -49,6 +49,8 @@ namespace Inventory.Contracts
         public bool AlreadyInstalled { get; set; }
         /// <summary>Gefüllt, wenn der Job einen Inventar-Scan enthielt.</summary>
         public InventoryData? Inventory { get; set; }
+        /// <summary>true = der angemeldete Benutzer hat den Start verschoben (<see cref="UserPrompt"/>); es wurde nichts ausgeführt.</summary>
+        public bool DeferredByUser { get; set; }
 
         public static JobResult Failed(string jobId, string error) =>
             new JobResult { JobId = jobId, Success = false, Error = error, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow };

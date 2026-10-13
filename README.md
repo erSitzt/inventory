@@ -39,6 +39,10 @@ credentials. The user interface is available in English and German; translations
 - **Apps (MSIX/AppX, Store)**: the scan records the computer's app packages and whether they are provisioned for new
   users; collections can filter on them, and a "remove app" step removes an app for all users and, if wanted, for
   future ones – parts of Windows and runtime libraries are left alone, and a name that is too broad removes nothing
+- **User notice with postponement**: a package can ask the logged-on user before it starts; they may postpone a
+  configurable number of times (default: three times by 60 minutes), after that only a notice appears and the
+  installation starts. Without an answer it starts after five minutes, without a logged-on user at once. Works via
+  SMB + service and agent, not over WinRM
 - **Prerequisites**: a package names the packages it needs ("requires the .NET runtime"); they run before its
   steps, each only where its own detection does not already find it installed, and must be detectable afterwards if
   that package asks for verification

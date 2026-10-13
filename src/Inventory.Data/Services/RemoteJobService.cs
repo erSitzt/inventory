@@ -69,7 +69,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             RemoteTarget Target(IRemoteTransport via) => new(via.Kind == TransportKind.Agent ? computer.Name : computer.Address, credential);
             try
             {
-                return await transport.RunAsync(Target(transport), job, files ?? [], progress, ct);
+                return await transport.RunAsync(Target(transport), For(transport, job), files ?? [], progress, ct);
             }
             catch (RemoteException ex)
             {
@@ -79,7 +79,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
                     return JobResult.Failed(job.JobId, ex.Message);
                 try
                 {
-                    return await fallback.RunAsync(Target(fallback), job, files ?? [], progress, ct);
+                    return await fallback.RunAsync(Target(fallback), For(fallback, job), files ?? [], progress, ct);
                 }
                 catch (RemoteException second)
                 {
@@ -91,5 +91,16 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
         {
             return JobResult.Failed(job.JobId, "Abgebrochen");
         }
+    }
+
+    /// <summary>
+    /// Über WinRM läuft der Runner in einer Netzwerkanmeldung ohne Zugang zur Sitzung des Benutzers: dort wird niemand
+    /// gefragt, das Paket startet ohne Hinweis. Gilt auch, wenn WinRM nur der Ausweichweg ist.
+    /// </summary>
+    private static JobManifest For(IRemoteTransport transport, JobManifest job)
+    {
+        if (transport.Kind == TransportKind.WinRm)
+            job.UserPrompt = null;
+        return job;
     }
 }

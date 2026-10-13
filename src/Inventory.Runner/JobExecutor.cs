@@ -52,6 +52,14 @@ namespace Inventory.Runner
                     result.Success = true;
                     // Bereits installiert: nichts ausführen, damit ein erneutes Deployment weder neu installiert noch neu startet.
                     result.AlreadyInstalled = manifest.SkipIfDetected && manifest.Detection is { IsEmpty: false } && ConditionEvaluator.WhyNot(manifest.Detection) == null;
+                    // Erst nach der Erkennung: wer das Paket schon hat, wird nicht gefragt.
+                    if (!result.AlreadyInstalled && manifest.UserPrompt is UserPrompt prompt && manifest.Steps.Count > 0
+                        && UserSession.AskedToWait(prompt.Title, prompt.Text, prompt.CanDefer, prompt.TimeoutSeconds))
+                    {
+                        result.Success = false;
+                        result.DeferredByUser = true;
+                        result.Error = "Postponed by the user";
+                    }
                 }
 
                 using (var progress = new StreamWriter(new FileStream(Path.Combine(_jobDir, JobFiles.Progress),
@@ -75,6 +83,10 @@ namespace Inventory.Runner
                         if (result.ResumeFromStep != null)
                         {
                             stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Deferred, Output = "Continues after the restart" };
+                        }
+                        else if (result.DeferredByUser)
+                        {
+                            stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Deferred, Output = "Postponed by the user" };
                         }
                         else if (result.AlreadyInstalled)
                         {

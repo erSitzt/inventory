@@ -73,7 +73,7 @@ public static class PackageEndpoints
 
         app.MapGet("/api/deployments/{id:int}", async (int id, DeploymentService deployments, CancellationToken ct) =>
             await deployments.GetAsync(id, ct) is { } deployment ? Results.Ok(ToDto(deployment)) : Results.NotFound())
-            .WithTags("Deployments").WithSummary("One deployment").WithDescription("Status per computer: Queued, Running, Succeeded, AlreadyInstalled, Failed, Cancelled, WaitingOffline, WaitingReboot, WaitingWindow or WaitingPilot.").Produces<DeploymentDto>().Produces(404);
+            .WithTags("Deployments").WithSummary("One deployment").WithDescription("Status per computer: Queued, Running, Succeeded, AlreadyInstalled, Failed, Cancelled, WaitingOffline, WaitingReboot, WaitingWindow or WaitingPilot, WaitingUser (the logged-on user postponed the start).").Produces<DeploymentDto>().Produces(404);
 
         return app;
     }

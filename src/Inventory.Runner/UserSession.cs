@@ -136,6 +136,26 @@ namespace Inventory.Runner
         /// <summary>Nummer der Sitzung, in der gerade jemand angemeldet ist; null, wenn niemand angemeldet ist.</summary>
         public static int? ActiveSessionId() => FindActiveSession();
 
+        /// <summary>
+        /// Zeigt dem Benutzer der aktiven Sitzung ein Meldungsfenster und wartet auf seine Antwort.
+        /// </summary>
+        /// <returns>true = "Nein" gewählt; false = Ja, OK, keine Antwort innerhalb der Frist, niemand angemeldet oder nicht anzeigbar.</returns>
+        public static bool AskedToWait(string title, string text, bool yesNo, int timeoutSeconds)
+        {
+            if (!(FindActiveSession() is int session))
+                return false;
+            // Im Vordergrund und über anderen Fenstern, sonst bleibt die Frage hinter der Arbeit des Benutzers unbemerkt.
+            const uint Foreground = 0x00010000 | 0x00040000;
+            var style = (yesNo ? 0x00000004u | 0x00000020u : 0x00000040u) | Foreground;
+            if (!WTSSendMessage(IntPtr.Zero, session, title, title.Length * 2, text, text.Length * 2, style, Math.Max(timeoutSeconds, 1), out var response, true))
+                return false;
+            return yesNo && response == 7;
+        }
+
+        [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "WTSSendMessageW")]
+        private static extern bool WTSSendMessage(IntPtr server, int sessionId, string title, int titleBytes, string message, int messageBytes,
+            uint style, int timeoutSeconds, out int response, bool wait);
+
         private static int? FindActiveSession()
         {
             if (!WTSEnumerateSessions(IntPtr.Zero, 0, 1, out var buffer, out var count))

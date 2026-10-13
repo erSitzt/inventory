@@ -11,6 +11,9 @@
   <data name='"{0}" contains no KB number.' xml:space="preserve">
     <value>„{0}“ enthält keine KB-Nummer.</value>
   </data>
+  <data name='"{0}" is about to be installed on this computer.' xml:space="preserve">
+    <value>„{0}“ soll jetzt auf diesem Rechner installiert werden.</value>
+  </data>
   <data name='"{0}" is installed on {1} computers, but only {2} licences are recorded.' xml:space="preserve">
     <value>„{0}“ ist auf {1} Rechnern installiert, erfasst sind aber nur {2} Lizenzen.</value>
   </data>
@@ -28,6 +31,9 @@
   </data>
   <data name='"{0}" is not usable as a package name: letters, digits, dot and hyphen, with * only next to enough of the name (not just the vendor).' xml:space="preserve">
     <value>„{0}“ ist als Paketname nicht verwendbar: Buchstaben, Ziffern, Punkt und Bindestrich, * nur neben genügend Namen (nicht nur dem Hersteller).</value>
+  </data>
+  <data name='"{0}" is now being installed on this computer and can no longer be postponed.' xml:space="preserve">
+    <value>„{0}“ wird jetzt auf diesem Rechner installiert und lässt sich nicht mehr verschieben.</value>
   </data>
   <data name="#{0} {1} on {2}" xml:space="preserve">
     <value>#{0} {1} auf {2}</value>
@@ -61,6 +67,9 @@
   </data>
   <data name="0 = never, otherwise at least {0} days. Useful when the package has a detection: it then only reinstalls where the program has disappeared." xml:space="preserve">
     <value>0 = nie, sonst mindestens {0} Tage. Sinnvoll, wenn das Paket eine Erkennung hat: dann wird nur dort neu installiert, wo das Programm verschwunden ist.</value>
+  </data>
+  <data name="0 = notice only, the user cannot postpone" xml:space="preserve">
+    <value>0 = nur Hinweis, der Benutzer kann nicht verschieben</value>
   </data>
   <data name='1 open item – details under "Needs attention".' xml:space="preserve">
     <value>1 offener Punkt – Einzelheiten unter „Handlungsbedarf“.</value>
@@ -458,6 +467,12 @@
   <data name="as of {0}" xml:space="preserve">
     <value>Stand {0}</value>
   </data>
+  <data name="Ask again after (minutes)" xml:space="preserve">
+    <value>Erneut fragen nach (Minuten)</value>
+  </data>
+  <data name="Ask the logged-on user before starting" xml:space="preserve">
+    <value>Angemeldeten Benutzer vor dem Start fragen</value>
+  </data>
   <data name="Asset data imported" xml:space="preserve">
     <value>Bestandsdaten importiert</value>
   </data>
@@ -511,6 +526,9 @@
   </data>
   <data name="Before" xml:space="preserve">
     <value>Vorher</value>
+  </data>
+  <data name='Before the first step the logged-on user is asked whether the installation may start now. "No" postpones it; once the postponements are used up, a notice appears and the installation starts. Without an answer it starts after {0} minutes; if nobody is logged on, it starts at once. Not over WinRM.' xml:space="preserve">
+    <value>Vor dem ersten Schritt wird der angemeldete Benutzer gefragt, ob die Installation jetzt starten darf. „Nein“ verschiebt sie; ist das Verschieben aufgebraucht, erscheint ein Hinweis und die Installation beginnt. Ohne Antwort startet sie nach {0} Minuten; ist niemand angemeldet, sofort. Nicht über WinRM.</value>
   </data>
   <data name="BIOS date" xml:space="preserve">
     <value>BIOS-Datum</value>
@@ -2132,6 +2150,9 @@
   <data name="No tokens yet." xml:space="preserve">
     <value>Noch keine Tokens vorhanden.</value>
   </data>
+  <data name="No – ask again in {0} minutes (possible {1} more time(s))" xml:space="preserve">
+    <value>Nein – in {0} Minuten erneut fragen (noch {1}-mal möglich)</value>
+  </data>
   <data name="none" xml:space="preserve">
     <value>keine</value>
   </data>
@@ -2486,6 +2507,9 @@
   <data name="Package updated from library" xml:space="preserve">
     <value>Paket aus Bibliothek aktualisiert</value>
   </data>
+  <data name="Package user notice changed" xml:space="preserve">
+    <value>Paket-Benutzerhinweis geändert</value>
+  </data>
   <data name="Package {0} not found" xml:space="preserve">
     <value>Paket {0} nicht gefunden</value>
   </data>
@@ -2609,8 +2633,23 @@
   <data name="Please observe the vendor's license terms; the library only refers to the vendor's download." xml:space="preserve">
     <value>Bitte die Lizenzbedingungen des Herstellers beachten; die Bibliothek verweist nur auf dessen Download.</value>
   </data>
+  <data name="Please save your work. The installation starts when you choose OK, at the latest in {0} minutes." xml:space="preserve">
+    <value>Bitte speichern Sie Ihre Arbeit. Die Installation beginnt, sobald Sie OK wählen, spätestens in {0} Minuten.</value>
+  </data>
   <data name="Port" xml:space="preserve">
     <value>Anschluss</value>
+  </data>
+  <data name="postponed by the user" xml:space="preserve">
+    <value>vom Benutzer verschoben</value>
+  </data>
+  <data name="Postponed by the user ({0} of {1}); next attempt at {2}" xml:space="preserve">
+    <value>Vom Benutzer verschoben ({0} von {1}); nächster Versuch um {2}</value>
+  </data>
+  <data name="postponed by users" xml:space="preserve">
+    <value>von Benutzern verschoben</value>
+  </data>
+  <data name="Postponements allowed" xml:space="preserve">
+    <value>Erlaubte Verschiebungen</value>
   </data>
   <data name="PowerShell exited with code {0}" xml:space="preserve">
     <value>PowerShell endete mit Code {0}</value>
@@ -2686,6 +2725,9 @@
   </data>
   <data name="Programs installed per user are only readable while that user is logged on; otherwise they are kept from the previous scan." xml:space="preserve">
     <value>Pro Benutzer installierte Programme sind nur lesbar, solange dieser Benutzer angemeldet ist; sonst bleiben sie aus dem vorigen Scan erhalten.</value>
+  </data>
+  <data name="Programs may be closed or the computer restarted in the process." xml:space="preserve">
+    <value>Dabei können Programme geschlossen oder der Rechner neu gestartet werden.</value>
   </data>
   <data name="Properties" xml:space="preserve">
     <value>Eigenschaften</value>
@@ -3362,6 +3404,9 @@
   <data name="Software" xml:space="preserve">
     <value>Software</value>
   </data>
+  <data name="Software installation" xml:space="preserve">
+    <value>Softwareinstallation</value>
+  </data>
   <data name="Sort by" xml:space="preserve">
     <value>Sortieren nach</value>
   </data>
@@ -3379,6 +3424,9 @@
   </data>
   <data name="Start" xml:space="preserve">
     <value>Starten</value>
+  </data>
+  <data name="Start now?" xml:space="preserve">
+    <value>Jetzt starten?</value>
   </data>
   <data name="Start of the maintenance window (2 hours)" xml:space="preserve">
     <value>Beginn des Wartungsfensters (2 Stunden)</value>
@@ -4022,6 +4070,9 @@
   <data name="User logged on" xml:space="preserve">
     <value>Benutzeranmeldung</value>
   </data>
+  <data name="User notice" xml:space="preserve">
+    <value>Hinweis an den Benutzer</value>
+  </data>
   <data name="Users" xml:space="preserve">
     <value>Benutzer</value>
   </data>
@@ -4286,6 +4337,9 @@
   <data name="Withdraw approval" xml:space="preserve">
     <value>Freigabe zurückziehen</value>
   </data>
+  <data name="Without an answer the installation starts in {0} minutes." xml:space="preserve">
+    <value>Ohne Antwort beginnt die Installation in {0} Minuten.</value>
+  </data>
   <data name="Without launcher: commands to copy" xml:space="preserve">
     <value>Ohne Starter: Befehle zum Kopieren</value>
   </data>
@@ -4300,6 +4354,9 @@
   </data>
   <data name="yes" xml:space="preserve">
     <value>ja</value>
+  </data>
+  <data name="Yes – start now" xml:space="preserve">
+    <value>Ja – jetzt starten</value>
   </data>
   <data name="You are signed out." xml:space="preserve">
     <value>Du bist abgemeldet.</value>
@@ -4394,6 +4451,9 @@
   <data name="{0} computers updated." xml:space="preserve">
     <value>{0} Rechner aktualisiert.</value>
   </data>
+  <data name="{0} computers were postponed by their users and are asked again later" xml:space="preserve">
+    <value>{0} Rechner wurden von ihren Benutzern verschoben und werden später erneut gefragt</value>
+  </data>
   <data name="{0} computers with scan errors" xml:space="preserve">
     <value>{0} Rechner mit Scan-Fehlern</value>
   </data>
@@ -4477,6 +4537,9 @@
   </data>
   <data name="{0} per licence" xml:space="preserve">
     <value>{0} je Lizenz</value>
+  </data>
+  <data name="{0} postponements, {1} minutes each" xml:space="preserve">
+    <value>{0} Verschiebungen, je {1} Minuten</value>
   </data>
   <data name="{0} retries" xml:space="preserve">
     <value>{0} Wiederholungen</value>

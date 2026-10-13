@@ -15,6 +15,16 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
         var aborted = false;
         // Erkennung gegen das simulierte Inventar: so lässt sich "bereits installiert" ohne Zielrechner ausprobieren.
         result.AlreadyInstalled = job.SkipIfDetected && Detected(job.Detection, target.Host);
+        // Zum Ausprobieren: Rechner mit "defer" im Namen verschieben, solange sie dürfen.
+        result.DeferredByUser = !result.AlreadyInstalled && job.UserPrompt is { CanDefer: true } && target.Host.Contains("defer", StringComparison.OrdinalIgnoreCase);
+        if (result.DeferredByUser)
+        {
+            result.Success = false;
+            result.Error = "Postponed by the user";
+            result.Steps.AddRange(job.Steps.Select((step, i) => new StepResult { Index = i, Name = step.Name, Status = StepStatus.Deferred, Output = "Postponed by the user" }));
+            result.FinishedUtc = DateTime.UtcNow;
+            return result;
+        }
         var groups = new JobGroups(job, detection => Detected(detection, target.Host) ? null : "not installed");
         // Die Simulation installiert nichts; wie beim Paket selbst scheitert die Nachprüfung nur bei "fail" oder "fehler" im Namen.
         var verifier = new JobGroups(job, detection => FailsVerification(detection) ? "not installed" : null);
