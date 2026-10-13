@@ -215,7 +215,8 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
             case AlertKind.DeploymentFailed:
             {
                 var since = Since(rule, now);
-                var finished = await db.Deployments.AsNoTracking().Where(d => d.FinishedUtc != null && d.FinishedUtc > since)
+                // Ein gestufter Rollout ist erst zu Ende, wenn die übrigen Rechner gelaufen oder verworfen sind – nicht schon nach der Pilotgruppe.
+                var finished = await db.Deployments.AsNoTracking().Where(d => d.FinishedUtc != null && d.FinishedUtc > since && !d.Targets.Any(t => t.Status == TargetStatus.WaitingPilot))
                     .Select(d => new { d.Id, d.PackageName, d.FinishedUtc, d.StopReason, Total = d.Targets.Count, Failed = d.Targets.Count(t => t.Status == TargetStatus.Failed) })
                     .OrderBy(d => d.FinishedUtc).ToListAsync(ct);
                 foreach (var deployment in finished.Where(d => d.Failed > 0))

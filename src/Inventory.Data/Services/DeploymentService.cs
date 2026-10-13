@@ -436,6 +436,18 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 await db.Deployments.Where(d => d.Id == deploymentId)
                     .ExecuteUpdateAsync(s => s.SetProperty(d => d.PilotReleasedUtc, now).SetProperty(d => d.RetryUntilUtc, retryUntil).SetProperty(d => d.FinishedUtc, (DateTime?)null));
             });
+            // Nur starten, was diese Freigabe wirklich umgestellt hat: ein gleichzeitiges "Abbrechen" kann Ziele schon verworfen haben.
+            await using (var db = await dbFactory.CreateDbContextAsync(ct))
+            {
+                var queued = (await db.DeploymentTargets.AsNoTracking().Where(t => restIds.Contains(t.Id) && t.Status == TargetStatus.Queued).Select(t => t.Id).ToListAsync(ct)).ToHashSet();
+                rest = [.. rest.Where(t => queued.Contains(t.Id))];
+            }
+            if (rest.Count == 0)
+            {
+                await UpdateAsync(db => db.Deployments.Where(d => d.Id == deploymentId).ExecuteUpdateAsync(s => s.SetProperty(d => d.FinishedUtc, now)));
+                Changed?.Invoke(deploymentId);
+                return 0;
+            }
             foreach (var target in rest)
                 (target.Status, target.Error) = (TargetStatus.Queued, null);
             (deployment.PilotReleasedUtc, deployment.RetryUntilUtc) = (now, retryUntil);
