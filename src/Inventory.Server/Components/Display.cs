@@ -414,7 +414,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         var chassis = Core.Chassis.Kind(computer.ChassisType, computer.Model);
         var role = Core.Chassis.Role(computer.ChassisType, computer.Model, computer.OsName);
         if (role == ChassisKind.Unknown)
-            return T("Device type unknown – not scanned yet");
+            return computer.LastScanUtc is null ? T("Device type unknown – not scanned yet") : T("Device type unknown");
         return role == chassis || chassis == ChassisKind.Unknown ? T(Core.Chassis.Label(role)) : $"{T(Core.Chassis.Label(role))} ({T(Core.Chassis.Label(chassis))})";
     }
 

@@ -992,6 +992,9 @@
   <data name="Device type" xml:space="preserve">
     <value>Gerätetyp</value>
   </data>
+  <data name="Device type unknown" xml:space="preserve">
+    <value>Gerätetyp unbekannt</value>
+  </data>
   <data name="Device type unknown – not scanned yet" xml:space="preserve">
     <value>Gerätetyp unbekannt – noch nicht gescannt</value>
   </data>
