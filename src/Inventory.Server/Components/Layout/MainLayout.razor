@@ -35,6 +35,14 @@
                 }
             </MudMenu>
         }
+        @* Unabhängig von der Anmeldeart, auch ganz ohne Anmeldung; der Download selbst ist Administratoren vorbehalten. *@
+        <AuthorizeView Policy="@AccessControl.AdminPolicy">
+            <Authorized>
+                <MudTooltip Text="@L["Download agent setup"]">
+                    <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Inherit" Href="/download/agent-setup" Target="_blank" aria-label="@L["Download agent setup"]" />
+                </MudTooltip>
+            </Authorized>
+        </AuthorizeView>
         <AuthorizeView>
             <Authorized>
                 <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
