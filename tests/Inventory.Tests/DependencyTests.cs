@@ -75,8 +75,12 @@ public sealed class DependencyTests : IDisposable
         var a = await PackageAsync("A", null, "a");
         var b = await PackageAsync("B", null, "b");
         await _packages.SetDependenciesAsync(a, [b]);
+        await _packages.ApproveAsync(a, "admin");
         await _packages.DeleteAsync(b);
-        Assert.Empty((await _packages.GetAsync(a))!.Dependencies);
+        var left = (await _packages.GetAsync(a))!;
+        Assert.Empty(left.Dependencies);
+        // Ohne die Voraussetzung ist es nicht mehr das freigegebene Paket.
+        Assert.False(left.IsApproved);
         Assert.Equal(["a"], (await _packages.BuildJobAsync(a)).Manifest.Steps.Select(s => s.Name));
     }
 
@@ -144,6 +148,21 @@ public sealed class DependencyTests : IDisposable
         manifest.Steps = [.. manifest.Steps.Skip(2)];
         var groups = new JobGroups(manifest, _ => null);
         Assert.Null(groups.Present(manifest.Steps[0]));
+    }
+
+    [Fact]
+    public void A_prerequisite_that_ends_with_the_restart_is_verified_by_the_follow_up_job()
+    {
+        var manifest = Manifest();
+        // Neustart als letzter Schritt der äußeren Voraussetzung (Index 2): der Folgejob beginnt beim Paket selbst.
+        Assert.Equal([1], DeploymentService.FinishedGroups(manifest, 3));
+        Assert.Empty(DeploymentService.FinishedGroups(manifest, 2));
+        Assert.Equal([2], DeploymentService.FinishedGroups(manifest, 1));
+
+        Assert.Contains("Runtime", new JobGroups(manifest, _ => "not found").VerifyFinished([1]));
+        Assert.Null(new JobGroups(manifest, _ => null).VerifyFinished([1]));
+        // Die innere Gruppe verlangt keine Nachprüfung.
+        Assert.Null(new JobGroups(manifest, _ => "not found").VerifyFinished([2]));
     }
 
     [Fact]

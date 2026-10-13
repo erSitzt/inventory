@@ -37,9 +37,28 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         return await db.Packages.AsNoTracking()
+            .AsSplitQuery()
             .Include(p => p.Steps.OrderBy(s => s.Order)).ThenInclude(s => s.NestedPackage)
             .Include(p => p.Dependencies.OrderBy(d => d.Order)).ThenInclude(d => d.RequiredPackage)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
+    }
+
+    /// <summary>Prüft Voraussetzungen, ohne etwas zu speichern: jedes Paket muss existieren und darf dieses nicht selbst enthalten.</summary>
+    public async Task CheckDependenciesAsync(int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await CheckDependenciesAsync(db, packageId, requiredPackageIds, ct);
+    }
+
+    private async Task CheckDependenciesAsync(InventoryDbContext db, int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct)
+    {
+        foreach (var id in requiredPackageIds.Distinct())
+        {
+            if (!await db.Packages.AnyAsync(p => p.Id == id, ct))
+                throw new KeyNotFoundException(L["Package {0} not found", id]);
+            if (await ContainsAsync(db, id, packageId, MaxNestingDepth, ct))
+                throw new InvalidOperationException(L["This package would then contain itself."]);
+        }
     }
 
     /// <summary>Ersetzt die Voraussetzungen des Pakets; die Reihenfolge der Liste ist die der Ausführung.</summary>
@@ -50,13 +69,9 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         var current = await db.PackageDependencies.Where(d => d.PackageId == packageId).OrderBy(d => d.Order).ToListAsync(ct);
         if (current.Select(d => d.RequiredPackageId).SequenceEqual(wanted))
             return;
-        foreach (var id in wanted)
-        {
-            if (!await db.Packages.AnyAsync(p => p.Id == id, ct))
-                throw new KeyNotFoundException(L["Package {0} not found", id]);
-            if (await ContainsAsync(db, id, packageId, MaxNestingDepth, ct))
-                throw new InvalidOperationException(L["This package would then contain itself."]);
-        }
+        await CheckDependenciesAsync(db, packageId, wanted, ct);
+        // Eine Transaktion: niemand sieht das Paket zwischendurch ohne Voraussetzungen.
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
         db.PackageDependencies.RemoveRange(current);
         // Erst entfernen, dann neu anlegen: der eindeutige Index gilt je Paar.
         await db.SaveChangesAsync(ct);
@@ -64,6 +79,7 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
             db.PackageDependencies.Add(new PackageDependency { PackageId = packageId, RequiredPackageId = wanted[i], Order = i + 1 });
         await TouchAsync(db, packageId, ct);
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
     }
 
     public async Task<Package> SaveAsync(int? id, string name, string? version, string? description, CancellationToken ct = default)
@@ -180,7 +196,15 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        // Pakete, die dieses voraussetzen oder einbetten, verlieren mit ihm einen Teil: sie sind nicht mehr das, was freigegeben wurde.
+        var users = await db.PackageDependencies.Where(d => d.RequiredPackageId == id).Select(d => d.PackageId)
+            .Union(db.PackageSteps.Where(s => s.NestedPackageId == id).Select(s => s.PackageId)).ToListAsync(ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        foreach (var user in users.Where(user => user != id))
+            await TouchAsync(db, user, ct);
+        await db.SaveChangesAsync(ct);
         await db.Packages.Where(p => p.Id == id).ExecuteDeleteAsync(ct);
+        await transaction.CommitAsync(ct);
         repository.DeleteAll(id);
     }
 

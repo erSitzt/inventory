@@ -100,6 +100,9 @@ public static class ManagementEndpoints
 
         packages.MapPut("{id:int}", async (int id, PackageRequest request, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
+            // Vor dem ersten Schreiben prüfen, damit eine ungültige Voraussetzung nicht den halben Auftrag speichert.
+            if (request.RequiredPackageIds is not null)
+                await service.CheckDependenciesAsync(id, request.RequiredPackageIds, ct);
             await service.SaveAsync(id, request.Name, request.Version, request.Description, ct);
             await service.SaveDetectionAsync(id, request.Detection, request.VerifyAfterInstall, ct);
             if (request.RequiredPackageIds is { } required)

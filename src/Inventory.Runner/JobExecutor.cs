@@ -59,6 +59,13 @@ namespace Inventory.Runner
                 {
                     string? aborted = null;
                     var groups = new JobGroups(manifest, detection => ConditionEvaluator.WhyNot(detection));
+                    // Endete eine Voraussetzung mit dem Neustart, zeigt sich erst jetzt, ob sie vorhanden ist.
+                    if (manifest.Steps.Count > 0 && groups.VerifyFinished(manifest.FinishedGroups) is string unfinished)
+                    {
+                        result.Success = false;
+                        result.Error = unfinished;
+                        aborted = "Nicht ausgeführt: Eine Voraussetzung fehlt nach ihrer Installation";
+                    }
                     for (var i = 0; i < manifest.Steps.Count; i++)
                     {
                         var step = manifest.Steps[i];

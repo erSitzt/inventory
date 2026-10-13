@@ -677,6 +677,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 SkipIfDetected = resumeFrom == 0,
                 Groups = built.Manifest.Groups,
                 StartedGroups = StartedGroups(built.Manifest, resumeFrom),
+                FinishedGroups = FinishedGroups(built.Manifest, resumeFrom),
             };
             var progress = new CallbackProgress(e =>
             {
@@ -803,5 +804,14 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             return [];
         var before = JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom - 1].Group);
         return [.. JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom].Group).Where(before.Contains)];
+    }
+
+    /// <summary>Voraussetzungen, deren letzter Schritt der Neustart war: der Folgejob prüft sie nach, bevor er weitermacht.</summary>
+    internal static List<int> FinishedGroups(JobManifest manifest, int resumeFrom)
+    {
+        if (resumeFrom <= 0 || resumeFrom >= manifest.Steps.Count)
+            return [];
+        var open = JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom].Group);
+        return [.. JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom - 1].Group).Where(id => !open.Contains(id))];
     }
 }

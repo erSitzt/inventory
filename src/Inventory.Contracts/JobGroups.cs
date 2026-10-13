@@ -67,6 +67,26 @@ namespace Inventory.Contracts
             return present;
         }
 
+        /// <summary>Zu Beginn eines Folgejobs: prüft die Voraussetzungen nach, die mit dem Neustart endeten.</summary>
+        public string? VerifyFinished(IEnumerable<int> finished)
+        {
+            foreach (var id in finished)
+            {
+                if (_groups.TryGetValue(id, out var group) && Unverified(group) is string error)
+                    return error;
+            }
+            return null;
+        }
+
+        private string? Unverified(JobGroup group)
+        {
+            if (!group.Verify || group.Detection == null || group.Detection.IsEmpty)
+                return null;
+            return _whyNot(group.Detection) is string missing
+                ? "Prerequisite \"" + group.Name + "\" was not detected after its steps: " + missing
+                : null;
+        }
+
         /// <summary>
         /// Nach einem ausgeführten Schritt: endet mit ihm eine Voraussetzung, die ihre Erkennung danach erfüllen muss,
         /// und tut sie es nicht, liefert dies die Fehlermeldung.
@@ -79,11 +99,8 @@ namespace Inventory.Contracts
             {
                 if (open.Contains(id))
                     continue;
-                var group = _groups[id];
-                if (!group.Verify || group.Detection == null || group.Detection.IsEmpty)
-                    continue;
-                if (_whyNot(group.Detection) is string missing)
-                    return "Prerequisite \"" + group.Name + "\" was not detected after its steps: " + missing;
+                if (Unverified(_groups[id]) is string error)
+                    return error;
             }
             return null;
         }

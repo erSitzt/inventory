@@ -16,6 +16,14 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
         // Erkennung gegen das simulierte Inventar: so lässt sich "bereits installiert" ohne Zielrechner ausprobieren.
         result.AlreadyInstalled = job.SkipIfDetected && Detected(job.Detection, target.Host);
         var groups = new JobGroups(job, detection => Detected(detection, target.Host) ? null : "not installed");
+        // Die Simulation installiert nichts; wie beim Paket selbst scheitert die Nachprüfung nur bei "fail" oder "fehler" im Namen.
+        var verifier = new JobGroups(job, detection => FailsVerification(detection) ? "not installed" : null);
+        if (job.Steps.Count > 0 && verifier.VerifyFinished(job.FinishedGroups) is { } unfinished)
+        {
+            result.Success = false;
+            result.Error = unfinished;
+            aborted = true;
+        }
         for (var i = 0; i < job.Steps.Count; i++)
         {
             var step = job.Steps[i];
@@ -74,13 +82,18 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
             {
                 result.ResumeFromStep = i + 1;
             }
+            if (!fails && result.ResumeFromStep is null && verifier.VerifyFinished(step, i + 1 < job.Steps.Count ? job.Steps[i + 1] : null) is { } unverified)
+            {
+                result.Success = false;
+                result.Error = unverified;
+                aborted = true;
+            }
         }
         // Die Simulation installiert nichts; die Prüfung schlägt nur fehl, wenn der gesuchte Name "fail" oder "fehler" enthält.
-        if (result.Success && !result.AlreadyInstalled && result.ResumeFromStep is null && job.VerifyAfterInstall
-            && job.Detection?.SoftwareInstalled is { } wanted && (wanted.Contains("fail", StringComparison.OrdinalIgnoreCase) || wanted.Contains("fehler", StringComparison.OrdinalIgnoreCase)))
+        if (result.Success && !result.AlreadyInstalled && result.ResumeFromStep is null && job.VerifyAfterInstall && FailsVerification(job.Detection))
         {
             result.Success = false;
-            result.Error = $"Verification failed: {wanted} is not installed";
+            result.Error = $"Verification failed: {job.Detection!.SoftwareInstalled} is not installed";
         }
         result.FinishedUtc = DateTime.UtcNow;
         return result;
@@ -89,6 +102,9 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
     /// <summary>Die Simulation "startet" sofort neu: eine Fortsetzung sieht immer eine jüngere Startzeit als zuvor.</summary>
     private static DateTime SimulatedBootTime(JobManifest job) =>
         job.RequireBootAfterUtc is { } previous && previous > DateTime.UtcNow.AddHours(-1) ? previous.AddMinutes(1) : DateTime.UtcNow.AddHours(-1);
+
+    private static bool FailsVerification(StepConditions? detection) =>
+        detection?.SoftwareInstalled is { } wanted && (wanted.Contains("fail", StringComparison.OrdinalIgnoreCase) || wanted.Contains("fehler", StringComparison.OrdinalIgnoreCase));
 
     private static bool Detected(StepConditions? detection, string host) =>
         detection is { IsEmpty: false } && !string.IsNullOrWhiteSpace(detection.SoftwareInstalled)

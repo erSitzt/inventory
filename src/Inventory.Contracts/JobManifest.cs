@@ -97,6 +97,11 @@ namespace Inventory.Contracts
         /// weil die Voraussetzung nach dem Neustart oft schon erkennbar ist, obwohl noch Schritte ausstehen.
         /// </summary>
         public List<int> StartedGroups { get; set; } = new List<int>();
+        /// <summary>
+        /// Fortsetzung nach einem Neustart, der der letzte Schritt einer Voraussetzung war: diese Gruppen prüft der Folgejob
+        /// vor seinem ersten Schritt nach (<see cref="JobGroup.Verify"/>).
+        /// </summary>
+        public List<int> FinishedGroups { get; set; } = new List<int>();
     }
 
     /// <summary>Schritte einer Voraussetzung: sie entfallen gemeinsam, wenn die Voraussetzung schon vorhanden ist.</summary>
