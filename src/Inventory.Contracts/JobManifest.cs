@@ -90,12 +90,39 @@ namespace Inventory.Contracts
         /// <summary>Nach dem letzten Schritt muss <see cref="Detection"/> zutreffen, sonst gilt der Job als fehlgeschlagen.</summary>
         public bool VerifyAfterInstall { get; set; }
         public List<JobStep> Steps { get; set; } = new List<JobStep>();
+        /// <summary>Voraussetzungen des Pakets: ihre Schritte tragen die Nummer in <see cref="JobStep.Group"/>.</summary>
+        public List<JobGroup> Groups { get; set; } = new List<JobGroup>();
+        /// <summary>
+        /// Fortsetzung nach einem Neustart mitten in einer Voraussetzung: diese Gruppen laufen ohne erneute Erkennung weiter,
+        /// weil die Voraussetzung nach dem Neustart oft schon erkennbar ist, obwohl noch Schritte ausstehen.
+        /// </summary>
+        public List<int> StartedGroups { get; set; } = new List<int>();
+        /// <summary>
+        /// Fortsetzung nach einem Neustart, der der letzte Schritt einer Voraussetzung war: diese Gruppen prüft der Folgejob
+        /// vor seinem ersten Schritt nach (<see cref="JobGroup.Verify"/>).
+        /// </summary>
+        public List<int> FinishedGroups { get; set; } = new List<int>();
+    }
+
+    /// <summary>Schritte einer Voraussetzung: sie entfallen gemeinsam, wenn die Voraussetzung schon vorhanden ist.</summary>
+    public sealed class JobGroup
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        /// <summary>Trifft dies vor dem ersten Schritt der Gruppe zu, werden ihre Schritte übersprungen; null = immer ausführen.</summary>
+        public StepConditions? Detection { get; set; }
+        /// <summary>Nach dem letzten Schritt der Gruppe muss <see cref="Detection"/> zutreffen, sonst scheitert der Job.</summary>
+        public bool Verify { get; set; }
+        /// <summary>Voraussetzung einer Voraussetzung: ist die äußere vorhanden, entfällt auch diese.</summary>
+        public int? Parent { get; set; }
     }
 
     public sealed class JobStep
     {
         public string Name { get; set; } = "";
         public StepType Type { get; set; }
+        /// <summary>Nur im Job gesetzt: der Schritt gehört zu dieser Voraussetzung (<see cref="JobGroup.Id"/>).</summary>
+        public int? Group { get; set; }
         /// <summary>Befehlszeile (Command), Skripttext (PowerShell) bzw. Hinweistext beim Neustart.</summary>
         public string Script { get; set; } = "";
         /// <summary>Gilt für Command, PowerShell und Install.</summary>

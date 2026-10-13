@@ -25,6 +25,12 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     /// <summary>So tief dürfen Pakete ineinander verschachtelt sein; fängt zugleich Zyklen ab.</summary>
     private const int MaxNestingDepth = 5;
 
+    /// <summary>
+    /// Änderungen am Geflecht aus Voraussetzungen und eingebetteten Paketen laufen nacheinander: sonst sähen zwei gleichzeitige
+    /// Änderungen (A braucht B, B braucht A) jeweils noch keinen Zyklus, und ein Löschen verpasste eine eben erst angelegte Voraussetzung.
+    /// </summary>
+    private static readonly SemaphoreSlim GraphLock = new(1, 1);
+
     public PackageRepository Repository => repository;
 
     public async Task<List<Package>> ListAsync(CancellationToken ct = default)
@@ -37,8 +43,62 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         return await db.Packages.AsNoTracking()
+            .AsSplitQuery()
             .Include(p => p.Steps.OrderBy(s => s.Order)).ThenInclude(s => s.NestedPackage)
+            .Include(p => p.Dependencies.OrderBy(d => d.Order)).ThenInclude(d => d.RequiredPackage)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
+    }
+
+    /// <summary>Prüft Voraussetzungen, ohne etwas zu speichern: jedes Paket muss existieren und darf dieses nicht selbst enthalten.</summary>
+    public async Task CheckDependenciesAsync(int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await CheckDependenciesAsync(db, packageId, requiredPackageIds, ct);
+    }
+
+    private async Task CheckDependenciesAsync(InventoryDbContext db, int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct)
+    {
+        foreach (var id in requiredPackageIds.Distinct())
+        {
+            if (!await db.Packages.AnyAsync(p => p.Id == id, ct))
+                throw new KeyNotFoundException(L["Package {0} not found", id]);
+            if (await ContainsAsync(db, id, packageId, MaxNestingDepth, ct))
+                throw new InvalidOperationException(L["This package would then contain itself."]);
+        }
+    }
+
+    /// <summary>Ersetzt die Voraussetzungen des Pakets; die Reihenfolge der Liste ist die der Ausführung.</summary>
+    public async Task SetDependenciesAsync(int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct = default)
+    {
+        await GraphLock.WaitAsync(ct);
+        try
+        {
+            await SetDependenciesCoreAsync(packageId, requiredPackageIds, ct);
+        }
+        finally
+        {
+            GraphLock.Release();
+        }
+    }
+
+    private async Task SetDependenciesCoreAsync(int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var wanted = requiredPackageIds.Distinct().ToList();
+        var current = await db.PackageDependencies.Where(d => d.PackageId == packageId).OrderBy(d => d.Order).ToListAsync(ct);
+        if (current.Select(d => d.RequiredPackageId).SequenceEqual(wanted))
+            return;
+        await CheckDependenciesAsync(db, packageId, wanted, ct);
+        // Eine Transaktion: niemand sieht das Paket zwischendurch ohne Voraussetzungen.
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        db.PackageDependencies.RemoveRange(current);
+        // Erst entfernen, dann neu anlegen: der eindeutige Index gilt je Paar.
+        await db.SaveChangesAsync(ct);
+        for (var i = 0; i < wanted.Count; i++)
+            db.PackageDependencies.Add(new PackageDependency { PackageId = packageId, RequiredPackageId = wanted[i], Order = i + 1 });
+        await TouchAsync(db, packageId, ct);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
     }
 
     public async Task<Package> SaveAsync(int? id, string name, string? version, string? description, CancellationToken ct = default)
@@ -154,13 +214,53 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
+        await GraphLock.WaitAsync(ct);
+        try
+        {
+            await DeleteCoreAsync(id, ct);
+        }
+        finally
+        {
+            GraphLock.Release();
+        }
+    }
+
+    private async Task DeleteCoreAsync(int id, CancellationToken ct)
+    {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        // Pakete, die dieses voraussetzen oder einbetten, verlieren mit ihm einen Teil: sie sind nicht mehr das, was freigegeben wurde.
+        var users = await db.PackageDependencies.Where(d => d.RequiredPackageId == id).Select(d => d.PackageId)
+            .Union(db.PackageSteps.Where(s => s.NestedPackageId == id).Select(s => s.PackageId)).ToListAsync(ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        foreach (var user in users.Where(user => user != id))
+            await TouchAsync(db, user, ct);
+        await db.SaveChangesAsync(ct);
         await db.Packages.Where(p => p.Id == id).ExecuteDeleteAsync(ct);
+        await transaction.CommitAsync(ct);
         repository.DeleteAll(id);
     }
 
     /// <summary>Legt einen Schritt an (stepId = null, ans Ende) oder ändert ihn.</summary>
     public async Task SaveStepAsync(int packageId, int? stepId, JobStep definition, int? nestedPackageId, CancellationToken ct = default)
+    {
+        // Nur ein eingebettetes Paket verändert das Geflecht; gewöhnliche Schritte warten nicht.
+        if (nestedPackageId is null)
+        {
+            await SaveStepCoreAsync(packageId, stepId, definition, null, ct);
+            return;
+        }
+        await GraphLock.WaitAsync(ct);
+        try
+        {
+            await SaveStepCoreAsync(packageId, stepId, definition, nestedPackageId, ct);
+        }
+        finally
+        {
+            GraphLock.Release();
+        }
+    }
+
+    private async Task SaveStepCoreAsync(int packageId, int? stepId, JobStep definition, int? nestedPackageId, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (nestedPackageId is not null && await ContainsAsync(db, nestedPackageId.Value, packageId, MaxNestingDepth, ct))
@@ -222,7 +322,7 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         var manifest = new JobManifest();
         var files = new List<JobFile>();
         var included = new HashSet<int>();
-        await AppendAsync(db, packageId, prefix: "", manifest, files, included, MaxNestingDepth, ct);
+        await AppendAsync(db, packageId, prefix: "", manifest, files, included, MaxNestingDepth, group: null, ct);
         if (manifest.Steps.Count == 0)
             throw new InvalidOperationException(L["The package contains no steps."]);
         // Maßgeblich ist die Erkennung des verteilten Pakets; eingebettete Pakete bringen nur ihre Schritte mit.
@@ -232,12 +332,29 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         return new BuiltJob(manifest, files, included);
     }
 
-    private async Task AppendAsync(InventoryDbContext db, int packageId, string prefix, JobManifest manifest, List<JobFile> files, HashSet<int> included, int depth, CancellationToken ct)
+    /// <param name="group">Die Voraussetzung, zu der die Schritte gehören; null = Schritte des verteilten Pakets.</param>
+    private async Task AppendAsync(InventoryDbContext db, int packageId, string prefix, JobManifest manifest, List<JobFile> files, HashSet<int> included, int depth, int? group, CancellationToken ct)
     {
         if (depth < 0)
             throw new InvalidOperationException(L["Packages are nested too deeply or in a cycle."]);
-        var package = await db.Packages.AsNoTracking().Include(p => p.Steps.OrderBy(s => s.Order)).FirstOrDefaultAsync(p => p.Id == packageId, ct)
+        var package = await db.Packages.AsNoTracking().AsSplitQuery()
+                          .Include(p => p.Steps.OrderBy(s => s.Order))
+                          .Include(p => p.Dependencies.OrderBy(d => d.Order)).ThenInclude(d => d.RequiredPackage)
+                          .FirstOrDefaultAsync(p => p.Id == packageId, ct)
                       ?? throw new KeyNotFoundException(L["Package {0} not found", packageId]);
+
+        // Voraussetzungen zuerst. Jede bildet eine Gruppe: der Runner prüft ihre Erkennung einmal vor ihrem ersten Schritt.
+        foreach (var dependency in package.Dependencies)
+        {
+            var required = dependency.RequiredPackage!;
+            var own = new JobGroup
+            {
+                Id = manifest.Groups.Count + 1, Name = required.Name, Parent = group,
+                Detection = required.Detection, Verify = required.VerifyAfterInstall && required.Detection is not null,
+            };
+            manifest.Groups.Add(own);
+            await AppendAsync(db, required.Id, $"{prefix}{required.Name} › ", manifest, files, included, depth - 1, own.Id, ct);
+        }
 
         var folder = $"p{packageId}";
         if (included.Add(packageId))
@@ -247,24 +364,26 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         {
             if (step.NestedPackageId is { } nestedId)
             {
-                await AppendAsync(db, nestedId, $"{prefix}{step.Definition.Name} › ", manifest, files, included, depth - 1, ct);
+                await AppendAsync(db, nestedId, $"{prefix}{step.Definition.Name} › ", manifest, files, included, depth - 1, group, ct);
                 continue;
             }
             // Kopie, damit das Umschreiben der Pfade nicht auf das geladene Paket durchschlägt.
             var copy = JobJson.Deserialize<JobStep>(JobJson.Serialize(step.Definition))!;
             copy.Name = prefix + copy.Name;
+            copy.Group = group;
             if (!string.IsNullOrWhiteSpace(copy.File))
                 copy.File = $@"{folder}\{copy.File.TrimStart('\\', '/')}";
             manifest.Steps.Add(copy);
         }
     }
 
-    /// <summary>true, wenn <paramref name="packageId"/> (direkt oder über Verschachtelung) <paramref name="searchedId"/> enthält oder selbst ist.</summary>
+    /// <summary>true, wenn <paramref name="packageId"/> (direkt, über Verschachtelung oder Voraussetzungen) <paramref name="searchedId"/> enthält oder selbst ist.</summary>
     private static async Task<bool> ContainsAsync(InventoryDbContext db, int packageId, int searchedId, int depth, CancellationToken ct)
     {
         if (packageId == searchedId || depth < 0)
             return true;
         var nested = await db.PackageSteps.Where(s => s.PackageId == packageId && s.NestedPackageId != null).Select(s => s.NestedPackageId!.Value).ToListAsync(ct);
+        nested.AddRange(await db.PackageDependencies.Where(d => d.PackageId == packageId).Select(d => d.RequiredPackageId).ToListAsync(ct));
         foreach (var id in nested)
         {
             if (await ContainsAsync(db, id, searchedId, depth - 1, ct))

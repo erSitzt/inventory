@@ -1383,6 +1383,31 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Packages");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.PackageDependency", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RequiredPackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequiredPackageId");
+
+                    b.HasIndex("PackageId", "RequiredPackageId")
+                        .IsUnique();
+
+                    b.ToTable("PackageDependencies");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.PackageStep", b =>
                 {
                     b.Property<int>("Id")
@@ -1867,6 +1892,23 @@ namespace Inventory.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.PackageDependency", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Package", null)
+                        .WithMany("Dependencies")
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Core.Model.Package", "RequiredPackage")
+                        .WithMany()
+                        .HasForeignKey("RequiredPackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RequiredPackage");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.PackageStep", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Package", "NestedPackage")
@@ -1962,6 +2004,8 @@ namespace Inventory.Data.Migrations
 
             modelBuilder.Entity("Inventory.Core.Model.Package", b =>
                 {
+                    b.Navigation("Dependencies");
+
                     b.Navigation("Steps");
                 });
 #pragma warning restore 612, 618

@@ -12,8 +12,9 @@ namespace Inventory.Server.Api;
 /// </summary>
 public static class ManagementEndpoints
 {
+    /// <param name="RequiredPackageIds">Voraussetzungen in Ausführungsreihenfolge; null = unverändert lassen.</param>
     public sealed record PackageRequest(string Name, string? Version, string? Description, List<StepRequest>? Steps,
-        StepConditions? Detection = null, bool VerifyAfterInstall = false);
+        StepConditions? Detection = null, bool VerifyAfterInstall = false, List<int>? RequiredPackageIds = null);
 
     /// <param name="NestedPackageId">Gesetzt = dieser Schritt führt ein anderes Paket aus; <paramref name="Definition"/> braucht dann nur den Namen.</param>
     public sealed record StepRequest(JobStep Definition, int? NestedPackageId = null);
@@ -23,7 +24,8 @@ public static class ManagementEndpoints
     public sealed record FileDto(string Path, long Size, DateTime ModifiedUtc);
 
     public sealed record PackageDetailDto(int Id, string Name, string? Version, string? Description, DateTime ModifiedUtc, string? CatalogId,
-        List<StepDto> Steps, List<FileDto> Files, StepConditions? Detection, bool VerifyAfterInstall, string? ApprovedBy = null, DateTime? ApprovedUtc = null);
+        List<StepDto> Steps, List<FileDto> Files, StepConditions? Detection, bool VerifyAfterInstall, string? ApprovedBy = null, DateTime? ApprovedUtc = null,
+        List<int>? RequiredPackageIds = null);
 
     public sealed record CollectionRequest(string Name, string? Description, bool IsDynamic, bool MatchAll = true, List<CollectionRule>? Rules = null, MaintenanceWindow? MaintenanceWindow = null);
 
@@ -82,6 +84,8 @@ public static class ManagementEndpoints
                 foreach (var step in request.Steps ?? [])
                     await service.SaveStepAsync(package.Id, null, step.Definition, step.NestedPackageId, ct);
                 await service.SaveDetectionAsync(package.Id, request.Detection, request.VerifyAfterInstall, ct);
+                if (request.RequiredPackageIds is { } required)
+                    await service.SetDependenciesAsync(package.Id, required, ct);
             }
             catch
             {
@@ -91,16 +95,21 @@ public static class ManagementEndpoints
             }
             await audit.LogAsync(http.Actor(), "Package created via API", $"{package.Name} ({request.Steps?.Count ?? 0} steps)", ct);
             return Results.Created($"/api/packages/{package.Id}", ToDetail((await service.GetAsync(package.Id, ct))!, service));
-        }).WithSummary("Create package").WithDescription("Creates a package, optionally with its steps. Step types: Command, PowerShell, Install, Uninstall (softwareName or productCode, optional arguments), FileCopy, Service, Sleep, Reboot, InventoryScan. Optional per step: retries and retryDelaySeconds, minFreeDiskMb, closeProcesses (process names) with closeProcessesWarnSeconds and closeProcessesMessage. Files are uploaded separately with PUT /api/packages/{id}/files/{path}. `detection` tells the runner how to recognise that the package is already installed (softwareInstalled with optional softwareMinVersion, msiProductCode, fileExists, registryKeyExists); such computers finish as AlreadyInstalled without running a step. With `verifyAfterInstall` the detection must also hold after the last step.")
+        }).WithSummary("Create package").WithDescription("Creates a package, optionally with its steps and its prerequisites (`requiredPackageIds`: packages that run first unless their own detection already finds them installed). Step types: Command, PowerShell, Install, Uninstall (softwareName or productCode, optional arguments), FileCopy, Service, Sleep, Reboot, InventoryScan. Optional per step: retries and retryDelaySeconds, minFreeDiskMb, closeProcesses (process names) with closeProcessesWarnSeconds and closeProcessesMessage. Files are uploaded separately with PUT /api/packages/{id}/files/{path}. `detection` tells the runner how to recognise that the package is already installed (softwareInstalled with optional softwareMinVersion, msiProductCode, fileExists, registryKeyExists); such computers finish as AlreadyInstalled without running a step. With `verifyAfterInstall` the detection must also hold after the last step.")
             .Produces<PackageDetailDto>(201).Produces(400);
 
         packages.MapPut("{id:int}", async (int id, PackageRequest request, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
+            // Vor dem ersten Schreiben prüfen, damit eine ungültige Voraussetzung nicht den halben Auftrag speichert.
+            if (request.RequiredPackageIds is not null)
+                await service.CheckDependenciesAsync(id, request.RequiredPackageIds, ct);
             await service.SaveAsync(id, request.Name, request.Version, request.Description, ct);
             await service.SaveDetectionAsync(id, request.Detection, request.VerifyAfterInstall, ct);
+            if (request.RequiredPackageIds is { } required)
+                await service.SetDependenciesAsync(id, required, ct);
             await audit.LogAsync(http.Actor(), "Package changed via API", request.Name, ct);
             return Results.Ok(ToDetail((await service.GetAsync(id, ct))!, service));
-        }).WithSummary("Change package header").WithDescription("Changes name, version, description and the detection (`detection`, `verifyAfterInstall`; omitting `detection` removes it). Steps are managed through the step endpoints; a `steps` array here is ignored.").Produces<PackageDetailDto>().Produces(404);
+        }).WithSummary("Change package header").WithDescription("Changes name, version, description and the detection (`detection`, `verifyAfterInstall`; omitting `detection` removes it) and the prerequisites (`requiredPackageIds` in execution order; omitting it leaves them unchanged, an empty array removes them). Steps are managed through the step endpoints; a `steps` array here is ignored.").Produces<PackageDetailDto>().Produces(404);
 
         packages.MapDelete("{id:int}", async (int id, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
@@ -394,7 +403,8 @@ public static class ManagementEndpoints
 
     private static PackageDetailDto ToDetail(Package p, PackageService service) => new(p.Id, p.Name, p.Version, p.Description, p.ModifiedUtc, p.CatalogId,
         [.. p.Steps.OrderBy(s => s.Order).Select(s => new StepDto(s.Id, s.Order, s.NestedPackageId, s.Definition))],
-        [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall, p.ApprovedBy, p.ApprovedUtc);
+        [.. service.Repository.List(p.Id).Select(f => new FileDto(f.RelativePath, f.Size, f.ModifiedUtc))], p.Detection, p.VerifyAfterInstall, p.ApprovedBy, p.ApprovedUtc,
+        [.. p.Dependencies.OrderBy(d => d.Order).Select(d => d.RequiredPackageId)]);
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
         s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow, s.MaxFailures, s.MaxFailurePercent, s.MaxParallel,

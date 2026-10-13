@@ -12,6 +12,11 @@ public class Package
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime ModifiedUtc { get; set; } = DateTime.UtcNow;
     public List<PackageStep> Steps { get; set; } = [];
+    /// <summary>
+    /// Voraussetzungen: diese Pakete laufen vor den eigenen Schritten, jedes nur, wenn seine Erkennung es nicht schon als
+    /// vorhanden ausweist. Ohne Erkennung läuft eine Voraussetzung bei jeder Verteilung mit.
+    /// </summary>
+    public List<PackageDependency> Dependencies { get; set; } = [];
 
     /// <summary>Gesetzt = aus der Paketbibliothek importiert (ID des Katalogeintrags).</summary>
     public string? CatalogId { get; set; }
@@ -32,6 +37,15 @@ public class Package
     public string? ApprovedBy { get; set; }
     public DateTime? ApprovedUtc { get; set; }
     public bool IsApproved => ApprovedUtc is not null;
+}
+
+public class PackageDependency
+{
+    public int Id { get; set; }
+    public int PackageId { get; set; }
+    public int Order { get; set; }
+    public int RequiredPackageId { get; set; }
+    public Package? RequiredPackage { get; set; }
 }
 
 public class PackageStep

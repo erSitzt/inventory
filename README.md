@@ -36,6 +36,9 @@ credentials. The user interface is available in English and German; translations
 - **Packages** made of several steps: installation, command, PowerShell, copy files, registry, Windows feature,
   service, wait, reboot, scan, embedded package – each with conditions and error handling; steps after a reboot
   continue automatically once the computer is back
+- **Prerequisites**: a package names the packages it needs ("requires the .NET runtime"); they run before its
+  steps, each only where its own detection does not already find it installed, and must be detectable afterwards if
+  that package asks for verification
 - **Registry, Windows features, large payloads**: a registry step sets or deletes a value or deletes a key without
   a script – typed (string, DWORD, QWORD, multi-string, binary), in the 64- or 32-bit view, and for `HKCU` in the
   settings of the logged-on user; a feature step turns optional Windows features on or off (DISM) and reports a
