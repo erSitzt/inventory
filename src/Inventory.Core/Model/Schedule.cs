@@ -45,7 +45,7 @@ public class Schedule
     public bool RetryOffline { get; set; } = true;
     /// <summary>Bei Deployments: Rechner außerhalb ihres Wartungsfensters warten, bis es beginnt.</summary>
     public bool RespectMaintenanceWindow { get; set; } = true;
-    /// <summary>Nicht erreichbare Rechner vor einem Scan oder Deployment per Wake-on-LAN wecken.</summary>
+    /// <summary>Bei Deployments: nicht erreichbare Rechner per Wake-on-LAN wecken. Scan-Zeitpläne wecken nicht.</summary>
     public bool WakeTargets { get; set; }
     /// <summary>Wie <see cref="Deployment.MaxFailures"/>.</summary>
     public int? MaxFailures { get; set; }

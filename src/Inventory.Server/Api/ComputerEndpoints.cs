@@ -142,7 +142,7 @@ public static class ComputerEndpoints
             if (result.Sent)
                 await audit.LogAsync(http.Actor(), "Wake-up sent via API", result.ComputerName, ct);
             return Results.Ok(new WakeDto(result.Sent, result.Macs, result.Packets));
-        }).RequireOperator().WithSummary("Wake computer").WithDescription("Sends Wake-on-LAN magic packets (UDP port 9) to the MAC addresses of the last scan, or to the one entered for the computer. sent = false with empty macs: no MAC address known. Sent does not mean awake: check reachability about two minutes later.").Produces<WakeDto>().Produces(404);
+        }).RequireOperator().WithSummary("Wake computer").WithDescription("Sends Wake-on-LAN magic packets (UDP port 9) to the MAC addresses of the last scan, or to the one entered for the computer. sent = false with empty macs: no MAC address known; sent = false with macs and packets = 0: no packet could be sent (the server has no way into the network). Sent does not mean awake: check reachability about two minutes later.").Produces<WakeDto>().Produces(404);
 
         group.MapPost("{id:int}/scan", async (int id, ScanService scans, CancellationToken ct) => await scans.ScanAsync(id, ct))
             .RequireOperator().WithSummary("Inventory scan").WithDescription("Scans the computer immediately and waits for the result (seconds to minutes depending on the transport).");

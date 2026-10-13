@@ -56,11 +56,32 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         if (!deployment.WakeTargets || wake is null || target.ComputerId is not { } computerId)
             return false;
         var now = DateTime.UtcNow;
-        if (_woken.TryGetValue(computerId, out var last) && now - last < WakeAgain)
-            return true;
-        if ((await wake.WakeAsync(computerId, ct))?.Sent != true)
+        // Erst vormerken, dann senden: zwei Deployments, die denselben Rechner gleichzeitig erreichen, wecken ihn so nur einmal.
+        while (true)
+        {
+            if (_woken.TryGetValue(computerId, out var last))
+            {
+                if (now - last < WakeAgain)
+                    return true;
+                if (_woken.TryUpdate(computerId, now, last))
+                    break;
+            }
+            else if (_woken.TryAdd(computerId, now))
+                break;
+        }
+        var sent = false;
+        try
+        {
+            sent = (await wake.WakeAsync(computerId, ct))?.Sent == true;
+        }
+        finally
+        {
+            // Nichts gesendet (keine MAC-Adresse, kein Weg ins Netz, Abbruch): der nächste Durchlauf darf es wieder versuchen.
+            if (!sent)
+                _woken.TryRemove(new KeyValuePair<int, DateTime>(computerId, now));
+        }
+        if (!sent)
             return false;
-        _woken[computerId] = now;
         // Mehrere Rechner desselben Durchlaufs teilen sich die früheste Nachprüfung.
         var due = (now + WakeService.BootWait).Ticks;
         long current;
