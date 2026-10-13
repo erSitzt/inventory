@@ -261,15 +261,13 @@ Jeder Aufruf steht im Protokoll. Antwortet unter dem eingetragenen Namen ein and
 
 Die Synchronisation (*Einstellungen → Active Directory*) legt Computerkonten als Rechner an und gleicht vorhandene ab:
 
-- **Rechner unter ihrem vollen DNS-Namen (FQDN) führen** (Standard: aus): neue Rechner werden unter dem
-  `dNSHostName` ihres Kontos angelegt (`pc-01.corp.example`) statt unter dem kurzen Namen, und bestehende Einträge
-  unter dem kurzen Namen werden mit dem nächsten Lauf umbenannt – der Eintrag bleibt derselbe, samt Inventar, Verlauf
-  und Agent. Scans, Erreichbarkeitsprüfung, Deployments und Fernzugriff sprechen den Rechner dann über den FQDN an,
-  der auch dort aufgelöst wird, wo kurze Namen es nicht werden, z. B. über VPN oder aus dem Homeoffice. Einträge mit
-  von Hand eingetragenem DNS-Namen oder einer Adresse und Konten ohne passenden `dNSHostName` behalten ihren Namen;
-  neu angemeldete Agenten melden ihren DNS-Namen und werden ebenfalls darunter geführt. Die *Vorschau* zeigt, was
-  umbenannt würde. Sammlungsregeln, Skripte oder API-Clients, die den genauen Namen vergleichen, müssen angepasst
-  werden („beginnt mit“ funktioniert weiter).
+- **DNS-Name**: jeder Lauf speichert den vollen DNS-Namen (`dNSHostName`) des Kontos. Scans, Erreichbarkeitsprüfung,
+  Deployments und Fernzugriff verbinden sich über diesen Namen – `pc-01.corp.example` –, auch wenn der Eintrag als
+  `pc-01` geführt wird; er wird auch dort aufgelöst, wo kurze Namen es nicht werden, z. B. über VPN oder aus dem
+  Homeoffice. Ohne Verzeichnis stammt der Name vom Agenten (bei der Anmeldung) oder aus dem ersten Scan eines
+  Domänenmitglieds. Ein Eintrag, der selbst als DNS-Name oder Adresse eingetragen wurde, gilt wie eingetragen, und ein
+  DNS-Name, dessen Rechnerteil nicht zum Rechner passt, wird ignoriert. Die Rechnerseite zeigt den verwendeten Namen
+  als „DNS-Name“.
 - **Deaktivierte Computerkonten ausschließen** (Standard: an): deaktivierte Konten werden nicht angelegt; ist ein
   vorhandener Rechner im Verzeichnis deaktiviert, gilt er als nicht mehr gefunden.
 - **Angaben aus dem Verzeichnis**: jeder Lauf speichert auch die Organisationseinheit, die Gruppen, in denen das

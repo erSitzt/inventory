@@ -5,6 +5,13 @@ public class Computer
     public int Id { get; set; }
     /// <summary>Hostname oder FQDN, unter dem der Rechner im Netz erreichbar ist.</summary>
     public required string Name { get; set; }
+    /// <summary>
+    /// Voller DNS-Name (FQDN) aus dem Verzeichnis, vom Agenten oder aus dem Scan; null = nicht bekannt.
+    /// Verbindungen laufen über <see cref="Address"/>, auch wenn der Eintrag nur den kurzen Namen trägt.
+    /// </summary>
+    public string? DnsName { get; set; }
+    /// <summary>Unter diesem Namen wird der Rechner im Netz angesprochen (Scan, Erreichbarkeit, Deployment, Fernzugriff).</summary>
+    public string Address => MachineNames.Address(Name, DnsName);
     public string? Description { get; set; }
     public string? IpAddress { get; set; }
     public bool IsOnline { get; set; }

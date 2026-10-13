@@ -93,7 +93,7 @@ public class ScheduleTests
     }
 
     [Fact]
-    public async Task With_dns_names_new_computers_get_their_fqdn_and_short_entries_are_renamed()
+    public async Task Ad_sync_stores_the_dns_name_of_the_account_and_leaves_the_name_of_the_entry()
     {
         using var db = new TestDb();
         var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
@@ -102,39 +102,28 @@ public class ScheduleTests
         {
             Computers =
             [
-                new("PC-01", "pc-01.corp.example", null, null), new("PC-02", "pc-02.corp.example", null, null),
-                // Ohne DNS-Namen im Verzeichnis, und mit einem, der nicht zum Konto passt: es bleibt beim kurzen Namen.
+                new("PC-01", "pc-01.corp.example", null, null), new("PC-02", "PC-02.corp.example.", null, null),
+                // Ohne DNS-Namen im Verzeichnis, und mit einem, der nicht zum Konto passt.
                 new("PC-03", null, null, null), new("PC-04", "anders.corp.example", null, null),
-                new("PC-05", "pc-05.corp.example", null, null), new("PC-06", "pc-06.corp.example", null, null),
             ],
         };
         var sync = new AdSyncService(directory, new SettingsService(db), new CredentialService(db, new ReversingProtector()), computers, clock);
-        // pc-05 trägt von Hand einen anderen DNS-Namen, "manuell" kennt das Verzeichnis nicht.
-        var before = await computers.ImportAsync("pc-01 pc-04 pc-05.other.example manuell");
+        await computers.ImportAsync("pc-01 pc-04");
+        await using (var context = db.CreateDbContext())
+        {
+            // Was Agent oder Scan gemeldet haben, bleibt, solange das Verzeichnis nichts Passendes nennt.
+            context.Computers.Single(c => c.Name == "pc-04").DnsName = "pc-04.agent.example";
+            await context.SaveChangesAsync();
+        }
         await sync.SaveSettingsAsync(true, null, null, null, 24);
 
-        // Ohne die Einstellung ändert sich an den Namen nichts.
-        Assert.Empty((await sync.PreviewAsync()).Renames!);
-        Assert.Equal(["PC-02", "PC-03", "PC-06"], (await sync.PreviewAsync()).NewNames);
+        await sync.SyncAsync();
 
-        await sync.SaveSettingsAsync(true, null, null, null, 24, useDnsNames: true);
-        var preview = await sync.PreviewAsync();
-        Assert.Equal([("pc-01", "pc-01.corp.example")], preview.Renames);
-        Assert.Equal(["pc-02.corp.example", "PC-03", "pc-06.corp.example"], preview.NewNames);
-
-        var result = await sync.SyncAsync();
-        Assert.Contains("1 renamed", result);
-        var after = await computers.ListAsync();
-        Assert.Equal(["manuell", "pc-01.corp.example", "pc-02.corp.example", "PC-03", "pc-04", "pc-05.other.example", "pc-06.corp.example"],
-            after.Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase));
-        // Derselbe Eintrag, nicht ein neuer: Inventar und Verlauf hängen an der ID.
-        Assert.Equal(before.Single(c => c.Name == "pc-01").Id, after.Single(c => c.Name == "pc-01.corp.example").Id);
-        Assert.All(after.Where(c => c.Name != "manuell"), c => Assert.NotNull(c.DirectorySeenUtc));
-
-        // Der nächste Lauf findet nichts mehr zu tun.
-        var again = await sync.PreviewAsync();
-        Assert.Empty(again.Renames!);
-        Assert.Empty(again.NewNames);
+        var stored = (await computers.ListAsync()).ToDictionary(c => c.Name, c => (c.DnsName, c.Address));
+        Assert.Equal(("pc-01.corp.example", "pc-01.corp.example"), stored["pc-01"]);
+        Assert.Equal(("PC-02.corp.example", "PC-02.corp.example"), stored["PC-02"]);
+        Assert.Equal((null, "PC-03"), stored["PC-03"]);
+        Assert.Equal(("pc-04.agent.example", "pc-04.agent.example"), stored["pc-04"]);
     }
 
     [Fact]

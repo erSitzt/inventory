@@ -19,16 +19,14 @@ public enum AdMissingAction
 /// <param name="ExcludeDisabled">Deaktivierte Computerkonten nicht anlegen und wie fehlende behandeln.</param>
 /// <param name="MissingDays">Frist in Tagen, nach der fehlende Rechner gelöscht werden (nur bei <see cref="AdMissingAction.Delete"/>).</param>
 public sealed record AdSyncSettings(bool Enabled, string? Server, string? BaseDns, int? CredentialId, int IntervalHours, DateTime? LastRunUtc, string? LastResult,
-    bool ExcludeDisabled = true, AdMissingAction MissingAction = AdMissingAction.Keep, int MissingDays = 30, bool UseDnsNames = false);
+    bool ExcludeDisabled = true, AdMissingAction MissingAction = AdMissingAction.Keep, int MissingDays = 30);
 
 /// <param name="Total">Gefundene Computerkonten, deaktivierte eingeschlossen.</param>
 /// <param name="Disabled">Davon deaktiviert.</param>
 /// <param name="MissingNames">Rechner, die als „nicht im AD“ gekennzeichnet sind oder es mit diesem Lauf werden.</param>
 /// <param name="DeleteNames">Rechner, deren Frist abgelaufen ist und die dieser Lauf löscht.</param>
 /// <param name="DeleteBlocked">true, wenn auffällig viele Rechner auf einmal zu löschen wären; dann löscht der Lauf nichts.</param>
-/// <param name="Renames">Einträge unter kurzem Namen, die dieser Lauf auf den vollen DNS-Namen aus dem Verzeichnis umstellt (alt → neu).</param>
-public sealed record AdSyncPreview(int Total, List<string> NewNames, int Disabled = 0, List<string>? MissingNames = null, List<string>? DeleteNames = null, bool DeleteBlocked = false,
-    List<(string Old, string New)>? Renames = null);
+public sealed record AdSyncPreview(int Total, List<string> NewNames, int Disabled = 0, List<string>? MissingNames = null, List<string>? DeleteNames = null, bool DeleteBlocked = false);
 
 /// <summary>
 /// Gleicht die Rechnerliste mit dem Active Directory ab: legt fehlende Rechner an, kennzeichnet Rechner, deren Konto
@@ -54,13 +52,11 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         await settings.GetAsync(SettingKeys.AdSyncLastResult, ct),
         await settings.GetAsync(SettingKeys.AdSyncExcludeDisabled, ct) != bool.FalseString,
         Enum.TryParse<AdMissingAction>(await settings.GetAsync(SettingKeys.AdSyncMissingAction, ct), out var action) ? action : AdMissingAction.Keep,
-        int.TryParse(await settings.GetAsync(SettingKeys.AdSyncMissingDays, ct), out var days) && days > 0 ? days : 30,
-        await settings.GetAsync(SettingKeys.ComputersUseDnsNames, ct) == bool.TrueString);
+        int.TryParse(await settings.GetAsync(SettingKeys.AdSyncMissingDays, ct), out var days) && days > 0 ? days : 30);
 
     public async Task SaveSettingsAsync(bool enabled, string? server, string? baseDns, int? credentialId, int intervalHours,
-        bool excludeDisabled = true, AdMissingAction missingAction = AdMissingAction.Keep, int missingDays = 30, bool useDnsNames = false, CancellationToken ct = default)
+        bool excludeDisabled = true, AdMissingAction missingAction = AdMissingAction.Keep, int missingDays = 30, CancellationToken ct = default)
     {
-        await settings.SetAsync(SettingKeys.ComputersUseDnsNames, useDnsNames.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncEnabled, enabled.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncServer, string.IsNullOrWhiteSpace(server) ? null : server.Trim(), ct);
         await settings.SetAsync(SettingKeys.AdSyncBaseDns, string.IsNullOrWhiteSpace(baseDns) ? null : baseDns.Trim(), ct);
@@ -83,18 +79,12 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         {
             var plan = await PlanAsync(ct);
             var preview = plan.Preview;
-            // Zuerst umbenennen: danach stimmen die Namen, unter denen neue Rechner und der Stand im Verzeichnis zugeordnet werden.
-            var renamed = await computers.RenameAsync(plan.Renames, ct);
-            if (renamed.Count > 0 && audit is not null)
-                await audit.LogAsync(AuditActor.System(L["(automatic)"]), L["Computers renamed to their DNS name"], string.Join(", ", renamed.Select(r => $"{r.Old} → {r.New}")), ct);
             var added = await computers.ImportAsync(string.Join('\n', preview.NewNames), ct);
             foreach (var computer in added)
                 plan.States[computer.Id] = (true, false, plan.Found.GetValueOrDefault(ShortName(computer.Name)));
             await computers.SetDirectoryStateAsync(plan.States, plan.NowUtc, ct);
 
             result = L["{0} computer accounts found, {1} newly created", preview.Total, added.Count].Value;
-            if (renamed.Count > 0)
-                result += ", " + L["{0} renamed to their DNS name", renamed.Count];
             if (preview.Disabled > 0)
                 result += ", " + L["{0} disabled", preview.Disabled];
             if (preview.MissingNames!.Count > 0)
@@ -132,17 +122,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
     }
 
     private sealed record Plan(AdSyncPreview Preview, Dictionary<int, (bool Present, bool Disabled, DirectoryComputer? Account)> States, List<int> DeleteIds, DateTime NowUtc,
-        Dictionary<string, DirectoryComputer> Found, Dictionary<int, string> Renames);
-
-    /// <summary>
-    /// Der Name, unter dem ein Konto geführt wird: der volle DNS-Name, wenn das gewünscht ist und das Verzeichnis einen
-    /// liefert, der zum Kontonamen passt; sonst der kurze Name.
-    /// </summary>
-    internal static string EntryName(DirectoryComputer account, bool useDnsNames)
-    {
-        var dns = account.DnsHostName?.Trim().TrimEnd('.');
-        return useDnsNames && !string.IsNullOrEmpty(dns) && dns.Contains('.') && !MachineNames.Differs(dns, account.Name) ? dns : account.Name;
-    }
+        Dictionary<string, DirectoryComputer> Found);
 
     private async Task<Plan> PlanAsync(CancellationToken ct)
     {
@@ -154,25 +134,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
 
         var existing = await computers.ListAsync(ct);
         var known = existing.Select(c => ShortName(c.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var newNames = found.Values.Where(c => Counts(c) && !known.Contains(c.Name)).Select(c => EntryName(c, current.UseDnsNames)).Order(StringComparer.OrdinalIgnoreCase).ToList();
-
-        // Nur Einträge unter dem kurzen Namen: wer von Hand einen anderen DNS-Namen oder eine Adresse eingetragen hat, behält ihn.
-        var renames = new Dictionary<int, string>();
-        var renameNames = new List<(string Old, string New)>();
-        var taken = existing.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (current.UseDnsNames)
-        {
-            foreach (var computer in existing.Where(c => !c.Name.Contains('.')).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
-            {
-                if (!found.TryGetValue(computer.Name, out var account) || !Counts(account))
-                    continue;
-                var name = EntryName(account, true);
-                if (name.Equals(computer.Name, StringComparison.OrdinalIgnoreCase) || !taken.Add(name))
-                    continue;
-                renames[computer.Id] = name;
-                renameNames.Add((computer.Name, name));
-            }
-        }
+        var newNames = found.Values.Where(c => Counts(c) && !known.Contains(c.Name)).Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase).ToList();
 
         var states = new Dictionary<int, (bool Present, bool Disabled, DirectoryComputer? Account)>();
         var missing = new List<Computer>();
@@ -203,8 +165,8 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         foreach (var computer in blocked ? [] : delete)
             states.Remove(computer.Id);
 
-        var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked, renameNames);
-        return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now, found, renames);
+        var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked);
+        return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now, found);
     }
 
     private static string ShortName(string name) => name.Split('.')[0];

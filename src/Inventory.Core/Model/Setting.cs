@@ -40,8 +40,6 @@ public static class SettingKeys
     public const string HeartbeatIntervalMinutes = "Heartbeat.IntervalMinutes";
     public const string HeartbeatLastRunUtc = "Heartbeat.LastRunUtc";
     public const string HeartbeatLastResult = "Heartbeat.LastResult";
-    /// <summary>true = Rechner unter ihrem vollen DNS-Namen (FQDN) führen statt unter dem kurzen Namen; gilt für die AD-Synchronisation und neu angemeldete Agenten.</summary>
-    public const string ComputersUseDnsNames = "Computers.UseDnsNames";
     public const string AdSyncEnabled = "AdSync.Enabled";
     public const string AdSyncServer = "AdSync.Server";
     public const string AdSyncBaseDns = "AdSync.BaseDns";

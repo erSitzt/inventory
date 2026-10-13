@@ -698,9 +698,6 @@
   <data name="Computers no longer found in the directory" xml:space="preserve">
     <value>Rechner, die im Verzeichnis nicht mehr gefunden werden</value>
   </data>
-  <data name="Computers renamed to their DNS name" xml:space="preserve">
-    <value>Rechner auf ihren DNS-Namen umbenannt</value>
-  </data>
   <data name="Computers served at once" xml:space="preserve">
     <value>Gleichzeitig bediente Rechner</value>
   </data>
@@ -1016,6 +1013,9 @@
   <data name="Display name" xml:space="preserve">
     <value>Anzeigename</value>
   </data>
+  <data name="DNS name" xml:space="preserve">
+    <value>DNS-Name</value>
+  </data>
   <data name="DNS servers" xml:space="preserve">
     <value>DNS-Server</value>
   </data>
@@ -1324,9 +1324,6 @@
   </data>
   <data name="Fulfilled" xml:space="preserve">
     <value>Erfüllt</value>
-  </data>
-  <data name="full DNS names" xml:space="preserve">
-    <value>volle DNS-Namen</value>
   </data>
   <data name="Full rights on the computer, but no access to a user's profile and settings." xml:space="preserve">
     <value>Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.</value>
@@ -1673,9 +1670,6 @@
   <data name="Limits (none)" xml:space="preserve">
     <value>Grenzen (keine)</value>
   </data>
-  <data name="List computers under their full DNS name (FQDN)" xml:space="preserve">
-    <value>Rechner unter ihrem vollen DNS-Namen (FQDN) führen</value>
-  </data>
   <data name="Loading versions …" xml:space="preserve">
     <value>Versionen werden geladen …</value>
   </data>
@@ -1870,9 +1864,6 @@
   </data>
   <data name="New API token" xml:space="preserve">
     <value>Neues API-Token</value>
-  </data>
-  <data name="New computers are created under the DNS name from the directory (e.g. pc-01.corp.example), and existing entries under the short name are renamed with the next run; inventory, history and agent stay. Newly enrolled agents are listed under their DNS name as well. Helps where short names do not resolve, e.g. from the home office. Rules and scripts that compare the exact name have to be adapted." xml:space="preserve">
-    <value>Neue Rechner werden unter dem DNS-Namen aus dem Verzeichnis angelegt (z. B. pc-01.corp.example), und bestehende Einträge unter dem kurzen Namen werden mit dem nächsten Lauf umbenannt; Inventar, Verlauf und Agent bleiben erhalten. Neu angemeldete Agenten werden ebenfalls unter ihrem DNS-Namen geführt. Hilft, wo kurze Namen nicht aufgelöst werden, z. B. aus dem Homeoffice. Regeln und Skripte, die den genauen Namen vergleichen, müssen angepasst werden.</value>
   </data>
   <data name="New computers: {0}" xml:space="preserve">
     <value>Neue Rechner: {0}</value>
@@ -3662,9 +3653,6 @@
   <data name='Tip: On import, a dynamic collection "… outdated" with all computers running an older version can be created. A schedule that regularly deploys the package to this collection keeps the program up to date everywhere.' xml:space="preserve">
     <value>Tipp: Beim Import entsteht auf Wunsch eine dynamische Sammlung „… veraltet“ mit allen Rechnern, auf denen eine ältere Version installiert ist. Ein Zeitplan, der das Paket regelmäßig auf diese Sammlung bereitstellt, hält das Programm überall aktuell.</value>
   </data>
-  <data name="To be renamed to the DNS name: {0}{1}." xml:space="preserve">
-    <value>Auf den DNS-Namen umzubenennen: {0}{1}.</value>
-  </data>
   <data name="To install the agent without the server reaching the computers (no ADMIN$, no remote service), distribute the agent setup yourself: unpack it to a share and run Install-Agent.cmd as a computer startup script of a group policy or through your software distribution. Save the server address first. The setup contains the enrollment secret – make the share readable only for the computers that need it." xml:space="preserve">
     <value>Um den Agenten zu installieren, ohne dass der Server die Rechner erreicht (kein ADMIN$, kein Dienst aus der Ferne), verteilen Sie das Agent-Setup selbst: auf eine Freigabe entpacken und Install-Agent.cmd als Computer-Startskript einer Gruppenrichtlinie oder über Ihre Softwareverteilung ausführen. Speichern Sie zuerst die Server-Adresse. Das Setup enthält das Anmeldegeheimnis – machen Sie die Freigabe nur für die Rechner lesbar, die es brauchen.</value>
   </data>
@@ -4309,9 +4297,6 @@
   </data>
   <data name="{0} per licence" xml:space="preserve">
     <value>{0} je Lizenz</value>
-  </data>
-  <data name="{0} renamed to their DNS name" xml:space="preserve">
-    <value>{0} auf ihren DNS-Namen umbenannt</value>
   </data>
   <data name="{0} retries" xml:space="preserve">
     <value>{0} Wiederholungen</value>

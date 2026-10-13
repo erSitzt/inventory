@@ -128,6 +128,47 @@ public class TransportTests
     }
 
     [Fact]
+    public async Task Connections_use_the_dns_name_while_the_agent_keeps_the_name_of_the_entry()
+    {
+        using var db = new TestDb();
+        var probed = new List<string>();
+        var computers = new ComputerService(db, new FixedProbe(host =>
+        {
+            lock (probed)
+                probed.Add(host);
+            return new ProbeResult(true, "10.0.0.1");
+        }));
+        var settings = new SettingsService(db);
+        var smb = new RecordingTransport(TransportKind.SmbService);
+        var agent = new RecordingTransport(TransportKind.Agent);
+        var jobs = new RemoteJobService([smb, agent], computers, new CredentialService(db, new ReversingProtector()), settings);
+        var added = await computers.ImportAsync("pc-01 pc-02 pc-03.other.example pc-04");
+        await using (var context = db.CreateDbContext())
+        {
+            foreach (var computer in context.Computers.Where(c => c.Name != "pc-04"))
+                computer.DnsName = computer.Name.Split('.')[0] + ".corp.example";
+            await context.SaveChangesAsync();
+        }
+        await computers.UpdateAsync(added.Single(c => c.Name == "pc-02").Id, null, TransportKind.Agent, null);
+        JobManifest Job() => new() { Steps = [new JobStep { Type = StepType.InventoryScan }] };
+        async Task<string> HostAsync(string name, RecordingTransport via)
+        {
+            Assert.True((await jobs.RunAsync(added.Single(c => c.Name == name).Id, Job())).Success);
+            return via.Last!.Host;
+        }
+
+        Assert.Equal("pc-01.corp.example", await HostAsync("pc-01", smb));
+        // Der Agent holt seine Jobs unter dem Namen des Eintrags ab.
+        Assert.Equal("pc-02", await HostAsync("pc-02", agent));
+        // Ein von Hand eingetragener DNS-Name gilt, und ohne bekannten DNS-Namen bleibt es beim kurzen.
+        Assert.Equal("pc-03.other.example", await HostAsync("pc-03.other.example", smb));
+        Assert.Equal("pc-04", await HostAsync("pc-04", smb));
+
+        await computers.ProbeAsync();
+        Assert.Equal(["pc-01.corp.example", "pc-02.corp.example", "pc-03.other.example", "pc-04"], probed.Order());
+    }
+
+    [Fact]
     public async Task JobService_reaches_computers_without_agent_only_as_far_as_the_setting_allows()
     {
         using var db = new TestDb();

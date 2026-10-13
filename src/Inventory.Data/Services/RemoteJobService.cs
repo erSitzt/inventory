@@ -64,10 +64,12 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             if (job.Steps.Any(s => s.Type != StepType.InventoryScan) && await settings.GetVerifyTargetNameAsync(ct))
                 job.ExpectedComputerName = computer.ExpectedMachineName;
 
-            var target = new RemoteTarget(computer.Name, await credentials.ResolveAsync(computerId, ct));
+            var credential = await credentials.ResolveAsync(computerId, ct);
+            // Der Agent holt seine Jobs unter dem Namen des Eintrags ab; alle anderen Wege verbinden sich zum Rechner und brauchen einen Namen, der überall aufgelöst wird.
+            RemoteTarget Target(IRemoteTransport via) => new(via.Kind == TransportKind.Agent ? computer.Name : computer.Address, credential);
             try
             {
-                return await transport.RunAsync(target, job, files ?? [], progress, ct);
+                return await transport.RunAsync(Target(transport), job, files ?? [], progress, ct);
             }
             catch (RemoteException ex)
             {
@@ -77,7 +79,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
                     return JobResult.Failed(job.JobId, ex.Message);
                 try
                 {
-                    return await fallback.RunAsync(target, job, files ?? [], progress, ct);
+                    return await fallback.RunAsync(Target(fallback), job, files ?? [], progress, ct);
                 }
                 catch (RemoteException second)
                 {

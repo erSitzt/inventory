@@ -143,10 +143,6 @@
             }
         </MudSelect>
         <MudNumericField T="int" @bind-Value="_adIntervalHours" Label="@L["Interval (hours)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="720" />
-        <MudSwitch T="bool" @bind-Value="_adUseDnsNames" Color="Color.Primary" Label="@L["List computers under their full DNS name (FQDN)"]" />
-        <MudText Typo="Typo.caption">
-            @L["New computers are created under the DNS name from the directory (e.g. pc-01.corp.example), and existing entries under the short name are renamed with the next run; inventory, history and agent stay. Newly enrolled agents are listed under their DNS name as well. Helps where short names do not resolve, e.g. from the home office. Rules and scripts that compare the exact name have to be adapted."]
-        </MudText>
         <MudSwitch T="bool" @bind-Value="_adExcludeDisabled" Color="Color.Primary" Label="@L["Exclude disabled computer accounts"]" />
         <MudText Typo="Typo.caption">
             @L["Disabled accounts are not created; if an existing computer is disabled in the directory, it counts as no longer found."]
@@ -500,7 +496,6 @@
     private int? _adCredentialId;
     private int _adIntervalHours = 24;
     private bool _adExcludeDisabled = true;
-    private bool _adUseDnsNames;
     private AdMissingAction _adMissingAction;
     private int _adMissingDays = 30;
     private DateTime? _adLastRunUtc;
@@ -553,16 +548,15 @@
         var ad = await AdSync.GetSettingsAsync();
         (_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adLastRunUtc, _adLastResult) =
             (ad.Enabled, ad.Server, ad.BaseDns?.Replace(";", "\n"), ad.CredentialId, ad.IntervalHours, ad.LastRunUtc, ad.LastResult);
-        (_adExcludeDisabled, _adMissingAction, _adMissingDays, _adUseDnsNames) = (ad.ExcludeDisabled, ad.MissingAction, ad.MissingDays, ad.UseDnsNames);
+        (_adExcludeDisabled, _adMissingAction, _adMissingDays) = (ad.ExcludeDisabled, ad.MissingAction, ad.MissingDays);
     }
 
     private async Task SaveAdAsync()
     {
-        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays, _adUseDnsNames);
+        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays);
         await Audit.LogAsync(L["Setting changed"], L["AD synchronization: {0}, server {1}, every {2} h, disabled accounts {3}, missing computers: {4}",
             Display.OnOff(_adEnabled), _adServer ?? L["(domain)"], _adIntervalHours, _adExcludeDisabled ? L["excluded"] : L["included"],
-            _adMissingAction == AdMissingAction.Delete ? L["delete after {0} days", _adMissingDays] : L["keep"]]
-            + (_adUseDnsNames ? ", " + L["full DNS names"] : ""));
+            _adMissingAction == AdMissingAction.Delete ? L["delete after {0} days", _adMissingDays] : L["keep"]]);
         Snackbar.Add(L["Saved."], Severity.Success);
     }
 
@@ -574,8 +568,6 @@
             static string Names(List<string> names) => names.Count == 0 ? "" : ": " + string.Join(", ", names.Take(15)) + (names.Count > 15 ? " …" : "");
             var text = L["{0} computer accounts found ({1} disabled). To be created: {2}{3}. Not in AD: {4}{5}.",
                 preview.Total, preview.Disabled, preview.NewNames.Count, Names(preview.NewNames), preview.MissingNames!.Count, Names(preview.MissingNames)].Value;
-            if (preview.Renames is { Count: > 0 } renames)
-                text += " " + L["To be renamed to the DNS name: {0}{1}.", renames.Count, Names([.. renames.Select(r => $"{r.Old} → {r.New}")])];
             if (preview.DeleteNames!.Count > 0)
                 text += " " + (preview.DeleteBlocked
                     ? L["{0} would be deleted – conspicuously many at once, so the run would delete nothing.", preview.DeleteNames.Count]
@@ -593,7 +585,7 @@
         _adMessage = null;
         try
         {
-            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays, _adUseDnsNames);
+            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays);
             _adMessage = await action();
             _adSeverity = _adMessage.StartsWith(L["Error"]) ? Severity.Error : Severity.Success;
         }

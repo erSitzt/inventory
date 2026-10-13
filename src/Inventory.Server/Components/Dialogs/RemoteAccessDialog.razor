@@ -27,10 +27,10 @@
             <MudDivider />
             <MudText Typo="Typo.subtitle1">@L["Without launcher: commands to copy"]</MudText>
             <MudText Typo="Typo.body2">@L["Run on your PC (Windows key + R, paste, Enter):"]</MudText>
-            @CommandField(L["Offer Remote Assistance"], RemoteAccessLinks.OfferAssistance(Computer.Name))
+            @CommandField(L["Offer Remote Assistance"], RemoteAccessLinks.OfferAssistance(Computer.Address))
             @CommandField(Computer.SessionId is null ? L["Shadow session (session 1 assumed)"] : L["Shadow session (session {0} according to the scan of {1})", Computer.SessionId, Display.LocalTime(Computer.LastScanUtc)],
-                RemoteAccessLinks.Shadow(Computer.Name, Computer.SessionId ?? 1))
-            @CommandField(L["Show the computer's sessions"], RemoteAccessLinks.ListSessions(Computer.Name))
+                RemoteAccessLinks.Shadow(Computer.Address, Computer.SessionId ?? 1))
+            @CommandField(L["Show the computer's sessions"], RemoteAccessLinks.ListSessions(Computer.Address))
             <div>
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DesktopWindows" Href="@($"api/computers/{Computer.Id}/rdp")" Target="_blank">@L["Remote Desktop as .rdp file"]</MudButton>
             </div>

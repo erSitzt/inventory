@@ -327,6 +327,9 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("DirectorySeenUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DnsName")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Domain")
                         .HasColumnType("TEXT");
 

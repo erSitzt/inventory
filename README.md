@@ -247,14 +247,12 @@ Every call is logged. If a different computer responds under the listed name, th
 
 The synchronization (*Settings → Active Directory*) creates computers from computer accounts and reconciles existing ones:
 
-- **List computers under their full DNS name (FQDN)** (default: off): new computers are created under the
-  `dNSHostName` of their account (`pc-01.corp.example`) instead of the short name, and existing entries under the
-  short name are renamed with the next run – the entry stays the same, with inventory, history and agent. Scans,
-  the reachability check, deployments and remote access then address the computer by its FQDN, which also resolves
-  where short names do not, e.g. over VPN or from the home office. Entries with a manually entered DNS name or
-  address and accounts without a matching `dNSHostName` keep their name; newly enrolled agents report their DNS
-  name and are listed under it as well. *Preview* shows what would be renamed. Collection rules, scripts or API
-  clients that compare the exact name have to be adapted ("starts with" keeps working).
+- **DNS name**: every run stores the full DNS name (`dNSHostName`) of the account. Scans, the reachability check,
+  deployments and remote access connect to that name – `pc-01.corp.example` – even though the entry is listed as
+  `pc-01`; it also resolves where short names do not, e.g. over VPN or from the home office. Without the directory,
+  the name comes from the agent (at enrollment) or from the first scan of a domain member. An entry that was entered
+  as a DNS name or an address is used as entered, and a DNS name whose host part does not match the computer is
+  ignored. The computer page shows the name in use as "DNS name".
 - **Exclude disabled computer accounts** (default: on): disabled accounts are not created; if an existing computer is
   disabled in the directory, it counts as no longer found.
 - **Directory facts**: every run also stores the organizational unit, the groups the computer account is a direct
