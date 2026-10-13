@@ -16,10 +16,11 @@ public static class MachineNames
 
     /// <summary>
     /// Unter welchem Namen der Rechner im Netz angesprochen wird: der volle DNS-Name, wenn einer bekannt ist. Ein Eintrag,
-    /// der selbst schon ein DNS-Name oder eine Adresse ist, gilt so, wie er eingetragen wurde.
+    /// der selbst schon ein DNS-Name oder eine Adresse ist, gilt so, wie er eingetragen wurde. Ein DNS-Name, der nicht (mehr)
+    /// zum Eintrag passt – etwa nach dem Umbenennen des Eintrags –, wird nicht verwendet.
     /// </summary>
     public static string Address(string entered, string? dnsName) =>
-        string.IsNullOrWhiteSpace(dnsName) || entered.Contains('.') || System.Net.IPAddress.TryParse(entered, out _) ? entered : dnsName;
+        string.IsNullOrWhiteSpace(dnsName) || entered.Contains('.') || System.Net.IPAddress.TryParse(entered, out _) || Differs(dnsName, entered) ? entered : dnsName;
 
     /// <summary>
     /// Der DNS-Name, wenn er plausibel zum Rechner gehört: ein Hostname mit Domäne, dessen erster Teil der Rechnername ist.

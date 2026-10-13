@@ -125,7 +125,9 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             db.Computers.Add(computer);
         }
         // Der Agent kennt sein DNS-Suffix; darüber erreichen ihn später auch agentenlose Wege und der Fernzugriff.
-        computer.DnsName = MachineNames.ValidDnsName(request.DnsName, name) ?? computer.DnsName;
+        // Was das Verzeichnis für einen dort bekannten Rechner geliefert hat, geht vor.
+        if (computer.DnsName is null || computer.DirectorySeenUtc is null)
+            computer.DnsName = MachineNames.ValidDnsName(request.DnsName, name) ?? computer.DnsName;
         computer.AgentKeyHash = Hash(key);
         computer.AgentVersion = request.Version;
         computer.AgentLastSeenUtc = time.GetUtcNow().UtcDateTime;

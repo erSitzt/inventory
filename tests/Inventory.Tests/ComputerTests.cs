@@ -109,6 +109,8 @@ public class ComputerTests
     [InlineData("pc-01.other.example", "pc-01.corp.example", "pc-01.other.example")]
     [InlineData("10.1.2.3", "pc-01.corp.example", "10.1.2.3")]
     [InlineData("fe80::1", "pc-01.corp.example", "fe80::1")]
+    // Ein DNS-Name, der zu einem anderen Rechner gehört (der Eintrag wurde umbenannt), wird nicht verwendet.
+    [InlineData("pc-new", "pc-old.corp.example", "pc-new")]
     public void Connections_go_to_the_dns_name_if_one_is_known(string entered, string? dnsName, string expected) =>
         Assert.Equal(expected, Inventory.Core.Model.MachineNames.Address(entered, dnsName));
 

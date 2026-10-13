@@ -197,6 +197,8 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         if (names.Any(n => n.Split('.')[0].Equals(name, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException(L["{0} is already listed as a computer of its own. This entry is a duplicate and can be deleted.", name]);
         computer.Name = name;
+        // Der gespeicherte DNS-Name gehörte zum alten Namen; der nächste Abgleich oder Scan liefert den passenden.
+        computer.DnsName = MachineNames.ValidDnsName(computer.DnsName, name);
         await db.SaveChangesAsync(ct);
         return name;
     }
