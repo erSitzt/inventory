@@ -170,7 +170,9 @@
                 @if (Display.SupportsRunAs(Type))
                 {
                     <MudSelect T="StepRunAs" @bind-Value="_step.RunAs" Label="@L["Run as"]" Variant="Variant.Outlined" Margin="Margin.Dense"
-                               HelperText="@(_step.RunAs == StepRunAs.LoggedOnUser
+                               HelperText="@(_step.RunAs == StepRunAs.LoggedOnUser && Type == StepType.Registry
+                                   ? L["Makes HKCU mean the settings of the logged-on user. The change itself is still written by the system account. If nobody is logged on, the step is skipped."]
+                                   : _step.RunAs == StepRunAs.LoggedOnUser
                                    ? L["Runs in the logged-on user's session with their rights (HKCU, profile, network drives). If nobody is logged on, the step is skipped. Only via SMB + service or agent."]
                                    : L["Full rights on the computer, but no access to a user's profile and settings."])">
                         <MudSelectItem T="StepRunAs" Value="StepRunAs.System">@Display.RunAs(StepRunAs.System)</MudSelectItem>

@@ -386,11 +386,11 @@ namespace Inventory.Runner
             return result;
         }
 
-        /// <summary>Entfernt den abschließenden Trenner, außer beim Stamm eines Laufwerks: "C:" wäre das aktuelle Verzeichnis dort.</summary>
+        /// <summary>Entfernt den abschließenden Trenner, außer beim Stamm eines Laufwerks: aus "C:\" würde sonst "C:", das aktuelle Verzeichnis dort.</summary>
         internal static string SourceRoot(string path)
         {
             var trimmed = path.TrimEnd('\\');
-            return trimmed.Length == 2 && trimmed[1] == ':' ? trimmed + "\\" : trimmed;
+            return trimmed.Length == 2 && trimmed[1] == ':' && trimmed.Length < path.Length ? trimmed + "\\" : trimmed;
         }
 
         private string CopyFiles(JobStep step)

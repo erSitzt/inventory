@@ -1796,6 +1796,9 @@
   <data name="Make default" xml:space="preserve">
     <value>Als Standard</value>
   </data>
+  <data name="Makes HKCU mean the settings of the logged-on user. The change itself is still written by the system account. If nobody is logged on, the step is skipped." xml:space="preserve">
+    <value>HKCU meint damit die Einstellungen des angemeldeten Benutzers. Geschrieben wird weiterhin mit dem Systemkonto. Ist niemand angemeldet, wird der Schritt übersprungen.</value>
+  </data>
   <data name="Manufacturer" xml:space="preserve">
     <value>Hersteller</value>
   </data>
