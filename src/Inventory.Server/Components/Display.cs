@@ -397,6 +397,27 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
 
     public string UacLevel(int? level) => level is >= 0 and <= 3 ? T(InventoryDiff.UacLevels[level.Value]) : T("unknown");
 
+    /// <summary>Symbol für die Rechnerliste: Server (auch virtuelle, am Betriebssystem erkannt), Laptop, Tablet, Desktop, virtuelle Maschine.</summary>
+    public string DeviceIcon(Computer computer) => Core.Chassis.Role(computer.ChassisType, computer.Model, computer.OsName) switch
+    {
+        ChassisKind.Server => Icons.Material.Filled.Dns,
+        ChassisKind.Laptop => Icons.Material.Filled.LaptopWindows,
+        ChassisKind.Tablet => Icons.Material.Filled.TabletMac,
+        ChassisKind.Desktop => Icons.Material.Filled.DesktopWindows,
+        ChassisKind.VirtualMachine => Icons.Material.Filled.Cloud,
+        _ => Icons.Material.Outlined.DevicesOther,
+    };
+
+    /// <summary>Text zum Symbol; bei einem Server steht das Gehäuse dabei, wenn es etwas anderes sagt (z. B. "Server (Virtuelle Maschine)").</summary>
+    public string DeviceLabel(Computer computer)
+    {
+        var chassis = Core.Chassis.Kind(computer.ChassisType, computer.Model);
+        var role = Core.Chassis.Role(computer.ChassisType, computer.Model, computer.OsName);
+        if (role == ChassisKind.Unknown)
+            return T("Device type unknown – not scanned yet");
+        return role == chassis || chassis == ChassisKind.Unknown ? T(Core.Chassis.Label(role)) : $"{T(Core.Chassis.Label(role))} ({T(Core.Chassis.Label(chassis))})";
+    }
+
     public string Chassis(Computer computer) => T(Core.Chassis.Label(Core.Chassis.Kind(computer.ChassisType, computer.Model)));
 
     /// <summary>Zustand eines Datenträgers laut Windows-Speicherverwaltung.</summary>

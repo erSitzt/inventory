@@ -88,7 +88,13 @@
         <SelectColumn T="Computer" />
         <TemplateColumn Title="Name" SortBy="c => c.Name">
             <CellTemplate>
-                <MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink>
+                <span style="white-space: nowrap">
+                    <MudTooltip Text="@Display.DeviceLabel(context.Item)">
+                        <MudIcon Icon="@Display.DeviceIcon(context.Item)" Size="Size.Small" Color="Color.Default"
+                                 Style="@($"vertical-align: text-bottom; margin-right: 6px; opacity: {(context.Item.ChassisType is null && context.Item.OsName is null ? "0.4" : "0.75")}")" aria-label="@Display.DeviceLabel(context.Item)" />
+                    </MudTooltip>
+                    <MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink>
+                </span>
                 @foreach (var tag in context.Item.TagList)
                 {
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@tag</MudChip>
