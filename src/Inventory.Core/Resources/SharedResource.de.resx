@@ -209,6 +209,9 @@
   <data name="Add licence" xml:space="preserve">
     <value>Lizenz hinzufügen</value>
   </data>
+  <data name="Add prerequisite" xml:space="preserve">
+    <value>Voraussetzung hinzufügen</value>
+  </data>
   <data name="Add report" xml:space="preserve">
     <value>Bericht hinzufügen</value>
   </data>
@@ -2015,6 +2018,9 @@
   <data name="No deployments yet. A package can be deployed here or directly from the package or computer list." xml:space="preserve">
     <value>Noch keine Deployments. Ein Paket lässt sich hier oder direkt aus der Paket- bzw. Rechnerliste bereitstellen.</value>
   </data>
+  <data name="no detection" xml:space="preserve">
+    <value>keine Erkennung</value>
+  </data>
   <data name="No enabled notification channel to send the report to." xml:space="preserve">
     <value>Kein eingeschalteter Benachrichtigungskanal, an den der Bericht gehen könnte.</value>
   </data>
@@ -2107,6 +2113,9 @@
   </data>
   <data name="none" xml:space="preserve">
     <value>keine</value>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>Keine</value>
   </data>
   <data name="none (relay in your own network)" xml:space="preserve">
     <value>keine (Relay im eigenen Netz)</value>
@@ -2426,6 +2435,12 @@
   <data name="package library" xml:space="preserve">
     <value>Paketbibliothek</value>
   </data>
+  <data name="Package prerequisite added" xml:space="preserve">
+    <value>Paket-Voraussetzung hinzugefügt</value>
+  </data>
+  <data name="Package prerequisite removed" xml:space="preserve">
+    <value>Paket-Voraussetzung entfernt</value>
+  </data>
   <data name="Package step changed" xml:space="preserve">
     <value>Paketschritt geändert</value>
   </data>
@@ -2578,6 +2593,9 @@
   </data>
   <data name="PowerShell on the target computer runs in constrained language mode for this account (AppLocker/WDAC policy). The WinRM transport cannot be used there; please use SMB + service." xml:space="preserve">
     <value>Auf dem Zielrechner läuft PowerShell für dieses Konto im eingeschränkten Sprachmodus (AppLocker/WDAC-Richtlinie). Der WinRM-Transport ist dort nicht nutzbar; bitte SMB + Dienst verwenden.</value>
+  </data>
+  <data name="Prerequisites" xml:space="preserve">
+    <value>Voraussetzungen</value>
   </data>
   <data name="Prerequisites on the computers" xml:space="preserve">
     <value>Voraussetzungen auf den Rechnern</value>
@@ -2791,6 +2809,9 @@
   </data>
   <data name="Remote Desktop without network level authentication" xml:space="preserve">
     <value>Remotedesktop ohne Authentifizierung auf Netzwerkebene</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Entfernen</value>
   </data>
   <data name='Remove from "{0}"' xml:space="preserve">
     <value>Aus „{0}“ entfernen</value>
@@ -3686,6 +3707,9 @@
   <data name="These entries are not part of the base selection and come unchanged from the winget manifests. The checksum secures the download, but only a test shows whether the silent parameters are right – try it on a single computer before deploying." xml:space="preserve">
     <value>Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download, aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.</value>
   </data>
+  <data name="These packages run before the steps of this package, each only where its own detection does not already find it installed." xml:space="preserve">
+    <value>Diese Pakete laufen vor den Schritten dieses Pakets – jedes nur dort, wo seine eigene Erkennung es nicht schon als installiert ausweist.</value>
+  </data>
   <data name="These rules would make collections refer to each other in a circle." xml:space="preserve">
     <value>Mit diesen Regeln würden Sammlungen im Kreis aufeinander verweisen.</value>
   </data>
@@ -3718,6 +3742,9 @@
   </data>
   <data name="This package does not exist (anymore)." xml:space="preserve">
     <value>Dieses Paket existiert nicht (mehr).</value>
+  </data>
+  <data name="This package has no detection, so it runs with every deployment." xml:space="preserve">
+    <value>Dieses Paket hat keine Erkennung und läuft deshalb bei jeder Verteilung mit.</value>
   </data>
   <data name="This package is not approved yet. As an administrator you can deploy it anyway, e.g. to test it." xml:space="preserve">
     <value>Dieses Paket ist noch nicht freigegeben. Als Administrator kannst du es trotzdem verteilen, etwa zum Testen.</value>

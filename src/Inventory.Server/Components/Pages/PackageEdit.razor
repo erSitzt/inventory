@@ -143,6 +143,44 @@
         </MudPaper>
 
         <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudText Typo="Typo.h6" Class="mb-2">@L["Prerequisites"]</MudText>
+            <MudText Typo="Typo.body2" Class="mb-3">
+                @L["These packages run before the steps of this package, each only where its own detection does not already find it installed."]
+            </MudText>
+            @if (_package.Dependencies.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@L["None"]</MudText>
+            }
+            @foreach (var dependency in _package.Dependencies)
+            {
+                var required = dependency.RequiredPackage!;
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" />
+                    <MudLink Href="@($"/packages/{required.Id}")">@required.Name</MudLink>
+                    @if (required.Detection is null)
+                    {
+                        <MudTooltip Text="@L["This package has no detection, so it runs with every deployment."]">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">@L["no detection"]</MudChip>
+                        </MudTooltip>
+                    }
+                    <MudSpacer />
+                    <AdminOnly>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Remove"]" OnClick="@(() => RemoveDependencyAsync(dependency))" />
+                    </AdminOnly>
+                </MudStack>
+            }
+            <AdminOnly>
+                <MudSelect T="int?" Value="@((int?)null)" ValueChanged="AddDependencyAsync" Label="@L["Add prerequisite"]" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-3" Style="max-width: 28rem"
+                           Disabled="@(_candidates.Count == 0)">
+                    @foreach (var candidate in _candidates)
+                    {
+                        <MudSelectItem T="int?" Value="@candidate.Id">@candidate.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </AdminOnly>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
             <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
                 <MudText Typo="Typo.h6">@L["Detection"]</MudText>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(_package.Detection is null ? Color.Default : Color.Success)">@(_package.Detection is null ? L["off"] : L["active"])</MudChip>
@@ -242,6 +280,7 @@
     private List<Inventory.Data.RepositoryFile> _files = [];
     private bool _uploading;
     private bool _isAdmin;
+    private List<Package> _candidates = [];
     private StepConditions _detection = new();
     private bool _verify;
 
@@ -266,6 +305,34 @@
     {
         _package = await PackageService.GetAsync(Id);
         _files = _package is null ? [] : PackageService.Repository.List(Id);
+        var used = _package?.Dependencies.Select(d => d.RequiredPackageId).ToHashSet() ?? [];
+        _candidates = _package is null ? [] : (await PackageService.ListAsync()).Where(p => p.Id != Id && !used.Contains(p.Id)).ToList();
+    }
+
+    private async Task AddDependencyAsync(int? requiredId)
+    {
+        if (requiredId is null || !await Access.DemandAdminAsync())
+            return;
+        var required = _candidates.First(p => p.Id == requiredId);
+        try
+        {
+            await PackageService.SetDependenciesAsync(Id, [.. _package!.Dependencies.Select(d => d.RequiredPackageId), required.Id]);
+            await Audit.LogAsync(L["Package prerequisite added"], $"{_package.Name}: {required.Name}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        await ReloadAsync();
+    }
+
+    private async Task RemoveDependencyAsync(PackageDependency dependency)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await PackageService.SetDependenciesAsync(Id, [.. _package!.Dependencies.Where(d => d.Id != dependency.Id).Select(d => d.RequiredPackageId)]);
+        await Audit.LogAsync(L["Package prerequisite removed"], $"{_package.Name}: {dependency.RequiredPackage?.Name}");
+        await ReloadAsync();
     }
 
     private async Task SaveHeaderAsync()

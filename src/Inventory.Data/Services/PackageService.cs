@@ -38,7 +38,32 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         return await db.Packages.AsNoTracking()
             .Include(p => p.Steps.OrderBy(s => s.Order)).ThenInclude(s => s.NestedPackage)
+            .Include(p => p.Dependencies.OrderBy(d => d.Order)).ThenInclude(d => d.RequiredPackage)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
+    }
+
+    /// <summary>Ersetzt die Voraussetzungen des Pakets; die Reihenfolge der Liste ist die der Ausführung.</summary>
+    public async Task SetDependenciesAsync(int packageId, IReadOnlyList<int> requiredPackageIds, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var wanted = requiredPackageIds.Distinct().ToList();
+        var current = await db.PackageDependencies.Where(d => d.PackageId == packageId).OrderBy(d => d.Order).ToListAsync(ct);
+        if (current.Select(d => d.RequiredPackageId).SequenceEqual(wanted))
+            return;
+        foreach (var id in wanted)
+        {
+            if (!await db.Packages.AnyAsync(p => p.Id == id, ct))
+                throw new KeyNotFoundException(L["Package {0} not found", id]);
+            if (await ContainsAsync(db, id, packageId, MaxNestingDepth, ct))
+                throw new InvalidOperationException(L["This package would then contain itself."]);
+        }
+        db.PackageDependencies.RemoveRange(current);
+        // Erst entfernen, dann neu anlegen: der eindeutige Index gilt je Paar.
+        await db.SaveChangesAsync(ct);
+        for (var i = 0; i < wanted.Count; i++)
+            db.PackageDependencies.Add(new PackageDependency { PackageId = packageId, RequiredPackageId = wanted[i], Order = i + 1 });
+        await TouchAsync(db, packageId, ct);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task<Package> SaveAsync(int? id, string name, string? version, string? description, CancellationToken ct = default)
@@ -222,7 +247,7 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         var manifest = new JobManifest();
         var files = new List<JobFile>();
         var included = new HashSet<int>();
-        await AppendAsync(db, packageId, prefix: "", manifest, files, included, MaxNestingDepth, ct);
+        await AppendAsync(db, packageId, prefix: "", manifest, files, included, MaxNestingDepth, group: null, ct);
         if (manifest.Steps.Count == 0)
             throw new InvalidOperationException(L["The package contains no steps."]);
         // Maßgeblich ist die Erkennung des verteilten Pakets; eingebettete Pakete bringen nur ihre Schritte mit.
@@ -232,12 +257,29 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         return new BuiltJob(manifest, files, included);
     }
 
-    private async Task AppendAsync(InventoryDbContext db, int packageId, string prefix, JobManifest manifest, List<JobFile> files, HashSet<int> included, int depth, CancellationToken ct)
+    /// <param name="group">Die Voraussetzung, zu der die Schritte gehören; null = Schritte des verteilten Pakets.</param>
+    private async Task AppendAsync(InventoryDbContext db, int packageId, string prefix, JobManifest manifest, List<JobFile> files, HashSet<int> included, int depth, int? group, CancellationToken ct)
     {
         if (depth < 0)
             throw new InvalidOperationException(L["Packages are nested too deeply or in a cycle."]);
-        var package = await db.Packages.AsNoTracking().Include(p => p.Steps.OrderBy(s => s.Order)).FirstOrDefaultAsync(p => p.Id == packageId, ct)
+        var package = await db.Packages.AsNoTracking().AsSplitQuery()
+                          .Include(p => p.Steps.OrderBy(s => s.Order))
+                          .Include(p => p.Dependencies.OrderBy(d => d.Order)).ThenInclude(d => d.RequiredPackage)
+                          .FirstOrDefaultAsync(p => p.Id == packageId, ct)
                       ?? throw new KeyNotFoundException(L["Package {0} not found", packageId]);
+
+        // Voraussetzungen zuerst. Jede bildet eine Gruppe: der Runner prüft ihre Erkennung einmal vor ihrem ersten Schritt.
+        foreach (var dependency in package.Dependencies)
+        {
+            var required = dependency.RequiredPackage!;
+            var own = new JobGroup
+            {
+                Id = manifest.Groups.Count + 1, Name = required.Name, Parent = group,
+                Detection = required.Detection, Verify = required.VerifyAfterInstall && required.Detection is not null,
+            };
+            manifest.Groups.Add(own);
+            await AppendAsync(db, required.Id, $"{prefix}{required.Name} › ", manifest, files, included, depth - 1, own.Id, ct);
+        }
 
         var folder = $"p{packageId}";
         if (included.Add(packageId))
@@ -247,24 +289,26 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         {
             if (step.NestedPackageId is { } nestedId)
             {
-                await AppendAsync(db, nestedId, $"{prefix}{step.Definition.Name} › ", manifest, files, included, depth - 1, ct);
+                await AppendAsync(db, nestedId, $"{prefix}{step.Definition.Name} › ", manifest, files, included, depth - 1, group, ct);
                 continue;
             }
             // Kopie, damit das Umschreiben der Pfade nicht auf das geladene Paket durchschlägt.
             var copy = JobJson.Deserialize<JobStep>(JobJson.Serialize(step.Definition))!;
             copy.Name = prefix + copy.Name;
+            copy.Group = group;
             if (!string.IsNullOrWhiteSpace(copy.File))
                 copy.File = $@"{folder}\{copy.File.TrimStart('\\', '/')}";
             manifest.Steps.Add(copy);
         }
     }
 
-    /// <summary>true, wenn <paramref name="packageId"/> (direkt oder über Verschachtelung) <paramref name="searchedId"/> enthält oder selbst ist.</summary>
+    /// <summary>true, wenn <paramref name="packageId"/> (direkt, über Verschachtelung oder Voraussetzungen) <paramref name="searchedId"/> enthält oder selbst ist.</summary>
     private static async Task<bool> ContainsAsync(InventoryDbContext db, int packageId, int searchedId, int depth, CancellationToken ct)
     {
         if (packageId == searchedId || depth < 0)
             return true;
         var nested = await db.PackageSteps.Where(s => s.PackageId == packageId && s.NestedPackageId != null).Select(s => s.NestedPackageId!.Value).ToListAsync(ct);
+        nested.AddRange(await db.PackageDependencies.Where(d => d.PackageId == packageId).Select(d => d.RequiredPackageId).ToListAsync(ct));
         foreach (var id in nested)
         {
             if (await ContainsAsync(db, id, searchedId, depth - 1, ct))

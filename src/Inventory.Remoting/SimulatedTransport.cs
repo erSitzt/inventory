@@ -15,6 +15,7 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
         var aborted = false;
         // Erkennung gegen das simulierte Inventar: so lässt sich "bereits installiert" ohne Zielrechner ausprobieren.
         result.AlreadyInstalled = job.SkipIfDetected && Detected(job.Detection, target.Host);
+        var groups = new JobGroups(job, detection => Detected(detection, target.Host) ? null : "not installed");
         for (var i = 0; i < job.Steps.Count; i++)
         {
             var step = job.Steps[i];
@@ -31,6 +32,11 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
             if (aborted)
             {
                 result.Steps.Add(new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Not executed: a previous step failed" });
+                continue;
+            }
+            if (groups.Present(step) is { } present)
+            {
+                result.Steps.Add(new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Prerequisite already installed: " + present });
                 continue;
             }
 

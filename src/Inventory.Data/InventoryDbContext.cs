@@ -30,6 +30,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<InventoryChange> InventoryChanges => Set<InventoryChange>();
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
+    public DbSet<PackageDependency> PackageDependencies => Set<PackageDependency>();
     public DbSet<Deployment> Deployments => Set<Deployment>();
     public DbSet<DeploymentTarget> DeploymentTargets => Set<DeploymentTarget>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
@@ -142,6 +143,14 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.Property(p => p.Detection).HasConversion(
                 detection => detection == null ? null : JobJson.Serialize(detection, false),
                 json => json == null ? null : JobJson.Deserialize<StepConditions>(json));
+        });
+
+        modelBuilder.Entity<PackageDependency>(e =>
+        {
+            e.HasOne<Package>().WithMany(p => p.Dependencies).HasForeignKey(d => d.PackageId).OnDelete(DeleteBehavior.Cascade);
+            // Wird das vorausgesetzte Paket gelöscht, entfällt die Voraussetzung.
+            e.HasOne(d => d.RequiredPackage).WithMany().HasForeignKey(d => d.RequiredPackageId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(d => new { d.PackageId, d.RequiredPackageId }).IsUnique();
         });
 
         modelBuilder.Entity<PackageStep>(e =>

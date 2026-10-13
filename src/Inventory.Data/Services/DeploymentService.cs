@@ -675,6 +675,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 VerifyAfterInstall = built.Manifest.VerifyAfterInstall,
                 // Nach einem Neustart ist das Paket oft schon erkennbar, obwohl noch Schritte ausstehen: dann nicht überspringen.
                 SkipIfDetected = resumeFrom == 0,
+                Groups = built.Manifest.Groups,
+                StartedGroups = StartedGroups(built.Manifest, resumeFrom),
             };
             var progress = new CallbackProgress(e =>
             {
@@ -789,5 +791,17 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     private sealed class CallbackProgress(Action<ProgressEvent> handler) : IProgress<ProgressEvent>
     {
         public void Report(ProgressEvent value) => handler(value);
+    }
+
+    /// <summary>
+    /// Voraussetzungen, in denen der Neustart lag: sie laufen im Folgejob ohne erneute Erkennung weiter, sonst entfielen
+    /// ihre restlichen Schritte, sobald die Voraussetzung nach dem Neustart schon erkennbar ist.
+    /// </summary>
+    internal static List<int> StartedGroups(JobManifest manifest, int resumeFrom)
+    {
+        if (resumeFrom <= 0 || resumeFrom >= manifest.Steps.Count)
+            return [];
+        var before = JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom - 1].Group);
+        return [.. JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom].Group).Where(before.Contains)];
     }
 }

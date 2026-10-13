@@ -58,10 +58,13 @@ namespace Inventory.Runner
                            FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete), new UTF8Encoding(false)))
                 {
                     string? aborted = null;
+                    var groups = new JobGroups(manifest, detection => ConditionEvaluator.WhyNot(detection));
                     for (var i = 0; i < manifest.Steps.Count; i++)
                     {
                         var step = manifest.Steps[i];
                         StepResult stepResult;
+                        // Der Schritt war an der Reihe (ausgeführt oder wegen seiner eigenen Bedingung ausgelassen).
+                        var reached = false;
                         if (result.ResumeFromStep != null)
                         {
                             stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Deferred, Output = "Continues after the restart" };
@@ -74,12 +77,18 @@ namespace Inventory.Runner
                         {
                             stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = aborted ?? "Abgebrochen" };
                         }
+                        else if (groups.Present(step) is string present)
+                        {
+                            stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Prerequisite already installed: " + present };
+                        }
                         else if (ConditionEvaluator.WhyNot(step.Conditions) is string reason)
                         {
+                            reached = true;
                             stepResult = new StepResult { Index = i, Name = step.Name, Status = StepStatus.Skipped, Output = "Condition not met: " + reason };
                         }
                         else
                         {
+                            reached = true;
                             Write(progress, new ProgressEvent { Kind = ProgressKind.StepStarted, Step = i, Text = step.Name });
                             stepResult = Prepare(i, step, progress) ?? DispatchWithRetries(i, step, progress, result);
                             // Die restlichen Schritte übernimmt der Server in einem Folgejob, sobald der Rechner wieder da ist.
@@ -94,6 +103,14 @@ namespace Inventory.Runner
                             result.Success = false;
                             if (!step.ContinueOnError)
                                 aborted = "Nicht ausgeführt: Ein vorheriger Schritt ist fehlgeschlagen";
+                        }
+                        // Endet hier eine Voraussetzung, muss sie jetzt vorhanden sein. Steht ein Neustart aus, prüft der Folgejob.
+                        else if (reached && aborted == null && result.ResumeFromStep == null
+                                 && groups.VerifyFinished(step, i + 1 < manifest.Steps.Count ? manifest.Steps[i + 1] : null) is string unverified)
+                        {
+                            result.Success = false;
+                            result.Error = unverified;
+                            aborted = "Nicht ausgeführt: Eine Voraussetzung fehlt nach ihrer Installation";
                         }
                     }
                 }

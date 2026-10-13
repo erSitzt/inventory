@@ -35,6 +35,9 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Registrierung,
   Windows-Feature, Dienst, Warten, Neustart, Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten;
   Schritte nach einem Neustart laufen automatisch weiter, sobald der Rechner wieder da ist
+- **Voraussetzungen**: ein Paket nennt die Pakete, die es braucht („benötigt die .NET-Runtime“); sie laufen vor seinen
+  Schritten, jedes nur dort, wo seine eigene Erkennung es nicht schon als installiert ausweist, und müssen danach
+  erkennbar sein, wenn das Paket die Überprüfung verlangt
 - **Registrierung, Windows-Features, große Dateien**: ein Registrierungs-Schritt setzt oder löscht einen Wert oder
   löscht einen Schlüssel ohne Skript – typisiert (Zeichenfolge, DWORD, QWORD, mehrteilige Zeichenfolge, binär), in der
   64- oder 32-Bit-Ansicht und bei `HKCU` in den Einstellungen des angemeldeten Benutzers; ein Feature-Schritt schaltet
