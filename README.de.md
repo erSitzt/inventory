@@ -284,15 +284,22 @@ Broadcast-Adresse des zuletzt bekannten Subnetzes des Rechners und an seine zule
 MAC-Adressen stammen aus dem letzten Scan (alle Adapter, die eine Adresse hatten); *Bearbeiten* auf der Rechnerseite
 nimmt eine feste auf, für einen Rechner, der noch nie gescannt wurde oder über einen anderen Adapter aufwacht.
 
+**Andere Subnetze.** Ein Broadcast des Servers endet meist am Router. Der Server bittet deshalb zusätzlich Rechner
+mit Agent, das Paket in ihrem eigenen Netz zu senden: bis zu zwei je Ziel, ausgewählt unter den Agenten, die sich in
+den letzten drei Minuten gemeldet haben und eine Adresse in dem Subnetz haben, in dem das Ziel zuletzt gesehen wurde.
+Wecken funktioniert damit in jedem Subnetz, in dem mindestens ein Rechner mit Agent eingeschaltet ist – ein Server
+oder ein PC, der an bleibt, genügt. Ein Agent, der länger als eine Minute mit einem Job beschäftigt ist, sendet
+nicht; die Bitte verfällt dann, statt den Rechner später zu wecken. Einzurichten ist nichts.
+
 Was außerhalb von Inventory stimmen muss:
 
 - Wake-on-LAN ist in der Firmware und in den Treibereinstellungen des Adapters eingeschaltet. Ist der Schnellstart
   von Windows eingeschaltet, wachen viele Geräte nur aus Standby oder Ruhezustand auf, nicht nach dem Herunterfahren.
 - Der Rechner hängt am Kabel. Laptops im WLAN oder im Akkubetrieb wachen selten auf.
-- Rechner in einem anderen Subnetz als der Server erhalten das Paket nur, wenn der Router gerichtete Broadcasts für
-  dieses Subnetz weiterleitet (bei den meisten Routern ab Werk aus) oder solange der Router die Adresse des Rechners
-  noch in seiner ARP-Tabelle hat. Die Subnetzmaske ist nach einem Scan mit dem aktuellen Runner bekannt; bis dahin
-  wird /24 angenommen.
+- In einem Subnetz ohne laufenden Agenten erhalten Rechner das Paket des Servers nur, wenn der Router gerichtete
+  Broadcasts für dieses Subnetz weiterleitet (bei den meisten Routern ab Werk aus) oder solange der Router die
+  Adresse des Rechners noch in seiner ARP-Tabelle hat. Die Subnetzmaske ist nach einem Scan mit dem aktuellen Runner
+  bekannt; bis dahin wird /24 angenommen.
 
 Gesendet heißt nicht aufgewacht: Wake-on-LAN kennt keine Antwort. Ob der Rechner gestartet ist, zeigt die
 Erreichbarkeitsprüfung.

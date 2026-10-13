@@ -376,9 +376,11 @@
         if (sent.Count > 0)
             await Audit.LogAsync(L["Wake-up sent"], string.Join(", ", sent.Select(r => r.ComputerName)));
         var unknown = results.Count(r => r.Macs.Count == 0);
-        Snackbar.Add(unknown == 0
+        var relayed = sent.Count(r => r.Relays.Count > 0);
+        var via = relayed > 0 ? " " + L["For {0} of them also through an agent in their subnet.", relayed] : "";
+        Snackbar.Add((unknown == 0
                 ? L["Wake-up sent to {0} computers.", sent.Count]
-                : L["Wake-up sent to {0} computers; for {1} no MAC address is known.", sent.Count, unknown],
+                : L["Wake-up sent to {0} computers; for {1} no MAC address is known.", sent.Count, unknown]) + via,
             sent.Count > 0 ? Severity.Info : Severity.Warning);
     }
 

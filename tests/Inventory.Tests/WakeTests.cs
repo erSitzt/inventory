@@ -18,12 +18,38 @@ public sealed class WakeTests : IDisposable
     private readonly ComputerService _computers;
     private readonly PackageService _packages;
     private readonly WakeService _wake;
+    private readonly RecordingAgents _agents = new();
+
+    /// <summary>Stellt den Weg über die Agenten dar und merkt sich, welcher Rechner welche MAC-Adressen wecken soll.</summary>
+    private sealed class RecordingAgents : IRemoteTransport
+    {
+        public TransportKind Kind => TransportKind.Agent;
+        public List<(string Host, JobStep Step)> Orders { get; } = [];
+
+        public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
+        {
+            lock (Orders)
+                Orders.Add((target.Host, job.Steps.Single()));
+            return Task.FromResult(new JobResult { JobId = job.JobId, Success = true });
+        }
+    }
+
+    /// <summary>Ein Rechner mit Agent, der sich gerade gemeldet hat (oder vor <paramref name="minutesAgo"/> Minuten).</summary>
+    private async Task<Computer> AgentAsync(string name, string ip, string? mask = "255.255.255.0", int minutesAgo = 0)
+    {
+        var computer = await ComputerAsync(name, mac: "00:1A:2B:00:00:" + ip.Split('.')[3].PadLeft(2, '0')[..2], ip: ip, mask: mask);
+        await using var db = _db.CreateDbContext();
+        var stored = db.Computers.Single(c => c.Id == computer.Id);
+        (stored.AgentKeyHash, stored.AgentLastSeenUtc) = ("hash-" + name, DateTime.UtcNow.AddMinutes(-minutesAgo));
+        await db.SaveChangesAsync();
+        return computer;
+    }
 
     public WakeTests()
     {
         _computers = new ComputerService(_db, new SimulatedHostProbe());
         _packages = new PackageService(_db, new PackageRepository(_repoDir));
-        _wake = new WakeService(_db, _sender);
+        _wake = new WakeService(_db, _sender, [new SimulatedTransport(TransportKind.SmbService), _agents]);
     }
 
     public void Dispose()
@@ -234,5 +260,101 @@ public sealed class WakeTests : IDisposable
         var target = started.Targets.Single();
         Assert.Equal(TargetStatus.WaitingOffline, target.Status);
         Assert.DoesNotContain("wake-up", target.Error);
+    }
+
+    [Fact]
+    public async Task An_agent_in_the_subnet_of_the_target_is_asked_to_send_the_packet_there()
+    {
+        var off = await ComputerAsync("pc-off", ip: "10.20.30.40", mask: "255.255.255.0");
+        await AgentAsync("pc-near", "10.20.30.77");
+        await AgentAsync("pc-far", "10.20.31.77");
+
+        var result = await _wake.WakeAsync(off.Id);
+        await _wake.RelaysCompleted;
+
+        Assert.Equal(["pc-near"], result!.Relays);
+        var (host, step) = Assert.Single(_agents.Orders);
+        Assert.Equal("pc-near", host);
+        Assert.Equal(StepType.WakeOnLan, step.Type);
+        Assert.Equal("00:1A:2B:3C:4D:5E", step.Script);
+        // Der Server sendet weiterhin selbst.
+        Assert.Single(_sender.Sent);
+    }
+
+    [Fact]
+    public async Task The_subnet_is_judged_by_the_mask_of_the_agent()
+    {
+        // Das Ziel wurde mit einem älteren Runner gescannt (keine Maske); der Agent kennt sein /22-Netz.
+        var off = await ComputerAsync("pc-off", ip: "10.20.31.40", mask: null);
+        await AgentAsync("pc-wide", "10.20.28.5", mask: "255.255.252.0");
+        await AgentAsync("pc-other", "10.20.32.5", mask: "255.255.252.0");
+
+        var result = await _wake.WakeAsync(off.Id);
+        await _wake.RelaysCompleted;
+
+        Assert.Equal(["pc-wide"], result!.Relays);
+    }
+
+    [Fact]
+    public async Task Only_agents_that_reported_recently_are_asked_and_at_most_two()
+    {
+        var off = await ComputerAsync("pc-off", ip: "10.20.30.40", mask: "255.255.255.0");
+        await AgentAsync("pc-gone", "10.20.30.10", minutesAgo: 30);
+        await AgentAsync("pc-a", "10.20.30.11", minutesAgo: 2);
+        await AgentAsync("pc-b", "10.20.30.12", minutesAgo: 1);
+        await AgentAsync("pc-c", "10.20.30.13");
+
+        var result = await _wake.WakeAsync(off.Id);
+        await _wake.RelaysCompleted;
+
+        // Die zuletzt gemeldeten zuerst.
+        Assert.Equal(["pc-c", "pc-b"], result!.Relays);
+    }
+
+    [Fact]
+    public async Task One_agent_gets_all_addresses_of_its_subnet_in_one_order_and_never_wakes_itself()
+    {
+        var first = await ComputerAsync("pc-01", mac: "00:1A:2B:3C:4D:01", ip: "10.20.30.41", mask: "255.255.255.0");
+        var second = await ComputerAsync("pc-02", mac: "00:1A:2B:3C:4D:02", ip: "10.20.30.42", mask: "255.255.255.0");
+        var agent = await AgentAsync("pc-agent", "10.20.30.77");
+
+        var results = await _wake.WakeAsync([first.Id, second.Id, agent.Id]);
+        await _wake.RelaysCompleted;
+
+        var (host, step) = Assert.Single(_agents.Orders);
+        Assert.Equal("pc-agent", host);
+        Assert.Equal("00:1A:2B:3C:4D:01,00:1A:2B:3C:4D:02", step.Script);
+        Assert.Empty(results.Single(r => r.ComputerId == agent.Id).Relays);
+    }
+
+    [Fact]
+    public async Task Without_a_way_from_the_server_an_agent_still_counts_as_sent()
+    {
+        var off = await ComputerAsync("pc-off", ip: "10.20.30.40", mask: "255.255.255.0");
+        await AgentAsync("pc-near", "10.20.30.77");
+        var wake = new WakeService(_db, new NoRoute(), [_agents]);
+
+        var result = await wake.WakeAsync(off.Id);
+        await wake.RelaysCompleted;
+
+        Assert.Equal(0, result!.Packets);
+        Assert.True(result.Sent);
+        Assert.False((await new WakeService(_db, new NoRoute()).WakeAsync(off.Id))!.Sent);
+    }
+
+    private sealed class NoRoute : IWakeSender
+    {
+        public Task<int> SendAsync(byte[] packet, IReadOnlyCollection<IPAddress> addresses, CancellationToken ct = default) => Task.FromResult(0);
+    }
+
+    [Fact]
+    public void The_relay_reads_the_addresses_of_its_order_and_builds_the_same_packet()
+    {
+        var macs = Inventory.Runner.WakeSender.ParseMacs("00:1A:2B:3C:4D:5E, 00-1A-2B-3C-4D-5F,nonsense,");
+
+        Assert.Equal(["00:1A:2B:3C:4D:5E", "00:1A:2B:3C:4D:5F"], macs.Select(WakeOnLan.Format));
+        Assert.Equal(WakeOnLan.MagicPacket(macs[0]), Inventory.Runner.WakeSender.Packet(macs[0]));
+        Assert.Equal(IPAddress.Parse("10.20.31.255"), Inventory.Runner.WakeSender.Broadcast(IPAddress.Parse("10.20.30.40"), IPAddress.Parse("255.255.252.0")));
+        Assert.Throws<InvalidOperationException>(() => Inventory.Runner.WakeSender.Send("nonsense"));
     }
 }

@@ -22,6 +22,11 @@ namespace Inventory.Contracts
         Uninstall = 8,
         /// <summary>Ausstehende Windows-Updates suchen, laden und installieren; Exitcode 3010, wenn danach ein Neustart nötig ist.</summary>
         WindowsUpdate = 9,
+        /// <summary>
+        /// Wake-on-LAN-Pakete in die eigenen Netze schicken; die MAC-Adressen stehen durch Komma getrennt in
+        /// <see cref="JobStep.Script"/>. Kein Schritt für Pakete: der Server schickt ihn an einen Agenten als Weckrelais.
+        /// </summary>
+        WakeOnLan = 10,
     }
 
     /// <summary>Unter welchem Konto ein Schritt auf dem Zielrechner läuft.</summary>
