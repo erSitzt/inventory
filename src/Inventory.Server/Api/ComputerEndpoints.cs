@@ -13,11 +13,13 @@ public static class ComputerEndpoints
         DateTime? LastSeenUtc, DateTime? LastScanUtc, string? LastScanError, TransportKind? Transport, int? CredentialId,
         string? ReportedName, string? ReverseDnsName, bool NameMismatch, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser,
         string? PrimaryUser = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
-        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null);
+        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string? WakeMac = null);
+
+    public sealed record WakeDto(bool Sent, IReadOnlyList<string> Macs, int Packets);
 
     /// <summary>Jedes Feld ist optional: weggelassen oder null = unverändert, leerer Text = löschen. Die Datumsfelder löscht <c>Clear</c>.</summary>
     public sealed record AssetRequest(string? Description = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
-        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string[]? Clear = null);
+        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string[]? Clear = null, string? WakeMac = null);
 
     public sealed record HardwareDto(string DeviceType, string? FirmwareType, bool? SecureBoot, DateTime? BiosDateUtc, bool? TpmPresent, string? TpmVersion, bool? TpmReady,
         string? Gpu, int? MemorySlots, bool? BatteryPresent, int? BatteryHealthPercent, int? BatteryCycleCount,
@@ -87,6 +89,17 @@ public static class ComputerEndpoints
             if (await computers.GetAsync(id, ct) is not { } computer)
                 return Results.NotFound();
             bool Cleared(string field) => request.Clear?.Contains(field, StringComparer.OrdinalIgnoreCase) == true;
+            if (request.WakeMac is not null)
+            {
+                try
+                {
+                    await computers.SetWakeMacAsync(id, request.WakeMac, ct);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Problem(ex.Message, statusCode: 400);
+                }
+            }
             var asset = computer.Asset;
             await computers.UpdateAssetAsync(id, new AssetData(request.Owner ?? asset.Owner, request.Location ?? asset.Location, request.CostCenter ?? asset.CostCenter,
                 request.InventoryNumber ?? asset.InventoryNumber,
@@ -96,7 +109,7 @@ public static class ComputerEndpoints
                 await computers.UpdateAsync(id, request.Description, computer.Transport, computer.CredentialId, ct);
             await audit.LogAsync(http.Actor(), "Computer changed via API", computer.Name, ct);
             return Results.Ok(ToDto((await computers.GetAsync(id, ct))!));
-        }).RequireAdmin().WithSummary("Change asset data").WithDescription("Sets description, owner, location, cost center, inventory number, purchase date, end of warranty, tags (comma-separated) and notes. Omitted fields stay unchanged; an empty string clears a text field; clear = [\"purchaseDate\", \"warrantyUntil\"] clears the dates.").Produces<ComputerDto>().Produces(404);
+        }).RequireAdmin().WithSummary("Change asset data").WithDescription("Sets description, owner, location, cost center, inventory number, purchase date, end of warranty, tags (comma-separated) and notes. Omitted fields stay unchanged; an empty string clears a text field; clear = [\"purchaseDate\", \"warrantyUntil\"] clears the dates. wakeMac: MAC address for Wake-on-LAN (empty = the adapters of the last scan).").Produces<ComputerDto>().Produces(400).Produces(404);
 
         group.MapPost("assets/import", async (HttpContext http, ComputerService computers, AuditService audit, CancellationToken ct) =>
         {
@@ -121,6 +134,15 @@ public static class ComputerEndpoints
         group.MapPost("probe", async (int[]? ids, ComputerService computers, CancellationToken ct) =>
             new ProbeResponse(await computers.ProbeAsync(ids is { Length: > 0 } ? ids : null, ct)))
             .RequireOperator().WithSummary("Check reachability").WithDescription("Body: JSON array of computer IDs; empty or null = all computers. Returns the number of reachable computers.");
+
+        group.MapPost("{id:int}/wake", async (int id, WakeService wake, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if (await wake.WakeAsync(id, ct) is not { } result)
+                return Results.NotFound();
+            if (result.Sent)
+                await audit.LogAsync(http.Actor(), "Wake-up sent via API", result.ComputerName, ct);
+            return Results.Ok(new WakeDto(result.Sent, result.Macs, result.Packets));
+        }).RequireOperator().WithSummary("Wake computer").WithDescription("Sends Wake-on-LAN magic packets (UDP port 9) to the MAC addresses of the last scan, or to the one entered for the computer. sent = false with empty macs: no MAC address known. Sent does not mean awake: check reachability about two minutes later.").Produces<WakeDto>().Produces(404);
 
         group.MapPost("{id:int}/scan", async (int id, ScanService scans, CancellationToken ct) => await scans.ScanAsync(id, ct))
             .RequireOperator().WithSummary("Inventory scan").WithDescription("Scans the computer immediately and waits for the result (seconds to minutes depending on the transport).");
@@ -174,5 +196,5 @@ public static class ComputerEndpoints
     private static ComputerDto ToDto(Computer c) =>
         new(c.Id, c.Name, c.Description, c.IpAddress, c.IsOnline, c.LastSeenUtc, c.LastScanUtc, c.LastScanError, c.Transport, c.CredentialId,
             c.ReportedName, c.ReverseDnsName, c.NameMismatch, c.OsName, c.OsVersion, c.Manufacturer, c.Model, c.SerialNumber, c.MemoryBytes, c.LoggedOnUser,
-            c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate, c.WarrantyUntil, c.Tags, c.Notes);
+            c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate, c.WarrantyUntil, c.Tags, c.Notes, c.WakeMac);
 }

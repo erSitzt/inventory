@@ -3,6 +3,7 @@
 @inject CredentialService CredentialService
 @inject CollectionService CollectionService
 @inject ScanService ScanService
+@inject WakeService WakeService
 @inject AgentService AgentService
 @inject RemoteJobService Jobs
 @inject Inventory.Remoting.RunnerPackage Runner
@@ -47,6 +48,7 @@
             <MudMenuItem Icon="@Icons.Material.Filled.NetworkCheck" OnClick="ProbeAsync">
                 @(_selected.Count > 0 ? L["Check reachability of selection"] : L["Check reachability of all"])
             </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.PowerSettingsNew" Disabled="@(_selected.Count == 0)" OnClick="WakeAsync">@L["Wake (Wake-on-LAN)"]</MudMenuItem>
             <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">@L["Deploy package"]</MudMenuItem>
             <AdminOnly>
                 <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">@L["Run command"]</MudMenuItem>
@@ -356,6 +358,28 @@
         var dialog = await Dialogs.ShowAsync<EditComputerDialog>(computer.Name, parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
         if (await dialog.Result is { Canceled: false })
             await ReloadAsync();
+    }
+
+    private async Task WakeAsync()
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        // Wer schon läuft, braucht kein Paket.
+        var ids = _selected.Where(c => !c.IsOnline).Select(c => c.Id).ToList();
+        if (ids.Count == 0)
+        {
+            Snackbar.Add(L["All selected computers are online."], Severity.Info);
+            return;
+        }
+        var results = await WakeService.WakeAsync(ids);
+        var sent = results.Where(r => r.Sent).ToList();
+        if (sent.Count > 0)
+            await Audit.LogAsync(L["Wake-up sent"], string.Join(", ", sent.Select(r => r.ComputerName)));
+        var unknown = results.Count(r => r.Macs.Count == 0);
+        Snackbar.Add(unknown == 0
+                ? L["Wake-up sent to {0} computers.", sent.Count]
+                : L["Wake-up sent to {0} computers; for {1} no MAC address is known.", sent.Count, unknown],
+            sent.Count > 0 ? Severity.Info : Severity.Warning);
     }
 
     private async Task ScanAsync()

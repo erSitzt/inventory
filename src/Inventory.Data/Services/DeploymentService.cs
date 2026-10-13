@@ -17,11 +17,13 @@ public sealed record DeploymentOptions(bool ScanAfter, bool RetryOffline = false
 {
     /// <summary>true = nur freigegebene Pakete; gilt für Operatoren und Zeitpläne, nicht für Administratoren.</summary>
     public bool RequireApproved { get; init; }
+    /// <summary>Nicht erreichbare Rechner per Wake-on-LAN wecken; sie warten dann wie mit <see cref="RetryOffline"/>.</summary>
+    public bool Wake { get; init; }
     /// <summary>Der auslösende Zeitplan, damit sich später sagen lässt, auf welchen Rechnern er schon erfolgreich war.</summary>
     public int? ScheduleId { get; init; }
 }
 
-public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null, MaintenanceService? maintenance = null)
+public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFactory, PackageService packages, RemoteJobService jobs, InventoryStore inventory, IHostProbe probe, IStringLocalizer<SharedResource>? localizer = null, MaintenanceService? maintenance = null, WakeService? wake = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
     private readonly MaintenanceService _maintenance = maintenance ?? new MaintenanceService(dbFactory, new CollectionService(dbFactory), new SettingsService(dbFactory));
 
@@ -30,7 +32,44 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     public static readonly TimeSpan RetryWindow = TimeSpan.FromDays(3);
     /// <summary>Frist für Ziele, die auf ihr Wartungsfenster warten: auch ein Fenster, das nur einmal je Woche öffnet, muss hineinpassen.</summary>
     public static readonly TimeSpan WindowWait = TimeSpan.FromDays(8);
+    /// <summary>Ein wartender Rechner wird höchstens so oft erneut geweckt: wer ihn bewusst ausschaltet, soll ihn nicht alle fünf Minuten wieder laufen sehen.</summary>
+    public static readonly TimeSpan WakeAgain = TimeSpan.FromHours(1);
     private string WaitingText => L["Computer unreachable – will be retried as soon as it is online"];
+    private string WokenText => L["Computer unreachable – wake-up sent, will be retried as soon as it is online"];
+    /// <summary>Wann welcher Rechner zuletzt geweckt wurde; nur im Speicher, nach einem Neustart des Servers wird einmal mehr geweckt.</summary>
+    private readonly ConcurrentDictionary<int, DateTime> _woken = new();
+    private long _recheckTicks;
+
+    /// <summary>
+    /// true, sobald geweckte Rechner Zeit zum Hochfahren hatten: der Zeitplaner holt die wartenden Ziele dann sofort nach,
+    /// statt bis zum nächsten regulären Durchlauf zu warten. Der Aufruf verbraucht die Vormerkung.
+    /// </summary>
+    public bool TakeWakeRecheck(DateTime utcNow)
+    {
+        var due = Interlocked.Read(ref _recheckTicks);
+        return due != 0 && utcNow.Ticks >= due && Interlocked.CompareExchange(ref _recheckTicks, 0, due) == due;
+    }
+
+    /// <summary>Weckt den Rechner, wenn das Deployment es vorsieht und er nicht gerade erst geweckt wurde.</summary>
+    private async Task<bool> WakeAsync(Deployment deployment, DeploymentTarget target, CancellationToken ct)
+    {
+        if (!deployment.WakeTargets || wake is null || target.ComputerId is not { } computerId)
+            return false;
+        var now = DateTime.UtcNow;
+        if (_woken.TryGetValue(computerId, out var last) && now - last < WakeAgain)
+            return true;
+        if ((await wake.WakeAsync(computerId, ct))?.Sent != true)
+            return false;
+        _woken[computerId] = now;
+        // Mehrere Rechner desselben Durchlaufs teilen sich die früheste Nachprüfung.
+        var due = (now + WakeService.BootWait).Ticks;
+        long current;
+        do
+        {
+            current = Interlocked.Read(ref _recheckTicks);
+        } while ((current == 0 || due < current) && Interlocked.CompareExchange(ref _recheckTicks, due, current) != current);
+        return true;
+    }
 
     // Über alle Deployments hinweg begrenzt, damit mehrere gleichzeitige Deployments Server und Netz nicht überlasten.
     private readonly ParallelGate _slots = new(SettingsService.DefaultMaxParallelTargets);
@@ -90,7 +129,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     /// <exception cref="InvalidOperationException">Das Paket lässt sich nicht ausführen (z. B. keine Schritte).</exception>
     public async Task<Deployment> StartAsync(int packageId, IEnumerable<int> computerIds, DeploymentOptions options, CancellationToken ct = default)
     {
-        var (scanAfter, retryOffline, respectWindow) = (options.ScanAfter, options.RetryOffline, options.RespectWindow);
+        // Wecken ohne Warten wäre sinnlos: der Rechner braucht Minuten, bis er antwortet.
+        var (scanAfter, retryOffline, respectWindow) = (options.ScanAfter, options.RetryOffline || options.Wake, options.RespectWindow);
         // Vor und nach dem Zusammenstellen prüfen: wer ein Paket ändert, zieht zuerst die Freigabe zurück und ändert dann den Inhalt.
         if (options.RequireApproved)
             await DemandApprovedAsync(packageId, [packageId], ct);
@@ -110,7 +150,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             {
                 PackageId = packageId, PackageName = package.Name, PackageVersion = package.Version, ScanAfter = scanAfter,
                 RetryUntilUtc = respectWindow ? DateTime.UtcNow + WindowWait : retryOffline ? DateTime.UtcNow + RetryWindow : null,
-                RetryOffline = retryOffline, RespectMaintenanceWindow = respectWindow,
+                RetryOffline = retryOffline, RespectMaintenanceWindow = respectWindow, WakeTargets = options.Wake,
                 MaxFailures = options.MaxFailures is > 0 ? options.MaxFailures : null,
                 MaxFailurePercent = options.MaxFailurePercent is > 0 ? Math.Min(options.MaxFailurePercent.Value, 100) : null,
                 MaxParallel = options.MaxParallel is > 0 ? options.MaxParallel : null,
@@ -194,6 +234,12 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                     // Wer auf sein Fenster gewartet hat, wird beim Start ohnehin auf Erreichbarkeit geprüft.
                     if (target.Status == TargetStatus.WaitingWindow || await IsReachableAsync(target.ComputerName, ct))
                         ready.Add(target);
+                    else if (await WakeAsync(deployment, target, ct) && target.Error != WokenText)
+                    {
+                        var woken = WokenText;
+                        await UpdateAsync(db => db.DeploymentTargets.Where(t => t.Id == target.Id && t.Status == TargetStatus.WaitingOffline)
+                            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Error, woken)));
+                    }
                 }
             }
 
@@ -407,7 +453,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             if (checkOnline && !await IsReachableAsync(target.ComputerName, ct))
             {
                 status = TargetStatus.WaitingOffline;
-                error = WaitingText;
+                error = await WakeAsync(deployment, target, ct) ? WokenText : WaitingText;
                 return;
             }
             var live = _live[target.Id] = new LiveTarget();

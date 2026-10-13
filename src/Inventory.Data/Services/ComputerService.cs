@@ -62,6 +62,18 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Setzt die MAC-Adresse für Wake-on-LAN; leer = wieder die Adapter des letzten Scans verwenden.</summary>
+    /// <exception cref="InvalidOperationException">Der Text ist keine MAC-Adresse.</exception>
+    public async Task SetWakeMacAsync(int id, string? mac, CancellationToken ct = default)
+    {
+        var normalized = string.IsNullOrWhiteSpace(mac) ? null
+            : WakeOnLan.NormalizeMac(mac) ?? throw new InvalidOperationException(L["\"{0}\" is not a MAC address (expected like 00:1A:2B:3C:4D:5E).", mac.Trim()]);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var computer = await db.Computers.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Computer {0} not found", id]);
+        computer.WakeMac = normalized;
+        await db.SaveChangesAsync(ct);
+    }
+
     /// <summary>Setzt die Bestandsangaben eines Rechners; leere Texte werden zu "nicht angegeben".</summary>
     public async Task UpdateAssetAsync(int id, AssetData asset, CancellationToken ct = default)
     {

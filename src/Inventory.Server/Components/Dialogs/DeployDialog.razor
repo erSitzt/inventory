@@ -36,6 +36,7 @@
             </MudSelect>
             <MudCheckBox T="bool" @bind-Value="_scanAfter" Label="@L["Rescan inventory afterwards"]" Dense="true" />
             <MudCheckBox T="bool" @bind-Value="_retryOffline" Label="@L["Retry offline computers once they are reachable (up to 3 days)"]" Dense="true" />
+            <MudCheckBox T="bool" @bind-Value="_wake" Label="@L["Wake computers that are switched off (Wake-on-LAN); they are retried for up to 3 days"]" Dense="true" />
             <MudCheckBox T="bool" @bind-Value="_respectWindow" Label="@L["Only within the maintenance window (computers outside wait until it opens)"]" Dense="true" />
             @if (_unapproved.Contains(_packageId ?? 0))
             {
@@ -73,6 +74,7 @@
     private bool _scanAfter = true;
     private bool _retryOffline;
     private bool _respectWindow;
+    private bool _wake;
     private int? _maxFailures;
     private int? _maxFailurePercent;
     private int? _maxParallel;
@@ -113,7 +115,7 @@
         try
         {
             var deployment = await DeploymentService.StartAsync(_packageId!.Value, _targets.Select(c => c.Id),
-                new DeploymentOptions(_scanAfter, _retryOffline, _respectWindow, _maxFailures, _maxFailurePercent, _maxParallel) { RequireApproved = !_isAdmin });
+                new DeploymentOptions(_scanAfter, _retryOffline, _respectWindow, _maxFailures, _maxFailurePercent, _maxParallel) { RequireApproved = !_isAdmin, Wake = _wake });
             await Audit.LogAsync(L["Deployment started"], L["#{0} {1} on {2}", deployment.Id, $"{deployment.PackageName} {deployment.PackageVersion}", string.Join(", ", deployment.Targets.Select(t => t.ComputerName))]);
             MudDialog.Close(DialogResult.Ok(deployment.Id));
             Navigation.NavigateTo($"deployments/{deployment.Id}");

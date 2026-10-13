@@ -27,6 +27,12 @@ public class Computer
     public string? AgentVersion { get; set; }
     public DateTime? AgentLastSeenUtc { get; set; }
 
+    /// <summary>
+    /// MAC-Adresse für Wake-on-LAN, von Hand eingetragen; null = die Adapter des letzten Scans.
+    /// Nötig, wenn der Rechner über eine andere Karte aufwacht als die zuletzt gesehenen (z. B. eine Dockingstation).
+    /// </summary>
+    public string? WakeMac { get; set; }
+
     // Von Hand gepflegte Bestandsangaben
     public string? Owner { get; set; }
     public string? Location { get; set; }

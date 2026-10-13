@@ -45,6 +45,8 @@ credentials. The user interface is available in English and German; translations
 - **Maintenance windows**: weekdays and time of day per collection plus a default window; deployments and schedules
   with the option "only within the maintenance window" hold back computers whose window is closed and start them
   when it opens
+- **Wake-on-LAN**: deployments and schedules can wake computers that are switched off and run them once they
+  answer; "Wake" on the computer page and in the actions of the computer list does the same by hand
 - **Windows Update**: a step type that searches, downloads and installs pending updates from the source configured
   on the computer (WSUS or Microsoft Update) – all, only security and critical ones, or specific KB numbers; a
   following "Reboot" step can be limited to "only if a restart is pending". The update overview offers "Install …"
@@ -254,6 +256,30 @@ The synchronization (*Settings → Active Directory*) creates computers from com
   configurable grace period – including inventory data and history.
 - Manually added computers the directory never knew remain untouched. If the directory returns no accounts at all or
   conspicuously many computers would be deleted at once, the run changes or deletes nothing and reports it.
+
+### Wake-on-LAN
+
+With the option "Wake computers that are switched off", a deployment or schedule sends a magic packet to every
+target that does not answer and tries it again about two minutes later, then with every regular retry (for up to
+three days). A computer that stays off is woken again at most once an hour, and only while its maintenance window
+is open if the deployment respects windows.
+
+The packet goes to UDP port 9: as a broadcast into every network the server is connected to, to the broadcast
+address of the computer's last known subnet and to its last known address. The MAC addresses come from the last
+scan (all adapters that had an address); *Edit* on the computer page takes a fixed one, for a computer that has
+never been scanned or wakes through another adapter.
+
+What has to be true outside Inventory:
+
+- Wake-on-LAN is enabled in the firmware and in the adapter's driver settings. With Windows fast startup switched
+  on, many devices wake from sleep or hibernate only, not after a shutdown.
+- The computer is on a cable. Laptops on Wi-Fi or on battery rarely wake.
+- Computers in another subnet than the server only receive the packet if the router forwards directed broadcasts
+  for that subnet (off by default on most routers), or while the router still has the computer's address in its
+  ARP table. The subnet mask is known after a scan with the current runner; until then /24 is assumed.
+
+Sending is not a confirmation: Wake-on-LAN has no answer. Whether the computer started shows in the reachability
+check.
 
 ### Package library
 
@@ -563,7 +589,7 @@ addresses require the same sign-in as the rest of the API.
 
 | Area | Endpoints |
 |---|---|
-| Computers | create, query, delete, check reachability, inventory scan, installed software, hardware details, RDP file, run command or PowerShell script |
+| Computers | create, query, delete, check reachability, wake (Wake-on-LAN), inventory scan, installed software, hardware details, RDP file, run command or PowerShell script |
 | Packages | list, create, change, delete; add, change, move and delete steps; upload and delete files (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); set the detection (`detection`, `verifyAfterInstall`) and read name, version and product code of an uploaded MSI (`…/api/packages/<id>/msi/setup.msi`) |
 | Deployments | start, list, query progress per computer, cancel |
 | Collections | list, create, change, delete; add and remove members of static collections; maintenance window per collection (`maintenanceWindow`) and the default window (`/api/settings/maintenance-window`) |

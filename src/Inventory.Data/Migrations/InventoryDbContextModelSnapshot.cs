@@ -501,6 +501,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("UpdateServer")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("WakeMac")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateOnly?>("WarrantyUntil")
                         .HasColumnType("TEXT");
 
@@ -732,6 +735,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SubnetMasks")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -1143,6 +1149,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("StopReason")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("WakeTargets")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PackageId");
@@ -1522,6 +1531,9 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Trigger")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("WakeTargets")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");

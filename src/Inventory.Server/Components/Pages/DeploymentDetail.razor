@@ -183,7 +183,7 @@
         try
         {
             var retry = await DeploymentService.StartAsync(_deployment!.PackageId!.Value, FailedTargets.Select(t => t.ComputerId!.Value), new DeploymentOptions(_deployment.ScanAfter, _deployment.RetryOffline, _deployment.RespectMaintenanceWindow,
-                    _deployment.MaxFailures, _deployment.MaxFailurePercent, _deployment.MaxParallel) { RequireApproved = !await Access.IsAdminAsync() });
+                    _deployment.MaxFailures, _deployment.MaxFailurePercent, _deployment.MaxParallel) { RequireApproved = !await Access.IsAdminAsync(), Wake = _deployment.WakeTargets });
             await Audit.LogAsync(L["Deployment retried"], L["#{0} {1} on {2}", retry.Id, retry.PackageName, string.Join(", ", retry.Targets.Select(t => t.ComputerName))]);
             Navigation.NavigateTo($"deployments/{retry.Id}");
         }

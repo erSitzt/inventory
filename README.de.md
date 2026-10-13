@@ -46,6 +46,8 @@ Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen i
 - **Wartungsfenster**: Wochentage und Uhrzeit je Sammlung sowie ein Standardfenster; Deployments und Zeitpläne mit
   der Option „Nur im Wartungsfenster“ halten Rechner zurück, deren Fenster geschlossen ist, und starten sie, sobald es
   beginnt
+- **Wake-on-LAN**: Deployments und Zeitpläne können ausgeschaltete Rechner wecken und holen sie nach, sobald sie
+  antworten; „Wecken“ auf der Rechnerseite und in den Aktionen der Rechnerliste tut dasselbe von Hand
 - **Windows Update**: ein Schritt-Typ, der ausstehende Updates aus der auf dem Rechner eingestellten Quelle (WSUS
   oder Microsoft Update) sucht, lädt und installiert – alle, nur Sicherheits- und kritische oder bestimmte KB-Nummern;
   ein nachfolgender Schritt „Neustart“ lässt sich auf „nur wenn ein Neustart aussteht“ beschränken. Die
@@ -269,6 +271,31 @@ Die Synchronisation (*Einstellungen → Active Directory*) legt Computerkonten a
   ununterbrochen gefehlt haben – samt Inventardaten und Verlauf.
 - Von Hand angelegte Rechner, die das Verzeichnis nie gekannt hat, bleiben unberührt. Liefert das Verzeichnis gar keine
   Konten oder wären auffällig viele Rechner auf einmal zu löschen, ändert bzw. löscht der Lauf nichts und meldet das.
+
+### Wake-on-LAN
+
+Mit der Option „Ausgeschaltete Rechner wecken“ schickt ein Deployment oder Zeitplan jedem Ziel, das nicht
+antwortet, ein Magic Packet und versucht es etwa zwei Minuten später erneut, danach bei jedem regulären Nachholen
+(bis zu drei Tage lang). Ein Rechner, der aus bleibt, wird höchstens einmal je Stunde erneut geweckt – und nur,
+solange sein Wartungsfenster offen ist, wenn das Deployment Fenster beachtet.
+
+Das Paket geht an UDP-Port 9: als Broadcast in jedes Netz, an das der Server angeschlossen ist, an die
+Broadcast-Adresse des zuletzt bekannten Subnetzes des Rechners und an seine zuletzt bekannte Adresse. Die
+MAC-Adressen stammen aus dem letzten Scan (alle Adapter, die eine Adresse hatten); *Bearbeiten* auf der Rechnerseite
+nimmt eine feste auf, für einen Rechner, der noch nie gescannt wurde oder über einen anderen Adapter aufwacht.
+
+Was außerhalb von Inventory stimmen muss:
+
+- Wake-on-LAN ist in der Firmware und in den Treibereinstellungen des Adapters eingeschaltet. Ist der Schnellstart
+  von Windows eingeschaltet, wachen viele Geräte nur aus Standby oder Ruhezustand auf, nicht nach dem Herunterfahren.
+- Der Rechner hängt am Kabel. Laptops im WLAN oder im Akkubetrieb wachen selten auf.
+- Rechner in einem anderen Subnetz als der Server erhalten das Paket nur, wenn der Router gerichtete Broadcasts für
+  dieses Subnetz weiterleitet (bei den meisten Routern ab Werk aus) oder solange der Router die Adresse des Rechners
+  noch in seiner ARP-Tabelle hat. Die Subnetzmaske ist nach einem Scan mit dem aktuellen Runner bekannt; bis dahin
+  wird /24 angenommen.
+
+Gesendet heißt nicht aufgewacht: Wake-on-LAN kennt keine Antwort. Ob der Rechner gestartet ist, zeigt die
+Erreichbarkeitsprüfung.
 
 ### Paketbibliothek
 
@@ -585,7 +612,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 
 | Bereich | Endpunkte |
 |---|---|
-| Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, Inventar-Scan, installierte Software, Hardware-Details, RDP-Datei, Befehl oder PowerShell-Skript ausführen |
+| Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, wecken (Wake-on-LAN), Inventar-Scan, installierte Software, Hardware-Details, RDP-Datei, Befehl oder PowerShell-Skript ausführen |
 | Pakete | auflisten, anlegen, ändern, löschen; Schritte hinzufügen, ändern, verschieben und löschen; Dateien hochladen und löschen (`curl -T setup.msi …/api/packages/<id>/files/setup.msi`); Erkennung festlegen (`detection`, `verifyAfterInstall`) und Name, Version und Produktcode einer hochgeladenen MSI lesen (`…/api/packages/<id>/msi/setup.msi`) |
 | Deployments | starten, auflisten, Fortschritt je Rechner abfragen, abbrechen |
 | Sammlungen | auflisten, anlegen, ändern, löschen; Mitglieder statischer Sammlungen hinzufügen und entfernen; Wartungsfenster je Sammlung (`maintenanceWindow`) und das Standardfenster (`/api/settings/maintenance-window`) |

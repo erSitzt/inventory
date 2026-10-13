@@ -33,6 +33,12 @@
                     <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
                 }
             </MudSelect>
+            <MudTextField @bind-Value="_wakeMac" Label="@L["MAC address for Wake-on-LAN"]" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="00:1A:2B:3C:4D:5E"
+                          HelperText="@L["Empty = the network adapters of the last scan. Enter one if the computer wakes through another adapter or has never been scanned."]" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
             @if (Computer.AgentKeyHash is not null)
             {
                 <MudAlert Severity="Severity.Info" Dense="true">
@@ -61,6 +67,8 @@
     private DateTime? _purchaseDate, _warrantyUntil;
     private TransportKind? _transport;
     private int? _credentialId;
+    private string? _wakeMac;
+    private string? _error;
 
     protected override void OnInitialized()
     {
@@ -70,6 +78,7 @@
         _warrantyUntil = Computer.WarrantyUntil?.ToDateTime(TimeOnly.MinValue);
         _transport = Computer.Transport;
         _credentialId = Computer.CredentialId;
+        _wakeMac = Computer.WakeMac;
     }
 
     private async Task ForgetAgentAsync()
@@ -85,6 +94,16 @@
     {
         if (!await Access.DemandAdminAsync())
             return;
+        try
+        {
+            // Zuerst das Feld, das abgelehnt werden kann: sonst wäre der Rest schon gespeichert.
+            await ComputerService.SetWakeMacAsync(Computer.Id, _wakeMac);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+            return;
+        }
         await ComputerService.UpdateAsync(Computer.Id, _description, _transport, _credentialId);
         await ComputerService.UpdateAssetAsync(Computer.Id, new AssetData(_owner, _location, _costCenter, _inventoryNumber,
             _purchaseDate is { } purchase ? DateOnly.FromDateTime(purchase) : null, _warrantyUntil is { } warranty ? DateOnly.FromDateTime(warranty) : null, _tags, _notes));

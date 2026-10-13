@@ -35,13 +35,13 @@ public static class ManagementEndpoints
         bool ScanAfter = true, bool RetryOffline = true, DateTime? StartLocal = null, int IntervalMinutes = 60, TimeSpan? TimeOfDay = null, int DaysOfWeek = 0,
         bool RespectMaintenanceWindow = true, int? MaxFailures = null, int? MaxFailurePercent = null, int? MaxParallel = null,
         int MonthDay = 1, int MonthWeek = 2, int MonthWeekday = 2, int MonthOffsetDays = 0, DateTime? EndLocal = null, bool CatchUpMissed = true, int RecheckDays = 0,
-        int? ReportId = null, int? NotificationChannelId = null, ReportFormat ReportFormat = ReportFormat.Excel);
+        int? ReportId = null, int? NotificationChannelId = null, ReportFormat ReportFormat = ReportFormat.Excel, bool WakeTargets = false);
 
     public sealed record ScheduleDto(int Id, string Name, bool Enabled, ScheduleAction Action, int? PackageId, int? CollectionId, bool ScanAfter, bool RetryOffline,
         ScheduleTrigger Trigger, DateTime? StartLocal, int IntervalMinutes, TimeSpan TimeOfDay, int DaysOfWeek, DateTime? LastRunUtc, DateTime? NextRunUtc, string? LastResult, bool RespectMaintenanceWindow,
         int? MaxFailures, int? MaxFailurePercent, int? MaxParallel,
         int MonthDay = 1, int MonthWeek = 2, int MonthWeekday = 2, int MonthOffsetDays = 0, DateTime? EndLocal = null, bool CatchUpMissed = true, int RecheckDays = 0,
-        int? ReportId = null, int? NotificationChannelId = null, ReportFormat ReportFormat = ReportFormat.Excel);
+        int? ReportId = null, int? NotificationChannelId = null, ReportFormat ReportFormat = ReportFormat.Excel, bool WakeTargets = false);
 
     public sealed record DeploymentSummaryDto(int Id, int? PackageId, string PackageName, string? PackageVersion, DateTime CreatedUtc, DateTime? FinishedUtc,
         int Targets, int Succeeded, int AlreadyInstalled, int Failed, int Waiting);
@@ -328,7 +328,7 @@ public static class ManagementEndpoints
 
     private static ScheduleDto ToDto(Schedule s) => new(s.Id, s.Name, s.Enabled, s.Action, s.PackageId, s.CollectionId, s.ScanAfter, s.RetryOffline, s.Trigger,
         s.StartLocal, s.IntervalMinutes, s.TimeOfDay, s.DaysOfWeek, s.LastRunUtc, s.NextRunUtc, s.LastResult, s.RespectMaintenanceWindow, s.MaxFailures, s.MaxFailurePercent, s.MaxParallel,
-        s.MonthDay, s.MonthWeek, s.MonthWeekday, s.MonthOffsetDays, s.EndLocal, s.CatchUpMissed, s.RecheckDays, s.ReportId, s.NotificationChannelId, s.ReportFormat);
+        s.MonthDay, s.MonthWeek, s.MonthWeekday, s.MonthOffsetDays, s.EndLocal, s.CatchUpMissed, s.RecheckDays, s.ReportId, s.NotificationChannelId, s.ReportFormat, s.WakeTargets);
 
     private static Schedule Apply(Schedule s, ScheduleRequest r)
     {
@@ -355,6 +355,7 @@ public static class ManagementEndpoints
         (s.Trigger, s.StartLocal, s.IntervalMinutes, s.DaysOfWeek) = (r.Trigger, r.StartLocal, Math.Max(r.IntervalMinutes, 1), r.DaysOfWeek);
         s.TimeOfDay = r.TimeOfDay ?? s.TimeOfDay;
         s.RespectMaintenanceWindow = r.RespectMaintenanceWindow;
+        s.WakeTargets = r.WakeTargets && r.Action == ScheduleAction.Deploy;
         (s.MaxFailures, s.MaxFailurePercent, s.MaxParallel) = (r.MaxFailures is > 0 ? r.MaxFailures : null, r.MaxFailurePercent is > 0 ? Math.Min(r.MaxFailurePercent.Value, 100) : null, r.MaxParallel is > 0 ? r.MaxParallel : null);
         return s;
     }

@@ -106,6 +106,8 @@ namespace Inventory.Contracts
         public string Name { get; set; } = "";
         public string? MacAddress { get; set; }
         public List<string> IpAddresses { get; set; } = new List<string>();
+        /// <summary>Je Adresse in <see cref="IpAddresses"/> die Subnetzmaske (IPv4) bzw. Präfixlänge (IPv6); leer bei älteren Runnern.</summary>
+        public List<string> SubnetMasks { get; set; } = new List<string>();
         public List<string> Gateways { get; set; } = new List<string>();
         public List<string> DnsServers { get; set; } = new List<string>();
         public bool DhcpEnabled { get; set; }

@@ -157,7 +157,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         db.NetworkAdapters.AddRange(data.NetworkAdapters.Select(n => new ComputerNetworkAdapter
         {
             ComputerId = computerId, Name = n.Name, MacAddress = n.MacAddress, DhcpEnabled = n.DhcpEnabled,
-            IpAddresses = string.Join(", ", n.IpAddresses), Gateways = string.Join(", ", n.Gateways), DnsServers = string.Join(", ", n.DnsServers),
+            IpAddresses = string.Join(", ", n.IpAddresses), SubnetMasks = n.SubnetMasks.Count > 0 ? string.Join(", ", n.SubnetMasks) : null, Gateways = string.Join(", ", n.Gateways), DnsServers = string.Join(", ", n.DnsServers),
         }));
         db.Services.AddRange(data.Services.Select(s => new ComputerWindowsService
         {

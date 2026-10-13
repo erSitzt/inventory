@@ -4,6 +4,7 @@
 @inject CredentialService CredentialService
 @inject IDialogService Dialogs
 @inject ScanService ScanService
+@inject WakeService WakeService
 @inject InventoryStore Store
 @inject ISnackbar Snackbar
 @inject Auditor Audit
@@ -37,6 +38,10 @@
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">@L["Run command"]</MudButton>
     </AdminOnly>
     <OperatorOnly>
+        @if (!_computer.IsOnline)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PowerSettingsNew" OnClick="WakeAsync">@L["Wake"]</MudButton>
+        }
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ManageSearch" Disabled="_scanning" OnClick="ScanAsync">
             @(_scanning ? L["Scanning …"] : L["Scan now"])
         </MudButton>
@@ -582,6 +587,24 @@ else if (_computer.ReverseDnsMismatch)
         _computer = await ComputerService.GetDetailAsync(Id);
         _changes = await Store.ChangesAsync(Id);
         _shownScanUtc = _computer?.LastScanUtc;
+    }
+
+    private async Task WakeAsync()
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        var result = await WakeService.WakeAsync(Id);
+        if (result is null)
+            return;
+        if (result.Macs.Count == 0)
+            Snackbar.Add(L["No MAC address is known for this computer: scan it once or enter one under Edit."], Severity.Warning);
+        else if (!result.Sent)
+            Snackbar.Add(L["The wake-up could not be sent: the server has no way into the network."], Severity.Error);
+        else
+        {
+            await Audit.LogAsync(L["Wake-up sent"], _computer!.Name);
+            Snackbar.Add(L["Wake-up sent to {0}. Whether the computer starts shows after about two minutes under \"Check reachability\".", string.Join(", ", result.Macs)], Severity.Info);
+        }
     }
 
     private async Task ScanAsync()

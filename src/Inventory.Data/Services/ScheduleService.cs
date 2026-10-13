@@ -206,7 +206,7 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
             if (schedule.PackageId is not { } packageId)
                 return L["No package selected"];
             var deployment = await deployments.StartAsync(packageId, ids, new DeploymentOptions(schedule.ScanAfter, schedule.RetryOffline, schedule.RespectMaintenanceWindow,
-                schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true, ScheduleId = schedule.Id }, ct);
+                schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true, ScheduleId = schedule.Id, Wake = schedule.WakeTargets }, ct);
             return L["Deployment #{0} started on {1} computers", deployment.Id, deployment.Targets.Count];
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
@@ -232,7 +232,7 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
                 return status;
             var batch = state.Due.Take(MembershipBatch).ToList();
             var deployment = await deployments.StartAsync(packageId, batch, new DeploymentOptions(schedule.ScanAfter, schedule.RetryOffline, schedule.RespectMaintenanceWindow,
-                schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true, ScheduleId = schedule.Id }, ct);
+                schedule.MaxFailures, schedule.MaxFailurePercent, schedule.MaxParallel) { RequireApproved = true, ScheduleId = schedule.Id, Wake = schedule.WakeTargets }, ct);
             return $"{status} – {L["Deployment #{0} started on {1} computers", deployment.Id, deployment.Targets.Count]}";
         }
         finally
