@@ -56,6 +56,12 @@ public static class ManagementEndpoints
 
     public sealed record TokenCreatedDto(string Token);
 
+    /// <summary>Ein leeres oder fehlendes Passwort lässt beim Ändern das gespeicherte unverändert.</summary>
+    public sealed record CredentialRequest(string Name, string Username, string? Password = null, string? Description = null);
+
+    /// <summary>Ohne das Passwort: es verlässt den Server nicht.</summary>
+    public sealed record CredentialDto(int Id, string Name, string Username, string? Description, bool IsDefault, DateTime CreatedUtc);
+
     public static IEndpointRouteBuilder MapManagementEndpoints(this IEndpointRouteBuilder app)
     {
         var packages = app.MapGroup("/api/packages").WithTags("Packages").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
@@ -226,6 +232,51 @@ public static class ManagementEndpoints
             await audit.LogAsync(http.Actor(), "API token deleted via API", $"Token {id}", ct);
             return Results.NoContent();
         }).WithSummary("Delete API token").Produces(204);
+
+        var credentials = app.MapGroup("/api/credentials").WithTags("Credentials").AddEndpointFilter(MapErrors).RequireAdmin();
+        static CredentialDto Credential(Credential c) => new(c.Id, c.Name, c.Username, c.Description, c.IsDefault, c.CreatedUtc);
+        static void Check(CredentialRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Username))
+                throw new ArgumentException("name and username are required");
+        }
+
+        credentials.MapGet("", async (CredentialService service, CancellationToken ct) => (await service.ListAsync(ct)).Select(Credential))
+            .WithSummary("All credentials").WithDescription("Accounts the server uses to reach computers. Passwords are never returned.");
+
+        credentials.MapPost("", async (CredentialRequest request, CredentialService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            Check(request);
+            var created = await service.SaveAsync(null, request.Name, request.Username, request.Password, request.Description, ct);
+            await audit.LogAsync(http.Actor(), "Credentials created via API", $"{created.Name} ({created.Username})", ct);
+            return Results.Created($"/api/credentials/{created.Id}", Credential(created));
+        }).WithSummary("Create credentials").WithDescription("The password is stored encrypted. The first credentials become the default.").Produces<CredentialDto>(201).Produces(400).Produces(409);
+
+        credentials.MapPut("{id:int}", async (int id, CredentialRequest request, CredentialService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            Check(request);
+            var saved = await service.SaveAsync(id, request.Name, request.Username, request.Password, request.Description, ct);
+            await audit.LogAsync(http.Actor(), "Credentials changed via API", $"{saved.Name} ({saved.Username}){(string.IsNullOrEmpty(request.Password) ? "" : ", new password")}", ct);
+            return Results.Ok(Credential(saved));
+        }).WithSummary("Change credentials").WithDescription("An empty or omitted password keeps the stored one, e.g. to rotate only the password send the unchanged name and username with the new password.").Produces<CredentialDto>().Produces(400).Produces(404).Produces(409);
+
+        credentials.MapPost("{id:int}/default", async (int id, CredentialService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if ((await service.ListAsync(ct)).FirstOrDefault(c => c.Id == id) is not { } credential)
+                return Results.NotFound();
+            await service.SetDefaultAsync(id, ct);
+            await audit.LogAsync(http.Actor(), "Default credentials changed via API", credential.Name, ct);
+            return Results.NoContent();
+        }).WithSummary("Make default").WithDescription("Computers without credentials of their own use the default.").Produces(204).Produces(404);
+
+        credentials.MapDelete("{id:int}", async (int id, CredentialService service, AuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            if ((await service.ListAsync(ct)).FirstOrDefault(c => c.Id == id) is not { } credential)
+                return Results.NotFound();
+            await service.DeleteAsync(id, ct);
+            await audit.LogAsync(http.Actor(), "Credentials deleted via API", $"{credential.Name} ({credential.Username})", ct);
+            return Results.NoContent();
+        }).WithSummary("Delete credentials").WithDescription("Computers and settings that used them fall back to the default.").Produces(204).Produces(404);
 
         var maintenanceDefault = app.MapGroup("/api/settings/maintenance-window").WithTags("Settings").AddEndpointFilter(MapErrors).WritesRequire(AccessControl.AdminPolicy);
 

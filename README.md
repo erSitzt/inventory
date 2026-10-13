@@ -631,13 +631,21 @@ addresses require the same sign-in as the rest of the API.
 | Collections | list, create, change, delete; add and remove members of static collections; maintenance window per collection (`maintenanceWindow`) and the default window (`/api/settings/maintenance-window`) |
 | Schedules | list, create, change, delete, run now |
 | API tokens | list, create with a role (the secret is shown once), delete – administrators only |
+| Credentials | list (never with the password), create, change (e.g. rotate the password), make default, delete – administrators only |
 | Reports | computers and software as CSV or JSON |
 | Audit log | entries as JSON (`/api/audit`) or CSV (`/api/audit/export.csv`), filtered by user, action, period and text – operators and administrators |
 
 The protocol between agent and server (`/api/agent/…`) is not part of the documented API.
 
-For a complete backup, the folders `keys` (without them the stored passwords are unreadable) and `repository` belong
-next to `backups`.
+**Backup and housekeeping.** Once a day the server writes a consistent copy of the database to `backups` and, next
+to it, the keys as `…-keys.zip` – without them the stored passwords of a backup are unreadable; 14 copies are kept.
+On Windows the keys are bound to the server (DPAPI), so they restore on the same machine. Package files
+(`repository`) are not part of the backup: include that folder in the backup of the server if you need them.
+
+After the backup the server removes what has outlived its retention – audit entries and finished deployments
+(*Settings*, 730 days each by default, 0 = keep everything), inventory changes after two years – and tidies the
+database; if a large share of the file has become free, it is rewritten once no deployment is running. Deployments
+of required schedules stay, because the schedule recognises by them where the package already is.
 
 ## Roadmap
 

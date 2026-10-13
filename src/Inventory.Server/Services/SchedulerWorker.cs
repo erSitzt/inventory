@@ -57,6 +57,8 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                 {
                     await inventory.CleanupChangesAsync(HistoryRetention, stoppingToken);
                     await audit.CleanupAsync(await settings.GetAuditRetentionDaysAsync(stoppingToken), stoppingToken);
+                    await deployments.CleanupAsync(await settings.GetDeploymentRetentionDaysAsync(stoppingToken), stoppingToken);
+                    await backups.OptimizeAsync(busy: deployments.AnyRunning, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

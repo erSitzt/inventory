@@ -23,6 +23,8 @@ public static class SettingKeys
     public const string AutoApproveLibraryUpdates = "Packages.AutoApproveLibraryUpdates";
     /// <summary>Protokolleinträge werden so viele Tage aufbewahrt; "0" = unbegrenzt.</summary>
     public const string AuditRetentionDays = "Audit.RetentionDays";
+    /// <summary>Abgeschlossene Deployments, die älter sind, werden täglich entfernt; 0 = unbegrenzt.</summary>
+    public const string DeploymentRetentionDays = "Deployment.RetentionDays";
     /// <summary>Mandant und Anwendung (öffentlicher Client) für die Freigabe des Runners in Microsoft Defender.</summary>
     public const string DefenderTenant = "Defender.Tenant";
     public const string DefenderClientId = "Defender.ClientId";

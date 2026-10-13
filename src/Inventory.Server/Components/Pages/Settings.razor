@@ -62,8 +62,10 @@
                          HelperText="@L["How long a computer may take to come back after a restart step. After that the deployment counts as failed for this computer."]" />
         <MudNumericField T="int" Value="_auditDays" ValueChanged="SetAuditDaysAsync" Min="0" Max="@Inventory.Data.Services.SettingsService.MaxAuditRetentionDays" Label="@L["Keep audit log entries (days)"]" Variant="Variant.Outlined"
                          HelperText="@L["Older entries are removed once a day. 0 keeps everything."]" />
+        <MudNumericField T="int" Value="_deploymentDays" ValueChanged="SetDeploymentDaysAsync" Min="0" Max="@Inventory.Data.Services.SettingsService.MaxAuditRetentionDays" Label="@L["Keep finished deployments (days)"]" Variant="Variant.Outlined"
+                         HelperText="@L["Older deployments are removed once a day, with their output. 0 keeps everything; otherwise at least 30 days. Deployments of required schedules stay."]" />
         <MudTextField Value="@Options.Value.ResolveDataDirectory()" Label="@L["Data directory"]" Variant="Variant.Outlined" ReadOnly="true"
-                      HelperText="@L["Database, keys, package files and daily backups (subfolder backups, 14 copies). Configurable via Inventory:DataDirectory."]" />
+                      HelperText="@L["Database, keys, package files and daily backups (subfolder backups, 14 copies of database and keys). Package files are not part of the backup – include the folder in the backup of the server if you need them. Configurable via Inventory:DataDirectory."]" />
         <MudText Typo="Typo.body2">
             @L["Sign-in:"]
             @if (!Options.Value.AuthenticationEnabled)
@@ -628,6 +630,16 @@
         Snackbar.Add(L["Saved."], Severity.Success);
     }
 
+    private int _deploymentDays = Inventory.Data.Services.SettingsService.DefaultDeploymentRetentionDays;
+
+    private async Task SetDeploymentDaysAsync(int days)
+    {
+        await SettingsService.SetDeploymentRetentionDaysAsync(days);
+        _deploymentDays = await SettingsService.GetDeploymentRetentionDaysAsync();
+        await Audit.LogAsync(L["Setting changed"], $"{L["Keep finished deployments (days)"]}: {(_deploymentDays == 0 ? L["unlimited"] : _deploymentDays)}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
     private bool _autoApprove;
 
     private async Task SetAutoApproveAsync(bool enabled)
@@ -682,6 +694,7 @@
         _maxParallel = await SettingsService.GetMaxParallelTargetsAsync();
         _autoApprove = await SettingsService.GetAutoApproveLibraryUpdatesAsync();
         _auditDays = await SettingsService.GetAuditRetentionDaysAsync();
+        _deploymentDays = await SettingsService.GetDeploymentRetentionDaysAsync();
         await LoadAdAsync();
         await LoadHeartbeatAsync();
         await LoadUpdateAsync();

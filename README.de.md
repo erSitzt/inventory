@@ -655,13 +655,23 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 | Sammlungen | auflisten, anlegen, ändern, löschen; Mitglieder statischer Sammlungen hinzufügen und entfernen; Wartungsfenster je Sammlung (`maintenanceWindow`) und das Standardfenster (`/api/settings/maintenance-window`) |
 | Zeitpläne | auflisten, anlegen, ändern, löschen, sofort ausführen |
 | API-Tokens | auflisten, mit einer Rolle anlegen (das Geheimnis wird einmal gezeigt), löschen – nur Administratoren |
+| Zugangsdaten | auflisten (nie mit Passwort), anlegen, ändern (z. B. das Passwort wechseln), als Standard setzen, löschen – nur Administratoren |
 | Berichte | Rechner und Software als CSV oder JSON |
 | Protokoll | Einträge als JSON (`/api/audit`) oder CSV (`/api/audit/export.csv`), gefiltert nach Benutzer, Aktion, Zeitraum und Text – Operatoren und Administratoren |
 
 Das Protokoll zwischen Agent und Server (`/api/agent/…`) ist nicht Teil der dokumentierten API.
 
-Für eine vollständige Sicherung gehören neben `backups` auch die Ordner `keys` (ohne sie sind die gespeicherten
-Passwörter nicht mehr lesbar) und `repository` dazu.
+**Sicherung und Aufräumen.** Einmal täglich schreibt der Server eine konsistente Kopie der Datenbank nach `backups`
+und daneben die Schlüssel als `…-keys.zip` – ohne sie sind die gespeicherten Passwörter einer Sicherung nicht lesbar;
+14 Stände bleiben erhalten. Unter Windows sind die Schlüssel an den Server gebunden (DPAPI), sie lassen sich also auf
+demselben Rechner zurückspielen. Paketdateien (`repository`) sind nicht Teil der Sicherung: wer sie braucht, nimmt
+diesen Ordner in die Sicherung des Servers auf.
+
+Nach der Sicherung entfernt der Server, was seine Aufbewahrungsfrist überschritten hat – Protokolleinträge und
+abgeschlossene Deployments (*Einstellungen*, Vorgabe je 730 Tage, 0 = alles behalten), Inventaränderungen nach zwei
+Jahren – und räumt die Datenbank auf; ist ein großer Teil der Datei frei geworden, wird sie neu geschrieben, sobald
+kein Deployment läuft. Deployments von Pflicht-Zeitplänen bleiben, weil der Zeitplan an ihnen erkennt, wo das Paket
+schon ist.
 
 ## Roadmap
 
