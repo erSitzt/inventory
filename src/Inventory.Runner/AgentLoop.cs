@@ -213,7 +213,14 @@ namespace Inventory.Runner
 
             // Erst ablegen, dann melden: ist der Server gerade nicht erreichbar, geht das Ergebnis nicht verloren.
             Directory.CreateDirectory(PendingDir);
-            File.WriteAllText(Path.Combine(PendingDir, jobId + ".json"), JobJson.Serialize(result), new UTF8Encoding(false));
+            // Scheitert der Runner, bevor er das Manifest gelesen hat, fehlt dem Ergebnis die Kennung des Jobs.
+            if (string.IsNullOrEmpty(result.JobId))
+                result.JobId = jobId;
+            // Über eine Zwischendatei: ein Abbruch mitten im Schreiben hinterlässt so kein halbes Ergebnis unter dem endgültigen Namen.
+            var pending = Path.Combine(PendingDir, jobId + ".json");
+            File.WriteAllText(pending + ".tmp", JobJson.Serialize(result), new UTF8Encoding(false));
+            File.Delete(pending);
+            File.Move(pending + ".tmp", pending);
             try { Directory.Delete(jobDir, true); } catch (IOException) { /* wird beim nächsten Job nicht stören */ }
             DeliverPending();
         }

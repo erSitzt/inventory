@@ -86,7 +86,8 @@ public static class AgentEndpoints
             }
             // Der Server kennt den Job nicht mehr, weil er inzwischen neu gestartet wurde: das Ergebnis gehört dann zu einem
             // unterbrochenen Ziel. Alles andere (unbekannt oder schon übernommen) meldet 404; der Agent verwirft es daraufhin.
-            if (await ReadAsync<JobResult>(http, ct) is not { } late)
+            // Das Ergebnis muss selbst zu diesem Job gehören, nicht nur unter seiner Adresse eintreffen.
+            if (await ReadAsync<JobResult>(http, ct) is not { } late || late.JobId != jobId)
                 return Results.BadRequest();
             return await deployments.AdoptResultAsync(computer.Id, jobId, late, ct) ? Results.NoContent() : Results.NotFound();
         });

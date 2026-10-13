@@ -810,30 +810,35 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     /// <returns>false = kein solches Ziel; der Agent kann das Ergebnis verwerfen.</returns>
     public async Task<bool> AdoptResultAsync(int computerId, string jobId, JobResult result, CancellationToken ct = default)
     {
-        int deploymentId;
-        await using (var db = await dbFactory.CreateDbContextAsync(ct))
-        {
-            var target = await db.DeploymentTargets.FirstOrDefaultAsync(t => t.JobId == jobId && t.ComputerId == computerId && t.Interrupted && t.Status == TargetStatus.Failed, ct);
-            if (target is null)
-                return false;
-            // Der unterbrochene Job war selbst schon eine Fortsetzung, wenn das Ziel noch einen Fortsetzungspunkt trägt.
-            var resumeFrom = target.ResumeFromStep ?? 0;
-            var previousSteps = resumeFrom > 0 ? target.Steps.Take(resumeFrom).ToList() : [];
-            var (status, error, steps, resumeNext, bootTime) = Evaluate(result, target.Steps, previousSteps, resumeFrom, target.BootTimeUtc, cancelled: false);
-            target.Status = status;
-            target.Error = error;
-            target.Steps = steps;
-            target.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
-            target.BootTimeUtc = bootTime;
-            target.RebootUtc = status == TargetStatus.WaitingReboot ? target.RebootUtc ?? DateTime.UtcNow : null;
-            target.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
-            target.Interrupted = false;
-            await db.SaveChangesAsync(ct);
-            deploymentId = target.DeploymentId;
-        }
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (!await db.DeploymentTargets.AnyAsync(t => t.JobId == jobId && t.ComputerId == computerId && t.Interrupted && t.Status == TargetStatus.Failed, ct))
+            return false;
+        // Das Inventar zuerst: scheitert das Speichern, bleibt das Ziel übernehmbar und der Agent liefert erneut.
+        // Doppelt gespeichert schadet es nicht, es ersetzt nur den Stand des Rechners.
         if (result.Inventory is not null)
             await inventory.SaveAsync(computerId, result.Inventory, CancellationToken.None);
-        Changed?.Invoke(deploymentId);
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        // Genau eine Zustellung gewinnt: wer die Markierung nicht mehr vorfindet, kam zu spät.
+        var claimed = await db.DeploymentTargets.Where(t => t.JobId == jobId && t.ComputerId == computerId && t.Interrupted && t.Status == TargetStatus.Failed)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Interrupted, false), ct);
+        if (claimed != 1)
+            return false;
+        var target = await db.DeploymentTargets.FirstAsync(t => t.JobId == jobId && t.ComputerId == computerId, ct);
+        // Der unterbrochene Job war selbst schon eine Fortsetzung, wenn das Ziel noch einen Fortsetzungspunkt trägt.
+        var resumeFrom = target.ResumeFromStep ?? 0;
+        var previousSteps = resumeFrom > 0 ? target.Steps.Take(resumeFrom).ToList() : [];
+        var (status, error, steps, resumeNext, bootTime) = Evaluate(result, target.Steps, previousSteps, resumeFrom, target.BootTimeUtc, cancelled: false);
+        target.Status = status;
+        target.Error = error;
+        target.Steps = steps;
+        target.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
+        target.BootTimeUtc = bootTime;
+        target.RebootUtc = status == TargetStatus.WaitingReboot ? target.RebootUtc ?? DateTime.UtcNow : null;
+        target.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        Changed?.Invoke(target.DeploymentId);
         return true;
     }
 

@@ -73,6 +73,17 @@ public sealed class LateResultTests : IDisposable
     }
 
     [Fact]
+    public async Task Concurrent_deliveries_of_one_result_are_adopted_exactly_once()
+    {
+        var (computerId, targetId) = await RunningTargetAsync("job8");
+        await _deployments.MarkInterruptedAsync();
+        var outcomes = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => Task.Run(() =>
+            _deployments.AdoptResultAsync(computerId, "job8", Result("job8", true, new StepResult { Index = 0, Name = "install", Status = StepStatus.Succeeded })))));
+        Assert.Equal(1, outcomes.Count(adopted => adopted));
+        Assert.Equal(TargetStatus.Succeeded, (await TargetAsync(targetId)).Status);
+    }
+
+    [Fact]
     public async Task Only_the_computer_and_job_of_an_interrupted_target_are_accepted()
     {
         var (computerId, targetId) = await RunningTargetAsync("job2");
