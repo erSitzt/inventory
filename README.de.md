@@ -127,7 +127,6 @@ Wie er dorthin kommt, bestimmt der Transport – einstellbar global und je Rechn
 |---|---|---|
 | SMB + Dienst (Standard) | Freigabe `ADMIN$`, Port 445, Konto mit lokalen Adminrechten | Lokales System |
 | WinRM | PowerShell-Remoting aktiv, Port 5985, PowerShell im vollen Sprachmodus | hinterlegtes Konto |
-
 | Agent (optional) | Dienst „Inventory Agent“, ausgehende Verbindung zum Server | Lokales System |
 
 Auf dem Zielrechner entsteht `%SystemRoot%\Inventory` (nur SYSTEM und Administratoren): der Runner bleibt dort unter
@@ -136,6 +135,62 @@ richtet einmalig den Dienst `InventoryRunner` ein (Start manuell) und startet ih
 Dienst endet, sobald der Job fertig ist. Je Rechner läuft ein Job zur Zeit – ein zweiter wartet auf den ersten.
 
 Um alles von einem Rechner zu entfernen: `sc delete InventoryRunner` und `%SystemRoot%\Inventory` löschen.
+
+### Konto für den agentenlosen Zugriff
+
+Scans, Deployments und die Agent-Installation über SMB oder WinRM verbinden sich mit einem hinterlegten Konto
+(*Zugangsdaten*; eines ist der Standard, ein Rechner kann ein eigenes haben). Der Agent braucht kein solches Konto.
+Alles Folgende gilt für die Rechner, die der Server agentenlos erreicht, nicht für den Server selbst.
+
+**Was das Konto auf jedem Zielrechner braucht**
+
+| Voraussetzung | Warum |
+|---|---|
+| Mitglied der lokalen Gruppe *Administratoren* | Schreiben nach `ADMIN$` (`%SystemRoot%\Inventory`) und Anlegen, Ändern und Starten des Dienstes `InventoryRunner` über den Dienststeuerungs-Manager; über WinRM Anlegen desselben Ordners und Starten des Runners. Weniger reicht nicht: Für Dienststeuerung aus der Ferne und für `ADMIN$` gibt es kein delegierbares Einzelrecht. |
+| Netzwerkanmeldung erlaubt | „Auf diesen Computer vom Netzwerk aus zugreifen“ muss es einschließen (Standard: *Administratoren*), „Zugriff vom Netzwerk auf diesen Computer verweigern“ darf es nicht – Vorsicht bei Sicherheits-Baselines, die *Lokales Konto und Mitglied der Gruppe „Administratoren“* sperren. |
+| Volles Administrator-Token über das Netzwerk | Domänenkonten bekommen es von Haus aus. **Lokalen** Konten filtert Windows die Adminrechte bei Netzwerkanmeldungen heraus (UAC-Remoteeinschränkungen); sie funktionieren nur mit `LocalAccountTokenFilterPolicy = 1` oder als integrierter Administrator – beides schwächt das Ziel, also besser ein Domänenkonto. |
+| Nur WinRM: voller Sprachmodus | PowerShell darf für dieses Konto auf dem Ziel nicht im eingeschränkten Sprachmodus laufen (AppLocker/WDAC); dasselbe gilt auf dem Server für dessen Dienstkonto. |
+
+Es braucht **keine** domänenweiten Rechte: nicht *Domänen-Admins*, keine Rechte auf dem Server, keine lokale oder
+Remotedesktop-Anmeldung, keine Anmeldung als Dienst oder Stapelverarbeitungsauftrag. Der Server nutzt das Konto nur
+für Netzwerkzugriffe (`LOGON32_LOGON_NEW_CREDENTIALS`); Scan und SMB-Deployments laufen auf dem Ziel als Lokales
+System. Das Konto meldet sich also nie interaktiv an und erscheint nie als Hauptbenutzer (als Zugangsdaten hinterlegte
+Konten sind ohnehin ausgenommen). Über WinRM läuft der Runner als dieses Konto; auch deshalb braucht es dort
+Adminrechte.
+
+**Was die Zielrechner brauchen**
+
+| Transport | Einstellungen |
+|---|---|
+| SMB + Dienst | Eingehend TCP 445 vom Server (Firewall-Gruppe *Datei- und Druckerfreigabe*), Dienst *Server* (`LanmanServer`) läuft, administrative Freigabe `ADMIN$` vorhanden (nicht per `AutoShareWks = 0` abgeschaltet). Den Dienststeuerungs-Manager erreicht der Server über RPC: zuerst direkt (TCP 135 und dynamische Ports, Firewall-Gruppe *Remotedienstverwaltung*), sonst über die Named Pipe auf Port 445 – 445 zu öffnen reicht, die RPC-Gruppe zu öffnen spart eine Verzögerung. |
+| WinRM | PowerShell-Remoting aktiviert (`Enable-PSRemoting` oder die Gruppenrichtlinie *Remoteserververwaltung über WinRM zulassen*), eingehend TCP 5985 vom Server. Der Server verbindet sich per Name mit Kerberos; für Adressen oder Rechner außerhalb der Domäne bräuchte der Server *TrustedHosts*, das nicht für dich eingerichtet wird. |
+| Beide | .NET Framework 4.8 (der Runner); die Erreichbarkeitsprüfung testet TCP 445 und 5985. |
+
+**Empfohlene Einrichtung**
+
+1. Einen eigenen Domänenbenutzer anlegen, z. B. `svc-inventory-scan`, mit langem Zufallskennwort. Kein persönliches
+   Konto und keines, von dem andere Systeme abhängen: Endpunktschutz mit automatischer Reaktion kann es sperren (siehe
+   [Endpunktschutz](#endpunktschutz)).
+2. Es in eine Domänengruppe aufnehmen, z. B. `Inventory-Clients-Admins`, und diese Gruppe per Gruppenrichtlinie in die
+   lokalen *Administratoren* der Zielrechner eintragen (*Computerkonfiguration → Einstellungen →
+   Systemsteuerungseinstellungen → Lokale Benutzer und Gruppen*, Aktion *Aktualisieren*, oder *Eingeschränkte Gruppen*
+   / „Mitglied von“). Die Richtlinie nur mit den OUs der zu verwaltenden Rechner verknüpfen – nicht mit den
+   Domänencontrollern und nicht mit dem Inventory-Server.
+3. In einer zweiten Richtlinie für dieselben OUs verweigern, was es nicht braucht: *Lokal anmelden verweigern* und
+   *Anmelden über Remotedesktopdienste verweigern*. Die Netzwerkanmeldung bleibt erlaubt.
+4. Die Firewall-Regeln aus der Tabelle oben nur für den Inventory-Server öffnen (*Remote-IP-Adresse* = der Server).
+5. Das Konto unter *Zugangsdaten* als `DOMÄNE\svc-inventory-scan` hinterlegen und zum Standard machen. Zum
+   Kennwortwechsel es im Verzeichnis und danach unter *Zugangsdaten* (oder über die API) ändern.
+6. Mit *Scannen* an einem Rechner prüfen; die Fehlermeldungen nennen die Ursache (Zugriff verweigert = keine lokalen
+   Adminrechte, Anmeldung fehlgeschlagen = Kennwort, RPC-Server nicht erreichbar = Firewall).
+
+Sind gar keine Zugangsdaten hinterlegt, verbindet sich der Server mit seinem eigenen Dienstkonto – als Lokales System
+ist das das Computerkonto `DOMÄNE\SERVER$`, das dann die Rechte oben bräuchte. Besser ein Konto hinterlegen.
+
+Die Active-Directory-Synchronisierung ist davon getrennt: Sie liest Computerkonten per LDAP mit dem Dienstkonto des
+Servers oder den dort gewählten Zugangsdaten. Computerobjekte zu lesen braucht keine zusätzlichen Rechte – das darf
+jeder Domänenbenutzer. Wake-on-LAN, der Fernzugriff (mit dem eigenen Konto des Operators von seinem PC aus) und der
+Agent nutzen dieses Konto nicht.
 
 ### Endpunktschutz
 

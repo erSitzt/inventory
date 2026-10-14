@@ -127,6 +127,59 @@ the job is done. One job runs at a time per computer – a second one waits for 
 
 To remove everything from a computer: `sc delete InventoryRunner` and delete `%SystemRoot%\Inventory`.
 
+### Account for agentless access
+
+Scans, deployments and the agent installation over SMB or WinRM connect with a stored account (*Credentials*; one is
+the default, a computer can have its own). The agent needs no such account. Everything below applies to the computers
+the server reaches agentlessly, not to the server itself.
+
+**What the account needs on every target computer**
+
+| Requirement | Why |
+|---|---|
+| Member of the local group *Administrators* | Writing to `ADMIN$` (`%SystemRoot%\Inventory`) and creating, changing and starting the service `InventoryRunner` through the Service Control Manager; over WinRM creating the same folder and starting the runner. Nothing less works: there is no delegable right for remote service control or for `ADMIN$`. |
+| Network logon allowed | "Access this computer from the network" must include it (default: *Administrators*), "Deny access to this computer from the network" must not – watch out for security baselines that deny *Local account and member of Administrators group*. |
+| A full administrator token over the network | Domain accounts get it by default. For **local** accounts, Windows filters admin rights on network logons (UAC remote restrictions); they work only with `LocalAccountTokenFilterPolicy = 1` or as the built-in Administrator – both weaken the target, so use a domain account. |
+| WinRM only: full language mode | PowerShell must not run in constrained language mode for this account on the target (AppLocker/WDAC), and the same applies to the server's service account on the server. |
+
+It needs **no** domain-wide rights: not *Domain Admins*, no rights on the server, no interactive or Remote Desktop
+logon, no logon as a service or batch job. The server uses the account only for network access (`LOGON32_LOGON_NEW_CREDENTIALS`);
+the scan and SMB deployments run as Local System on the target, so the account never logs on interactively and never
+shows up as primary user (accounts stored as credentials are excluded anyway). Over WinRM the runner runs as this
+account, which is why it also needs administrator rights there.
+
+**What the target computers need**
+
+| Transport | Settings |
+|---|---|
+| SMB + service | Inbound TCP 445 from the server (firewall group *File and Printer Sharing*), the service *Server* (`LanmanServer`) running, the administrative share `ADMIN$` present (not disabled with `AutoShareWks = 0`). The Service Control Manager is reached over RPC: first directly (TCP 135 and dynamic ports, firewall group *Remote Service Management*), otherwise over the named pipe on port 445 – opening 445 is enough, opening the RPC group avoids a delay. |
+| WinRM | PowerShell remoting enabled (`Enable-PSRemoting` or the group policy *Allow remote server management through WinRM*), inbound TCP 5985 from the server. The server connects by name with Kerberos; for addresses or computers outside the domain the server's *TrustedHosts* would be needed, which is not set up for you. |
+| Both | .NET Framework 4.8 (the runner); the reachability check probes TCP 445 and 5985. |
+
+**Recommended setup**
+
+1. Create a dedicated domain user, e.g. `svc-inventory-scan`, with a long random password. Do not use a personal
+   account or one that other systems depend on: endpoint protection with automatic response may disable it (see
+   [Endpoint protection](#endpoint-protection)).
+2. Put it into a domain group, e.g. `Inventory-Clients-Admins`, and add that group to the local *Administrators* of
+   the target computers by group policy (*Computer Configuration → Preferences → Control Panel Settings → Local Users
+   and Groups*, action *Update*, or *Restricted Groups* / "Member of"). Link the policy only to the OUs of the computers
+   that should be managed – not to domain controllers and not to the Inventory server.
+3. In a second policy for the same OUs deny it what it does not need: *Deny log on locally* and *Deny log on through
+   Remote Desktop Services*. Network logon stays allowed.
+4. Open the firewall rules from the table above for the Inventory server only (*Remote IP address* = the server).
+5. Store the account under *Credentials* as `DOMAIN\svc-inventory-scan` and make it the default. To rotate the
+   password, change it in the directory and then under *Credentials* (or through the API).
+6. Check with *Scan* on one computer; error messages name the cause (access denied = no local admin rights, logon
+   failed = password, RPC server unreachable = firewall).
+
+If no credential is stored at all, the server connects with its own service account – as Local System that is the
+computer account `DOMAIN\SERVER$`, which would then need the rights above. Rather store an account.
+
+The Active Directory synchronization is separate: it reads computer accounts over LDAP with the server's service
+account or the credential selected there. Reading computer objects needs no extra rights – any domain user can do it.
+Wake-on-LAN, remote access (with the operator's own account from their PC) and the agent do not use this account.
+
 ### Endpoint protection
 
 Endpoint detection products tend to rate agentless administration as lateral movement, because it looks the same on
