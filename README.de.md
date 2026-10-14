@@ -146,25 +146,31 @@ Alles Folgende gilt für die Rechner, die der Server agentenlos erreicht, nicht 
 
 | Voraussetzung | Warum |
 |---|---|
-| Mitglied der lokalen Gruppe *Administratoren* | Schreiben nach `ADMIN$` (`%SystemRoot%\Inventory`) und Anlegen, Ändern und Starten des Dienstes `InventoryRunner` über den Dienststeuerungs-Manager; über WinRM Anlegen desselben Ordners und Starten des Runners. Weniger reicht nicht: Für Dienststeuerung aus der Ferne und für `ADMIN$` gibt es kein delegierbares Einzelrecht. |
+| Mitglied der lokalen Gruppe *Administratoren* (empfohlen) | Schreiben nach `ADMIN$` (`%SystemRoot%\Inventory`) und Anlegen, Ändern und Starten des Dienstes `InventoryRunner` über den Dienststeuerungs-Manager; über WinRM Anlegen desselben Ordners und Starten des Runners. Eine engere Delegation über Zugriffslisten (Dienststeuerungs-Manager, Freigabe, Ordner, WinRM-Sitzungskonfiguration) ist denkbar, aber nicht getestet und muss alle diese Rechte abdecken – unterstützt ist die Einrichtung über die lokalen Administratoren. |
 | Netzwerkanmeldung erlaubt | „Auf diesen Computer vom Netzwerk aus zugreifen“ muss es einschließen (Standard: *Administratoren*), „Zugriff vom Netzwerk auf diesen Computer verweigern“ darf es nicht – Vorsicht bei Sicherheits-Baselines, die *Lokales Konto und Mitglied der Gruppe „Administratoren“* sperren. |
 | Volles Administrator-Token über das Netzwerk | Domänenkonten bekommen es von Haus aus. **Lokalen** Konten filtert Windows die Adminrechte bei Netzwerkanmeldungen heraus (UAC-Remoteeinschränkungen); sie funktionieren nur mit `LocalAccountTokenFilterPolicy = 1` oder als integrierter Administrator – beides schwächt das Ziel, also besser ein Domänenkonto. |
 | Nur WinRM: voller Sprachmodus | PowerShell darf für dieses Konto auf dem Ziel nicht im eingeschränkten Sprachmodus laufen (AppLocker/WDAC); dasselbe gilt auf dem Server für dessen Dienstkonto. |
 
 Es braucht **keine** domänenweiten Rechte: nicht *Domänen-Admins*, keine Rechte auf dem Server, keine lokale oder
-Remotedesktop-Anmeldung, keine Anmeldung als Dienst oder Stapelverarbeitungsauftrag. Der Server nutzt das Konto nur
-für Netzwerkzugriffe (`LOGON32_LOGON_NEW_CREDENTIALS`); Scan und SMB-Deployments laufen auf dem Ziel als Lokales
-System. Das Konto meldet sich also nie interaktiv an und erscheint nie als Hauptbenutzer (als Zugangsdaten hinterlegte
-Konten sind ohnehin ausgenommen). Über WinRM läuft der Runner als dieses Konto; auch deshalb braucht es dort
-Adminrechte.
+Remotedesktop-Anmeldung, keine Anmeldung als Dienst oder Stapelverarbeitungsauftrag. Mit welcher Identität ein Job
+läuft, hängt vom Transport ab:
+
+- **SMB + Dienst**: Der Server nutzt das Konto nur für den Netzwerkzugriff (`LOGON32_LOGON_NEW_CREDENTIALS` – Kopieren
+  nach `ADMIN$`, Dienststeuerung). Auf dem Ziel läuft der Runner als Lokales System; Schritte mit *angemeldeter
+  Benutzer* laufen in der Sitzung des dort angemeldeten Benutzers, nie als dieses Konto.
+- **WinRM**: PowerShell-Remoting meldet sich mit dem Konto an, und der Runner läuft als dieses Konto in dieser
+  Remote-Sitzung.
+
+So oder so meldet sich das Konto nie interaktiv an und erscheint nie als Hauptbenutzer (als Zugangsdaten hinterlegte
+Konten sind ohnehin ausgenommen).
 
 **Was die Zielrechner brauchen**
 
 | Transport | Einstellungen |
 |---|---|
-| SMB + Dienst | Eingehend TCP 445 vom Server (Firewall-Gruppe *Datei- und Druckerfreigabe*), Dienst *Server* (`LanmanServer`) läuft, administrative Freigabe `ADMIN$` vorhanden (nicht per `AutoShareWks = 0` abgeschaltet). Den Dienststeuerungs-Manager erreicht der Server über RPC: zuerst direkt (TCP 135 und dynamische Ports, Firewall-Gruppe *Remotedienstverwaltung*), sonst über die Named Pipe auf Port 445 – 445 zu öffnen reicht, die RPC-Gruppe zu öffnen spart eine Verzögerung. |
+| SMB + Dienst | Eingehend TCP 445 vom Server (Firewall-Gruppe *Datei- und Druckerfreigabe*), Dienst *Server* (`LanmanServer`) läuft, administrative Freigabe `ADMIN$` vorhanden (nicht per `AutoShareWks = 0` auf Clients oder `AutoShareServer = 0` auf Windows Server abgeschaltet). Den Dienststeuerungs-Manager erreicht der Server über RPC: zuerst direkt (TCP 135 und dynamische Ports, Firewall-Gruppe *Remotedienstverwaltung*), sonst über die Named Pipe auf Port 445 – 445 zu öffnen reicht, die RPC-Gruppe zu öffnen spart eine Verzögerung. |
 | WinRM | PowerShell-Remoting aktiviert (`Enable-PSRemoting` oder die Gruppenrichtlinie *Remoteserververwaltung über WinRM zulassen*), eingehend TCP 5985 vom Server. Der Server verbindet sich per Name mit Kerberos; für Adressen oder Rechner außerhalb der Domäne bräuchte der Server *TrustedHosts*, das nicht für dich eingerichtet wird. |
-| Beide | .NET Framework 4.8 (der Runner); die Erreichbarkeitsprüfung testet TCP 445 und 5985. |
+| Beide | .NET Framework 4.8 (der Runner). Die Erreichbarkeitsprüfung versucht zuerst TCP 445 und nur wenn der nicht antwortet 5985; „erreichbar“ heißt also nicht, dass WinRM offen ist. |
 
 **Empfohlene Einrichtung**
 
@@ -184,8 +190,10 @@ Adminrechte.
 6. Mit *Scannen* an einem Rechner prüfen; die Fehlermeldungen nennen die Ursache (Zugriff verweigert = keine lokalen
    Adminrechte, Anmeldung fehlgeschlagen = Kennwort, RPC-Server nicht erreichbar = Firewall).
 
-Sind gar keine Zugangsdaten hinterlegt, verbindet sich der Server mit seinem eigenen Dienstkonto – als Lokales System
-ist das das Computerkonto `DOMÄNE\SERVER$`, das dann die Rechte oben bräuchte. Besser ein Konto hinterlegen.
+Sind gar keine Zugangsdaten hinterlegt, verbindet sich der Server mit seinem eigenen Dienstkonto. Auf einem
+Domänenmitglied, das als Lokales System läuft, ist das das Computerkonto `DOMÄNE\SERVER$`, das dann die Rechte oben
+bräuchte; auf einem Server außerhalb der Domäne gibt es kein Konto, dem die Ziele Rechte geben könnten. In beiden
+Fällen besser ein Konto hinterlegen.
 
 Die Active-Directory-Synchronisierung ist davon getrennt: Sie liest Computerkonten per LDAP mit dem Dienstkonto des
 Servers oder den dort gewählten Zugangsdaten. Computerobjekte zu lesen braucht keine zusätzlichen Rechte – das darf

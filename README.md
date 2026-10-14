@@ -137,24 +137,29 @@ the server reaches agentlessly, not to the server itself.
 
 | Requirement | Why |
 |---|---|
-| Member of the local group *Administrators* | Writing to `ADMIN$` (`%SystemRoot%\Inventory`) and creating, changing and starting the service `InventoryRunner` through the Service Control Manager; over WinRM creating the same folder and starting the runner. Nothing less works: there is no delegable right for remote service control or for `ADMIN$`. |
+| Member of the local group *Administrators* (recommended) | Writing to `ADMIN$` (`%SystemRoot%\Inventory`) and creating, changing and starting the service `InventoryRunner` through the Service Control Manager; over WinRM creating the same folder and starting the runner. A narrower delegation through access lists (Service Control Manager, share, folder, WinRM session configuration) is conceivable, but it is not tested and has to cover all of these rights – local administrators is the supported setup. |
 | Network logon allowed | "Access this computer from the network" must include it (default: *Administrators*), "Deny access to this computer from the network" must not – watch out for security baselines that deny *Local account and member of Administrators group*. |
 | A full administrator token over the network | Domain accounts get it by default. For **local** accounts, Windows filters admin rights on network logons (UAC remote restrictions); they work only with `LocalAccountTokenFilterPolicy = 1` or as the built-in Administrator – both weaken the target, so use a domain account. |
 | WinRM only: full language mode | PowerShell must not run in constrained language mode for this account on the target (AppLocker/WDAC), and the same applies to the server's service account on the server. |
 
 It needs **no** domain-wide rights: not *Domain Admins*, no rights on the server, no interactive or Remote Desktop
-logon, no logon as a service or batch job. The server uses the account only for network access (`LOGON32_LOGON_NEW_CREDENTIALS`);
-the scan and SMB deployments run as Local System on the target, so the account never logs on interactively and never
-shows up as primary user (accounts stored as credentials are excluded anyway). Over WinRM the runner runs as this
-account, which is why it also needs administrator rights there.
+logon, no logon as a service or batch job. Which identity runs a job depends on the transport:
+
+- **SMB + service**: the server uses the account only for the network access (`LOGON32_LOGON_NEW_CREDENTIALS` – copying
+  to `ADMIN$`, service control). On the target the runner runs as Local System; steps set to *logged-on user* run in
+  the session of the user who is signed in there, never as this account.
+- **WinRM**: PowerShell remoting logs on with the account, and the runner runs as this account in that remote session.
+
+Either way the account never logs on interactively and never shows up as primary user (accounts stored as credentials
+are excluded anyway).
 
 **What the target computers need**
 
 | Transport | Settings |
 |---|---|
-| SMB + service | Inbound TCP 445 from the server (firewall group *File and Printer Sharing*), the service *Server* (`LanmanServer`) running, the administrative share `ADMIN$` present (not disabled with `AutoShareWks = 0`). The Service Control Manager is reached over RPC: first directly (TCP 135 and dynamic ports, firewall group *Remote Service Management*), otherwise over the named pipe on port 445 – opening 445 is enough, opening the RPC group avoids a delay. |
+| SMB + service | Inbound TCP 445 from the server (firewall group *File and Printer Sharing*), the service *Server* (`LanmanServer`) running, the administrative share `ADMIN$` present (not disabled with `AutoShareWks = 0` on clients or `AutoShareServer = 0` on Windows Server). The Service Control Manager is reached over RPC: first directly (TCP 135 and dynamic ports, firewall group *Remote Service Management*), otherwise over the named pipe on port 445 – opening 445 is enough, opening the RPC group avoids a delay. |
 | WinRM | PowerShell remoting enabled (`Enable-PSRemoting` or the group policy *Allow remote server management through WinRM*), inbound TCP 5985 from the server. The server connects by name with Kerberos; for addresses or computers outside the domain the server's *TrustedHosts* would be needed, which is not set up for you. |
-| Both | .NET Framework 4.8 (the runner); the reachability check probes TCP 445 and 5985. |
+| Both | .NET Framework 4.8 (the runner). The reachability check tries TCP 445 first and 5985 only if 445 does not answer, so "reachable" does not prove that WinRM is open. |
 
 **Recommended setup**
 
@@ -173,8 +178,9 @@ account, which is why it also needs administrator rights there.
 6. Check with *Scan* on one computer; error messages name the cause (access denied = no local admin rights, logon
    failed = password, RPC server unreachable = firewall).
 
-If no credential is stored at all, the server connects with its own service account – as Local System that is the
-computer account `DOMAIN\SERVER$`, which would then need the rights above. Rather store an account.
+If no credential is stored at all, the server connects with its own service account. On a domain-joined server
+running as Local System that is the computer account `DOMAIN\SERVER$`, which would then need the rights above; on a
+server outside the domain there is no account the targets could grant rights to. In both cases store an account.
 
 The Active Directory synchronization is separate: it reads computer accounts over LDAP with the server's service
 account or the credential selected there. Reading computer objects needs no extra rights – any domain user can do it.
