@@ -30,6 +30,12 @@ public sealed class GuidedTour(IJSRuntime js, IStringLocalizer<SharedResource> L
         new(Target("help"), L["Help for this page"], L["Explains the page you are on, with a link to the documentation. The tour starts from here, too."]),
     ];
 
+    /// <summary>Das Layout öffnet daraufhin das Menü und startet die Tour; so funktioniert der Start von jeder Seite aus gleich.</summary>
+    public event Func<Task>? StartRequested;
+
+    /// <summary>Tour aus einer Seite heraus starten (über das Layout, damit das Menü sichtbar ist).</summary>
+    public Task RequestAsync() => StartRequested?.Invoke() ?? StartAsync();
+
     /// <summary>Startet die Tour sofort.</summary>
     public async Task StartAsync()
     {

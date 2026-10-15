@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
 @inject GuidedTour Tour
+@implements IDisposable
 @inject HelpDocs Docs
 
 <MudThemeProvider @ref="_themeProvider" Theme="Theme" IsDarkMode="_dark" />
@@ -151,6 +152,12 @@
         // Neue Benutzer bekommen die Tour einmal von selbst; danach startet sie über die Hilfe.
         await Tour.StartOnceAsync();
     }
+
+    protected override void OnInitialized() => Tour.StartRequested += StartTourFromPageAsync;
+
+    public void Dispose() => Tour.StartRequested -= StartTourFromPageAsync;
+
+    private Task StartTourFromPageAsync() => InvokeAsync(StartTourAsync);
 
     private async Task StartTourAsync()
     {

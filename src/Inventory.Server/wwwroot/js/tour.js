@@ -1,7 +1,7 @@
 // Geführte Tour: hebt nacheinander Elemente der Oberfläche hervor und erklärt sie in einer Sprechblase.
 // Schritte ohne sichtbares Element (z. B. Menüpunkte, die die eigene Rolle nicht sieht) werden übersprungen.
 window.inventoryTour = (() => {
-    let steps = [], labels = {}, index = 0, mask = null, bubble = null;
+    let steps = [], labels = {}, index = 0, mask = null, bubble = null, shield = null;
 
     const visible = step => {
         if (!step.selector) return true;
@@ -11,7 +11,7 @@ window.inventoryTour = (() => {
 
     function close(finished) {
         if (!mask) return;
-        mask.remove(); bubble?.remove(); mask = bubble = null;
+        mask.remove(); bubble?.remove(); shield?.remove(); mask = bubble = shield = null;
         window.removeEventListener('resize', place);
         document.removeEventListener('keydown', key, true);
         // Einmal gesehen (auch abgebrochen) = nicht wieder von selbst starten.
@@ -89,10 +89,12 @@ window.inventoryTour = (() => {
         start(tourSteps, tourLabels) {
             close(false);
             steps = tourSteps; labels = tourLabels; index = -1;
+            // Die Abdunklung lässt Klicks durch; eine durchsichtige Fläche darüber fängt sie ab, damit sich die Seite nicht unter der Tour ändert.
+            shield = document.createElement('div'); shield.className = 'tour-shield';
             mask = document.createElement('div'); mask.className = 'tour-mask';
             bubble = document.createElement('div'); bubble.className = 'tour-bubble';
             bubble.setAttribute('role', 'dialog'); bubble.setAttribute('aria-live', 'polite');
-            document.body.append(mask, bubble);
+            document.body.append(mask, shield, bubble);
             window.addEventListener('resize', place);
             document.addEventListener('keydown', key, true);
             go(1);
