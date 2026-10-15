@@ -102,6 +102,9 @@ builder.Services.AddSingleton<SignInLog>();
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System, Path.Combine(dataDirectory, "keys")));
 builder.Services.AddScoped<Auditor>();
 builder.Services.AddScoped<Access>();
+builder.Services.AddScoped<GuidedTour>();
+// Die Hilfe verweist in die README desselben Repositorys, aus dem auch die Updates kommen.
+builder.Services.AddSingleton(new HelpDocs(options.Update.Repository));
 builder.Services.AddSingleton<IReleaseSource>(new GitHubReleaseSource(new HttpClient { Timeout = TimeSpan.FromMinutes(15) }));
 var trustedSigners = SelfUpdate.TrustedThumbprints(AppContext.BaseDirectory, options.Update.TrustedThumbprints);
 builder.Services.AddSingleton(new UpdateOptions

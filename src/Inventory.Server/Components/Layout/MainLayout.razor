@@ -4,6 +4,8 @@
 @inject IStringLocalizer<SharedResource> L
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
+@inject GuidedTour Tour
+@inject HelpDocs Docs
 
 <MudThemeProvider @ref="_themeProvider" Theme="Theme" IsDarkMode="_dark" />
 <MudPopoverProvider />
@@ -24,7 +26,7 @@
                        StartIcon="@Icons.Material.Filled.SystemUpdateAlt">@L["Version {0} available", Updates.Latest!.Version]</MudButton>
         }
         <MudTooltip Text="@L["Help for this page"]">
-            <MudIconButton Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Inherit" aria-label="@L["Help for this page"]" OnClick="@(() => _helpOpen = !_helpOpen)" />
+            <MudIconButton Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Inherit" data-tour="help" aria-label="@L["Help for this page"]" OnClick="@(() => _helpOpen = !_helpOpen)" />
         </MudTooltip>
         <MudMenu Icon="@ThemeIcon" Color="Color.Inherit" AriaLabel="@L["Appearance"]" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             <MudMenuItem Icon="@Icons.Material.Filled.BrightnessAuto" Disabled="@(_preference == "system")" OnClick="@(() => SetThemeAsync("system"))">@L["System setting"]</MudMenuItem>
@@ -92,6 +94,10 @@
                     @L["Computers are scanned and grouped into collections. A package describes what to install or change; a deployment brings it to computers once, a schedule regularly."]
                 </MudText>
                 <MudText Typo="Typo.body2">@L["Hover over a symbol to see what it does. Most fields explain themselves in the line below them."]</MudText>
+                <MudStack Row="true" Spacing="2" Class="mt-4" Wrap="Wrap.Wrap">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Tour" OnClick="StartTourAsync">@L["Take the tour"]</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.MenuBook" Href="@Docs.Url(topic, System.Globalization.CultureInfo.CurrentUICulture)" Target="_blank">@L["Documentation"]</MudButton>
+                </MudStack>
             </div>
         }
     </MudDrawer>
@@ -142,6 +148,18 @@
         }
         ApplyTheme();
         StateHasChanged();
+        // Neue Benutzer bekommen die Tour einmal von selbst; danach startet sie über die Hilfe.
+        await Tour.StartOnceAsync();
+    }
+
+    private async Task StartTourAsync()
+    {
+        _helpOpen = false;
+        _drawerOpen = true;
+        StateHasChanged();
+        // Erst zeichnen lassen, damit Menü offen und Hilfe zu ist, bevor die Tour Elemente sucht.
+        await Task.Delay(300);
+        await Tour.StartAsync();
     }
 
     private Task OnSystemDarkModeChanged(bool dark)
