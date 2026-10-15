@@ -10,13 +10,16 @@ namespace Inventory.Server.Services;
 public sealed class ComputerScope(CollectionService collections)
 {
     /// <summary>Erlaubte Rechner; null = keine Beschränkung.</summary>
-    public async Task<HashSet<int>?> AllowedAsync(ClaimsPrincipal user, CancellationToken ct = default)
+    /// <param name="forDisplay">
+    /// true = nur zum Ein- und Ausblenden von Bedienelementen: darf einige Sekunden alt sein (eine Liste fragt das für jede
+    /// Zeile ab). Für die Berechtigung einer Aktion immer false, damit die Mitgliedschaft von jetzt gilt.
+    /// </param>
+    public async Task<HashSet<int>?> AllowedAsync(ClaimsPrincipal user, CancellationToken ct = default, bool forDisplay = false)
     {
         if (AccessControl.ScopeOf(user) is not { } names)
             return null;
-        // Je Sitzung bzw. Anfrage kurz merken: eine Liste fragt das für jede Zeile ab.
         var key = string.Join("\n", names);
-        if (_cached is { } cached && cached.Key == key && DateTime.UtcNow - cached.Time < CacheTime)
+        if (forDisplay && _cached is { } cached && cached.Key == key && DateTime.UtcNow - cached.Time < CacheTime)
             return cached.Allowed;
         var allowed = new HashSet<int>();
         foreach (var summary in await collections.ListAsync(ct))

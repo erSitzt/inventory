@@ -40,8 +40,12 @@ public sealed class Access(AuthenticationStateProvider authentication, IAuthoriz
         return false;
     }
 
-    /// <summary>Rechner, auf denen die Anmeldung handeln darf; null = keine Beschränkung.</summary>
+    /// <summary>Rechner, auf denen die Anmeldung jetzt handeln darf; null = keine Beschränkung.</summary>
     public async Task<HashSet<int>?> AllowedComputersAsync() => await scope.AllowedAsync((await authentication.GetAuthenticationStateAsync()).User);
+
+    /// <summary>Wie <see cref="AllowedComputersAsync"/>, aber einige Sekunden zwischengespeichert: nur zum Anzeigen, nie zum Erlauben.</summary>
+    public async Task<HashSet<int>?> AllowedComputersForDisplayAsync() =>
+        await scope.AllowedAsync((await authentication.GetAuthenticationStateAsync()).User, forDisplay: true);
 
     private async Task<bool> HasAsync(string policy) =>
         (await authorization.AuthorizeAsync((await authentication.GetAuthenticationStateAsync()).User, policy)).Succeeded;
