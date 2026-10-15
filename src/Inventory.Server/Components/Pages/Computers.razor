@@ -202,7 +202,7 @@
                     <RemoteAccessMenu Computer="context.Item" Compact="true" />
                 </OperatorOnly>
                 <AdminOnly>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" />
+                    <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" /></MudTooltip>
                 </AdminOnly>
             </CellTemplate>
         </TemplateColumn>

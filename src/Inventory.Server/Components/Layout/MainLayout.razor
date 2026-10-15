@@ -12,8 +12,10 @@
 
 <MudLayout>
     <MudAppBar Elevation="1" Dense="true">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                       OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+        <MudTooltip Text="@L["Show or hide the menu"]">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" aria-label="@L["Show or hide the menu"]"
+                           OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+        </MudTooltip>
         <MudText Typo="Typo.h6">Inventory</MudText>
         <MudSpacer />
         @if (Updates.UpdateAvailable)
@@ -21,6 +23,9 @@
             <MudButton Href="settings#updates" Color="Color.Inherit" Variant="Variant.Outlined" Size="Size.Small" Class="mr-4"
                        StartIcon="@Icons.Material.Filled.SystemUpdateAlt">@L["Version {0} available", Updates.Latest!.Version]</MudButton>
         }
+        <MudTooltip Text="@L["Help for this page"]">
+            <MudIconButton Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Inherit" aria-label="@L["Help for this page"]" OnClick="@(() => _helpOpen = !_helpOpen)" />
+        </MudTooltip>
         <MudMenu Icon="@ThemeIcon" Color="Color.Inherit" AriaLabel="@L["Appearance"]" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             <MudMenuItem Icon="@Icons.Material.Filled.BrightnessAuto" Disabled="@(_preference == "system")" OnClick="@(() => SetThemeAsync("system"))">@L["System setting"]</MudMenuItem>
             <MudMenuItem Icon="@Icons.Material.Filled.LightMode" Disabled="@(_preference == "light")" OnClick="@(() => SetThemeAsync("light"))">@L["Light"]</MudMenuItem>
@@ -53,13 +58,42 @@
                 @if (context.User.HasClaim(c => c.Type == AccessControl.AccessClaim))
                 {
                     @* Nur bei Sitzungs-Anmeldung; die reine Windows-Anmeldung kennt kein Abmelden. *@
-                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Href="logout" aria-label="@L["Sign out"]" />
+                    <MudTooltip Text="@L["Sign out"]"><MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Href="logout" aria-label="@L["Sign out"]" /></MudTooltip>
                 }
             </Authorized>
         </AuthorizeView>
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="1">
         <NavMenu />
+    </MudDrawer>
+    <MudDrawer @bind-Open="_helpOpen" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Width="400px" Elevation="2">
+        @if (_helpOpen)
+        {
+            var topic = HelpTopics.For(Navigation.ToBaseRelativePath(Navigation.Uri), L);
+            <div class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">@topic.Title</MudText>
+                    <MudSpacer />
+                    <MudTooltip Text="@L["Close"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _helpOpen = false)" />
+                    </MudTooltip>
+                </MudStack>
+                <MudText Typo="Typo.body1" Class="mb-3">@topic.Intro</MudText>
+                <ul class="help-tips">
+                    @foreach (var tip in topic.Tips)
+                    {
+                        <li><MudText Typo="Typo.body2">@tip</MudText></li>
+                    }
+                </ul>
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.subtitle2" Class="mb-1">@L["How it fits together"]</MudText>
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    @L["Computers are scanned and grouped into collections. A package describes what to install or change; a deployment brings it to computers once, a schedule regularly."]
+                </MudText>
+                <MudText Typo="Typo.body2">@L["Hover over a symbol to see what it does. Most fields explain themselves in the line below them."]</MudText>
+            </div>
+        }
     </MudDrawer>
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
@@ -76,6 +110,8 @@
 
 @code {
     private bool _drawerOpen = true;
+    // Hilfe zur aktuellen Seite; der Inhalt richtet sich bei jedem Öffnen nach der Adresse.
+    private bool _helpOpen;
 
     // Hell/Dunkel: Vorgabe ist die Systemeinstellung des Browsers; eine eigene Wahl bleibt im Browser gespeichert.
     private MudThemeProvider _themeProvider = default!;

@@ -55,7 +55,7 @@
         <TemplateColumn Title="@L["Last used"]"><CellTemplate>@Display.LocalTime(context.Item.LastUsedUtc)</CellTemplate></TemplateColumn>
         <TemplateColumn CellStyle="width: 1%">
             <CellTemplate>
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Revoke token"]" OnClick="@(() => DeleteAsync(context.Item))" />
+                <MudTooltip Text="@L["Revoke token"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Revoke token"]" OnClick="@(() => DeleteAsync(context.Item))" /></MudTooltip>
             </CellTemplate>
         </TemplateColumn>
     </Columns>

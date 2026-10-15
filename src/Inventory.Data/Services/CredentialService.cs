@@ -18,6 +18,12 @@ public sealed class CredentialService(IDbContextFactory<InventoryDbContext> dbFa
         return await db.Credentials.AsNoTracking().OrderBy(c => c.Name).ToListAsync(ct);
     }
 
+    public async Task<int> CountAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Credentials.CountAsync(ct);
+    }
+
     /// <summary>Legt Zugangsdaten an (id = null) oder ändert sie. Ein leeres Passwort lässt das gespeicherte unverändert.</summary>
     public async Task<Credential> SaveAsync(int? id, string name, string username, string? password, string? description, CancellationToken ct = default)
     {

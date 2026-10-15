@@ -73,7 +73,7 @@
                                     <MudText Typo="Typo.body2">@_selected.Title</MudText>
                                     <MudText Typo="Typo.body2">@L["Missing on {0} computers", _computers.Count]</MudText>
                                 </div>
-                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _selected = null)" />
+                                <MudTooltip Text="@L["Close"]"><MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _selected = null)" /></MudTooltip>
                             </MudStack>
                             @if (_selected.KbIds is not null)
                             {

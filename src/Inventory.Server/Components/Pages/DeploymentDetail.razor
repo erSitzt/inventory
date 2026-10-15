@@ -20,7 +20,7 @@
 }
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="deployments" aria-label="@L["Back to the list"]" />
+    <MudTooltip Text="@L["Back to the list"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="deployments" aria-label="@L["Back to the list"]" /></MudTooltip>
     <MudText Typo="Typo.h5">@_deployment.PackageName @_deployment.PackageVersion</MudText>
     <MudSpacer />
     @if (Running || Waiting)

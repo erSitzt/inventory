@@ -26,7 +26,7 @@
 <AutoRefresh OnTick="RefreshAsync" />
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="computers" aria-label="@L["Back to the list"]" />
+    <MudTooltip Text="@L["Back to the list"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="computers" aria-label="@L["Back to the list"]" /></MudTooltip>
     <MudText Typo="Typo.h5">@_computer.Name</MudText>
     <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : _computer.NameMismatch ? Color.Warning : Color.Default)">@(_computer.IsOnline ? L["online"] : _computer.NameMismatch ? L["unreachable"] : L["offline"])</MudChip>
     <MudSpacer />
