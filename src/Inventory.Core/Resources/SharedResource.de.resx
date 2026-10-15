@@ -3533,6 +3533,9 @@
   <data name="Short name of the service, e.g. Spooler" xml:space="preserve">
     <value>Kurzname des Dienstes, z. B. Spooler</value>
   </data>
+  <data name="Show or hide the menu" xml:space="preserve">
+    <value>Menü ein- oder ausblenden</value>
+  </data>
   <data name="Show the computer's sessions" xml:space="preserve">
     <value>Sitzungen des Rechners anzeigen</value>
   </data>

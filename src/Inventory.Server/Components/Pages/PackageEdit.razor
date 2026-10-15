@@ -116,9 +116,9 @@
                             </div>
                             <AdminOnly>
                                 <MudTooltip Text="@L["Move up"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" aria-label="@L["Move up"]" Disabled="@(index == 0)" OnClick="@(() => MoveAsync(step, -1))" /></MudTooltip>
-                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" aria-label="@L["Move down"]" Disabled="@(index == _package.Steps.Count - 1)" OnClick="@(() => MoveAsync(step, 1))" />
+                                <MudTooltip Text="@L["Move down"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" aria-label="@L["Move down"]" Disabled="@(index == _package.Steps.Count - 1)" OnClick="@(() => MoveAsync(step, 1))" /></MudTooltip>
                                 <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditStepAsync(step, step.Definition.Type, step.NestedPackageId is not null))" /></MudTooltip>
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteStepAsync(step))" />
+                                <MudTooltip Text="@L["Delete"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteStepAsync(step))" /></MudTooltip>
                             </AdminOnly>
                         </MudStack>
                     </MudListItem>

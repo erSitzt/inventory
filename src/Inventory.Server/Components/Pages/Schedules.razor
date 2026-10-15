@@ -80,7 +80,7 @@
             <CellTemplate>
                 <AdminOnly>
                     <MudTooltip Text="@L["Run now"]"><MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" aria-label="@L["Run now"]" Disabled="_busy" OnClick="@(() => RunNowAsync(context.Item))" /></MudTooltip>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" />
+                    <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" /></MudTooltip>
                     <MudTooltip Text="@L["Delete"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item))" /></MudTooltip>
                 </AdminOnly>
             </CellTemplate>

@@ -40,13 +40,17 @@
     // Erst nach dem Lesen des Browserspeichers anzeigen, sonst blitzt eine ausgeblendete Karte kurz auf.
     private bool _visible;
 
+    // Die Übersicht aktualisiert sich alle 15 Sekunden; gezählt wird nur, solange die Karte noch etwas zu zeigen hat.
+    private bool _credentialsStored;
+
     protected override async Task OnParametersSetAsync()
     {
-        var credentials = (await Credentials.ListAsync()).Count;
+        if (!_credentialsStored)
+            _credentialsStored = await Credentials.CountAsync() > 0;
         _steps =
         [
             new(L["Store an account for agentless access"], L["A domain account with local administrator rights on the computers – or use the agent instead."], "credentials",
-                credentials > 0 || Stats.Agents > 0),
+                _credentialsStored || Stats.Agents > 0),
             new(L["Add computers"], L["Enter names, or import them from Active Directory under Settings."], "computers", Stats.Computers > 0),
             new(L["Scan the computers"], L["Select them in the list and choose \"Scan\"; the inventory fills from the first scan on."], "computers", Stats.Scanned > 0),
             new(L["Create or import a package"], L["The package library has ready-made packages of common programs."], "library", Stats.Packages > 0),
