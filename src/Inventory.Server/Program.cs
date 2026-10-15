@@ -101,6 +101,7 @@ builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<SignInLog>();
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System, Path.Combine(dataDirectory, "keys")));
 builder.Services.AddScoped<Auditor>();
+builder.Services.AddScoped<ComputerScope>();
 builder.Services.AddScoped<Access>();
 builder.Services.AddScoped<GuidedTour>();
 builder.Services.AddScoped<UpdateInstaller>();

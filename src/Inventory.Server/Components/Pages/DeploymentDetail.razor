@@ -194,7 +194,7 @@
 
     private async Task CancelAsync()
     {
-        if (!await Access.DemandOperatorAsync())
+        if (!await DemandDeploymentAsync(_deployment!.Targets))
             return;
         await Audit.LogAsync(L["Deployment cancelled"], $"#{Id} {_deployment!.PackageName}");
         await DeploymentService.CancelAsync(Id);
@@ -202,7 +202,7 @@
 
     private async Task ReleaseAsync()
     {
-        if (!await Access.DemandOperatorAsync())
+        if (!await DemandDeploymentAsync(_deployment!.Targets))
             return;
         var started = await DeploymentService.ReleasePilotAsync(Id, force: true);
         if (started > 0)
@@ -211,9 +211,14 @@
             Snackbar.Add(L["Nothing was started: computers of this deployment are still running."], Severity.Warning);
     }
 
+    /// <summary>Ein beschränkter Operator steuert nur Deployments, deren Rechner alle in seinem Bereich liegen.</summary>
+    private Task<bool> DemandDeploymentAsync(IEnumerable<DeploymentTarget> targets) =>
+        Access.DemandComputersAsync(targets.Where(t => t.ComputerId is not null).Select(t => t.ComputerId!.Value),
+            id => _deployment!.Targets.FirstOrDefault(t => t.ComputerId == id)?.ComputerName ?? $"#{id}");
+
     private async Task RetryAsync()
     {
-        if (!await Access.DemandOperatorAsync())
+        if (!await DemandDeploymentAsync(FailedTargets))
             return;
         try
         {

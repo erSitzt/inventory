@@ -1,7 +1,13 @@
 @inject IDialogService Dialogs
 @inject Auditor Audit
 @inject IStringLocalizer<SharedResource> L
+@inject Access Access
 
+@* Außerhalb des eigenen Bereichs (beschränkter Operator) gibt es das Menü nicht. *@
+@if (!_allowed)
+{
+    return;
+}
 @* Eigene Schaltfläche des Menüs statt ActivatorContent: sonst läge eine Schaltfläche in einer Schaltfläche. *@
 <MudMenu Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
          Label="@(Compact ? null : L["Remote access"].Value)" Variant="@(Compact ? Variant.Text : Variant.Outlined)" Size="@(Compact ? Size.Small : Size.Medium)"
@@ -42,6 +48,11 @@
 </MudMenu>
 
 @code {
+    private bool _allowed = true;
+
+    protected override async Task OnParametersSetAsync() =>
+        _allowed = await Access.AllowedComputersAsync() is not { } allowed || allowed.Contains(Computer.Id);
+
     [Parameter, EditorRequired] public Computer Computer { get; set; } = default!;
     /// <summary>Nur ein Symbol statt einer beschrifteten Schaltfläche (für Tabellenzeilen).</summary>
     [Parameter] public bool Compact { get; set; }

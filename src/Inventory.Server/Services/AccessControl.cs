@@ -29,6 +29,20 @@ public static class AccessControl
     public const string AdminPolicy = "Admin";
 
     /// <summary>Rolle einer Anmeldung; ohne Rollenangabe <see cref="AccessRole.None"/>.</summary>
+    /// <summary>Eine Sammlung, auf die ein Operator beschränkt ist (je Sammlung ein Claim).</summary>
+    public const string ScopeClaim = "inventory:scope";
+    /// <summary>Gesetzt = der Operator ist beschränkt; ohne <see cref="ScopeClaim"/> dann auf gar keine Rechner.</summary>
+    public const string ScopedClaim = "inventory:scoped";
+
+    /// <summary>Sammlungen, auf deren Rechnern der Benutzer handeln darf; null = keine Beschränkung (Administratoren, unbeschränkte Operatoren).</summary>
+    public static IReadOnlyList<string>? ScopeOf(ClaimsPrincipal user) =>
+        RoleOf(user) == AccessRole.Operator && user.HasClaim(c => c.Type == ScopedClaim)
+            ? user.FindAll(ScopeClaim).Select(c => c.Value).ToList()
+            : null;
+
+    private static IEnumerable<Claim> ScopeClaims(AccessRole role, string[]? scope) =>
+        role != AccessRole.Operator || scope is null ? [] : [new Claim(ScopedClaim, "1"), .. scope.Select(name => new Claim(ScopeClaim, name))];
+
     public static AccessRole RoleOf(ClaimsPrincipal user) =>
         Enum.TryParse<AccessRole>(user.FindFirst(RoleClaim)?.Value, out var role) ? role : AccessRole.None;
     private const string SelectorScheme = "Inventory";
@@ -140,7 +154,7 @@ public static class AccessControl
                         return;
                     }
                     // Nur das Nötige ins Sitzungs-Cookie: bei vielen Gruppen würde es sonst zu groß.
-                    context.Principal = SessionPrincipal(name, "oidc", role);
+                    context.Principal = SessionPrincipal(name, "oidc", role, options.ScopeOf(user, oidc: true));
                     await signIns.SignedInAsync(new AuditActor(name, role, AuditSource.Web), L["Signed in"], options.Oidc.DisplayName);
                 };
             });
@@ -175,7 +189,7 @@ public static class AccessControl
                 return Task.FromResult(principal);
             // Eigene Identität: die Windows-Identität selbst bleibt unverändert und wird je Verbindung wiederverwendet.
             var result = new ClaimsPrincipal(principal.Identities);
-            result.AddIdentity(new ClaimsIdentity([new Claim(RoleClaim, role.ToString())]));
+            result.AddIdentity(new ClaimsIdentity([new Claim(RoleClaim, role.ToString()), .. ScopeClaims(role, options.ScopeOf(principal, oidc: false))]));
             return Task.FromResult(result);
         }
     }
@@ -215,7 +229,7 @@ public static class AccessControl
                     await signIns.DeniedAsync(name, L["Sign-in denied"], "Windows");
                     return Results.Redirect("/denied");
                 }
-                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(name, "windows", role));
+                await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, SessionPrincipal(name, "windows", role, options.ScopeOf(result.Principal, oidc: false)));
                 await signIns.SignedInAsync(new AuditActor(name, role, AuditSource.Web), L["Signed in"], "Windows");
                 return Results.Redirect(LocalUrl(returnUrl));
             }).AllowAnonymous();
@@ -236,8 +250,9 @@ public static class AccessControl
             "text/html; charset=utf-8", statusCode: StatusCodes.Status403Forbidden)).AllowAnonymous();
     }
 
-    private static ClaimsPrincipal SessionPrincipal(string name, string method, AccessRole role) => new(new ClaimsIdentity(
-        [new Claim(ClaimTypes.Name, name), new Claim(AccessClaim, method), new Claim(RoleClaim, role.ToString())], CookieAuthenticationDefaults.AuthenticationScheme));
+    private static ClaimsPrincipal SessionPrincipal(string name, string method, AccessRole role, string[]? scope) => new(new ClaimsIdentity(
+        [new Claim(ClaimTypes.Name, name), new Claim(AccessClaim, method), new Claim(RoleClaim, role.ToString()), .. ScopeClaims(role, scope)],
+        CookieAuthenticationDefaults.AuthenticationScheme));
 
     /// <summary>Nur Ziele innerhalb der Anwendung; verhindert, dass ein präparierter Link nach der Anmeldung woandershin führt.</summary>
     private static string LocalUrl(string? url) =>

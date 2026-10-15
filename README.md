@@ -724,6 +724,25 @@ offered and API calls answer `403`.
 }
 ```
 
+**Operator areas.** An operator can be limited to the computers of certain collections ("may only act on Site B"):
+`Inventory:OperatorScopes` lists groups (Windows groups, or for OIDC the group IDs or app roles) and the collections
+their members may act on. Such operators still *see* everything, but scanning, waking, deploying, cancelling, retrying
+and remote access only work on computers that are currently members of those collections – dynamic collections count
+as they are at that moment. Several matching entries add up; an operator without a matching entry is not limited, and
+administrators never are. A collection name that does not exist grants nothing. The areas are read at sign-in, so a
+change applies with the next sign-in. API tokens are not limited (only administrators create them). Remote access is
+started from the operator's own PC with their own Windows rights; the area only decides what Inventory offers.
+
+```json
+"Inventory": {
+  "Roles": { "Operator": [ "COMPANY\\Helpdesk" ] },
+  "OperatorScopes": [
+    { "Groups": [ "COMPANY\\Helpdesk-SiteB" ], "Collections": [ "Site B" ] },
+    { "Groups": [ "COMPANY\\Field-Service" ], "Collections": [ "Laptops" ] }
+  ]
+}
+```
+
 **Setting up Microsoft Entra ID**
 
 1. In the Entra admin center under *App registrations* create a new registration, platform **Web**, redirect URI

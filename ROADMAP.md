@@ -58,10 +58,6 @@ Each item is tracked as a GitHub issue in the milestones [v0.2](https://github.c
 
 Collected in issue [#27](https://github.com/erSitzt/inventory/issues/27).
 
-**Deployment**
-
-- Per-collection operator scoping ("may only deploy to Site B").
-
 **Inventory**
 
 - Generic custom fields (definitions in settings, values in a key/value table, available in collections and exports).

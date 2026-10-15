@@ -81,6 +81,16 @@
                 <span>@L["{0} ({1}), allowed for {2}.", Options.Value.Oidc.DisplayName, Options.Value.Oidc.ResolveAuthority(), RoleLine(Options.Value.Oidc.AllowedGroups.Concat(Options.Value.Oidc.Roles.Admin), Options.Value.Oidc.Roles.Operator, Options.Value.Oidc.Roles.Viewer)]</span>
             }
         </MudText>
+        @if (Options.Value.OperatorScopes.Length > 0)
+        {
+            <MudText Typo="Typo.body2">
+                @L["Operator areas – these operators act only on computers of these collections:"]
+                @foreach (var scope in Options.Value.OperatorScopes)
+                {
+                    <br /><span>@string.Join(", ", InventoryOptions.Describe(scope.Groups)) → @(scope.Collections.Length > 0 ? string.Join(", ", scope.Collections) : L["no collection (no computers)"])</span>
+                }
+            </MudText>
+        }
         @if (!Options.Value.AuthenticationEnabled && !Options.Value.ResolveSimulate())
         {
             <MudAlert Severity="Severity.Error">@L["Sign-in is disabled: anyone who can reach this address can run commands on the target computers with the stored credentials."]</MudAlert>

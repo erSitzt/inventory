@@ -137,6 +137,8 @@ public static class ComputerEndpoints
 
         group.MapPost("{id:int}/wake", async (int id, WakeService wake, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
+            if (await Inventory.Server.Services.ComputerScope.ForbiddenAsync(http, [id]) is { } forbidden)
+                return forbidden;
             if (await wake.WakeAsync(id, ct) is not { } result)
                 return Results.NotFound();
             if (result.Sent)
@@ -144,7 +146,8 @@ public static class ComputerEndpoints
             return Results.Ok(new WakeDto(result.Sent, result.Macs, result.Packets, result.Relays));
         }).RequireOperator().WithSummary("Wake computer").WithDescription("Sends Wake-on-LAN magic packets (UDP port 9), from the server and through agents in the target's subnet, to the MAC addresses of the last scan, or to the one entered for the computer. sent = false with empty macs: no MAC address known; relays: computers with an agent in the target's subnet that were asked to send the packet there. sent = false with macs: the server could not send a packet and no agent was available. Sent does not mean awake: check reachability about two minutes later.").Produces<WakeDto>().Produces(404);
 
-        group.MapPost("{id:int}/scan", async (int id, ScanService scans, CancellationToken ct) => await scans.ScanAsync(id, ct))
+        group.MapPost("{id:int}/scan", async (int id, ScanService scans, HttpContext http, CancellationToken ct) =>
+            await Inventory.Server.Services.ComputerScope.ForbiddenAsync(http, [id]) ?? Results.Ok(await scans.ScanAsync(id, ct)))
             .RequireOperator().WithSummary("Inventory scan").WithDescription("Scans the computer immediately and waits for the result (seconds to minutes depending on the transport).");
 
         group.MapGet("{id:int}/software", async (int id, ComputerService computers, CancellationToken ct) =>
@@ -174,6 +177,8 @@ public static class ComputerEndpoints
         // Lädt eine .rdp-Datei; Windows öffnet sie direkt mit der Remotedesktopverbindung.
         group.MapGet("{id:int}/rdp", async (int id, ComputerService computers, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
         {
+            if (await Inventory.Server.Services.ComputerScope.ForbiddenAsync(http, [id]) is { } forbidden)
+                return forbidden;
             if (await computers.GetAsync(id, ct) is not { } computer)
                 return Results.NotFound();
             await audit.LogAsync(http.Actor(), L["Remote access: Remote Desktop"], computer.Name, ct);

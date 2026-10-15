@@ -113,7 +113,7 @@
 
     private async Task StartAsync()
     {
-        if (!await Access.DemandOperatorAsync())
+        if (!await Access.DemandComputersAsync(_targets.Select(c => c.Id), id => _computers.FirstOrDefault(c => c.Id == id)?.Name ?? $"#{id}"))
             return;
         _starting = true;
         try

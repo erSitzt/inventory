@@ -630,7 +630,7 @@ else if (_computer.ReverseDnsMismatch)
 
     private async Task WakeAsync()
     {
-        if (!await Access.DemandOperatorAsync())
+        if (!await Access.DemandComputersAsync([Id], _ => _computer!.Name))
             return;
         var result = await WakeService.WakeAsync(Id);
         if (result is null)
@@ -649,7 +649,7 @@ else if (_computer.ReverseDnsMismatch)
 
     private async Task ScanAsync()
     {
-        if (!await Access.DemandOperatorAsync())
+        if (!await Access.DemandComputersAsync([Id], _ => _computer!.Name))
             return;
         _scanning = true;
         try

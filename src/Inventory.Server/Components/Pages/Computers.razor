@@ -300,6 +300,8 @@
             .Any(v => v?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
 
     /// <summary>Die Auswahl, sonst alle gerade angezeigten Rechner.</summary>
+    private string NameOf(int id) => _computers.FirstOrDefault(c => c.Id == id)?.Name ?? $"#{id}";
+
     private List<int> TargetIds() => (_selected.Count > 0 ? _selected : _computers.Where(Matches)).Select(c => c.Id).ToList();
 
     private async Task ImportAssetsAsync()
@@ -382,6 +384,8 @@
             Snackbar.Add(L["All selected computers are online."], Severity.Info);
             return;
         }
+        if (!await Access.DemandComputersAsync(ids, NameOf))
+            return;
         var results = await WakeService.WakeAsync(ids);
         var sent = results.Where(r => r.Sent).ToList();
         if (sent.Count > 0)
@@ -400,6 +404,11 @@
         if (!await Access.DemandOperatorAsync())
             return;
         var ids = TargetIds();
+        // Ohne Auswahl ("alle scannen") nur die Rechner des eigenen Bereichs; eine Auswahl muss ganz darin liegen.
+        if (_selected.Count == 0 && await Access.AllowedComputersAsync() is { } allowed)
+            ids = [.. ids.Where(allowed.Contains)];
+        else if (!await Access.DemandComputersAsync(ids, NameOf))
+            return;
         if (ids.Count == 0)
             return;
         _busy = true;

@@ -11,7 +11,8 @@ namespace Inventory.Server.Services;
 /// zusätzlich am Anfang jeder ändernden Aktion, damit die Grenze nicht allein davon abhängt, was gerade gerendert ist.
 /// Hintergrundläufe (Zeitplaner) rufen die Dienste direkt auf und sind davon nicht betroffen.
 /// </summary>
-public sealed class Access(AuthenticationStateProvider authentication, IAuthorizationService authorization, ISnackbar snackbar, IStringLocalizer<SharedResource> L)
+public sealed class Access(AuthenticationStateProvider authentication, IAuthorizationService authorization, ISnackbar snackbar, IStringLocalizer<SharedResource> L,
+    ComputerScope scope)
 {
     public Task<bool> IsAdminAsync() => HasAsync(AccessControl.AdminPolicy);
 
@@ -22,6 +23,25 @@ public sealed class Access(AuthenticationStateProvider authentication, IAuthoriz
 
     /// <summary>false und ein Hinweis an den Benutzer, wenn die Anmeldung weder Operator noch Administrator ist.</summary>
     public Task<bool> DemandOperatorAsync() => DemandAsync(AccessControl.OperatorPolicy);
+
+    /// <summary>
+    /// Wie <see cref="DemandOperatorAsync"/>, und alle Rechner liegen im Bereich des Operators. Sonst false und ein Hinweis,
+    /// welche Rechner nicht erlaubt sind.
+    /// </summary>
+    public async Task<bool> DemandComputersAsync(IEnumerable<int> computerIds, Func<int, string>? nameOf = null)
+    {
+        if (!await DemandOperatorAsync())
+            return false;
+        var outside = await scope.OutsideAsync((await authentication.GetAuthenticationStateAsync()).User, computerIds);
+        if (outside.Count == 0)
+            return true;
+        var names = string.Join(", ", outside.Take(5).Select(id => nameOf?.Invoke(id) ?? $"#{id}")) + (outside.Count > 5 ? " …" : "");
+        snackbar.Add(L["Outside your area (collections you may act on): {0}", names], Severity.Error);
+        return false;
+    }
+
+    /// <summary>Rechner, auf denen die Anmeldung handeln darf; null = keine Beschränkung.</summary>
+    public async Task<HashSet<int>?> AllowedComputersAsync() => await scope.AllowedAsync((await authentication.GetAuthenticationStateAsync()).User);
 
     private async Task<bool> HasAsync(string policy) =>
         (await authorization.AuthorizeAsync((await authentication.GetAuthenticationStateAsync()).User, policy)).Succeeded;
