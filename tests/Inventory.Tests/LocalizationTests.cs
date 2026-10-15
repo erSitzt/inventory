@@ -60,6 +60,20 @@ public class LocalizationTests
         Assert.True(broken.Count == 0, "Platzhalter weichen ab:\n" + string.Join("\n", broken));
     }
 
+    /// <summary>
+    /// Jede Übersetzung kommt zur Laufzeit auch an. Der Ressourcen-Compiler behandelt Schlüssel ohne Rücksicht auf
+    /// Groß-/Kleinschreibung: von „Failed“ und „failed“ bliebe nur einer übrig, der andere erschiene unübersetzt.
+    /// </summary>
+    [Fact]
+    public void Keys_differ_by_more_than_case()
+    {
+        var translations = Translations("de");
+        // Unschädlich nur, wenn jeder Schlüssel der Gruppe unverändert übersetzt wird (z. B. „online“ / „Online“).
+        var clashes = translations.Keys.GroupBy(k => k, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1 && g.Any(k => translations[k] != k)).Select(g => string.Join(" / ", g)).ToList();
+        Assert.True(clashes.Count == 0, "Schlüssel, die sich nur in Groß-/Kleinschreibung unterscheiden:\n" + string.Join("\n", clashes));
+    }
+
     /// <summary>Kein deutscher Text mehr fest im Quelltext (außerhalb von Kommentaren) – alles läuft über die Übersetzung.</summary>
     [Fact]
     public void Source_texts_are_english()

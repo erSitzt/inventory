@@ -11,6 +11,7 @@
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
 @inject Access Access
+@inject UpdateInstaller Updates
 
 <PageTitle>@(_computer?.Name ?? L["Computer"]) – Inventory</PageTitle>
 
@@ -459,7 +460,16 @@ else if (_computer.ReverseDnsMismatch)
                 @if (_computer.UpdatePendingCount > 0)
                 {
                     <MudItem xs="12">
-                        <MudText Typo="Typo.subtitle1" Class="mb-1">@L["Pending updates"]</MudText>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1" Wrap="Wrap.Wrap">
+                            <MudText Typo="Typo.subtitle1">@L["Pending updates"]</MudText>
+                            <MudSpacer />
+                            <AdminOnly>
+                                <MudMenu Label="@L["Install …"]" StartIcon="@Icons.Material.Filled.SystemUpdateAlt" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Variant="Variant.Outlined" Size="Size.Small">
+                                    <MudMenuItem OnClick="@(() => Updates.OpenAsync([Id], securityOnly: false))">@L["All pending updates (restart if needed)"]</MudMenuItem>
+                                    <MudMenuItem OnClick="@(() => Updates.OpenAsync([Id], securityOnly: true))">@L["Security and critical updates only (restart if needed)"]</MudMenuItem>
+                                </MudMenu>
+                            </AdminOnly>
+                        </MudStack>
                         <MudText Typo="Typo.caption">@L["As of the computer's last search ({0}); the scan does not trigger a new search.", Display.LocalTime(_computer.UpdateLastSearchUtc)]</MudText>
                         @if (_computer.PendingUpdates.Count > 0)
                         {

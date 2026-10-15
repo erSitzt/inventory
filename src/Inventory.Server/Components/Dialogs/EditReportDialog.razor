@@ -19,7 +19,7 @@
             </MudSelect>
             @if (Report.HasCollectionFilter(_source))
             {
-                <MudSelect T="int?" @bind-Value="_collectionId" Label="@L["Collection"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["all computers"]">
+                <MudSelect T="int?" @bind-Value="_collectionId" Label="@L["Collection"]" Variant="Variant.Outlined" Clearable="true" Placeholder="@L["All computers"]">
                     @foreach (var collection in _collections)
                     {
                         <MudSelectItem T="int?" Value="collection.Id">@collection.Name</MudSelectItem>

@@ -151,7 +151,7 @@ public static partial class InventoryDiff
     }
 
     /// <summary>Englische Bezeichnungen der Stufen der Benutzerkontensteuerung; zugleich Schlüssel für die Übersetzung.</summary>
-    public static readonly string[] UacLevels = ["never notify", "notify without dimming the desktop", "default", "always notify"];
+    public static readonly string[] UacLevels = ["never notify", "notify without dimming the desktop", "default level", "always notify"];
 
     /// <summary>Modell plus Seriennummer: zwei gleiche Geräte bleiben unterscheidbar, ein Tausch wird sichtbar.</summary>
     private static string DiskKey(string model, string? serialNumber) =>

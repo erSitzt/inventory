@@ -78,7 +78,10 @@ Rechnern es fehlt) und je Rechner (wer keine offenen Sicherheitsupdates hat), CS
 installierte Hotfixes und ausstehende Updates. *Installieren …* startet eine Verteilung des Updates auf die Rechner,
 denen es fehlt, mit dem Schritt **Windows Update**: Er sucht, lädt und installiert aus der auf dem Rechner
 eingestellten Quelle (WSUS oder Microsoft Update) – alle Updates, nur Sicherheits- und kritische oder bestimmte
-KB-Nummern. Funktioniert über SMB + Dienst oder Agent, nicht über WinRM.
+KB-Nummern. Funktioniert über SMB + Dienst oder Agent, nicht über WinRM. Für bestimmte Rechner verteilen *Installieren …*
+auf der Rechnerseite (Abschnitt *Ausstehende Updates*) und *Ausstehende Updates installieren* in den Aktionen der
+Rechnerliste alle ausstehenden Updates oder nur Sicherheits- und kritische, danach einen Neustart nur, wenn einer
+aussteht (mit fünf Minuten Vorwarnung für den angemeldeten Benutzer).
 
 ### Software und Apps
 

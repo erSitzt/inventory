@@ -35,7 +35,7 @@
             <CellTemplate>@Display.Report(context.Item.Source)</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Collection"]">
-            <CellTemplate>@(context.Item.Collection?.Name ?? (Report.HasCollectionFilter(context.Item.Source) ? L["all computers"] : ""))</CellTemplate>
+            <CellTemplate>@(context.Item.Collection?.Name ?? (Report.HasCollectionFilter(context.Item.Source) ? L["All computers"] : ""))</CellTemplate>
         </TemplateColumn>
         <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>

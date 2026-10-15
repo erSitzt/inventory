@@ -103,6 +103,7 @@ builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbC
 builder.Services.AddScoped<Auditor>();
 builder.Services.AddScoped<Access>();
 builder.Services.AddScoped<GuidedTour>();
+builder.Services.AddScoped<UpdateInstaller>();
 // Die Hilfe verweist in die README desselben Repositorys, aus dem auch die Updates kommen.
 builder.Services.AddSingleton(new HelpDocs(options.Update.Repository));
 builder.Services.AddSingleton<IReleaseSource>(new GitHubReleaseSource(new HttpClient { Timeout = TimeSpan.FromMinutes(15) }));

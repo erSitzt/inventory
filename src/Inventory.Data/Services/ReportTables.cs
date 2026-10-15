@@ -227,7 +227,7 @@ public sealed partial class ReportService
         new("publisher", L["Publisher"], r => r.Publisher),
         new("installed", L["Installed"], r => r.InstallDate),
         new("architecture", L["Architecture"], r => r.Is64Bit ? "64 Bit" : "32 Bit"),
-        new("perUser", L["Per user"], r => YesNo(r.PerUser)),
+        new("perUser", L["Installed per user"], r => YesNo(r.PerUser)),
     ];
 
     private List<Column<UpdateRow>> UpdateColumns() =>
@@ -251,9 +251,9 @@ public sealed partial class ReportService
         new("started", L["Started (UTC)"], r => r.CreatedUtc.ToString(DateTimeFormat)),
         new("finished", L["Finished (UTC)"], r => r.FinishedUtc?.ToString(DateTimeFormat)),
         new("computers", L["Computers"], r => Number(r.Targets), Numeric: true),
-        new("succeeded", L["Succeeded"], r => Number(r.Succeeded), Numeric: true),
-        new("failed", L["Failed"], r => Number(r.Failed), Numeric: true),
-        new("cancelled", L["Cancelled"], r => Number(r.Cancelled), Numeric: true),
+        new("succeeded", L["Computers succeeded"], r => Number(r.Succeeded), Numeric: true),
+        new("failed", L["Computers failed"], r => Number(r.Failed), Numeric: true),
+        new("cancelled", L["Computers cancelled"], r => Number(r.Cancelled), Numeric: true),
         new("open", L["Still open"], r => Number(r.Open), Numeric: true),
         new("stopReason", L["Stopped because"], r => r.StopReason),
     ];

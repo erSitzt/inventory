@@ -14,6 +14,7 @@
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
 @inject Access Access
+@inject UpdateInstaller Updates
 
 <PageTitle>@L["Computers"] – Inventory</PageTitle>
 
@@ -52,6 +53,8 @@
             <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">@L["Deploy package"]</MudMenuItem>
             <AdminOnly>
                 <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">@L["Run command"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => Updates.OpenAsync(_selected.Select(c => c.Id).ToList(), securityOnly: false))">@L["Install pending updates"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => Updates.OpenAsync(_selected.Select(c => c.Id).ToList(), securityOnly: true))">@L["Install pending security updates"]</MudMenuItem>
                 <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MudMenuItem>
                 <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">@L["Install remote access launcher"]</MudMenuItem>
             </AdminOnly>

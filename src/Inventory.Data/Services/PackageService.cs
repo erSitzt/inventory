@@ -204,6 +204,42 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         return (package, true);
     }
 
+    /// <summary>
+    /// Paket für alle ausstehenden Updates (oder nur Sicherheits- und kritische), mit anschließendem Neustart nur dann, wenn
+    /// einer aussteht – mit fünf Minuten Vorwarnung für angemeldete Benutzer. Wiederverwendet wird ein Paket mit genau diesen
+    /// Schritten, unabhängig vom Namen.
+    /// </summary>
+    public async Task<(Package Package, bool Created)> EnsurePendingUpdatesPackageAsync(bool securityOnly, CancellationToken ct = default, string? approvedBy = null)
+    {
+        var name = (securityOnly ? L["Install pending security updates"] : L["Install pending updates"]).Value;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            var candidates = await db.Packages.AsNoTracking().Include(p => p.Steps).Where(p => p.Steps.Count == 2).ToListAsync(ct);
+            var existing = candidates.FirstOrDefault(p =>
+            {
+                var steps = p.Steps.OrderBy(s => s.Order).ToList();
+                return steps[0] is { NestedPackageId: null, Definition: { Type: StepType.WindowsUpdate, UpdateKbIds.Count: 0, UpdateIncludeDrivers: false, UpdateMaxCount: 0 } update }
+                       && update.UpdateSecurityOnly == securityOnly
+                       && steps[1] is { NestedPackageId: null, Definition: { Type: StepType.Reboot, Conditions.RebootPending: true } };
+            });
+            if (existing is not null)
+                return (existing, false);
+            if (await db.Packages.AnyAsync(p => p.Name == name, ct))
+                name = $"{name} ({DateTime.Now:yyyy-MM-dd HH:mm})";
+        }
+        var package = await SaveAsync(null, name, null, null, ct);
+        await SaveStepAsync(package.Id, null, new JobStep { Name = name, Type = StepType.WindowsUpdate, TimeoutSeconds = 7200, UpdateSecurityOnly = securityOnly }, null, ct);
+        await SaveStepAsync(package.Id, null, new JobStep
+        {
+            Name = L["Restart if needed"], Type = StepType.Reboot, Seconds = 300,
+            Script = L["Windows updates were installed. The computer restarts in 5 minutes – please save your work."],
+            Conditions = new StepConditions { RebootPending = true },
+        }, null, ct);
+        if (approvedBy is not null)
+            await ApproveAsync(package.Id, approvedBy, ct);
+        return (package, true);
+    }
+
     /// <summary>Paket, das genau diese Updates installiert; wird beim ersten Aufruf angelegt und danach wiederverwendet.</summary>
     /// <param name="kbIds">KB-Nummern wie in <see cref="ComputerPendingUpdate.KbIds"/>, durch Komma getrennt.</param>
     public async Task<(Package Package, bool Created)> EnsureUpdatePackageAsync(string kbIds, CancellationToken ct = default, string? approvedBy = null)
