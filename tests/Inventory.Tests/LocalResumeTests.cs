@@ -230,4 +230,53 @@ public sealed class LocalResumeTests : IDisposable
         }));
         Assert.Equal(TargetStatus.Succeeded, (await LoadAsync(target.Id)).Status);
     }
+
+    [Fact]
+    public async Task A_follow_up_job_whose_agent_went_away_keeps_its_place_for_the_late_result()
+    {
+        var packages = new PackageService(_db, new PackageRepository(_repoDir));
+        var deployments = new DeploymentService(_db, packages,
+            new RemoteJobService([new LostAgentTransport()], _computers, new CredentialService(_db, new ReversingProtector()), new SettingsService(_db)),
+            new InventoryStore(_db), new SimulatedHostProbe());
+        var package = await packages.SaveAsync(null, "Two parts", null, null);
+        await packages.SaveStepAsync(package.Id, null, new JobStep { Name = "reboot", Type = StepType.Reboot, Seconds = 30 }, null);
+        await packages.SaveStepAsync(package.Id, null, new JobStep { Name = "after", Type = StepType.Command, Script = "echo ok" }, null);
+        var computer = (await _computers.ImportAsync("pc-01")).Single();
+        int targetId;
+        await using (var db = await ((IDbContextFactory<InventoryDbContext>)_db).CreateDbContextAsync())
+        {
+            var target = new DeploymentTarget
+            {
+                ComputerId = computer.Id, ComputerName = computer.Name, Status = TargetStatus.WaitingReboot, ResumeFromStep = 1,
+                RebootUtc = DateTime.UtcNow, BootTimeUtc = FirstBoot, Steps = [Step(0, "reboot")],
+            };
+            db.Deployments.Add(new Deployment { PackageId = package.Id, PackageName = "Two parts", Targets = [target] });
+            await db.SaveChangesAsync();
+            targetId = target.Id;
+        }
+
+        await deployments.ResumeRebootedAsync();
+        DeploymentTarget lost;
+        for (var i = 0; ; i++)
+        {
+            lost = await LoadAsync(targetId);
+            if (lost.Status == TargetStatus.Failed || i > 200)
+                break;
+            await Task.Delay(50);
+        }
+        Assert.Equal((TargetStatus.Failed, true, 1), (lost.Status, lost.Interrupted, lost.ResumeFromStep));
+
+        Assert.True(await deployments.AdoptResultAsync(computer.Id, lost.JobId!, new JobResult { JobId = lost.JobId!, Success = true, Steps = [Step(0, "after")] }));
+        var done = await LoadAsync(targetId);
+        Assert.Equal(TargetStatus.Succeeded, done.Status);
+        Assert.Equal(["reboot", "after"], done.Steps.Select(s => s.Name));
+    }
+
+    [Fact]
+    public async Task A_target_that_is_still_being_saved_asks_the_agent_to_retry()
+    {
+        var (computerId, _) = await TargetAsync("loc8", t => t.Status = TargetStatus.Running);
+        Assert.True(await _deployments.IsSettlingAsync(computerId, "loc8"));
+        Assert.False(await _deployments.IsSettlingAsync(computerId, "other"));
+    }
 }

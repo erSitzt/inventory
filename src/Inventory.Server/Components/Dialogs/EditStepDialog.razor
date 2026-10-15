@@ -156,9 +156,10 @@
                         <MudNumericField T="int" @bind-Value="_step.Seconds" Label="@L["Wait time (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="86400" />
                         break;
                     case StepType.Reboot:
-                        <MudNumericField T="int" @bind-Value="_step.Seconds" Label="@L["Delay (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="86400" />
+                        <MudNumericField T="int" @bind-Value="_step.Seconds" Label="@L["Delay (seconds)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="86400"
+                                         HelperText="@L["At least 15 seconds, so that the result is stored before Windows shuts down."]" />
                         <MudTextField @bind-Value="_step.Script" Label="@L["Message for logged-on users"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                        <MudAlert Severity="Severity.Info" Dense="true">@L["Steps after the restart continue automatically once the computer is reachable again (within the wait time from the settings); the final inventory scan runs then as well."]</MudAlert>
+                        <MudAlert Severity="Severity.Info" Dense="true">@L["Steps after the restart continue automatically once the computer is reachable again (within the wait time from the settings); the final inventory scan runs then as well. On computers with the agent, the agent continues by itself, also without a connection to the server."]</MudAlert>
                         break;
                     case StepType.WindowsUpdate:
                         <MudCheckBox T="bool" @bind-Value="_step.UpdateSecurityOnly" Label="@L["Only security and critical updates"]" Dense="true" Disabled="@(!string.IsNullOrWhiteSpace(_updateKbIds))" />

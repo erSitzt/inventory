@@ -765,7 +765,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 stored.Status = status;
                 stored.Error = error;
                 stored.Steps = steps;
-                stored.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
+                // Ein Folgejob, dessen Ergebnis noch nachkommen kann, behält seinen Fortsetzungspunkt: die Übernahme fügt dort an.
+                stored.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext
+                    : status == TargetStatus.Failed && resultMayFollow && resumeFrom > 0 ? resumeFrom : null;
                 stored.BootTimeUtc = bootTime;
                 stored.ResumesLocally = status == TargetStatus.WaitingReboot && resumesLocally;
                 stored.Interrupted = status == TargetStatus.Failed && resultMayFollow;
@@ -933,6 +935,16 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 : L["Restarting – the remaining steps follow once the computer is back"];
         }
         return (status, error, steps, resumeNext, bootTime);
+    }
+
+    /// <summary>
+    /// true, solange ein Ziel dieses Jobs noch als laufend gespeichert ist, obwohl kein Job mehr läuft: das Ergebnis wird
+    /// gerade gespeichert. Ein Ergebnis, das in diesem Moment nachgeliefert wird, soll der Agent später erneut schicken.
+    /// </summary>
+    public async Task<bool> IsSettlingAsync(int computerId, string jobId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.DeploymentTargets.AnyAsync(t => t.JobId == jobId && t.ComputerId == computerId && t.Status == TargetStatus.Running, ct);
     }
 
     /// <summary>

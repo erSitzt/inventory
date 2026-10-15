@@ -89,7 +89,10 @@ public static class AgentEndpoints
             // Das Ergebnis muss selbst zu diesem Job gehören, nicht nur unter seiner Adresse eintreffen.
             if (await ReadAsync<JobResult>(http, ct) is not { } late || late.JobId != jobId)
                 return Results.BadRequest();
-            return await deployments.AdoptResultAsync(computer.Id, jobId, late, ct) ? Results.NoContent() : Results.NotFound();
+            if (await deployments.AdoptResultAsync(computer.Id, jobId, late, ct))
+                return Results.NoContent();
+            // Das Ziel speichert gerade sein vorheriges Ergebnis (Job eben beendet oder abgelaufen): später erneut versuchen lassen.
+            return await deployments.IsSettlingAsync(computer.Id, jobId, ct) ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable) : Results.NotFound();
         });
 
         return app;

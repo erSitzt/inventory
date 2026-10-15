@@ -227,7 +227,7 @@ namespace Inventory.Runner
         private void Finish(string jobId, string jobDir, JobManifest manifest, JobResult result, int sequence)
         {
             Queue(jobId, result, sequence, resumes: result.Success && result.ResumeFromStep != null && !_stop.IsCancellationRequested);
-            Advance(jobDir, manifest, result, sequence);
+            Advance(jobId, jobDir, manifest, result, sequence);
             DeliverPending();
         }
 
@@ -247,7 +247,7 @@ namespace Inventory.Runner
         }
 
         /// <summary>Nach dem Ablegen: den nächsten Folgeauftrag hinterlegen oder das Job-Verzeichnis aufräumen.</summary>
-        private void Advance(string jobDir, JobManifest manifest, JobResult result, int sequence)
+        private void Advance(string jobId, string jobDir, JobManifest manifest, JobResult result, int sequence)
         {
             if (result.ResumesLocally && result.ResumeFromStep is int next)
             {
@@ -260,7 +260,9 @@ namespace Inventory.Runner
                 }
                 catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
                 {
+                    // Der Server wartet schon auf die Fortsetzung: ihm gleich als deren Ergebnis melden, dass sie nicht kommt.
                     Log("Fortsetzung nach dem Neustart nicht ablegbar: " + ex.Message);
+                    Queue(jobId, JobResult.Failed(jobId, "Agent: the continuation after the restart could not be stored: " + ex.Message), sequence + 1, resumes: false);
                 }
             }
             try { Directory.Delete(jobDir, true); } catch (IOException) { /* wird beim nächsten Job nicht stören */ }
@@ -340,9 +342,27 @@ namespace Inventory.Runner
                     if (File.Exists(PendingPath(jobId, state.Sequence)))
                     {
                         // Die Fortsetzung war fertig und ihr Ergebnis abgelegt; nur der nächste Schritt danach fehlte noch.
-                        var queued = JobJson.Deserialize<JobResult>(File.ReadAllText(PendingPath(jobId, state.Sequence), Encoding.UTF8))
-                                     ?? JobResult.Failed(jobId, "Agent: the continuation after the restart was interrupted");
-                        Advance(jobDir, state.Manifest, queued, state.Sequence);
+                        JobResult? queued;
+                        try
+                        {
+                            queued = JobJson.Deserialize<JobResult>(File.ReadAllText(PendingPath(jobId, state.Sequence), Encoding.UTF8));
+                        }
+                        catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                        {
+                            // Vorübergehend nicht lesbar: beim nächsten Durchlauf erneut, die übrigen Jobs laufen weiter.
+                            continue;
+                        }
+                        catch (System.Text.Json.JsonException)
+                        {
+                            queued = null;
+                        }
+                        if (queued == null)
+                        {
+                            // Abgelegtes Ergebnis unbrauchbar: als fehlgeschlagene Fortsetzung melden, nichts wiederholen.
+                            Finish(jobId, jobDir, state.Manifest, JobResult.Failed(jobId, "Agent: the result of the continuation after the restart could not be read"), state.Sequence);
+                            continue;
+                        }
+                        Advance(jobId, jobDir, state.Manifest, queued, state.Sequence);
                     }
                     else
                     {

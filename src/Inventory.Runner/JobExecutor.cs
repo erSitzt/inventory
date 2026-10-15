@@ -764,7 +764,8 @@ namespace Inventory.Runner
                     break;
                 case StepType.Reboot:
                     fileName = Path.Combine(system, "shutdown.exe");
-                    arguments = $"/r /t {Math.Max(step.Seconds, 0)} /d p:4:1";
+                    // Nie sofort: das Ergebnis (und beim Agent der Folgeauftrag) muss abgelegt und abgeholt sein, bevor Windows herunterfährt.
+                    arguments = $"/r /t {Math.Max(step.Seconds, MinRebootDelaySeconds)} /d p:4:1";
                     if (!string.IsNullOrWhiteSpace(step.Script))
                         arguments += " /c \"" + step.Script.Replace("\"", "'") + "\"";
                     break;
@@ -903,6 +904,9 @@ namespace Inventory.Runner
         }
 
         /// <summary>Startzeit des Betriebssystems aus der Laufzeit seit dem Start; wrapfrei (64 Bit).</summary>
+        /// <summary>Kürzeste Wartezeit vor dem Neustart, auch wenn der Schritt 0 Sekunden nennt.</summary>
+        internal const int MinRebootDelaySeconds = 15;
+
         internal static DateTime BootTimeUtc() => DateTime.UtcNow - TimeSpan.FromMilliseconds(GetTickCount64());
 
         [DllImport("kernel32.dll")]

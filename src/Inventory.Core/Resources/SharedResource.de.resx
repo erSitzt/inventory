@@ -563,6 +563,9 @@
   <data name="At fixed intervals" xml:space="preserve">
     <value>In festen Abständen</value>
   </data>
+  <data name="At least 15 seconds, so that the result is stored before Windows shuts down." xml:space="preserve">
+    <value>Mindestens 15 Sekunden, damit das Ergebnis gespeichert ist, bevor Windows herunterfährt.</value>
+  </data>
   <data name="At least one firewall profile is off" xml:space="preserve">
     <value>Mindestens ein Firewall-Profil ist abgeschaltet</value>
   </data>
@@ -3800,8 +3803,8 @@
   <data name="Steps after a reboot are not executed. The reboot should be the last step." xml:space="preserve">
     <value>Schritte nach einem Neustart werden nicht mehr ausgeführt. Der Neustart sollte der letzte Schritt sein.</value>
   </data>
-  <data name="Steps after the restart continue automatically once the computer is reachable again (within the wait time from the settings); the final inventory scan runs then as well." xml:space="preserve">
-    <value>Schritte nach dem Neustart laufen automatisch weiter, sobald der Rechner wieder erreichbar ist (innerhalb der Wartezeit aus den Einstellungen); auch der abschließende Inventar-Scan läuft dann.</value>
+  <data name="Steps after the restart continue automatically once the computer is reachable again (within the wait time from the settings); the final inventory scan runs then as well. On computers with the agent, the agent continues by itself, also without a connection to the server." xml:space="preserve">
+    <value>Schritte nach dem Neustart laufen automatisch weiter, sobald der Rechner wieder erreichbar ist (innerhalb der Wartezeit aus den Einstellungen); auch der abschließende Inventar-Scan läuft dann. Auf Rechnern mit Agent setzt der Agent selbst fort, auch ohne Verbindung zum Server.</value>
   </data>
   <data name="Still open" xml:space="preserve">
     <value>Noch offen</value>
