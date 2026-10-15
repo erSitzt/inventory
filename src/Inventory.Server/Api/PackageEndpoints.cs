@@ -51,6 +51,8 @@ public static class PackageEndpoints
         app.MapPost("/api/deployments", async (DeployRequest request, DeploymentService deployments, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L,
             IAuthorizationService authorization, CancellationToken ct) =>
         {
+            if (await Inventory.Server.Services.ComputerScope.ForbiddenAsync(http, request.ComputerIds) is { } forbidden)
+                return forbidden;
             try
             {
                 // Nur Administratoren dürfen ein noch nicht freigegebenes Paket verteilen.

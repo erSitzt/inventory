@@ -47,6 +47,22 @@ public sealed class InventoryOptions
     /// </summary>
     public RoleGroups Roles { get; set; } = new();
 
+    /// <summary>
+    /// Bereiche für Operatoren: Mitglieder dieser Gruppen (Windows-Gruppen oder, bei OIDC, Gruppen-IDs bzw. App-Rollen)
+    /// handeln nur auf Rechnern der genannten Sammlungen. Sehen dürfen sie weiterhin alles. Operatoren ohne passenden Eintrag
+    /// bleiben uneingeschränkt; für Administratoren gelten Bereiche nie.
+    /// </summary>
+    public OperatorScope[] OperatorScopes { get; set; } = [];
+
+    /// <summary>
+    /// Sammlungen, auf die ein Operator beschränkt ist (Vereinigung aller passenden Bereiche); null = nicht beschränkt.
+    /// </summary>
+    public string[]? ScopeOf(System.Security.Claims.ClaimsPrincipal user, bool oidc)
+    {
+        var matching = OperatorScopes.Where(scope => scope.Groups.Any(group => oidc ? Oidc.HasGroup(user, group) : InGroup(user, group))).ToList();
+        return matching.Count == 0 ? null : [.. matching.SelectMany(scope => scope.Collections).Distinct(StringComparer.OrdinalIgnoreCase)];
+    }
+
     /// <summary>Die Administratorgruppen; ist keine konfiguriert, die lokalen Administratoren des Servers.</summary>
     public string[] EffectiveGroups => AllowedGroups.Concat(Roles.Admin).ToArray() is { Length: > 0 } groups ? groups : [LocalAdministratorsSid];
 
@@ -128,6 +144,14 @@ public sealed class InventoryOptions
     public bool ResolveSimulate() => Simulate ?? !OperatingSystem.IsWindows();
 }
 
+/// <summary>Ein Bereich: wer in einer der Gruppen ist, darf als Operator nur auf Rechnern dieser Sammlungen handeln.</summary>
+public sealed class OperatorScope
+{
+    public string[] Groups { get; set; } = [];
+    /// <summary>Namen der Sammlungen; eine Sammlung, die es nicht (mehr) gibt, gibt keinen Rechner frei.</summary>
+    public string[] Collections { get; set; } = [];
+}
+
 /// <summary>Gruppen je Rolle; die höchste zutreffende Rolle gilt.</summary>
 public sealed class RoleGroups
 {
@@ -168,12 +192,14 @@ public sealed class OidcOptions
         : !string.IsNullOrWhiteSpace(TenantId) ? $"https://login.microsoftonline.com/{TenantId}/v2.0"
         : throw new InvalidOperationException("OIDC sign-in requires Inventory:Oidc:TenantId or Inventory:Oidc:Authority.");
 
+    /// <summary>true, wenn der Benutzer die Gruppe oder App-Rolle im Token trägt.</summary>
+    public bool HasGroup(System.Security.Claims.ClaimsPrincipal user, string group) => user.Claims.Any(c =>
+        (c.Type.Equals(GroupClaim, StringComparison.OrdinalIgnoreCase) || c.Type == "roles") && c.Value.Equals(group, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>Höchste Rolle, die sich aus Gruppen und App-Rollen des Benutzers ergibt.</summary>
     public Inventory.Core.Model.AccessRole RoleOf(System.Security.Claims.ClaimsPrincipal user)
     {
-        bool In(IEnumerable<string> groups) => user.Claims.Any(c =>
-            (c.Type.Equals(GroupClaim, StringComparison.OrdinalIgnoreCase) || c.Type == "roles")
-            && groups.Contains(c.Value, StringComparer.OrdinalIgnoreCase));
+        bool In(IEnumerable<string> groups) => groups.Any(group => HasGroup(user, group));
         return In(AllowedGroups.Concat(Roles.Admin)) ? Inventory.Core.Model.AccessRole.Admin
             : In(Roles.Operator) ? Inventory.Core.Model.AccessRole.Operator
             : In(Roles.Viewer) ? Inventory.Core.Model.AccessRole.Viewer

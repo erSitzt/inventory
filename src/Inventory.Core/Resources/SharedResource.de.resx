@@ -2255,6 +2255,9 @@
   <data name="No checksum for {0} in the release's list." xml:space="preserve">
     <value>Für {0} steht keine Prüfsumme in der Liste des Releases.</value>
   </data>
+  <data name="no collection (no computers)" xml:space="preserve">
+    <value>keine Sammlung (keine Rechner)</value>
+  </data>
   <data name="No collections yet." xml:space="preserve">
     <value>Noch keine Sammlungen vorhanden.</value>
   </data>
@@ -2636,6 +2639,9 @@
   <data name="Operator" xml:space="preserve">
     <value>Operator</value>
   </data>
+  <data name="Operator areas – these operators act only on computers of these collections:" xml:space="preserve">
+    <value>Operator-Bereiche – diese Operatoren handeln nur auf Rechnern dieser Sammlungen:</value>
+  </data>
   <data name="Operators and schedules only deploy approved packages. If this is off, an automatically updated library package has to be approved again by an administrator before schedules deploy the new version." xml:space="preserve">
     <value>Operatoren und Zeitpläne verteilen nur freigegebene Pakete. Ist dies aus, muss ein automatisch aktualisiertes Bibliothekspaket erst wieder von einem Administrator freigegeben werden, bevor Zeitpläne die neue Version verteilen.</value>
   </data>
@@ -2662,6 +2668,9 @@
   </data>
   <data name="Outlook will be closed in two minutes for an update. Please save your work." xml:space="preserve">
     <value>Outlook wird in zwei Minuten für ein Update geschlossen. Bitte Arbeit speichern.</value>
+  </data>
+  <data name="Outside your area (collections you may act on): {0}" xml:space="preserve">
+    <value>Außerhalb Ihres Bereichs (Sammlungen, auf denen Sie handeln dürfen): {0}</value>
   </data>
   <data name="Overview" xml:space="preserve">
     <value>Übersicht</value>

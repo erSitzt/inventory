@@ -754,6 +754,26 @@ nicht angeboten, und API-Aufrufe antworten mit `403`.
 }
 ```
 
+**Operator-Bereiche.** Ein Operator lässt sich auf die Rechner bestimmter Sammlungen beschränken („darf nur Standort B“):
+`Inventory:OperatorScopes` nennt Gruppen (Windows-Gruppen bzw. bei OIDC Gruppen-IDs oder App-Rollen) und die
+Sammlungen, auf denen deren Mitglieder handeln dürfen. Solche Operatoren *sehen* weiterhin alles, aber Scannen, Wecken,
+Bereitstellen, Abbrechen, Wiederholen und Fernzugriff gehen nur auf Rechnern, die gerade Mitglied dieser Sammlungen
+sind – dynamische Sammlungen zählen so, wie sie in dem Moment sind. Mehrere passende Einträge addieren sich; ein Operator
+ohne passenden Eintrag ist nicht beschränkt, Administratoren sind es nie. Ein Sammlungsname, den es nicht gibt, gibt
+nichts frei. Die Bereiche werden bei der Anmeldung gelesen, eine Änderung gilt also ab der nächsten Anmeldung.
+API-Tokens sind nicht beschränkt (nur Administratoren legen sie an). Fernzugriff startet vom PC des Operators mit dessen
+eigenen Windows-Rechten; der Bereich bestimmt nur, was Inventory anbietet.
+
+```json
+"Inventory": {
+  "Roles": { "Operator": [ "FIRMA\\Helpdesk" ] },
+  "OperatorScopes": [
+    { "Groups": [ "FIRMA\\Helpdesk-StandortB" ], "Collections": [ "Standort B" ] },
+    { "Groups": [ "FIRMA\\Aussendienst" ], "Collections": [ "Notebooks" ] }
+  ]
+}
+```
+
 **Microsoft Entra ID einrichten**
 
 1. Im Entra Admin Center unter *App-Registrierungen* eine neue Registrierung anlegen, Plattform **Web**, Umleitungs-URI

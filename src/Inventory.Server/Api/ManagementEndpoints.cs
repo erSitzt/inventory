@@ -206,6 +206,8 @@ public static class ManagementEndpoints
         {
             if (await service.GetAsync(id, ct) is not { } deployment)
                 return Results.NotFound();
+            if (await Inventory.Server.Services.ComputerScope.ForbiddenAsync(http, deployment.Targets.Where(t => t.ComputerId is not null).Select(t => t.ComputerId!.Value)) is { } forbidden)
+                return forbidden;
             await service.CancelAsync(id);
             await audit.LogAsync(http.Actor(), "Deployment cancelled via API", $"#{id} {deployment.PackageName}", ct);
             return Results.NoContent();
@@ -215,6 +217,8 @@ public static class ManagementEndpoints
         {
             if (await service.GetAsync(id, ct) is not { } deployment)
                 return Results.NotFound();
+            if (await Inventory.Server.Services.ComputerScope.ForbiddenAsync(http, deployment.Targets.Where(t => t.ComputerId is not null).Select(t => t.ComputerId!.Value)) is { } forbidden)
+                return forbidden;
             var started = await service.ReleasePilotAsync(id, force: true, ct);
             if (started == 0)
                 return Results.Problem("Nothing to release: the deployment is not waiting for a pilot group, or computers of it are still running.", statusCode: 409);
