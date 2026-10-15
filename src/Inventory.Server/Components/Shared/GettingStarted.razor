@@ -2,6 +2,7 @@
 @inject CredentialService Credentials
 @inject IStringLocalizer<SharedResource> L
 @inject IJSRuntime Js
+@inject GuidedTour Tour
 
 @if (_visible && _steps.Count > 0 && _steps.Any(s => !s.Done))
 {
@@ -10,6 +11,7 @@
             <div class="title" style="margin-bottom: 0"><MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Primary" /> @L["Getting started"]</div>
             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["{0} of {1} done", _steps.Count(s => s.Done), _steps.Count]</MudChip>
             <MudSpacer />
+            <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Tour" OnClick="@(() => Tour.RequestAsync())">@L["Take the tour"]</MudButton>
             <MudButton Size="Size.Small" OnClick="HideAsync">@L["Hide"]</MudButton>
         </MudStack>
         <MudText Typo="Typo.body2" Class="mb-2 mt-1">@L["The usual way to the first deployment. The question mark at the top right explains every page."]</MudText>

@@ -70,7 +70,7 @@
     @Kpi(L["Packages"], _stats.Packages, _stats.Schedules > 0 ? L["{0} active schedules", _stats.Schedules] : "", Icons.Material.Filled.Inventory2, "tint-primary", "packages")
 
     <MudItem xs="12" md="5" lg="4">
-        <div class="dash-card">
+        <div class="dash-card" data-tour="attention">
             <div class="title"><MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Size="Size.Small" Color="Color.Warning" /> @L["Needs attention"]</div>
             @if (_stats.AttentionItems == 0)
             {

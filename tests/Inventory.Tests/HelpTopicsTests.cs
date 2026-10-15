@@ -38,5 +38,18 @@ public class HelpTopicsTests
         Assert.Equal(title, topic.Title);
         Assert.NotEmpty(topic.Intro);
         Assert.NotEmpty(topic.Tips);
+        Assert.False(string.IsNullOrEmpty(topic.Section));
+    }
+
+    [Fact]
+    public void Documentation_link_points_to_the_readme_section()
+    {
+        var docs = new HelpDocs("owner/repo");
+        var topic = HelpTopics.For("schedules", PassthroughLocalizer.Instance);
+
+        Assert.Equal("https://github.com/owner/repo/blob/main/README.md#schedules-and-required-deployments",
+            docs.Url(topic, System.Globalization.CultureInfo.GetCultureInfo("en-US")));
+        Assert.Equal("https://github.com/owner/repo/blob/main/README.md#schedules-and-required-deployments",
+            docs.Url(topic, System.Globalization.CultureInfo.GetCultureInfo("fr-FR")));
     }
 }
