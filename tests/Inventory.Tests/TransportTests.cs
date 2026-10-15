@@ -128,6 +128,24 @@ public class TransportTests
     }
 
     [Fact]
+    public async Task JobService_does_not_fall_back_when_the_job_may_already_have_run()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var settings = new SettingsService(db);
+        await settings.SetTransportFallbackAsync(true);
+        var smb = new RecordingTransport(TransportKind.SmbService) { Fail = "kein Ergebnis", ResultMayFollow = true };
+        var winRm = new RecordingTransport(TransportKind.WinRm);
+        var jobs = new RemoteJobService([smb, winRm], computers, new CredentialService(db, new ReversingProtector()), settings);
+        var computer = (await computers.ImportAsync("pc-01"))[0];
+
+        var failed = await jobs.RunAsync(computer.Id, new JobManifest { Steps = [new JobStep { Type = StepType.Command, Script = "whoami" }] });
+
+        Assert.Null(winRm.Last);
+        Assert.Equal(("kein Ergebnis", true), (failed.Error, failed.ResultMayFollow));
+    }
+
+    [Fact]
     public async Task Connections_use_the_dns_name_while_the_agent_keeps_the_name_of_the_entry()
     {
         using var db = new TestDb();
@@ -245,12 +263,14 @@ public class TransportTests
         public TransportKind Kind => kind;
         public RemoteTarget? Last { get; set; }
         public string? Fail { get; set; }
+        /// <summary>Der Fehler sagt, dass der Job womöglich schon lief (Agent mitten im Job verschwunden).</summary>
+        public bool ResultMayFollow { get; set; }
 
         public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<Inventory.Core.Abstractions.JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
         {
             Last = target;
             if (Fail is not null)
-                throw new RemoteException(Fail);
+                throw new RemoteException(Fail, resultMayFollow: ResultMayFollow);
             return Task.FromResult(new JobResult { JobId = job.JobId, Success = true });
         }
     }

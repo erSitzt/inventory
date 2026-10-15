@@ -73,7 +73,7 @@ public sealed class LocalResumeTests : IDisposable
         Assert.Equal(TargetStatus.WaitingReboot, (await LoadAsync(targetId)).Status);
 
         // Die Fortsetzung des Agents: Schrittnummern beginnen wieder bei 0, wie bei einem Folgejob des Servers.
-        var continuation = new JobResult { JobId = "loc1", Success = true, BootTimeUtc = FirstBoot.AddHours(1), Steps = [Step(0, "configure")] };
+        var continuation = new JobResult { JobId = "loc1", Sequence = 1, Success = true, BootTimeUtc = FirstBoot.AddHours(1), Steps = [Step(0, "configure")] };
         Assert.True(await _deployments.AdoptResultAsync(computerId, "loc1", continuation));
 
         var done = await LoadAsync(targetId);
@@ -92,14 +92,17 @@ public sealed class LocalResumeTests : IDisposable
 
         var second = new JobResult
         {
-            JobId = "loc2", Success = true, ResumeFromStep = 1, ResumesLocally = true, BootTimeUtc = FirstBoot.AddHours(1),
+            JobId = "loc2", Sequence = 1, Success = true, ResumeFromStep = 1, ResumesLocally = true, BootTimeUtc = FirstBoot.AddHours(1),
             Steps = [Step(0, "reboot again"), Step(1, "finish", StepStatus.Deferred)],
         };
         Assert.True(await _deployments.AdoptResultAsync(computerId, "loc2", second));
         var waiting = await LoadAsync(targetId);
         Assert.Equal((TargetStatus.WaitingReboot, true, 3), (waiting.Status, waiting.ResumesLocally, waiting.ResumeFromStep));
 
-        Assert.True(await _deployments.AdoptResultAsync(computerId, "loc2", new JobResult { JobId = "loc2", Success = true, Steps = [Step(0, "finish")] }));
+        // Die erste Fortsetzung noch einmal (Bestätigung verloren): passt nicht mehr an die nächste Stelle.
+        Assert.False(await _deployments.AdoptResultAsync(computerId, "loc2", second));
+        Assert.Equal(3, (await LoadAsync(targetId)).ResumeFromStep);
+        Assert.True(await _deployments.AdoptResultAsync(computerId, "loc2", new JobResult { JobId = "loc2", Sequence = 2, Success = true, Steps = [Step(0, "finish")] }));
         var done = await LoadAsync(targetId);
         Assert.Equal(TargetStatus.Succeeded, done.Status);
         Assert.Equal(["install", "reboot", "reboot again", "finish"], done.Steps.Select(s => s.Name));
@@ -112,7 +115,7 @@ public sealed class LocalResumeTests : IDisposable
         await _deployments.AdoptResultAsync(computerId, "loc3", FirstPart("loc3"));
         await _deployments.CancelAsync((await LoadAsync(targetId)).DeploymentId);
 
-        Assert.False(await _deployments.AdoptResultAsync(computerId, "loc3", new JobResult { JobId = "loc3", Success = true, Steps = [Step(0, "configure")] }));
+        Assert.False(await _deployments.AdoptResultAsync(computerId, "loc3", new JobResult { JobId = "loc3", Sequence = 1, Success = true, Steps = [Step(0, "configure")] }));
         Assert.Equal(TargetStatus.Cancelled, (await LoadAsync(targetId)).Status);
     }
 
@@ -149,5 +152,82 @@ public sealed class LocalResumeTests : IDisposable
         Assert.False(next.SkipIfDetected);
         Assert.True(next.VerifyAfterInstall);
         Assert.Null(next.UserPrompt);
+    }
+
+    [Fact]
+    public async Task A_continuation_without_its_predecessor_is_not_taken_as_the_whole_job()
+    {
+        // Der Server weiß noch nichts vom ersten Teil (Ziel unterbrochen): eine Fortsetzung allein darf das Ziel nicht abschließen.
+        var (computerId, targetId) = await TargetAsync("loc6", t => { t.Status = TargetStatus.Failed; t.Interrupted = true; });
+        Assert.False(await _deployments.AdoptResultAsync(computerId, "loc6", new JobResult { JobId = "loc6", Sequence = 1, Success = true, Steps = [Step(0, "configure")] }));
+        Assert.Equal(TargetStatus.Failed, (await LoadAsync(targetId)).Status);
+
+        // Und ein Job-Ergebnis (Folgenummer 0) passt nicht, solange auf eine Fortsetzung gewartet wird.
+        Assert.True(await _deployments.AdoptResultAsync(computerId, "loc6", FirstPart("loc6")));
+        Assert.False(await _deployments.AdoptResultAsync(computerId, "loc6", FirstPart("loc6")));
+        Assert.Equal((TargetStatus.WaitingReboot, 0), ((await LoadAsync(targetId)).Status, (await LoadAsync(targetId)).ResultSequence));
+    }
+
+    [Fact]
+    public async Task A_second_restart_starts_a_new_waiting_period()
+    {
+        var (computerId, targetId) = await TargetAsync("loc7", t =>
+        {
+            t.Status = TargetStatus.WaitingReboot; t.ResumesLocally = true; t.ResumeFromStep = 2; t.Steps = [Step(0, "a"), Step(1, "reboot")];
+            t.RebootUtc = DateTime.UtcNow - TimeSpan.FromDays(6);
+        });
+        var second = new JobResult
+        {
+            JobId = "loc7", Sequence = 1, Success = true, ResumeFromStep = 1, ResumesLocally = true,
+            Steps = [Step(0, "reboot again"), Step(1, "b", StepStatus.Deferred)],
+        };
+        Assert.True(await _deployments.AdoptResultAsync(computerId, "loc7", second));
+        Assert.True((await LoadAsync(targetId)).RebootUtc > DateTime.UtcNow.AddMinutes(-1));
+    }
+
+    [Fact]
+    public void Remote_errors_say_whether_a_result_may_still_follow()
+    {
+        Assert.False(new Inventory.Core.Abstractions.RemoteException("x").ResultMayFollow);
+        Assert.True(new Inventory.Core.Abstractions.RemoteException("x", resultMayFollow: true).ResultMayFollow);
+    }
+
+    /// <summary>Der Agent verschwindet mitten im Job (Neustart, Netz weg): sein späteres Ergebnis ersetzt den Fehlschlag noch.</summary>
+    private sealed class LostAgentTransport : Inventory.Core.Abstractions.IRemoteTransport
+    {
+        public TransportKind Kind => TransportKind.SmbService;
+
+        public Task<JobResult> RunAsync(Inventory.Core.Abstractions.RemoteTarget target, JobManifest job, IReadOnlyList<Inventory.Core.Abstractions.JobFile> files,
+            IProgress<ProgressEvent>? progress, CancellationToken ct) =>
+            throw new Inventory.Core.Abstractions.RemoteException("no result", resultMayFollow: true);
+    }
+
+    [Fact]
+    public async Task A_job_whose_agent_went_away_accepts_its_late_result()
+    {
+        var packages = new PackageService(_db, new PackageRepository(_repoDir));
+        var deployments = new DeploymentService(_db, packages,
+            new RemoteJobService([new LostAgentTransport()], _computers, new CredentialService(_db, new ReversingProtector()), new SettingsService(_db)),
+            new InventoryStore(_db), new SimulatedHostProbe());
+        var package = await packages.SaveAsync(null, "Setup", null, null);
+        await packages.SaveStepAsync(package.Id, null, new JobStep { Name = "Setup", Type = StepType.Command, Script = "echo ok" }, null);
+        var computer = (await _computers.ImportAsync("pc-lost")).Single();
+
+        var started = await deployments.StartAsync(package.Id, [computer.Id], new DeploymentOptions(false));
+        DeploymentTarget target;
+        for (var i = 0; ; i++)
+        {
+            target = (await deployments.GetAsync(started.Id))!.Targets.Single();
+            if (target.Status == TargetStatus.Failed || i > 200)
+                break;
+            await Task.Delay(50);
+        }
+        Assert.Equal((TargetStatus.Failed, true), (target.Status, target.Interrupted));
+
+        Assert.True(await deployments.AdoptResultAsync(computer.Id, target.JobId!, new JobResult
+        {
+            JobId = target.JobId!, Success = true, Steps = [new StepResult { Index = 0, Name = "Setup", Status = StepStatus.Succeeded }],
+        }));
+        Assert.Equal(TargetStatus.Succeeded, (await LoadAsync(target.Id)).Status);
     }
 }

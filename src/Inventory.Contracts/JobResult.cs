@@ -50,6 +50,16 @@ namespace Inventory.Contracts
         /// ohne Verbindung zum Server, und liefert das Ergebnis der Fortsetzung unter derselben Job-ID nach.
         /// </summary>
         public bool ResumesLocally { get; set; }
+        /// <summary>
+        /// Folgenummer der Ergebnisse unter einer Job-ID: 0 = der Job selbst, 1, 2 … = die Fortsetzungen des Agents nach je
+        /// einem Neustart. Der Server nimmt jedes genau einmal und nur in dieser Reihenfolge an.
+        /// </summary>
+        public int Sequence { get; set; }
+        /// <summary>
+        /// Nur auf dem Server gesetzt: der Agent war mitten im Job nicht mehr erreichbar. Er hat womöglich weitergearbeitet und
+        /// liefert sein Ergebnis nach; bis dahin gilt der Job als fehlgeschlagen.
+        /// </summary>
+        public bool ResultMayFollow { get; set; }
         /// <summary>true, wenn <see cref="JobManifest.Detection"/> schon vor dem ersten Schritt zutraf und deshalb nichts ausgeführt wurde.</summary>
         public bool AlreadyInstalled { get; set; }
         /// <summary>Gefüllt, wenn der Job einen Inventar-Scan enthielt.</summary>

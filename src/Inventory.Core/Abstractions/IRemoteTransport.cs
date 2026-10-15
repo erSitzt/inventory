@@ -12,7 +12,14 @@ public sealed record RemoteTarget(string Host, NetworkCredential? Credential);
 public sealed record JobFile(string LocalPath, string RelativePath);
 
 /// <summary>Fehler beim Zustellen oder Starten eines Jobs (im Gegensatz zu fehlgeschlagenen Schritten).</summary>
-public sealed class RemoteException(string message, Exception? inner = null) : Exception(message, inner);
+/// <param name="resultMayFollow">
+/// Der Job lief womöglich weiter (Agent während des Jobs nicht mehr erreichbar): ein nachgeliefertes Ergebnis darf den
+/// Fehlschlag noch ersetzen.
+/// </param>
+public sealed class RemoteException(string message, Exception? inner = null, bool resultMayFollow = false) : Exception(message, inner)
+{
+    public bool ResultMayFollow { get; } = resultMayFollow;
+}
 
 /// <summary>Bringt einen Job auf den Zielrechner, lässt ihn dort vom Runner ausführen und holt das Ergebnis.</summary>
 public interface IRemoteTransport

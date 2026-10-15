@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq.Expressions;
 using System.Text;
 using Inventory.Contracts;
 using Inventory.Core.Abstractions;
@@ -656,6 +657,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         var deferrals = target.Deferrals;
         DateTime? notBefore = null;
         var resumesLocally = false;
+        var resultMayFollow = false;
         try
         {
             if (target.ComputerId is { } windowId && closed.TryGetValue(windowId, out var opens))
@@ -693,7 +695,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             var jobId = Guid.NewGuid().ToString("N");
             await UpdateAsync(db => db.DeploymentTargets.Where(t => t.Id == target.Id)
                 .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Running).SetProperty(t => t.StartedUtc, DateTime.UtcNow)
-                    .SetProperty(t => t.JobId, jobId).SetProperty(t => t.Interrupted, false)));
+                    .SetProperty(t => t.JobId, jobId).SetProperty(t => t.Interrupted, false).SetProperty(t => t.ResumesLocally, false)
+                    .SetProperty(t => t.ResultSequence, 0)));
             Changed?.Invoke(deployment.Id);
 
             var job = new JobManifest
@@ -730,6 +733,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 : JobResult.Failed(job.JobId, L["The computer was deleted"]);
             (status, error, steps, resumeNext, bootTime) = Evaluate(result, target.Steps, previousSteps, resumeFrom, bootTime, ct.IsCancellationRequested);
             resumesLocally = status == TargetStatus.WaitingReboot && result.ResumesLocally;
+            resultMayFollow = result.ResultMayFollow;
             if (result.NotRebootedYet)
                 return;
             if (status == TargetStatus.WaitingUser)
@@ -764,6 +768,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 stored.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
                 stored.BootTimeUtc = bootTime;
                 stored.ResumesLocally = status == TargetStatus.WaitingReboot && resumesLocally;
+                stored.Interrupted = status == TargetStatus.Failed && resultMayFollow;
                 if (status == TargetStatus.WaitingReboot)
                     stored.RebootUtc ??= DateTime.UtcNow;
                 else
@@ -938,8 +943,13 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     public async Task<bool> AdoptResultAsync(int computerId, string jobId, JobResult result, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        if (!await db.DeploymentTargets.AnyAsync(t => t.JobId == jobId && t.ComputerId == computerId
-                && ((t.Interrupted && t.Status == TargetStatus.Failed) || (t.ResumesLocally && t.Status == TargetStatus.WaitingReboot)), ct))
+        // Das Ergebnis des Jobs selbst (Folgenummer 0) ersetzt einen Fehlschlag, nach dem es noch kommen durfte; eine
+        // Fortsetzung des Agents gehört genau an die nächste Stelle. Doppelt oder in falscher Reihenfolge Zugestelltes passt nicht.
+        var sequence = result.Sequence;
+        Expression<Func<DeploymentTarget, bool>> adoptable = t => t.JobId == jobId && t.ComputerId == computerId
+            && ((sequence == 0 && t.Interrupted && t.Status == TargetStatus.Failed)
+                || (sequence > 0 && t.ResumesLocally && t.Status == TargetStatus.WaitingReboot && t.ResultSequence == sequence - 1));
+        if (!await db.DeploymentTargets.AnyAsync(adoptable, ct))
             return false;
         // Das Inventar zuerst: scheitert das Speichern, bleibt das Ziel übernehmbar und der Agent liefert erneut.
         // Doppelt gespeichert schadet es nicht, es ersetzt nur den Stand des Rechners.
@@ -948,9 +958,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         // Genau eine Zustellung gewinnt: wer die Markierung nicht mehr vorfindet, kam zu spät.
-        var claimed = await db.DeploymentTargets.Where(t => t.JobId == jobId && t.ComputerId == computerId
-                && ((t.Interrupted && t.Status == TargetStatus.Failed) || (t.ResumesLocally && t.Status == TargetStatus.WaitingReboot)))
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Interrupted, false).SetProperty(t => t.ResumesLocally, false), ct);
+        var claimed = await db.DeploymentTargets.Where(adoptable)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Interrupted, false).SetProperty(t => t.ResumesLocally, false)
+                .SetProperty(t => t.ResultSequence, sequence), ct);
         if (claimed != 1)
             return false;
         var target = await db.DeploymentTargets.FirstAsync(t => t.JobId == jobId && t.ComputerId == computerId, ct);
@@ -965,7 +975,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         target.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
         target.ResumesLocally = status == TargetStatus.WaitingReboot && result.ResumesLocally;
         target.BootTimeUtc = bootTime;
-        target.RebootUtc = status == TargetStatus.WaitingReboot ? target.RebootUtc ?? DateTime.UtcNow : null;
+        // Ein weiterer Neustart in der Fortsetzung des Agents beginnt eine neue Frist, wie beim Agent selbst.
+        target.RebootUtc = status != TargetStatus.WaitingReboot ? null : target.ResumesLocally ? DateTime.UtcNow : target.RebootUtc ?? DateTime.UtcNow;
         target.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
         if (status == TargetStatus.WaitingUser)
         {

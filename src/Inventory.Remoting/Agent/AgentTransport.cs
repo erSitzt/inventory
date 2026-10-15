@@ -43,7 +43,8 @@ public sealed class AgentTransport(AgentHub hub, IStringLocalizer<SharedResource
             }
             catch (TimeoutException)
             {
-                throw new RemoteException(L["The agent on {0} returned no result (connection lost during the job?).", target.Host]);
+                // Ein Notebook, das mitten im Job das Netz verlässt (etwa durch einen Neustart), meldet sein Ergebnis später nach.
+                throw new RemoteException(L["The agent on {0} returned no result (connection lost during the job?).", target.Host], resultMayFollow: true);
             }
         }
         finally

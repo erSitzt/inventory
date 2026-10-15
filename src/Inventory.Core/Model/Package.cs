@@ -202,4 +202,6 @@ public class DeploymentTarget
     /// keinen Folgejob, sondern wartet auf das Ergebnis unter derselben <see cref="JobId"/>.
     /// </summary>
     public bool ResumesLocally { get; set; }
+    /// <summary>Folgenummer des zuletzt übernommenen Agent-Ergebnisses unter <see cref="JobId"/> (<see cref="Inventory.Contracts.JobResult.Sequence"/>).</summary>
+    public int ResultSequence { get; set; }
 }

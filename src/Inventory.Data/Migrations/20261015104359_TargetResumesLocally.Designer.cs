@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Inventory.Data.Migrations
 {
     [DbContext(typeof(InventoryDbContext))]
-    [Migration("20261015102131_TargetResumesLocally")]
+    [Migration("20261015104359_TargetResumesLocally")]
     partial class TargetResumesLocally
     {
         /// <inheritdoc />
@@ -1256,6 +1256,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<DateTime?>("RebootUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("ResultSequence")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("ResumeFromStep")
                         .HasColumnType("INTEGER");
