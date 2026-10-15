@@ -78,7 +78,7 @@
                         {
                             <MudTextField @bind-Value="rule.Value2" Label="@L["Version less than (optional)"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
                         }
-                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Remove rule"]" OnClick="@(() => _rules.Remove(rule))" />
+                        <MudTooltip Text="@L["Remove rule"]"><MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Remove rule"]" OnClick="@(() => _rules.Remove(rule))" /></MudTooltip>
                     </MudStack>
                 }
                 <div>

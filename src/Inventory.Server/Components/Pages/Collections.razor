@@ -53,7 +53,7 @@
         <TemplateColumn CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
                 <AdminOnly>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item.Collection, context.Item.Collection.IsDynamic))" />
+                    <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item.Collection, context.Item.Collection.IsDynamic))" /></MudTooltip>
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item.Collection))" />
                 </AdminOnly>
             </CellTemplate>

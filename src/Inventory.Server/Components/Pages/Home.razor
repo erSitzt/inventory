@@ -57,6 +57,10 @@
     </MudStack>
 </div>
 
+<AdminOnly>
+    <GettingStarted Stats="_stats" />
+</AdminOnly>
+
 <MudGrid Spacing="3">
     @Kpi(L["Online"], _stats.Online, L["of {0}", _stats.Computers], Icons.Material.Filled.Wifi, "tint-success", "computers?filter=online")
     @Kpi(L["Offline"], _stats.Computers - _stats.Online, "", Icons.Material.Filled.WifiOff, "tint-neutral", "computers?filter=offline")

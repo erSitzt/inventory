@@ -105,7 +105,7 @@
                         <MudText Typo="Typo.h6">@_selected.Name</MudText>
                         <MudText Typo="Typo.body2">@L["Version"] @(_selected.Version ?? L["unknown"]) · @L["{0} computers", _computers.Count]</MudText>
                     </div>
-                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _selected = null)" />
+                    <MudTooltip Text="@L["Close"]"><MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@L["Close"]" OnClick="@(() => _selected = null)" /></MudTooltip>
                 </MudStack>
                 <AdminOnly>
                     <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="mt-2" StartIcon="@Icons.Material.Filled.DeleteSweep" Disabled="@(_computers.Count == 0)" OnClick="UninstallAsync">@L["Uninstall …"]</MudButton>

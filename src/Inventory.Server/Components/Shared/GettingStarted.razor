@@ -1,0 +1,85 @@
+@* Erste Schritte für Administratoren: verschwindet, sobald alles erledigt ist oder jemand sie im Browser ausblendet. *@
+@inject CredentialService Credentials
+@inject IStringLocalizer<SharedResource> L
+@inject IJSRuntime Js
+
+@if (_visible && _steps.Count > 0 && _steps.Any(s => !s.Done))
+{
+    <div class="dash-card mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <div class="title" style="margin-bottom: 0"><MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Primary" /> @L["Getting started"]</div>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["{0} of {1} done", _steps.Count(s => s.Done), _steps.Count]</MudChip>
+            <MudSpacer />
+            <MudButton Size="Size.Small" OnClick="HideAsync">@L["Hide"]</MudButton>
+        </MudStack>
+        <MudText Typo="Typo.body2" Class="mb-2 mt-1">@L["The usual way to the first deployment. The question mark at the top right explains every page."]</MudText>
+        <MudList T="string" Dense="true" Padding="false">
+            @foreach (var step in _steps)
+            {
+                <MudListItem T="string" Href="@step.Link" Icon="@(step.Done ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.Circle)"
+                             IconColor="@(step.Done ? Color.Success : Color.Default)">
+                    <MudText Typo="Typo.body1" Style="@(step.Done ? "text-decoration: line-through; opacity: 0.7" : "")">@step.Title</MudText>
+                    @if (!step.Done)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">@step.Hint</MudText>
+                    }
+                </MudListItem>
+            }
+        </MudList>
+    </div>
+}
+
+@code {
+    private const string StorageKey = "inventory.gettingStarted";
+
+    [Parameter, EditorRequired] public DashboardStats Stats { get; set; } = default!;
+
+    private sealed record Step(string Title, string Hint, string Link, bool Done);
+
+    private List<Step> _steps = [];
+    // Erst nach dem Lesen des Browserspeichers anzeigen, sonst blitzt eine ausgeblendete Karte kurz auf.
+    private bool _visible;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var credentials = (await Credentials.ListAsync()).Count;
+        _steps =
+        [
+            new(L["Store an account for agentless access"], L["A domain account with local administrator rights on the computers – or use the agent instead."], "credentials",
+                credentials > 0 || Stats.Agents > 0),
+            new(L["Add computers"], L["Enter names, or import them from Active Directory under Settings."], "computers", Stats.Computers > 0),
+            new(L["Scan the computers"], L["Select them in the list and choose \"Scan\"; the inventory fills from the first scan on."], "computers", Stats.Scanned > 0),
+            new(L["Create or import a package"], L["The package library has ready-made packages of common programs."], "library", Stats.Packages > 0),
+            new(L["Deploy a package"], L["Open a package and choose \"Deploy\"; try a few computers first."], "packages", Stats.RecentDeployments.Count > 0),
+            new(L["Automate with a schedule"], L["Regular scans, or a package for every member of a collection."], "schedules", Stats.Schedules > 0),
+        ];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        try
+        {
+            _visible = await Js.InvokeAsync<string?>("localStorage.getItem", StorageKey) != "hidden";
+        }
+        catch (JSException)
+        {
+            // Ohne Browserspeicher bleibt die Karte sichtbar, bis alles erledigt ist.
+            _visible = true;
+        }
+        StateHasChanged();
+    }
+
+    private async Task HideAsync()
+    {
+        _visible = false;
+        try
+        {
+            await Js.InvokeVoidAsync("localStorage.setItem", StorageKey, "hidden");
+        }
+        catch (JSException)
+        {
+        }
+    }
+}

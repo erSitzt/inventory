@@ -20,7 +20,7 @@
 }
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="packages" aria-label="@L["Back to the list"]" />
+    <MudTooltip Text="@L["Back to the list"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="packages" aria-label="@L["Back to the list"]" /></MudTooltip>
     <MudText Typo="Typo.h5">@_package.Name</MudText>
     <MudSpacer />
     <OperatorOnly>
@@ -115,9 +115,9 @@
                                 </MudText>
                             </div>
                             <AdminOnly>
-                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" aria-label="@L["Move up"]" Disabled="@(index == 0)" OnClick="@(() => MoveAsync(step, -1))" />
+                                <MudTooltip Text="@L["Move up"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" aria-label="@L["Move up"]" Disabled="@(index == 0)" OnClick="@(() => MoveAsync(step, -1))" /></MudTooltip>
                                 <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" aria-label="@L["Move down"]" Disabled="@(index == _package.Steps.Count - 1)" OnClick="@(() => MoveAsync(step, 1))" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditStepAsync(step, step.Definition.Type, step.NestedPackageId is not null))" />
+                                <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditStepAsync(step, step.Definition.Type, step.NestedPackageId is not null))" /></MudTooltip>
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteStepAsync(step))" />
                             </AdminOnly>
                         </MudStack>
@@ -187,7 +187,7 @@
                     }
                     <MudSpacer />
                     <AdminOnly>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Remove"]" OnClick="@(() => RemoveDependencyAsync(dependency))" />
+                        <MudTooltip Text="@L["Remove"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Remove"]" OnClick="@(() => RemoveDependencyAsync(dependency))" /></MudTooltip>
                     </AdminOnly>
                 </MudStack>
             }
@@ -275,7 +275,7 @@
                                 <td style="word-break: break-all">@file.RelativePath</td>
                                 <td style="white-space: nowrap; text-align: right">@Display.FileSize(file.Size)</td>
                                 <AdminOnly>
-                                    <td style="width: 1%"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete file"]" OnClick="@(() => DeleteFile(file))" /></td>
+                                    <td style="width: 1%"><MudTooltip Text="@L["Delete file"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete file"]" OnClick="@(() => DeleteFile(file))" /></MudTooltip></td>
                                 </AdminOnly>
                             </tr>
                         }
