@@ -121,6 +121,18 @@ public class PatchTests
             Assert.Empty(steps[0].UpdateKbIds);
             Assert.True(steps[1].Conditions!.RebootPending);
             Assert.Equal(300, steps[1].Seconds);
+
+            // Geändert (z. B. ohne Bedingung für den Neustart) ist es ein anderes Paket: die Aktion legt ein neues an.
+            var reboot = (await packages.GetAsync(security.Id))!.Steps.OrderBy(s => s.Order).Last();
+            reboot.Definition.Conditions = null;
+            await packages.SaveStepAsync(security.Id, reboot.Id, reboot.Definition, null);
+            var (replacement, replaced) = await packages.EnsurePendingUpdatesPackageAsync(securityOnly: true);
+            Assert.True(replaced);
+            Assert.NotEqual(security.Id, replacement.Id);
+
+            // Gleichzeitige Aufrufe ergeben ein einziges Paket.
+            var parallel = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => packages.EnsurePendingUpdatesPackageAsync(securityOnly: true)));
+            Assert.Single(parallel.Select(r => r.Package.Id).Distinct());
         }
         finally
         {

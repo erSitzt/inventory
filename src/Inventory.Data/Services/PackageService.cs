@@ -211,16 +211,40 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     /// </summary>
     public async Task<(Package Package, bool Created)> EnsurePendingUpdatesPackageAsync(bool securityOnly, CancellationToken ct = default, string? approvedBy = null)
     {
+        // Zwei gleichzeitige Klicks sollen nicht zwei Pakete anlegen: Suchen und Anlegen hintereinander, nie verschränkt.
+        await EnsureLock.WaitAsync(ct);
+        try
+        {
+            return await EnsurePendingUpdatesPackageCoreAsync(securityOnly, approvedBy, ct);
+        }
+        finally
+        {
+            EnsureLock.Release();
+        }
+    }
+
+    private static readonly SemaphoreSlim EnsureLock = new(1, 1);
+    private const int PendingUpdatesTimeoutSeconds = 7200;
+    private const int PendingUpdatesRestartSeconds = 300;
+
+    private async Task<(Package Package, bool Created)> EnsurePendingUpdatesPackageCoreAsync(bool securityOnly, string? approvedBy, CancellationToken ct)
+    {
         var name = (securityOnly ? L["Install pending security updates"] : L["Install pending updates"]).Value;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
-            var candidates = await db.Packages.AsNoTracking().Include(p => p.Steps).Where(p => p.Steps.Count == 2).ToListAsync(ct);
+            // Nur ein unverändertes Paket wiederverwenden: wer Zeitlimit, Neustart, Bedingungen, Erkennung oder Voraussetzungen
+            // geändert hat, hat ein anderes Paket gebaut, und die Aktion soll das versprochene Verhalten liefern.
+            var candidates = await db.Packages.AsNoTracking().Include(p => p.Steps)
+                .Where(p => p.Steps.Count == 2 && !db.PackageDependencies.Any(d => d.PackageId == p.Id)).ToListAsync(ct);
             var existing = candidates.FirstOrDefault(p =>
             {
                 var steps = p.Steps.OrderBy(s => s.Order).ToList();
-                return steps[0] is { NestedPackageId: null, Definition: { Type: StepType.WindowsUpdate, UpdateKbIds.Count: 0, UpdateIncludeDrivers: false, UpdateMaxCount: 0 } update }
+                return p.Detection is null or { IsEmpty: true }
+                       && steps[0] is { NestedPackageId: null, Definition: { Type: StepType.WindowsUpdate, UpdateKbIds.Count: 0, UpdateIncludeDrivers: false, UpdateMaxCount: 0,
+                           TimeoutSeconds: PendingUpdatesTimeoutSeconds, Conditions: null, ContinueOnError: false } update }
                        && update.UpdateSecurityOnly == securityOnly
-                       && steps[1] is { NestedPackageId: null, Definition: { Type: StepType.Reboot, Conditions.RebootPending: true } };
+                       && steps[1] is { NestedPackageId: null, Definition: { Type: StepType.Reboot, Seconds: PendingUpdatesRestartSeconds, ContinueOnError: false } reboot }
+                       && reboot.Conditions is { } conditions && JobJson.Serialize(conditions) == JobJson.Serialize(new StepConditions { RebootPending = true });
             });
             if (existing is not null)
                 return (existing, false);
@@ -228,10 +252,10 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
                 name = $"{name} ({DateTime.Now:yyyy-MM-dd HH:mm})";
         }
         var package = await SaveAsync(null, name, null, null, ct);
-        await SaveStepAsync(package.Id, null, new JobStep { Name = name, Type = StepType.WindowsUpdate, TimeoutSeconds = 7200, UpdateSecurityOnly = securityOnly }, null, ct);
+        await SaveStepAsync(package.Id, null, new JobStep { Name = name, Type = StepType.WindowsUpdate, TimeoutSeconds = PendingUpdatesTimeoutSeconds, UpdateSecurityOnly = securityOnly }, null, ct);
         await SaveStepAsync(package.Id, null, new JobStep
         {
-            Name = L["Restart if needed"], Type = StepType.Reboot, Seconds = 300,
+            Name = L["Restart if needed"], Type = StepType.Reboot, Seconds = PendingUpdatesRestartSeconds,
             Script = L["Windows updates were installed. The computer restarts in 5 minutes – please save your work."],
             Conditions = new StepConditions { RebootPending = true },
         }, null, ct);
