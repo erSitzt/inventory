@@ -139,10 +139,10 @@ public sealed class DependencyTests : IDisposable
     public void After_a_restart_inside_a_prerequisite_its_remaining_steps_still_run()
     {
         var manifest = Manifest();
-        Assert.Equal([1], DeploymentService.StartedGroups(manifest, 2));
-        Assert.Empty(DeploymentService.StartedGroups(manifest, 3));
-        Assert.Equal([1], DeploymentService.StartedGroups(manifest, 1));
-        Assert.Empty(DeploymentService.StartedGroups(manifest, 0));
+        Assert.Equal([1], JobGroups.Started(manifest, 2));
+        Assert.Empty(JobGroups.Started(manifest, 3));
+        Assert.Equal([1], JobGroups.Started(manifest, 1));
+        Assert.Empty(JobGroups.Started(manifest, 0));
 
         manifest.StartedGroups = [1];
         manifest.Steps = [.. manifest.Steps.Skip(2)];
@@ -155,9 +155,9 @@ public sealed class DependencyTests : IDisposable
     {
         var manifest = Manifest();
         // Neustart als letzter Schritt der äußeren Voraussetzung (Index 2): der Folgejob beginnt beim Paket selbst.
-        Assert.Equal([1], DeploymentService.FinishedGroups(manifest, 3));
-        Assert.Empty(DeploymentService.FinishedGroups(manifest, 2));
-        Assert.Equal([2], DeploymentService.FinishedGroups(manifest, 1));
+        Assert.Equal([1], JobGroups.Finished(manifest, 3));
+        Assert.Empty(JobGroups.Finished(manifest, 2));
+        Assert.Equal([2], JobGroups.Finished(manifest, 1));
 
         Assert.Contains("Runtime", new JobGroups(manifest, _ => "not found").VerifyFinished([1]));
         Assert.Null(new JobGroups(manifest, _ => null).VerifyFinished([1]));

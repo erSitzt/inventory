@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Inventory.Contracts
 {
@@ -106,6 +107,25 @@ namespace Inventory.Contracts
         public List<int> FinishedGroups { get; set; } = new List<int>();
         /// <summary>Gesetzt = vor dem ersten Schritt den angemeldeten Benutzer fragen bzw. benachrichtigen.</summary>
         public UserPrompt? UserPrompt { get; set; }
+
+        /// <summary>
+        /// Folgejob nach einem Neustart: die Schritte ab <paramref name="resumeFrom"/>, nur nach einem Neustart seit
+        /// <paramref name="bootTimeUtc"/>. Die Erkennung überspringt nichts mehr (das Paket ist mitten in der Installation oft
+        /// schon erkennbar), und der Benutzer wird nicht erneut gefragt. Die Job-ID bleibt dieselbe.
+        /// </summary>
+        public JobManifest ContinueFrom(int resumeFrom, DateTime? bootTimeUtc) => new JobManifest
+        {
+            JobId = JobId,
+            ExpectedComputerName = ExpectedComputerName,
+            RequireBootAfterUtc = bootTimeUtc,
+            Detection = Detection,
+            VerifyAfterInstall = VerifyAfterInstall,
+            SkipIfDetected = false,
+            Steps = Steps.Skip(resumeFrom).ToList(),
+            Groups = Groups,
+            StartedGroups = JobGroups.Started(this, resumeFrom),
+            FinishedGroups = JobGroups.Finished(this, resumeFrom),
+        };
     }
 
     /// <summary>

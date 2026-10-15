@@ -1254,7 +1254,13 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("RebootUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("ResultSequence")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("ResumeFromStep")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("ResumesLocally")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("StartedUtc")

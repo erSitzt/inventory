@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Inventory.Contracts
 {
@@ -21,6 +22,27 @@ namespace Inventory.Contracts
                 _groups[group.Id] = group;
             foreach (var id in manifest.StartedGroups)
                 _present[id] = false;
+        }
+
+        /// <summary>
+        /// Voraussetzungen, in denen der Neustart lag: sie laufen im Folgejob ohne erneute Erkennung weiter, sonst entfielen
+        /// ihre restlichen Schritte, sobald die Voraussetzung nach dem Neustart schon erkennbar ist.
+        /// </summary>
+        public static List<int> Started(JobManifest manifest, int resumeFrom)
+        {
+            if (resumeFrom <= 0 || resumeFrom >= manifest.Steps.Count)
+                return new List<int>();
+            var before = Chain(manifest.Groups, manifest.Steps[resumeFrom - 1].Group);
+            return Chain(manifest.Groups, manifest.Steps[resumeFrom].Group).Where(before.Contains).ToList();
+        }
+
+        /// <summary>Voraussetzungen, deren letzter Schritt der Neustart war: der Folgejob prüft sie nach, bevor er weitermacht.</summary>
+        public static List<int> Finished(JobManifest manifest, int resumeFrom)
+        {
+            if (resumeFrom <= 0 || resumeFrom >= manifest.Steps.Count)
+                return new List<int>();
+            var open = Chain(manifest.Groups, manifest.Steps[resumeFrom].Group);
+            return Chain(manifest.Groups, manifest.Steps[resumeFrom - 1].Group).Where(id => !open.Contains(id)).ToList();
         }
 
         /// <summary>Die Gruppe des Schritts und ihre äußeren Gruppen, von innen nach außen.</summary>

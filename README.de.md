@@ -380,6 +380,12 @@ und liefert es nach, sobald der Server wieder antwortet – bis zu sieben Tage l
 während der Job lief, zeigt das Deployment den Rechner zunächst als fehlgeschlagen („der Server wurde während der
 Ausführung beendet“), bis das Ergebnis eintrifft und das ersetzt.
 
+Ein Paket mit einem **Neustart** mittendrin hängt ebenfalls nicht vom Server ab: Der Agent behält die restlichen
+Schritte samt Dateien und macht selbst weiter, sobald der Rechner neu gestartet ist – auch auf einem Notebook, das
+ohne Verbindung zum Server wieder hochfährt. Das Deployment zeigt „Neustart – der Agent setzt … selbst fort“, bis das
+Ergebnis eintrifft. Wird das Deployment in der Zwischenzeit abgebrochen, macht das eine bereits gelaufene Fortsetzung
+nicht rückgängig; ihr Ergebnis wird verworfen.
+
 **So funktioniert er**
 
 | | |

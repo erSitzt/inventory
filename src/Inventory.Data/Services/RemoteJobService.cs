@@ -71,6 +71,13 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             {
                 return await transport.RunAsync(Target(transport), For(transport, job), files ?? [], progress, ct);
             }
+            catch (RemoteException ex) when (ex.ResultMayFollow)
+            {
+                // Der Job lief womöglich schon: kein zweiter Versuch auf anderem Weg, sonst liefe er doppelt.
+                var failed = JobResult.Failed(job.JobId, ex.Message);
+                failed.ResultMayFollow = true;
+                return failed;
+            }
             catch (RemoteException ex)
             {
                 // Zustellfehler heißt: auf dem Ziel ist noch nichts gelaufen, ein zweiter Versuch auf anderem Weg ist gefahrlos.
