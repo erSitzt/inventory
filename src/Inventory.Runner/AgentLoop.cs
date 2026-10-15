@@ -284,8 +284,11 @@ namespace Inventory.Runner
         private static void WriteAtomically(string path, string content)
         {
             File.WriteAllText(path + ".tmp", content, new UTF8Encoding(false));
-            File.Delete(path);
-            File.Move(path + ".tmp", path);
+            // Ersetzen in einem Schritt: zu keinem Zeitpunkt fehlt die Datei.
+            if (File.Exists(path))
+                File.Replace(path + ".tmp", path, null);
+            else
+                File.Move(path + ".tmp", path);
         }
 
         private const string ResumeFile = "resume.json";
@@ -331,6 +334,9 @@ namespace Inventory.Runner
                 {
                     state = null;
                 }
+                // Lesbar, aber unvollständig (etwa von Hand bearbeitet): wie unlesbar behandeln, nichts ausführen.
+                if (state != null && (state.Manifest == null || state.Sequence < 1))
+                    state = null;
                 if (state == null)
                 {
                     // Die Folgenummer ist unbekannt; meist ist es die erste Fortsetzung. Passt sie nicht, lehnt der Server ab und gibt nach der Frist auf.
