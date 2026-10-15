@@ -10,104 +10,238 @@ credentials. The user interface is available in English and German; translations
 
 ## Features
 
-- **Computers**: add manually, import from Active Directory, check reachability – optionally on a regular heartbeat
-  (computers with name anomalies are skipped)
-- **Inventory scan**: system, operating system, processor, software, hotfixes, disks, network, services, local users
-  and administrators, firewall, antivirus and Windows Update status
-- **System configuration**: Remote Desktop and network level authentication, User Account Control, SMB 1, Credential
-  Guard, memory integrity, LSA protection, built-in administrator account (active, password age), Windows activation,
-  last logon and password age of local accounts – all usable as collection rules
-- **Updates**: pending updates per computer with KB number, classification and severity; an overview per update
-  (which computers miss it) and per computer (who has no pending security updates), CSV export, collection rules for
-  installed hotfixes and pending updates
-- **Asset data**: owner, location, cost center, inventory number, purchase date, end of warranty, tags and notes per
-  computer – edited in the UI, via the API or imported from a CSV table (the computer export can be edited and read
-  back in); the overview points out warranties that end within 90 days
-- **Primary user**: who had an interactive session (console or Remote Desktop) on the most days during the scans of
-  the last 30 days – accounts stored as credentials, services and scheduled tasks never count – plus the list of user
-  profiles per computer
-- **Hardware and platform security**: device type (desktop/laptop/server/virtual machine), UEFI and Secure Boot, TPM,
-  BitLocker per volume, graphics, memory modules and free slots, physical disks with type and health, battery health,
-  monitors and printers
-- **Collections**: static or dynamic via rules (e.g. "Chrome installed with version below 141"). Rules exist for
-  software, hardware, security state, updates, Active Directory, asset data, services, network and scan age; `*` works
-  as a wildcard with "equals", and "member of collection" combines collections (up to three levels deep)
-- **Remote command** (cmd/PowerShell) with live output
-- **Packages** made of several steps: installation, command, PowerShell, copy files, registry, Windows feature,
-  service, wait, reboot, scan, embedded package – each with conditions and error handling; steps after a reboot
-  continue automatically once the computer is back
-- **Apps (MSIX/AppX, Store)**: the scan records the computer's app packages and whether they are provisioned for new
-  users; collections can filter on them, and a "remove app" step removes an app for all users and, if wanted, for
-  future ones – parts of Windows and runtime libraries are left alone, and a name that is too broad removes nothing
-- **User notice with postponement**: a package can ask the logged-on user before it starts; they may postpone a
-  configurable number of times (default: three times by 60 minutes), after that only a notice appears and the
+Every feature below comes with a picture of the page that belongs to it. The pictures come from simulation mode
+(`Inventory:Simulate`), which shows a sample environment without real computers.
+
+- [Overview and trends](#overview-and-trends) · [Computer list](#computer-list) ·
+  [Inventory per computer](#inventory-per-computer) · [Security and configuration](#security-and-configuration) ·
+  [Updates and patch status](#updates-and-patch-status) · [Software and apps](#software-and-apps) ·
+  [Change history](#change-history)
+- [Collections and maintenance windows](#collections-and-maintenance-windows) · [Packages and steps](#packages-and-steps) ·
+  [Detection, prerequisites and user notice](#detection-prerequisites-and-user-notice) ·
+  [Ready-made packages](#ready-made-packages)
+- [Deploying a package](#deploying-a-package) · [Pilot group first](#pilot-group-first) ·
+  [Schedules and required deployments](#schedules-and-required-deployments) ·
+  [Remote command and remote access](#remote-command-and-remote-access)
+- [Saved reports](#saved-reports) · [Alerts and notification channels](#alerts-and-notification-channels) ·
+  [Licence counting](#licence-counting) · [Audit trail](#audit-trail)
+
+### Overview and trends
+
+The start page (picture at the top) shows how many computers are online and scanned, what needs attention (firewall
+off, no real-time antivirus, pending updates, pending reboots, warranties ending within 90 days …), the operating
+systems and the latest deployments. One value per day is kept for the key figures, so the overview also shows 30-day
+trends, deployments per week and the age of the last scans.
+
+### Computer list
+
+![Computer list](docs/screenshots/en/computers.png)
+
+Computers are added by hand, imported from Active Directory or enrol themselves through the [agent](#agent). The list
+shows reachability, the last scan and security indicators, filters by name, status and directory state, and offers
+actions for the selection: scan, deploy, run a command, wake, install the agent. Reachability can be checked on a
+regular heartbeat (computers with name anomalies are skipped).
+
+### Inventory per computer
+
+![Computer details](docs/screenshots/en/computer-detail.png)
+
+The inventory scan reads system, operating system, processor, software, hotfixes, disks, network, services, local
+users and administrators. **Asset data** – owner, location, cost center, inventory number, purchase date, end of
+warranty, tags and notes – is edited on the page, through the API or by importing a CSV table (the computer export can
+be edited and read back in). The **primary user** is whoever had an interactive session (console or Remote Desktop) on
+the most days during the scans of the last 30 days; accounts stored as credentials, services and scheduled tasks never
+count. The *Profiles* tab lists the user profiles.
+
+![Hardware](docs/screenshots/en/hardware.png)
+
+**Hardware and platform security**: device type (desktop, laptop, server, virtual machine), UEFI and Secure Boot, TPM,
+BitLocker per volume, graphics, memory modules and free slots, physical disks with type and health, battery health,
+monitors and printers.
+
+### Security and configuration
+
+![Security](docs/screenshots/en/security.png)
+
+Firewall, antivirus and Windows Update status, plus the system configuration: Remote Desktop and network level
+authentication, User Account Control, SMB 1, Credential Guard, memory integrity, LSA protection, the built-in
+administrator account (active, password age), Windows activation, last logon and password age of local accounts. All
+of it is available as collection rules – "computers with SMB 1 enabled" is one rule.
+
+### Updates and patch status
+
+![Updates](docs/screenshots/en/updates.png)
+
+Pending updates per computer with KB number, classification and severity; an overview per update (which computers
+miss it) and per computer (who has no pending security updates), CSV export and collection rules for installed
+hotfixes and pending updates. *Install …* starts a deployment of the update to the computers that miss it, using the
+**Windows Update** step: it searches, downloads and installs from the source configured on the computer (WSUS or
+Microsoft Update) – all updates, only security and critical ones, or specific KB numbers. Works via SMB + service or
+agent, not over WinRM.
+
+### Software and apps
+
+![Software overview](docs/screenshots/en/software.png)
+
+The software overview counts every program across all computers, by name and version, and leads to the computers that
+have it. *Uninstall …* removes a program from them: silently for MSI, Inno Setup and NSIS setups and for programs with
+a registered silent command, followed by a check that it is really gone.
+
+![Apps](docs/screenshots/en/apps.png)
+
+**Apps (MSIX/AppX, Store)**: the scan records the computer's app packages and whether they are provisioned for new
+users; collections can filter on them, and a *remove app* step removes an app for all users and, if wanted, for future
+ones. Parts of Windows and runtime libraries are left alone, and a name that matches too much removes nothing.
+
+### Change history
+
+![Changes](docs/screenshots/en/changes.png)
+
+Every scan is compared with the previous one: installed, removed and updated software, hotfixes, services, local
+administrators, hardware and system configuration appear as changes with time – per computer on its *History* tab and
+for all computers on *Changes*.
+
+### Collections and maintenance windows
+
+![Collections](docs/screenshots/en/collections.png)
+
+Collections are static (picked by hand) or dynamic via rules such as "Chrome installed with version below 141". Rules
+exist for software, apps, hardware, security state, updates, Active Directory, asset data, services, network and scan
+age; `*` works as a wildcard with "equals", and "member of collection" combines collections (up to three levels deep).
+
+![Edit collection](docs/screenshots/en/collection-edit.png)
+
+A collection can carry a **maintenance window** (weekdays and time of day); there is also a default window. Deployments
+and schedules with the option "only within the maintenance window" hold back computers whose window is closed and start
+them when it opens. A computer in several collections may run as soon as one of its windows is open.
+
+### Packages and steps
+
+![Package](docs/screenshots/en/package.png)
+
+A package is a list of steps, each with conditions and error handling:
+
+- **Installation** of an MSI or EXE from the package files, **command**, **PowerShell**, **copy files**, **service**
+  (start/stop/restart), **wait**, **reboot**, **scan**, **embedded package**
+- **Registry**: set or delete a value, or delete a key, without a script – typed (string, DWORD, QWORD, multi-string,
+  binary), in the 64- or 32-bit view, and for `HKCU` in the settings of the logged-on user
+- **Windows feature**: turn optional features on or off (DISM); a pending restart is reported
+- **Copy from a share**: very large payloads are copied from a share or a path on the computer instead of passing
+  through the server (the computer account needs read access to the share)
+- **Uninstall**, **remove app** and **Windows Update** (see above)
+
+Steps after a reboot continue automatically once the computer is back. Each step runs as Local System or in the session
+of the logged-on user ([run context](#run-context)), and can retry with a pause (automatically when another installation
+is running), check the free disk space first, and close named programs – optionally after a notice to the user.
+
+![Registry step](docs/screenshots/en/step-registry.png)
+
+A package is "in progress" until an administrator **approves** it; operators and schedules deploy only approved
+packages, and every change to steps, detection or files withdraws the approval.
+
+### Detection, prerequisites and user notice
+
+![Detection, prerequisites and user notice](docs/screenshots/en/package-sections.png)
+
+- **Detection**: how to recognise that the package is already installed (program name with minimum version, MSI
+  product code, file or registry key). Such computers are skipped and reported as "already installed"; optionally the
+  same check runs again after the last step, so a setup that reports success without installing fails.
+- **Prerequisites**: the packages this one needs ("requires the .NET runtime"). They run before its steps, each only
+  where its own detection does not already find it, and must be detectable afterwards if that package asks for
+  verification.
+- **User notice with postponement**: the logged-on user is asked before the package starts and may postpone a
+  configurable number of times (default: three times by 60 minutes); after that only a notice appears and the
   installation starts. Without an answer it starts after five minutes, without a logged-on user at once. Works via
-  SMB + service and agent, not over WinRM
-- **Prerequisites**: a package names the packages it needs ("requires the .NET runtime"); they run before its
-  steps, each only where its own detection does not already find it installed, and must be detectable afterwards if
-  that package asks for verification
-- **Registry, Windows features, large payloads**: a registry step sets or deletes a value or deletes a key without
-  a script – typed (string, DWORD, QWORD, multi-string, binary), in the 64- or 32-bit view, and for `HKCU` in the
-  settings of the logged-on user; a feature step turns optional Windows features on or off (DISM) and reports a
-  pending restart; "copy files" can take its source from a share or a path on the computer instead of the package,
-  so that very large payloads do not pass through the server (the computer account needs read access to the share)
-- **Approval**: a package is "in progress" until an administrator approves it; operators and schedules deploy only
-  approved packages, and every change to steps, detection or files withdraws the approval
-- **Limits per deployment**: stop starting further computers after a number or a rate of failures, and limit how
-  many computers run at once – so a broken package does not reach every computer and the first ones act as a pilot
-- **Robust steps**: retries with a pause (automatically when another installation is running), a free disk space
-  check before the step, and closing named programs first – optionally after a notice to the logged-on user
-- **Maintenance windows**: weekdays and time of day per collection plus a default window; deployments and schedules
-  with the option "only within the maintenance window" hold back computers whose window is closed and start them
-  when it opens
-- **Phased rollout**: a deployment or schedule can name a pilot group; its computers run first and the others
-  follow after a wait – or not at all, if too many of the pilot group failed
-- **Wake-on-LAN**: deployments and schedules can wake computers that are switched off and run them once they
-  answer; "Wake" on the computer page and in the actions of the computer list does the same by hand
-- **Windows Update**: a step type that searches, downloads and installs pending updates from the source configured
-  on the computer (WSUS or Microsoft Update) – all, only security and critical ones, or specific KB numbers; a
-  following "Reboot" step can be limited to "only if a restart is pending". The update overview offers "Install …"
-  for the computers that miss an update. Works via SMB + service or agent, not over WinRM
-- **Uninstall**: a step type that removes a program by name or MSI product code – silently for MSI, Inno Setup and
-  NSIS setups and for programs with a registered silent command – and checks that it is really gone; the software
-  overview offers "Uninstall …" for the computers that have a program
-- **Detection**: a package can state how to recognise that it is already installed (program name with minimum
-  version, MSI product code, file or registry key) – such computers are skipped and reported as "already installed";
-  optionally the same check runs again after the last step, so a setup that reports success without installing fails
-- **Package library**: ready-made packages of common programs (generated daily from the winget manifests), import
-  with one click, automatic adoption of new versions and a dynamic "… outdated" collection that follows along
-- **Run context** per step: as Local System or in the session of the logged-on user
-- **Remote access** per computer: offer Remote Assistance, shadow a session, Remote Desktop, TeamViewer/AnyDesk
-- **Deployments** in parallel with live status, cancel, retry, and catching up on offline computers
-- **Notifications**: channels for e-mail (SMTP with STARTTLS/TLS, optional sign-in with stored credentials) and
-  webhooks (Microsoft Teams, Slack or plain JSON), each with a test button
-- **Licences**: record how many licences you own per product; the inventory counts the computers the software is
-  installed on and shows what is missing or free, with cost and expiry date – and an alert rule for exceeded licences
-- **Trends on the overview**: one value per day for the key figures (pending updates, reboots, antivirus, firewall,
-  drive encryption, scan errors …) shown as 30-day lines, deployments per week and the age of the last scans
-- **Reports**: saved lists of computers, software, pending updates, deployments or changes – limited to a collection,
-  with chosen columns and order; shown in the browser, as CSV, Excel or PDF, or sent by e-mail on a schedule. Ten
-  ready-made examples (hardware, security status, patch status, asset list …) serve as they are or as templates
-- **Alert rules**: a message when a computer enters a collection, a collection or the scan errors reach a number, a
-  deployment finishes with failures, a computer is added, or a schedule, the directory synchronization, the backup
-  or the server update fails – with a pause per rule and a choice of channels
-- **Audit log**: sign-ins, commands, deployments and every change with user, role and source (web interface, API,
-  API token); filters, CSV export and a retention period
-- **Schedules**: daily, weekly, monthly (a day of the month or e.g. "three days after the second Tuesday"), at fixed
-  intervals or once, optionally with an end date; a run missed while the server was off is caught up within a day or
-  skipped. **Required deployments** keep a collection supplied: every member gets the package once, computers that
-  join later follow automatically, and the schedule shows how many members already have it
-- Software overview, CSV export, daily backup, REST API with interactive docs
+  SMB + service and agent, not over WinRM.
 
-## Screenshots
+### Ready-made packages
 
-| | |
-|---|---|
-| **Computer list** with status, security indicators and filters ![Computers](docs/screenshots/en/computers.png) | **Computer details** – inventory, software, hotfixes, services, security, history ![Computer details](docs/screenshots/en/computer-detail.png) |
-| **Package library** – ready-made packages from winget, installer type at a glance ![Package library](docs/screenshots/en/library.png) | **Deployment** – progress per computer, offline computers are retried ![Deployment](docs/screenshots/en/deployment.png) |
-| **Dynamic collections** – e.g. all computers with an outdated version ![Collections](docs/screenshots/en/collections.png) | **Schedules** for scans and deployments ![Schedules](docs/screenshots/en/schedules.png) |
+![Package library](docs/screenshots/en/library.png)
 
-The pictures come from simulation mode (`Inventory:Simulate`), which shows a sample environment without real computers.
+The [package library](#package-library) offers packages of common programs, generated daily from the winget manifests:
+import with one click, new versions adopted automatically, and a dynamic "… outdated" collection that follows along –
+so a schedule "Chrome to *Chrome outdated*" keeps every computer current.
+
+### Deploying a package
+
+![Deploy dialog](docs/screenshots/en/deploy-dialog.png)
+
+A deployment targets computers or a collection and runs in parallel. Options:
+
+- **Rescan** afterwards, **retry offline computers** once they answer (up to three days)
+- **Wake-on-LAN**: wake computers that are switched off and run them once they answer; *Wake* on the computer page
+  does the same by hand ([details](#wake-on-lan))
+- **Only within the maintenance window**
+- **Limits**: stop starting further computers after a number or a rate of failures, and limit how many computers run
+  at once – a broken package does not reach every computer
+- **Pilot group** (see next section)
+
+![Deployment](docs/screenshots/en/deployment.png)
+
+The deployment page shows the status per computer live, with the output of every step; it can be cancelled, and
+failed computers can be retried. Computers that wait – offline, outside their maintenance window, rebooting or
+postponed by the user – show why.
+
+### Pilot group first
+
+![Phased rollout](docs/screenshots/en/deployment-pilot.png)
+
+A deployment or schedule can name a pilot group. Its computers run first; the others follow after a wait – or not at
+all if too many of the pilot group failed. *Start the remaining computers now* skips the wait. Details under
+[Phased rollout](#phased-rollout).
+
+### Schedules and required deployments
+
+![Schedules](docs/screenshots/en/schedules.png)
+
+Schedules scan, deploy a package to a collection or mail a report: daily, weekly, monthly (a day of the month or e.g.
+"three days after the second Tuesday"), at fixed intervals or once, optionally with an end date. A run missed while the
+server was off is caught up within a day or skipped. **Required deployments** keep a collection supplied: every member
+gets the package once, computers that join later follow automatically, and the schedule shows how many members already
+have it.
+
+![Edit schedule](docs/screenshots/en/schedule-edit.png)
+
+### Remote command and remote access
+
+![Remote command](docs/screenshots/en/run.png)
+
+A command (cmd or PowerShell) runs on several computers at once, as Local System or as the logged-on user, with live
+output per computer. Per computer the *Remote access* menu offers Remote Assistance, shadowing a session, Remote
+Desktop and TeamViewer/AnyDesk ([details](#remote-access)).
+
+### Saved reports
+
+![Report](docs/screenshots/en/report.png)
+
+Saved lists of computers, software, pending updates, deployments or changes – limited to a collection, with chosen
+columns and order; shown in the browser, as CSV, Excel or PDF, or sent by e-mail on a schedule. Ten ready-made examples
+(hardware, security status, patch status, asset list …) serve as they are or as templates ([details](#reports)).
+
+### Alerts and notification channels
+
+![Notifications](docs/screenshots/en/notifications.png)
+
+Channels for e-mail (SMTP with STARTTLS/TLS, optional sign-in with stored credentials) and webhooks (Microsoft Teams,
+Slack or plain JSON), each with a test button. **Alert rules** send a message when a computer enters a collection, a
+collection or the scan errors reach a number, a deployment finishes with failures, a computer is added, a licence is
+exceeded, or a schedule, the directory synchronization, the backup or the server update fails – with a pause per rule
+and a choice of channels ([details](#notifications)).
+
+### Licence counting
+
+![Licences](docs/screenshots/en/licenses.png)
+
+Record how many licences you own per product; the inventory counts the computers the software is installed on and
+shows what is missing or free, with cost and expiry date. An alert rule reports exceeded licences.
+
+### Audit trail
+
+![Audit log](docs/screenshots/en/audit.png)
+
+Sign-ins, commands, deployments and every change with user, role and source (web interface, API, API token); filters,
+CSV export and a retention period ([details](#audit-log)). Also on board: CSV export of the computer list, a daily
+backup and a REST API with interactive documentation ([API](#api)).
 
 ## How access works
 

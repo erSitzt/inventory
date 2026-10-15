@@ -6,117 +6,251 @@ Inventarisierung und Softwareverteilung für Windows-Rechner in einer Anwendung 
 Zugangsdaten. Die Oberfläche gibt es auf Deutsch und Englisch; Übersetzungen in weitere Sprachen sind willkommen
 (siehe [Sprachen](#sprachen)).
 
-![Übersicht](docs/screenshots/uebersicht.png)
+![Übersicht](docs/screenshots/de/overview.png)
 
 ## Funktionen
 
-- **Rechner** anlegen, aus dem Active Directory importieren, Erreichbarkeit prüfen – auf Wunsch regelmäßig per Heartbeat (Rechner mit Namensauffälligkeiten ausgenommen)
-- **Inventar-Scan**: System, Betriebssystem, Prozessor, Software, Hotfixes, Datenträger, Netzwerk, Dienste
-- **Systemkonfiguration**: Remotedesktop und Authentifizierung auf Netzwerkebene, Benutzerkontensteuerung, SMB 1,
-  Credential Guard, Speicherintegrität, LSA-Schutz, vordefiniertes Administratorkonto (aktiv, Kennwortalter),
-  Windows-Aktivierung, letzte Anmeldung und Kennwortalter lokaler Konten – alles auch als Regel für Sammlungen
-- **Updates**: ausstehende Updates je Rechner mit KB-Nummer, Klassifizierung und Schweregrad; Übersicht je Update
-  (auf welchen Rechnern es fehlt) und je Rechner (wer keine offenen Sicherheitsupdates hat), CSV-Export, Regeln für
-  Sammlungen auf installierte Hotfixes und ausstehende Updates
-- **Bestandsdaten**: Zuständig, Standort, Kostenstelle, Inventarnummer, Kaufdatum, Garantieende, Tags und Notizen je
-  Rechner – gepflegt in der Oberfläche, über die API oder per Import einer CSV-Tabelle (der Rechner-Export lässt sich
-  bearbeiten und wieder einlesen); die Übersicht weist auf Garantien hin, die innerhalb von 90 Tagen enden
-- **Hauptbenutzer**: wer bei den Scans der letzten 30 Tage an den meisten Tagen eine interaktive Sitzung hatte
-  (Konsole oder Remotedesktop) – als Zugangsdaten hinterlegte Konten, Dienste und geplante Aufgaben zählen nie –,
-  dazu die Liste der Benutzerprofile je Rechner
-- **Hardware und Plattformsicherheit**: Gerätetyp (Desktop/Notebook/Server/virtuelle Maschine), UEFI und Secure Boot,
-  TPM, BitLocker je Laufwerk, Grafik, Speichermodule und freie Steckplätze, physische Datenträger mit Typ und Zustand,
-  Akkuzustand, Monitore und Drucker
-- **Sammlungen**: statisch oder dynamisch über Regeln (z. B. „Chrome installiert mit Version unter 141“). Regeln gibt
-  es für Software, Hardware, Sicherheitszustand, Updates, Active Directory, Bestandsdaten, Dienste, Netzwerk und
-  Scan-Alter; `*` dient bei „ist gleich“ als Platzhalter, und „Mitglied der Sammlung“ kombiniert Sammlungen (bis zu
-  drei Ebenen tief)
-- **Remote-Befehl** (cmd/PowerShell) mit Live-Ausgabe
-- **Pakete** aus mehreren Schritten: Installation, Befehl, PowerShell, Dateien kopieren, Registrierung,
-  Windows-Feature, Dienst, Warten, Neustart, Scan, eingebettetes Paket – jeweils mit Bedingungen und Fehlerverhalten;
-  Schritte nach einem Neustart laufen automatisch weiter, sobald der Rechner wieder da ist
-- **Apps (MSIX/AppX, Store)**: der Scan erfasst die App-Pakete des Rechners samt der Angabe, ob sie für neue Benutzer
-  bereitgestellt sind; Sammlungen können danach filtern, und ein Schritt „App entfernen“ entfernt eine App für alle
-  Benutzer und auf Wunsch auch für künftige – Bestandteile von Windows und Laufzeitbibliotheken bleiben unberührt, und
-  ein zu weit gefasster Name entfernt nichts
-- **Hinweis an den Benutzer mit Aufschub**: ein Paket kann den angemeldeten Benutzer vor dem Start fragen; er darf
-  eine einstellbare Zahl von Malen verschieben (Vorgabe: dreimal um 60 Minuten), danach erscheint nur noch ein Hinweis
-  und die Installation beginnt. Ohne Antwort startet sie nach fünf Minuten, ohne angemeldeten Benutzer sofort.
-  Funktioniert über SMB + Dienst und Agent, nicht über WinRM
-- **Voraussetzungen**: ein Paket nennt die Pakete, die es braucht („benötigt die .NET-Runtime“); sie laufen vor seinen
-  Schritten, jedes nur dort, wo seine eigene Erkennung es nicht schon als installiert ausweist, und müssen danach
-  erkennbar sein, wenn das Paket die Überprüfung verlangt
-- **Registrierung, Windows-Features, große Dateien**: ein Registrierungs-Schritt setzt oder löscht einen Wert oder
-  löscht einen Schlüssel ohne Skript – typisiert (Zeichenfolge, DWORD, QWORD, mehrteilige Zeichenfolge, binär), in der
-  64- oder 32-Bit-Ansicht und bei `HKCU` in den Einstellungen des angemeldeten Benutzers; ein Feature-Schritt schaltet
-  optionale Windows-Features ein oder aus (DISM) und meldet einen ausstehenden Neustart; „Dateien kopieren“ kann seine
-  Quelle statt aus dem Paket von einer Freigabe oder einem Pfad auf dem Rechner nehmen, damit sehr große Dateien nicht
-  über den Server laufen (das Computerkonto braucht Leserechte auf die Freigabe)
-- **Freigabe**: Ein Paket ist „in Arbeit“, bis ein Administrator es freigibt; Operatoren und Zeitpläne verteilen nur
-  freigegebene Pakete, und jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf
-- **Grenzen je Deployment**: nach einer Anzahl oder Quote von Fehlern keine weiteren Rechner mehr starten und
-  begrenzen, wie viele Rechner gleichzeitig laufen – so erreicht ein kaputtes Paket nicht alle Rechner, und die ersten
-  wirken als Pilotgruppe
-- **Robuste Schritte**: Wiederholungen mit Pause (automatisch, wenn gerade eine andere Installation läuft), Prüfung
-  des freien Speicherplatzes vor dem Schritt und vorheriges Schließen benannter Programme – auf Wunsch nach einem
-  Hinweis an den angemeldeten Benutzer
-- **Wartungsfenster**: Wochentage und Uhrzeit je Sammlung sowie ein Standardfenster; Deployments und Zeitpläne mit
-  der Option „Nur im Wartungsfenster“ halten Rechner zurück, deren Fenster geschlossen ist, und starten sie, sobald es
-  beginnt
-- **Gestufter Rollout**: ein Deployment oder Zeitplan kann eine Pilotgruppe nennen; ihre Rechner laufen zuerst, die
-  übrigen folgen nach einer Wartezeit – oder gar nicht, wenn zu viele der Pilotgruppe fehlgeschlagen sind
-- **Wake-on-LAN**: Deployments und Zeitpläne können ausgeschaltete Rechner wecken und holen sie nach, sobald sie
-  antworten; „Wecken“ auf der Rechnerseite und in den Aktionen der Rechnerliste tut dasselbe von Hand
-- **Windows Update**: ein Schritt-Typ, der ausstehende Updates aus der auf dem Rechner eingestellten Quelle (WSUS
-  oder Microsoft Update) sucht, lädt und installiert – alle, nur Sicherheits- und kritische oder bestimmte KB-Nummern;
-  ein nachfolgender Schritt „Neustart“ lässt sich auf „nur wenn ein Neustart aussteht“ beschränken. Die
-  Update-Übersicht bietet „Installieren …“ für die Rechner, denen ein Update fehlt. Funktioniert über SMB + Dienst
-  oder Agent, nicht über WinRM
-- **Deinstallation**: ein Schritt-Typ, der ein Programm über Name oder MSI-Produktcode entfernt – still bei MSI-,
-  Inno-Setup- und NSIS-Setups sowie bei Programmen mit eingetragenem stillen Befehl – und prüft, dass es wirklich weg
-  ist; die Software-Übersicht bietet „Deinstallieren …“ für die Rechner an, die ein Programm haben
-- **Erkennung**: Ein Paket kann angeben, woran zu erkennen ist, dass es schon installiert ist (Programmname mit
-  Mindestversion, MSI-Produktcode, Datei oder Registry-Schlüssel) – solche Rechner werden übersprungen und als
-  „bereits installiert“ gemeldet; auf Wunsch läuft dieselbe Prüfung nach dem letzten Schritt noch einmal, sodass ein
-  Setup, das Erfolg meldet, ohne zu installieren, als fehlgeschlagen gilt
-- **Paketbibliothek**: fertige Pakete gängiger Programme (täglich aus den winget-Manifesten erzeugt), Import per
-  Klick, automatische Übernahme neuer Versionen und eine mitwandernde Sammlung „… veraltet“
-- **Ausführungskontext** je Schritt: als Lokales System oder in der Sitzung des angemeldeten Benutzers
-- **Fernzugriff** je Rechner: Remoteunterstützung anbieten, Sitzung spiegeln, Remotedesktop, TeamViewer/AnyDesk
-- **Deployments** parallel mit Live-Status, Abbruch, Wiederholung und Nachholen von Offline-Rechnern
-- **Benachrichtigungen**: Kanäle für E-Mail (SMTP mit STARTTLS/TLS, auf Wunsch Anmeldung mit gespeicherten
-  Zugangsdaten) und Webhooks (Microsoft Teams, Slack oder schlichtes JSON), jeweils mit Testknopf
-- **Lizenzen**: je Produkt eintragen, wie viele Lizenzen vorhanden sind; das Inventar zählt die Rechner, auf denen die
-  Software installiert ist, und zeigt, was fehlt oder frei ist, mit Kosten und Ablaufdatum – dazu eine Alarmregel für
-  überschrittene Lizenzen
-- **Verläufe auf der Übersicht**: je Tag ein Wert der Kennzahlen (ausstehende Updates, Neustarts, Virenschutz,
-  Firewall, Laufwerksverschlüsselung, Scan-Fehler …) als 30-Tage-Linien, dazu Verteilungen je Woche und das Alter
-  der letzten Scans
-- **Berichte**: gespeicherte Listen von Rechnern, Software, ausstehenden Updates, Verteilungen oder Änderungen – auf
-  eine Sammlung beschränkt, mit gewählten Spalten und Sortierung; im Browser, als CSV, Excel oder PDF, oder per
-  Zeitplan als E-Mail. Zehn fertige Beispiele (Hardware, Sicherheitsstatus, Patch-Stand, Bestandsliste …) dienen
-  unverändert oder als Vorlage
-- **Alarmregeln**: eine Nachricht, wenn ein Rechner in eine Sammlung kommt, eine Sammlung oder die Scan-Fehler eine
-  Anzahl erreichen, eine Verteilung mit Fehlern endet, ein Rechner hinzukommt oder ein Zeitplan, der
-  Verzeichnisabgleich, die Sicherung oder die Server-Aktualisierung fehlschlägt – mit Pause je Regel und Wahl der Kanäle
-- **Protokoll**: Anmeldungen, Befehle, Deployments und jede Änderung mit Benutzer, Rolle und Herkunft (Weboberfläche,
-  API, API-Token); Filter, CSV-Export und Aufbewahrungsfrist
-- **Zeitpläne**: täglich, wöchentlich, monatlich (ein Tag des Monats oder z. B. „drei Tage nach dem zweiten
-  Dienstag“), in festen Abständen oder einmalig, auf Wunsch mit Enddatum; ein Lauf, der wegen eines ausgeschalteten
-  Servers ausfiel, wird binnen eines Tages nachgeholt oder ausgelassen. **Pflicht-Verteilungen** halten eine Sammlung
-  versorgt: jedes Mitglied bekommt das Paket einmal, später hinzukommende Rechner folgen von selbst, und der Zeitplan
-  zeigt, wie viele Mitglieder es schon haben
-- Software-Übersicht, CSV-Export, tägliche Datensicherung, REST-API mit interaktiver Dokumentation
+Zu jeder Funktion gehört unten ein Bild der passenden Seite. Die Bilder stammen aus dem Simulationsmodus
+(`Inventory:Simulate`), der ohne echte Rechner eine Beispielumgebung zeigt.
 
-## Screenshots
+- [Übersicht und Verläufe](#übersicht-und-verläufe) · [Rechnerliste](#rechnerliste) ·
+  [Inventar je Rechner](#inventar-je-rechner) · [Sicherheit und Konfiguration](#sicherheit-und-konfiguration) ·
+  [Updates und Patch-Stand](#updates-und-patch-stand) · [Software und Apps](#software-und-apps) ·
+  [Änderungsverlauf](#änderungsverlauf)
+- [Sammlungen und Wartungsfenster](#sammlungen-und-wartungsfenster) · [Pakete und Schritte](#pakete-und-schritte) ·
+  [Erkennung, Voraussetzungen und Hinweis an den Benutzer](#erkennung-voraussetzungen-und-hinweis-an-den-benutzer) ·
+  [Fertige Pakete](#fertige-pakete)
+- [Ein Paket bereitstellen](#ein-paket-bereitstellen) · [Pilotgruppe zuerst](#pilotgruppe-zuerst) ·
+  [Zeitpläne und Pflicht-Verteilungen](#zeitpläne-und-pflicht-verteilungen) ·
+  [Remote-Befehl und Fernzugriff](#remote-befehl-und-fernzugriff)
+- [Gespeicherte Berichte](#gespeicherte-berichte) · [Alarme und Benachrichtigungskanäle](#alarme-und-benachrichtigungskanäle) ·
+  [Lizenzzählung](#lizenzzählung) · [Nachvollziehbarkeit](#nachvollziehbarkeit)
 
-| | |
-|---|---|
-| **Rechnerliste** mit Status, Sicherheitsampel und Filtern ![Rechner](docs/screenshots/rechner.png) | **Rechner im Detail** – Inventar, Software, Hotfixes, Dienste, Sicherheit, Verlauf ![Rechner-Detail](docs/screenshots/rechner-detail.png) |
-| **Paketbibliothek** – fertige Pakete aus winget, Setup-Art auf einen Blick ![Paketbibliothek](docs/screenshots/bibliothek.png) | **Deployment** – Fortschritt je Rechner, Offline-Rechner werden nachgeholt ![Deployment](docs/screenshots/deployment.png) |
-| **Dynamische Sammlungen** – z. B. alle Rechner mit veralteter Version ![Sammlungen](docs/screenshots/sammlungen.png) | **Zeitpläne** für Scans und Verteilungen ![Zeitpläne](docs/screenshots/zeitplaene.png) |
+### Übersicht und Verläufe
 
-Die Bilder stammen aus dem Simulationsmodus (`Inventory:Simulate`), der ohne echte Rechner eine Beispielumgebung zeigt.
+Die Startseite (Bild ganz oben) zeigt, wie viele Rechner online und gescannt sind, was Aufmerksamkeit braucht
+(Firewall aus, kein Echtzeit-Virenschutz, ausstehende Updates und Neustarts, Garantien, die innerhalb von 90 Tagen
+enden …), die Betriebssysteme und die letzten Deployments. Für die Kennzahlen wird je Tag ein Wert festgehalten; so
+zeigt die Übersicht auch 30-Tage-Verläufe, Verteilungen je Woche und das Alter der letzten Scans.
+
+### Rechnerliste
+
+![Rechnerliste](docs/screenshots/de/computers.png)
+
+Rechner werden von Hand angelegt, aus dem Active Directory importiert oder melden sich über den [Agent](#agent) selbst
+an. Die Liste zeigt Erreichbarkeit, letzten Scan und Sicherheitsampel, filtert nach Name, Status und
+Verzeichnisstand und bietet Aktionen für die Auswahl: scannen, bereitstellen, Befehl ausführen, wecken, Agent
+installieren. Die Erreichbarkeit lässt sich regelmäßig per Heartbeat prüfen (Rechner mit Namensauffälligkeiten
+ausgenommen).
+
+### Inventar je Rechner
+
+![Rechner im Detail](docs/screenshots/de/computer-detail.png)
+
+Der Inventar-Scan liest System, Betriebssystem, Prozessor, Software, Hotfixes, Datenträger, Netzwerk, Dienste, lokale
+Benutzer und Administratoren. **Bestandsdaten** – Zuständig, Standort, Kostenstelle, Inventarnummer, Kaufdatum,
+Garantieende, Tags und Notizen – werden auf der Seite gepflegt, über die API oder per Import einer CSV-Tabelle (der
+Rechner-Export lässt sich bearbeiten und wieder einlesen). **Hauptbenutzer** ist, wer bei den Scans der letzten 30
+Tage an den meisten Tagen eine interaktive Sitzung hatte (Konsole oder Remotedesktop); als Zugangsdaten hinterlegte
+Konten, Dienste und geplante Aufgaben zählen nie. Der Reiter *Profile* listet die Benutzerprofile.
+
+![Hardware](docs/screenshots/de/hardware.png)
+
+**Hardware und Plattformsicherheit**: Gerätetyp (Desktop, Notebook, Server, virtuelle Maschine), UEFI und Secure Boot,
+TPM, BitLocker je Laufwerk, Grafik, Speichermodule und freie Steckplätze, physische Datenträger mit Typ und Zustand,
+Akkuzustand, Monitore und Drucker.
+
+### Sicherheit und Konfiguration
+
+![Sicherheit](docs/screenshots/de/security.png)
+
+Firewall, Virenschutz und Windows-Update-Status, dazu die Systemkonfiguration: Remotedesktop und Authentifizierung auf
+Netzwerkebene, Benutzerkontensteuerung, SMB 1, Credential Guard, Speicherintegrität, LSA-Schutz, vordefiniertes
+Administratorkonto (aktiv, Kennwortalter), Windows-Aktivierung, letzte Anmeldung und Kennwortalter lokaler Konten.
+Alles steht auch als Regel für Sammlungen bereit – „Rechner mit aktivem SMB 1“ ist eine Regel.
+
+### Updates und Patch-Stand
+
+![Updates](docs/screenshots/de/updates.png)
+
+Ausstehende Updates je Rechner mit KB-Nummer, Klassifizierung und Schweregrad; Übersicht je Update (auf welchen
+Rechnern es fehlt) und je Rechner (wer keine offenen Sicherheitsupdates hat), CSV-Export und Regeln für Sammlungen auf
+installierte Hotfixes und ausstehende Updates. *Installieren …* startet eine Verteilung des Updates auf die Rechner,
+denen es fehlt, mit dem Schritt **Windows Update**: Er sucht, lädt und installiert aus der auf dem Rechner
+eingestellten Quelle (WSUS oder Microsoft Update) – alle Updates, nur Sicherheits- und kritische oder bestimmte
+KB-Nummern. Funktioniert über SMB + Dienst oder Agent, nicht über WinRM.
+
+### Software und Apps
+
+![Software-Übersicht](docs/screenshots/de/software.png)
+
+Die Software-Übersicht zählt jedes Programm über alle Rechner, nach Name und Version, und führt zu den Rechnern, die es
+haben. *Deinstallieren …* entfernt ein Programm dort: still bei MSI-, Inno-Setup- und NSIS-Setups sowie bei Programmen
+mit eingetragenem stillen Befehl, danach mit der Prüfung, dass es wirklich weg ist.
+
+![Apps](docs/screenshots/de/apps.png)
+
+**Apps (MSIX/AppX, Store)**: Der Scan erfasst die App-Pakete des Rechners samt der Angabe, ob sie für neue Benutzer
+bereitgestellt sind; Sammlungen können danach filtern, und ein Schritt *App entfernen* entfernt eine App für alle
+Benutzer und auf Wunsch auch für künftige. Bestandteile von Windows und Laufzeitbibliotheken bleiben unberührt, und ein
+zu weit gefasster Name entfernt nichts.
+
+### Änderungsverlauf
+
+![Änderungen](docs/screenshots/de/changes.png)
+
+Jeder Scan wird mit dem vorigen verglichen: installierte, entfernte und aktualisierte Software, Hotfixes, Dienste,
+lokale Administratoren, Hardware und Systemkonfiguration erscheinen als Änderungen mit Zeitpunkt – je Rechner im Reiter
+*Verlauf* und für alle Rechner unter *Änderungen*.
+
+### Sammlungen und Wartungsfenster
+
+![Sammlungen](docs/screenshots/de/collections.png)
+
+Sammlungen sind statisch (von Hand gewählt) oder dynamisch über Regeln wie „Chrome installiert mit Version unter 141“.
+Regeln gibt es für Software, Apps, Hardware, Sicherheitszustand, Updates, Active Directory, Bestandsdaten, Dienste,
+Netzwerk und Scan-Alter; `*` dient bei „ist gleich“ als Platzhalter, und „Mitglied der Sammlung“ kombiniert Sammlungen
+(bis zu drei Ebenen tief).
+
+![Sammlung bearbeiten](docs/screenshots/de/collection-edit.png)
+
+Eine Sammlung kann ein **Wartungsfenster** tragen (Wochentage und Uhrzeit); dazu gibt es ein Standardfenster.
+Deployments und Zeitpläne mit der Option „Nur im Wartungsfenster“ halten Rechner zurück, deren Fenster geschlossen ist,
+und starten sie, sobald es beginnt. Ein Rechner in mehreren Sammlungen darf laufen, sobald eines seiner Fenster offen
+ist.
+
+### Pakete und Schritte
+
+![Paket](docs/screenshots/de/package.png)
+
+Ein Paket ist eine Folge von Schritten, jeder mit Bedingungen und Fehlerverhalten:
+
+- **Installation** einer MSI oder EXE aus den Paketdateien, **Befehl**, **PowerShell**, **Dateien kopieren**,
+  **Dienst** (starten/stoppen/neu starten), **Warten**, **Neustart**, **Scan**, **eingebettetes Paket**
+- **Registrierung**: einen Wert setzen oder löschen oder einen Schlüssel löschen, ohne Skript – typisiert
+  (Zeichenfolge, DWORD, QWORD, mehrteilige Zeichenfolge, binär), in der 64- oder 32-Bit-Ansicht und bei `HKCU` in den
+  Einstellungen des angemeldeten Benutzers
+- **Windows-Feature**: optionale Features ein- oder ausschalten (DISM); ein ausstehender Neustart wird gemeldet
+- **Kopieren von einer Freigabe**: sehr große Dateien kommen von einer Freigabe oder einem Pfad auf dem Rechner, statt
+  über den Server zu laufen (das Computerkonto braucht Leserechte auf die Freigabe)
+- **Deinstallation**, **App entfernen** und **Windows Update** (siehe oben)
+
+Schritte nach einem Neustart laufen automatisch weiter, sobald der Rechner wieder da ist. Jeder Schritt läuft als
+Lokales System oder in der Sitzung des angemeldeten Benutzers ([Ausführungskontext](#ausführungskontext)) und kann mit
+Pause wiederholen (automatisch, wenn gerade eine andere Installation läuft), vorher den freien Speicherplatz prüfen und
+benannte Programme schließen – auf Wunsch nach einem Hinweis an den Benutzer.
+
+![Registrierungs-Schritt](docs/screenshots/de/step-registry.png)
+
+Ein Paket ist „in Arbeit“, bis ein Administrator es **freigibt**; Operatoren und Zeitpläne verteilen nur freigegebene
+Pakete, und jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf.
+
+### Erkennung, Voraussetzungen und Hinweis an den Benutzer
+
+![Erkennung, Voraussetzungen und Hinweis an den Benutzer](docs/screenshots/de/package-sections.png)
+
+- **Erkennung**: woran zu erkennen ist, dass das Paket schon installiert ist (Programmname mit Mindestversion,
+  MSI-Produktcode, Datei oder Registry-Schlüssel). Solche Rechner werden übersprungen und als „bereits installiert“
+  gemeldet; auf Wunsch läuft dieselbe Prüfung nach dem letzten Schritt noch einmal, sodass ein Setup, das Erfolg meldet,
+  ohne zu installieren, als fehlgeschlagen gilt.
+- **Voraussetzungen**: die Pakete, die dieses braucht („benötigt die .NET-Runtime“). Sie laufen vor seinen Schritten,
+  jedes nur dort, wo seine eigene Erkennung es nicht schon findet, und müssen danach erkennbar sein, wenn das Paket die
+  Überprüfung verlangt.
+- **Hinweis an den Benutzer mit Aufschub**: Der angemeldete Benutzer wird vor dem Start gefragt und darf eine
+  einstellbare Zahl von Malen verschieben (Vorgabe: dreimal um 60 Minuten); danach erscheint nur noch ein Hinweis und
+  die Installation beginnt. Ohne Antwort startet sie nach fünf Minuten, ohne angemeldeten Benutzer sofort. Funktioniert
+  über SMB + Dienst und Agent, nicht über WinRM.
+
+### Fertige Pakete
+
+![Paketbibliothek](docs/screenshots/de/library.png)
+
+Die [Paketbibliothek](#paketbibliothek) bietet Pakete gängiger Programme, täglich aus den winget-Manifesten erzeugt:
+Import per Klick, automatische Übernahme neuer Versionen und eine mitwandernde dynamische Sammlung „… veraltet“ – so
+hält ein Zeitplan „Chrome auf *Chrome veraltet*“ jeden Rechner aktuell.
+
+### Ein Paket bereitstellen
+
+![Bereitstellen](docs/screenshots/de/deploy-dialog.png)
+
+Ein Deployment zielt auf Rechner oder eine Sammlung und läuft parallel. Optionen:
+
+- danach **neu scannen**, **Offline-Rechner nachholen**, sobald sie antworten (bis zu drei Tage)
+- **Wake-on-LAN**: ausgeschaltete Rechner wecken und nachholen, sobald sie antworten; *Wecken* auf der Rechnerseite tut
+  dasselbe von Hand ([Details](#wake-on-lan))
+- **Nur im Wartungsfenster**
+- **Grenzen**: nach einer Anzahl oder Quote von Fehlern keine weiteren Rechner mehr starten und begrenzen, wie viele
+  Rechner gleichzeitig laufen – ein kaputtes Paket erreicht nicht alle Rechner
+- **Pilotgruppe** (siehe nächster Abschnitt)
+
+![Deployment](docs/screenshots/de/deployment.png)
+
+Die Deployment-Seite zeigt den Stand je Rechner live, mit der Ausgabe jedes Schritts; sie lässt sich abbrechen, und
+fehlgeschlagene Rechner lassen sich wiederholen. Rechner, die warten – offline, außerhalb ihres Wartungsfensters, im
+Neustart oder vom Benutzer verschoben –, zeigen, warum.
+
+### Pilotgruppe zuerst
+
+![Gestufter Rollout](docs/screenshots/de/deployment-pilot.png)
+
+Ein Deployment oder Zeitplan kann eine Pilotgruppe nennen. Ihre Rechner laufen zuerst; die übrigen folgen nach einer
+Wartezeit – oder gar nicht, wenn zu viele der Pilotgruppe fehlgeschlagen sind. *Übrige Rechner jetzt starten*
+überspringt die Wartezeit. Details unter [Gestufter Rollout](#gestufter-rollout).
+
+### Zeitpläne und Pflicht-Verteilungen
+
+![Zeitpläne](docs/screenshots/de/schedules.png)
+
+Zeitpläne scannen, verteilen ein Paket auf eine Sammlung oder verschicken einen Bericht: täglich, wöchentlich,
+monatlich (ein Tag des Monats oder z. B. „drei Tage nach dem zweiten Dienstag“), in festen Abständen oder einmalig,
+auf Wunsch mit Enddatum. Ein Lauf, der wegen eines ausgeschalteten Servers ausfiel, wird binnen eines Tages nachgeholt
+oder ausgelassen. **Pflicht-Verteilungen** halten eine Sammlung versorgt: Jedes Mitglied bekommt das Paket einmal,
+später hinzukommende Rechner folgen von selbst, und der Zeitplan zeigt, wie viele Mitglieder es schon haben.
+
+![Zeitplan bearbeiten](docs/screenshots/de/schedule-edit.png)
+
+### Remote-Befehl und Fernzugriff
+
+![Remote-Befehl](docs/screenshots/de/run.png)
+
+Ein Befehl (cmd oder PowerShell) läuft auf mehreren Rechnern zugleich, als Lokales System oder als angemeldeter
+Benutzer, mit Live-Ausgabe je Rechner. Je Rechner bietet das Menü *Fernzugriff* Remoteunterstützung, das Spiegeln einer
+Sitzung, Remotedesktop und TeamViewer/AnyDesk ([Details](#fernzugriff)).
+
+### Gespeicherte Berichte
+
+![Bericht](docs/screenshots/de/report.png)
+
+Gespeicherte Listen von Rechnern, Software, ausstehenden Updates, Verteilungen oder Änderungen – auf eine Sammlung
+beschränkt, mit gewählten Spalten und Sortierung; im Browser, als CSV, Excel oder PDF, oder per Zeitplan als E-Mail.
+Zehn fertige Beispiele (Hardware, Sicherheitsstatus, Patch-Stand, Bestandsliste …) dienen unverändert oder als Vorlage
+([Details](#berichte)).
+
+### Alarme und Benachrichtigungskanäle
+
+![Benachrichtigungen](docs/screenshots/de/notifications.png)
+
+Kanäle für E-Mail (SMTP mit STARTTLS/TLS, auf Wunsch Anmeldung mit gespeicherten Zugangsdaten) und Webhooks (Microsoft
+Teams, Slack oder schlichtes JSON), jeweils mit Testknopf. **Alarmregeln** schicken eine Nachricht, wenn ein Rechner in
+eine Sammlung kommt, eine Sammlung oder die Scan-Fehler eine Anzahl erreichen, eine Verteilung mit Fehlern endet, ein
+Rechner hinzukommt, eine Lizenz überschritten ist oder ein Zeitplan, der Verzeichnisabgleich, die Sicherung oder die
+Server-Aktualisierung fehlschlägt – mit Pause je Regel und Wahl der Kanäle ([Details](#benachrichtigungen)).
+
+### Lizenzzählung
+
+![Lizenzen](docs/screenshots/de/licenses.png)
+
+Je Produkt eintragen, wie viele Lizenzen vorhanden sind; das Inventar zählt die Rechner, auf denen die Software
+installiert ist, und zeigt, was fehlt oder frei ist, mit Kosten und Ablaufdatum. Eine Alarmregel meldet überschrittene
+Lizenzen.
+
+### Nachvollziehbarkeit
+
+![Protokoll](docs/screenshots/de/audit.png)
+
+Anmeldungen, Befehle, Deployments und jede Änderung mit Benutzer, Rolle und Herkunft (Weboberfläche, API, API-Token);
+Filter, CSV-Export und Aufbewahrungsfrist ([Details](#protokoll)). Außerdem dabei: CSV-Export der Rechnerliste,
+tägliche Datensicherung und eine REST-API mit interaktiver Dokumentation ([API](#api)).
 
 ## So funktioniert der Zugriff
 
