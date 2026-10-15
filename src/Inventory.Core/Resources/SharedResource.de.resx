@@ -227,9 +227,6 @@
   <data name="active" xml:space="preserve">
     <value>aktiv</value>
   </data>
-  <data name="Active" xml:space="preserve">
-    <value>Aktiv</value>
-  </data>
   <data name="Active Directory imports computers regularly; agents connect computers the server cannot reach." xml:space="preserve">
     <value>Active Directory importiert Rechner regelmäßig; Agenten binden Rechner an, die der Server nicht erreicht.</value>
   </data>
@@ -380,17 +377,11 @@
   <data name="All" xml:space="preserve">
     <value>Alle</value>
   </data>
-  <data name="all" xml:space="preserve">
-    <value>alle</value>
-  </data>
   <data name="all columns" xml:space="preserve">
     <value>alle Spalten</value>
   </data>
   <data name="All computers" xml:space="preserve">
     <value>Alle Rechner</value>
-  </data>
-  <data name="all computers" xml:space="preserve">
-    <value>alle Rechner</value>
   </data>
   <data name="All computers Inventory knows, with reachability, last scan and security indicators." xml:space="preserve">
     <value>Alle Rechner, die Inventory kennt, mit Erreichbarkeit, letztem Scan und Sicherheitsampel.</value>
@@ -409,6 +400,9 @@
   </data>
   <data name="all pending updates" xml:space="preserve">
     <value>alle ausstehenden Updates</value>
+  </data>
+  <data name="All pending updates (restart if needed)" xml:space="preserve">
+    <value>Alle ausstehenden Updates (Neustart bei Bedarf)</value>
   </data>
   <data name="all rules" xml:space="preserve">
     <value>alle Regeln</value>
@@ -662,9 +656,6 @@
   <data name="cancelled" xml:space="preserve">
     <value>abgebrochen</value>
   </data>
-  <data name="Cancelled" xml:space="preserve">
-    <value>Abgebrochen</value>
-  </data>
   <data name="Change" xml:space="preserve">
     <value>Änderung</value>
   </data>
@@ -845,17 +836,26 @@
   <data name="Computers at once" xml:space="preserve">
     <value>Rechner gleichzeitig</value>
   </data>
+  <data name="Computers cancelled" xml:space="preserve">
+    <value>Rechner abgebrochen</value>
+  </data>
   <data name="Computers deleted" xml:space="preserve">
     <value>Rechner gelöscht</value>
   </data>
   <data name="Computers deleted (no longer in AD)" xml:space="preserve">
     <value>Rechner gelöscht (nicht mehr im AD)</value>
   </data>
+  <data name="Computers failed" xml:space="preserve">
+    <value>Rechner fehlgeschlagen</value>
+  </data>
   <data name="Computers no longer found in the directory" xml:space="preserve">
     <value>Rechner, die im Verzeichnis nicht mehr gefunden werden</value>
   </data>
   <data name="Computers served at once" xml:space="preserve">
     <value>Gleichzeitig bediente Rechner</value>
+  </data>
+  <data name="Computers succeeded" xml:space="preserve">
+    <value>Rechner erfolgreich</value>
   </data>
   <data name="Computers with {0} older than the library version" xml:space="preserve">
     <value>Rechner mit {0} älter als die Bibliotheksversion</value>
@@ -1013,11 +1013,11 @@
   <data name="Default" xml:space="preserve">
     <value>Standard</value>
   </data>
-  <data name="default" xml:space="preserve">
-    <value>Standard</value>
-  </data>
   <data name="Default credentials changed" xml:space="preserve">
     <value>Standard-Zugangsdaten geändert</value>
+  </data>
+  <data name="default level" xml:space="preserve">
+    <value>Standardstufe</value>
   </data>
   <data name="Default maintenance window" xml:space="preserve">
     <value>Standard-Wartungsfenster</value>
@@ -1433,9 +1433,6 @@
   <data name="failed" xml:space="preserve">
     <value>fehlgeschlagen</value>
   </data>
-  <data name="Failed" xml:space="preserve">
-    <value>Fehlgeschlagen</value>
-  </data>
   <data name="Failures allowed (%)" xml:space="preserve">
     <value>Zulässige Fehler (%)</value>
   </data>
@@ -1715,6 +1712,12 @@
   <data name="Install agent" xml:space="preserve">
     <value>Agent installieren</value>
   </data>
+  <data name="Install pending security updates" xml:space="preserve">
+    <value>Ausstehende Sicherheitsupdates installieren</value>
+  </data>
+  <data name="Install pending updates" xml:space="preserve">
+    <value>Ausstehende Updates installieren</value>
+  </data>
   <data name="Install remote access launcher" xml:space="preserve">
     <value>Starter für Fernzugriff installieren</value>
   </data>
@@ -1741,6 +1744,9 @@
   </data>
   <data name="Installed on" xml:space="preserve">
     <value>Installiert am</value>
+  </data>
+  <data name="Installed per user" xml:space="preserve">
+    <value>Pro Benutzer installiert</value>
   </data>
   <data name="Installed program (name)" xml:space="preserve">
     <value>Installiertes Programm (Name)</value>
@@ -2324,6 +2330,9 @@
   <data name="No pending updates recorded. Details are captured with the next scan of each computer." xml:space="preserve">
     <value>Keine ausstehenden Updates erfasst. Die Einzelheiten werden mit dem nächsten Scan jedes Rechners gelesen.</value>
   </data>
+  <data name="No prerequisites" xml:space="preserve">
+    <value>Keine Voraussetzungen</value>
+  </data>
   <data name="No real-time antivirus" xml:space="preserve">
     <value>Kein Echtzeit-Virenschutz</value>
   </data>
@@ -2365,9 +2374,6 @@
   </data>
   <data name="none" xml:space="preserve">
     <value>keine</value>
-  </data>
-  <data name="None" xml:space="preserve">
-    <value>Keine</value>
   </data>
   <data name="none (relay in your own network)" xml:space="preserve">
     <value>keine (Relay im eigenen Netz)</value>
@@ -2705,9 +2711,6 @@
   <data name="Package library" xml:space="preserve">
     <value>Paketbibliothek</value>
   </data>
-  <data name="package library" xml:space="preserve">
-    <value>Paketbibliothek</value>
-  </data>
   <data name="Package name" xml:space="preserve">
     <value>Paketname</value>
   </data>
@@ -2821,9 +2824,6 @@
   </data>
   <data name="per user" xml:space="preserve">
     <value>pro Benutzer</value>
-  </data>
-  <data name="Per user" xml:space="preserve">
-    <value>Pro Benutzer</value>
   </data>
   <data name="Period" xml:space="preserve">
     <value>Zeitraum</value>
@@ -3221,6 +3221,9 @@
   <data name="Restart" xml:space="preserve">
     <value>Neu starten</value>
   </data>
+  <data name="Restart if needed" xml:space="preserve">
+    <value>Neustart, falls nötig</value>
+  </data>
   <data name="Restart pending" xml:space="preserve">
     <value>Neustart ausstehend</value>
   </data>
@@ -3493,6 +3496,9 @@
   </data>
   <data name="security and critical updates" xml:space="preserve">
     <value>Sicherheits- und kritische Updates</value>
+  </data>
+  <data name="Security and critical updates only (restart if needed)" xml:space="preserve">
+    <value>Nur Sicherheits- und kritische Updates (Neustart bei Bedarf)</value>
   </data>
   <data name="Security status" xml:space="preserve">
     <value>Sicherheitsstatus</value>
@@ -3838,9 +3844,6 @@
   </data>
   <data name="succeeded" xml:space="preserve">
     <value>erfolgreich</value>
-  </data>
-  <data name="Succeeded" xml:space="preserve">
-    <value>Erfolgreich</value>
   </data>
   <data name="Success codes" xml:space="preserve">
     <value>Erfolgscodes</value>
@@ -4723,6 +4726,9 @@
   </data>
   <data name="Windows Update (MSU)" xml:space="preserve">
     <value>Windows-Update (MSU)</value>
+  </data>
+  <data name="Windows updates were installed. The computer restarts in 5 minutes – please save your work." xml:space="preserve">
+    <value>Windows-Updates wurden installiert. Der Computer startet in 5 Minuten neu – bitte speichern Sie Ihre Arbeit.</value>
   </data>
   <data name="Windows version" xml:space="preserve">
     <value>Windows-Version</value>

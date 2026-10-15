@@ -77,7 +77,9 @@ miss it) and per computer (who has no pending security updates), CSV export and 
 hotfixes and pending updates. *Install …* starts a deployment of the update to the computers that miss it, using the
 **Windows Update** step: it searches, downloads and installs from the source configured on the computer (WSUS or
 Microsoft Update) – all updates, only security and critical ones, or specific KB numbers. Works via SMB + service or
-agent, not over WinRM.
+agent, not over WinRM. For particular computers, *Install …* on the computer page (section *Pending updates*) and
+*Install pending updates* in the actions of the computer list deploy all pending updates, or only security and critical
+ones, followed by a restart only if one is pending (with five minutes' notice to the logged-on user).
 
 ### Software and apps
 

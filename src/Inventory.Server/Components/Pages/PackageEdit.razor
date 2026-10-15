@@ -46,7 +46,7 @@
 @if (_package.CatalogId is not null)
 {
     <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
-        @L["Imported from the"] <MudLink Href="library">@L["package library"]</MudLink> (@_package.CatalogId).
+        @L["Imported from the"] <MudLink Href="library">@L["Package library"]</MudLink> (@_package.CatalogId).
         @(_package.CatalogAutoUpdate ? L["New versions are adopted automatically"] : L["New versions are not adopted automatically"]);
         @L["the installation step is then replaced with the new setup, own steps and files are kept."]
     </MudAlert>
@@ -171,7 +171,7 @@
             </MudText>
             @if (_package.Dependencies.Count == 0)
             {
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@L["None"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@L["No prerequisites"]</MudText>
             }
             @foreach (var dependency in _package.Dependencies)
             {

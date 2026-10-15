@@ -67,7 +67,7 @@ public class PostureTests
             "Built-in administrator: password age (days)|400|2",
             "Remote Desktop network level authentication|on|off",
             "SMB 1|off|on",
-            "User Account Control level|default|never notify",
+            "User Account Control level|default level|never notify",
         ], (await store.ChangesAsync(id)).Select(c => $"{c.Change.Item}|{c.Change.OldValue}|{c.Change.NewValue}").Order());
     }
 

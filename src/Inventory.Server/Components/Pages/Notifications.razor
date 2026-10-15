@@ -77,7 +77,7 @@
             <CellTemplate>@Display.Alert(context.Item)</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Channels"]">
-            <CellTemplate>@(context.Item.Channels.Count == 0 ? L["all"] : string.Join(", ", context.Item.Channels.Select(c => c.Name).Order()))</CellTemplate>
+            <CellTemplate>@(context.Item.Channels.Count == 0 ? L["All"] : string.Join(", ", context.Item.Channels.Select(c => c.Name).Order()))</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Status"]">
             <CellTemplate>

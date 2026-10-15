@@ -101,6 +101,47 @@ public class PatchTests
     }
 
     [Fact]
+    public async Task The_pending_updates_package_restarts_only_when_needed_and_is_reused_per_kind()
+    {
+        using var db = new TestDb();
+        var repo = Path.Combine(Path.GetTempPath(), "inv-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var packages = new PackageService(db, new PackageRepository(repo));
+            var (all, created) = await packages.EnsurePendingUpdatesPackageAsync(securityOnly: false, approvedBy: "admin");
+            Assert.True(created);
+            Assert.True((await packages.GetAsync(all.Id))!.IsApproved);
+            var (security, _) = await packages.EnsurePendingUpdatesPackageAsync(securityOnly: true);
+            Assert.NotEqual(all.Id, security.Id);
+            Assert.Equal((all.Id, false), await packages.EnsurePendingUpdatesPackageAsync(securityOnly: false) is var (again, againCreated) ? (again.Id, againCreated) : default);
+
+            var steps = (await packages.GetAsync(security.Id))!.Steps.OrderBy(s => s.Order).Select(s => s.Definition).ToList();
+            Assert.Equal([StepType.WindowsUpdate, StepType.Reboot], steps.Select(s => s.Type));
+            Assert.True(steps[0].UpdateSecurityOnly);
+            Assert.Empty(steps[0].UpdateKbIds);
+            Assert.True(steps[1].Conditions!.RebootPending);
+            Assert.Equal(300, steps[1].Seconds);
+
+            // Geändert (z. B. ohne Bedingung für den Neustart) ist es ein anderes Paket: die Aktion legt ein neues an.
+            var reboot = (await packages.GetAsync(security.Id))!.Steps.OrderBy(s => s.Order).Last();
+            reboot.Definition.Conditions = null;
+            await packages.SaveStepAsync(security.Id, reboot.Id, reboot.Definition, null);
+            var (replacement, replaced) = await packages.EnsurePendingUpdatesPackageAsync(securityOnly: true);
+            Assert.True(replaced);
+            Assert.NotEqual(security.Id, replacement.Id);
+
+            // Gleichzeitige Aufrufe ergeben ein einziges Paket.
+            var parallel = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => packages.EnsurePendingUpdatesPackageAsync(securityOnly: true)));
+            Assert.Single(parallel.Select(r => r.Package.Id).Distinct());
+        }
+        finally
+        {
+            if (Directory.Exists(repo))
+                Directory.Delete(repo, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task An_update_package_installs_exactly_the_given_kb_numbers_and_is_reused()
     {
         using var db = new TestDb();
