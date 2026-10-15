@@ -401,6 +401,9 @@
   <data name="all pending updates" xml:space="preserve">
     <value>alle ausstehenden Updates</value>
   </data>
+  <data name="All pending updates (never restart)" xml:space="preserve">
+    <value>Alle ausstehenden Updates (nie neu starten)</value>
+  </data>
   <data name="All pending updates (restart if needed)" xml:space="preserve">
     <value>Alle ausstehenden Updates (Neustart bei Bedarf)</value>
   </data>
@@ -1715,8 +1718,14 @@
   <data name="Install pending security updates" xml:space="preserve">
     <value>Ausstehende Sicherheitsupdates installieren</value>
   </data>
+  <data name="Install pending security updates without restart" xml:space="preserve">
+    <value>Ausstehende Sicherheitsupdates ohne Neustart installieren</value>
+  </data>
   <data name="Install pending updates" xml:space="preserve">
     <value>Ausstehende Updates installieren</value>
+  </data>
+  <data name="Install pending updates without restart" xml:space="preserve">
+    <value>Ausstehende Updates ohne Neustart installieren</value>
   </data>
   <data name="Install remote access launcher" xml:space="preserve">
     <value>Starter für Fernzugriff installieren</value>
@@ -3496,6 +3505,9 @@
   </data>
   <data name="security and critical updates" xml:space="preserve">
     <value>Sicherheits- und kritische Updates</value>
+  </data>
+  <data name="Security and critical updates only (never restart)" xml:space="preserve">
+    <value>Nur Sicherheits- und kritische Updates (nie neu starten)</value>
   </data>
   <data name="Security and critical updates only (restart if needed)" xml:space="preserve">
     <value>Nur Sicherheits- und kritische Updates (Neustart bei Bedarf)</value>

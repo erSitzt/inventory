@@ -467,6 +467,9 @@ else if (_computer.ReverseDnsMismatch)
                                 <MudMenu Label="@L["Install …"]" StartIcon="@Icons.Material.Filled.SystemUpdateAlt" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Variant="Variant.Outlined" Size="Size.Small">
                                     <MudMenuItem OnClick="@(() => Updates.OpenAsync([Id], securityOnly: false))">@L["All pending updates (restart if needed)"]</MudMenuItem>
                                     <MudMenuItem OnClick="@(() => Updates.OpenAsync([Id], securityOnly: true))">@L["Security and critical updates only (restart if needed)"]</MudMenuItem>
+                                    <MudDivider />
+                                    <MudMenuItem OnClick="@(() => Updates.OpenAsync([Id], securityOnly: false, restart: false))">@L["All pending updates (never restart)"]</MudMenuItem>
+                                    <MudMenuItem OnClick="@(() => Updates.OpenAsync([Id], securityOnly: true, restart: false))">@L["Security and critical updates only (never restart)"]</MudMenuItem>
                                 </MudMenu>
                             </AdminOnly>
                         </MudStack>

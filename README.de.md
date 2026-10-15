@@ -81,7 +81,9 @@ eingestellten Quelle (WSUS oder Microsoft Update) – alle Updates, nur Sicherhe
 KB-Nummern. Funktioniert über SMB + Dienst oder Agent, nicht über WinRM. Für bestimmte Rechner verteilen *Installieren …*
 auf der Rechnerseite (Abschnitt *Ausstehende Updates*) und *Ausstehende Updates installieren* in den Aktionen der
 Rechnerliste alle ausstehenden Updates oder nur Sicherheits- und kritische, danach einen Neustart nur, wenn einer
-aussteht (mit fünf Minuten Vorwarnung für den angemeldeten Benutzer).
+aussteht (mit fünf Minuten Vorwarnung für den angemeldeten Benutzer) – oder ganz ohne Neustart: Dann werden die Updates
+beim nächsten Neustart fertig. Inventory startet in diesem Fall nie neu; Neustartregeln, denen Windows Update selbst
+folgt (Gruppenrichtlinie, Nutzungszeit), gelten weiterhin.
 
 ### Software und Apps
 

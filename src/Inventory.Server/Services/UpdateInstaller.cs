@@ -12,13 +12,13 @@ namespace Inventory.Server.Services;
 /// </summary>
 public sealed class UpdateInstaller(PackageService packages, IDialogService dialogs, ISnackbar snackbar, Auditor audit, Access access, IStringLocalizer<SharedResource> L)
 {
-    public async Task OpenAsync(IReadOnlyCollection<int> computerIds, bool securityOnly)
+    public async Task OpenAsync(IReadOnlyCollection<int> computerIds, bool securityOnly, bool restart = true)
     {
         if (computerIds.Count == 0 || !await access.DemandAdminAsync())
             return;
         try
         {
-            var (package, created) = await packages.EnsurePendingUpdatesPackageAsync(securityOnly, approvedBy: await audit.UserNameAsync());
+            var (package, created) = await packages.EnsurePendingUpdatesPackageAsync(securityOnly, restart, approvedBy: await audit.UserNameAsync());
             if (created)
                 await audit.LogAsync(L["Package created"], package.Name);
             var parameters = new DialogParameters<DeployDialog> { { d => d.PackageId, package.Id }, { d => d.ComputerIds, computerIds.ToList() } };

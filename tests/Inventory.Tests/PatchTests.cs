@@ -130,6 +130,14 @@ public class PatchTests
             Assert.True(replaced);
             Assert.NotEqual(security.Id, replacement.Id);
 
+            // Ohne Neustart: nur der Update-Schritt, ein eigenes Paket je Art.
+            var (quiet, quietCreated) = await packages.EnsurePendingUpdatesPackageAsync(securityOnly: true, restart: false);
+            Assert.True(quietCreated);
+            Assert.NotEqual(replacement.Id, quiet.Id);
+            Assert.Equal([StepType.WindowsUpdate], (await packages.GetAsync(quiet.Id))!.Steps.Select(s => s.Definition.Type));
+            Assert.Equal(quiet.Id, (await packages.EnsurePendingUpdatesPackageAsync(securityOnly: true, restart: false)).Package.Id);
+            Assert.NotEqual(quiet.Id, (await packages.EnsurePendingUpdatesPackageAsync(securityOnly: false, restart: false)).Package.Id);
+
             // Gleichzeitige Aufrufe ergeben ein einziges Paket.
             var parallel = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => packages.EnsurePendingUpdatesPackageAsync(securityOnly: true)));
             Assert.Single(parallel.Select(r => r.Package.Id).Distinct());

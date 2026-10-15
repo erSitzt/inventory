@@ -79,7 +79,9 @@ hotfixes and pending updates. *Install …* starts a deployment of the update to
 Microsoft Update) – all updates, only security and critical ones, or specific KB numbers. Works via SMB + service or
 agent, not over WinRM. For particular computers, *Install …* on the computer page (section *Pending updates*) and
 *Install pending updates* in the actions of the computer list deploy all pending updates, or only security and critical
-ones, followed by a restart only if one is pending (with five minutes' notice to the logged-on user).
+ones, followed by a restart only if one is pending (with five minutes' notice to the logged-on user) – or without any
+restart: then the updates finish with the next restart. Inventory never restarts in that case; restart policies that
+Windows Update itself follows (group policy, active hours) still apply.
 
 ### Software and apps
 
