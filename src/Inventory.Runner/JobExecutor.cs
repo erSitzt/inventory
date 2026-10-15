@@ -903,7 +903,7 @@ namespace Inventory.Runner
         }
 
         /// <summary>Startzeit des Betriebssystems aus der Laufzeit seit dem Start; wrapfrei (64 Bit).</summary>
-        private static DateTime BootTimeUtc() => DateTime.UtcNow - TimeSpan.FromMilliseconds(GetTickCount64());
+        internal static DateTime BootTimeUtc() => DateTime.UtcNow - TimeSpan.FromMilliseconds(GetTickCount64());
 
         [DllImport("kernel32.dll")]
         private static extern ulong GetTickCount64();

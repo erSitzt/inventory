@@ -1257,6 +1257,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int?>("ResumeFromStep")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("ResumesLocally")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("StartedUtc")
                         .HasColumnType("TEXT");
 

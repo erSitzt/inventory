@@ -463,6 +463,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
     private readonly SemaphoreSlim _pilotLock = new(1, 1);
 
+    /// <summary>So lange hält der Agent eine Fortsetzung und ihr Ergebnis vor (wie nicht zugestellte Ergebnisse).</summary>
+    internal static readonly TimeSpan LocalResumeLimit = TimeSpan.FromDays(7);
+
     /// <summary>
     /// Setzt Ziele fort, deren Rechner nach einem Neustart-Schritt wieder erreichbar ist: der Folgejob enthält die restlichen
     /// Schritte und läuft nur, wenn der Rechner wirklich neu gestartet ist. Nach der eingestellten Wartefrist
@@ -490,6 +493,20 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             var ready = new List<DeploymentTarget>();
             foreach (var target in deployment.Targets)
             {
+                if (target.ResumesLocally)
+                {
+                    // Der Agent setzt selbst fort und liefert nach; aufgegeben wird erst, wenn er sein Ergebnis auch nicht mehr hätte.
+                    if (target.RebootUtc is { } since && DateTime.UtcNow - since > LocalResumeLimit)
+                    {
+                        var silent = L["The agent did not report back within {0} days after the restart", (int)LocalResumeLimit.TotalDays].Value;
+                        await UpdateAsync(db => db.DeploymentTargets.Where(t => t.Id == target.Id && t.Status == TargetStatus.WaitingReboot && t.ResumesLocally)
+                            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Failed).SetProperty(t => t.Error, silent)
+                                .SetProperty(t => t.ResumesLocally, false).SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
+                        await CheckFailureLimitAsync(deployment);
+                        Changed?.Invoke(deployment.Id);
+                    }
+                    continue;
+                }
                 if (target.RebootUtc is { } rebooted && DateTime.UtcNow - rebooted > rebootWindow)
                 {
                     var timeout = L["The computer did not come back within {0} minutes after the restart", (int)rebootWindow.TotalMinutes].Value;
@@ -638,6 +655,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         DateTime? bootTime = target.BootTimeUtc;
         var deferrals = target.Deferrals;
         DateTime? notBefore = null;
+        var resumesLocally = false;
         try
         {
             if (target.ComputerId is { } windowId && closed.TryGetValue(windowId, out var opens))
@@ -690,8 +708,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 // Mitten im Paket (Fortsetzung nach einem Neustart) wird nicht mehr gefragt.
                 UserPrompt = resumeFrom == 0 ? Prompt(built.Notice, target.Deferrals) : null,
                 Groups = built.Manifest.Groups,
-                StartedGroups = StartedGroups(built.Manifest, resumeFrom),
-                FinishedGroups = FinishedGroups(built.Manifest, resumeFrom),
+                StartedGroups = JobGroups.Started(built.Manifest, resumeFrom),
+                FinishedGroups = JobGroups.Finished(built.Manifest, resumeFrom),
             };
             var progress = new CallbackProgress(e =>
             {
@@ -711,6 +729,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 ? await jobs.RunAsync(computerId, job, progress, ct, built.Files)
                 : JobResult.Failed(job.JobId, L["The computer was deleted"]);
             (status, error, steps, resumeNext, bootTime) = Evaluate(result, target.Steps, previousSteps, resumeFrom, bootTime, ct.IsCancellationRequested);
+            resumesLocally = status == TargetStatus.WaitingReboot && result.ResumesLocally;
             if (result.NotRebootedYet)
                 return;
             if (status == TargetStatus.WaitingUser)
@@ -744,6 +763,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 stored.Steps = steps;
                 stored.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
                 stored.BootTimeUtc = bootTime;
+                stored.ResumesLocally = status == TargetStatus.WaitingReboot && resumesLocally;
                 if (status == TargetStatus.WaitingReboot)
                     stored.RebootUtc ??= DateTime.UtcNow;
                 else
@@ -903,7 +923,9 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
             // Der Neustart läuft; die restlichen Schritte folgen, sobald der Rechner wieder erreichbar ist.
             status = TargetStatus.WaitingReboot;
             resumeNext = resumeFrom + next;
-            error = L["Restarting – the remaining steps follow once the computer is back"];
+            error = result.ResumesLocally
+                ? L["Restarting – the agent continues with the remaining steps by itself, also without a connection to the server"]
+                : L["Restarting – the remaining steps follow once the computer is back"];
         }
         return (status, error, steps, resumeNext, bootTime);
     }
@@ -916,7 +938,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     public async Task<bool> AdoptResultAsync(int computerId, string jobId, JobResult result, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        if (!await db.DeploymentTargets.AnyAsync(t => t.JobId == jobId && t.ComputerId == computerId && t.Interrupted && t.Status == TargetStatus.Failed, ct))
+        if (!await db.DeploymentTargets.AnyAsync(t => t.JobId == jobId && t.ComputerId == computerId
+                && ((t.Interrupted && t.Status == TargetStatus.Failed) || (t.ResumesLocally && t.Status == TargetStatus.WaitingReboot)), ct))
             return false;
         // Das Inventar zuerst: scheitert das Speichern, bleibt das Ziel übernehmbar und der Agent liefert erneut.
         // Doppelt gespeichert schadet es nicht, es ersetzt nur den Stand des Rechners.
@@ -925,12 +948,14 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         // Genau eine Zustellung gewinnt: wer die Markierung nicht mehr vorfindet, kam zu spät.
-        var claimed = await db.DeploymentTargets.Where(t => t.JobId == jobId && t.ComputerId == computerId && t.Interrupted && t.Status == TargetStatus.Failed)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Interrupted, false), ct);
+        var claimed = await db.DeploymentTargets.Where(t => t.JobId == jobId && t.ComputerId == computerId
+                && ((t.Interrupted && t.Status == TargetStatus.Failed) || (t.ResumesLocally && t.Status == TargetStatus.WaitingReboot)))
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.Interrupted, false).SetProperty(t => t.ResumesLocally, false), ct);
         if (claimed != 1)
             return false;
         var target = await db.DeploymentTargets.FirstAsync(t => t.JobId == jobId && t.ComputerId == computerId, ct);
-        // Der unterbrochene Job war selbst schon eine Fortsetzung, wenn das Ziel noch einen Fortsetzungspunkt trägt.
+        // Der unterbrochene Job war selbst schon eine Fortsetzung, wenn das Ziel noch einen Fortsetzungspunkt trägt; ebenso die
+        // Fortsetzung, die der Agent nach dem Neustart selbst ausgeführt hat.
         var resumeFrom = target.ResumeFromStep ?? 0;
         var previousSteps = resumeFrom > 0 ? target.Steps.Take(resumeFrom).ToList() : [];
         var (status, error, steps, resumeNext, bootTime) = Evaluate(result, target.Steps, previousSteps, resumeFrom, target.BootTimeUtc, cancelled: false);
@@ -938,6 +963,7 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         target.Error = error;
         target.Steps = steps;
         target.ResumeFromStep = status == TargetStatus.WaitingReboot ? resumeNext : null;
+        target.ResumesLocally = status == TargetStatus.WaitingReboot && result.ResumesLocally;
         target.BootTimeUtc = bootTime;
         target.RebootUtc = status == TargetStatus.WaitingReboot ? target.RebootUtc ?? DateTime.UtcNow : null;
         target.FinishedUtc = status.IsWaiting() ? null : DateTime.UtcNow;
@@ -962,26 +988,5 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     private sealed class CallbackProgress(Action<ProgressEvent> handler) : IProgress<ProgressEvent>
     {
         public void Report(ProgressEvent value) => handler(value);
-    }
-
-    /// <summary>
-    /// Voraussetzungen, in denen der Neustart lag: sie laufen im Folgejob ohne erneute Erkennung weiter, sonst entfielen
-    /// ihre restlichen Schritte, sobald die Voraussetzung nach dem Neustart schon erkennbar ist.
-    /// </summary>
-    internal static List<int> StartedGroups(JobManifest manifest, int resumeFrom)
-    {
-        if (resumeFrom <= 0 || resumeFrom >= manifest.Steps.Count)
-            return [];
-        var before = JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom - 1].Group);
-        return [.. JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom].Group).Where(before.Contains)];
-    }
-
-    /// <summary>Voraussetzungen, deren letzter Schritt der Neustart war: der Folgejob prüft sie nach, bevor er weitermacht.</summary>
-    internal static List<int> FinishedGroups(JobManifest manifest, int resumeFrom)
-    {
-        if (resumeFrom <= 0 || resumeFrom >= manifest.Steps.Count)
-            return [];
-        var open = JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom].Group);
-        return [.. JobGroups.Chain(manifest.Groups, manifest.Steps[resumeFrom - 1].Group).Where(id => !open.Contains(id))];
     }
 }

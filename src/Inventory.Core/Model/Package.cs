@@ -197,4 +197,9 @@ public class DeploymentTarget
     /// Ergebnis nach, ersetzt es den vorläufigen Fehlschlag.
     /// </summary>
     public bool Interrupted { get; set; }
+    /// <summary>
+    /// Der Agent setzt nach dem Neustart selbst fort (Status <see cref="TargetStatus.WaitingReboot"/>): der Server startet
+    /// keinen Folgejob, sondern wartet auf das Ergebnis unter derselben <see cref="JobId"/>.
+    /// </summary>
+    public bool ResumesLocally { get; set; }
 }

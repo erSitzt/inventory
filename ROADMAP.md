@@ -60,7 +60,6 @@ Collected in issue [#27](https://github.com/erSitzt/inventory/issues/27).
 
 **Deployment**
 
-- Agent-local resume after reboot (the agent continues the remaining steps itself instead of waiting for the server).
 - Per-collection operator scoping ("may only deploy to Site B").
 
 **Inventory**

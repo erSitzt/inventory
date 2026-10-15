@@ -43,6 +43,9 @@ namespace Inventory.Runner
                     // Der Server hält die Anfrage offen, bis ein Job da ist; das Zeitlimit muss darüber liegen.
                     _http = new HttpClient { BaseAddress = new Uri(config.ServerUrl.TrimEnd('/') + "/"), Timeout = TimeSpan.FromMinutes(2) };
                     _http.DefaultRequestHeaders.Add(AgentProtocol.KeyHeader, GetOrCreateKey(config));
+                    // Vor der ersten Abfrage: eine Fortsetzung nach dem Neustart braucht den Server nicht. Der Schlüssel liegt
+                    // dann schon vor (ohne Anmeldung gibt es keinen Job und damit nichts fortzusetzen).
+                    ContinueAfterRestart();
                     PollUntilStopped();
                 }
                 catch (Exception ex) when (!_stop.IsCancellationRequested)
@@ -89,6 +92,7 @@ namespace Inventory.Runner
         {
             while (!_stop.IsCancellationRequested)
             {
+                ContinueAfterRestart();
                 DeliverPending();
                 using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash() }), _stop.Token).GetAwaiter().GetResult())
                 {
@@ -211,18 +215,139 @@ namespace Inventory.Runner
                 _running = null;
             }
 
-            // Erst ablegen, dann melden: ist der Server gerade nicht erreichbar, geht das Ergebnis nicht verloren.
-            Directory.CreateDirectory(PendingDir);
+            Finish(jobId, jobDir, offer.Manifest, result, 0);
+        }
+
+        /// <summary>
+        /// Legt das Ergebnis ab und meldet es. Steht nach einem Neustart noch etwas aus, bleibt das Job-Verzeichnis mit einem
+        /// Folgeauftrag liegen: <see cref="ContinueAfterRestart"/> setzt dort fort, sobald der Rechner neu gestartet ist.
+        /// </summary>
+        private void Finish(string jobId, string jobDir, JobManifest manifest, JobResult result, int sequence)
+        {
             // Scheitert der Runner, bevor er das Manifest gelesen hat, fehlt dem Ergebnis die Kennung des Jobs.
             if (string.IsNullOrEmpty(result.JobId))
                 result.JobId = jobId;
-            // Über eine Zwischendatei: ein Abbruch mitten im Schreiben hinterlässt so kein halbes Ergebnis unter dem endgültigen Namen.
-            var pending = Path.Combine(PendingDir, jobId + ".json");
-            File.WriteAllText(pending + ".tmp", JobJson.Serialize(result), new UTF8Encoding(false));
-            File.Delete(pending);
-            File.Move(pending + ".tmp", pending);
-            try { Directory.Delete(jobDir, true); } catch (IOException) { /* wird beim nächsten Job nicht stören */ }
+            var resumes = false;
+            if (result.Success && result.ResumeFromStep is int next && !_stop.IsCancellationRequested)
+            {
+                try
+                {
+                    var state = new ResumeState { Manifest = manifest.ContinueFrom(next, result.BootTimeUtc), Sequence = sequence + 1, SavedUtc = DateTime.UtcNow };
+                    WriteAtomically(Path.Combine(jobDir, ResumeFile), JobJson.Serialize(state));
+                    resumes = true;
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    // Dann übernimmt der Server die Fortsetzung wie im agentenlosen Betrieb.
+                    Log("Fortsetzung nach dem Neustart nicht ablegbar: " + ex.Message);
+                }
+            }
+            result.ResumesLocally = resumes;
+
+            // Erst ablegen, dann melden: ist der Server gerade nicht erreichbar, geht das Ergebnis nicht verloren.
+            Directory.CreateDirectory(PendingDir);
+            // Fortsetzungen tragen eine laufende Nummer: so meldet DeliverPending sie in der richtigen Reihenfolge.
+            var name = sequence == 0 ? jobId : $"{jobId}.{sequence:00}";
+            WriteAtomically(Path.Combine(PendingDir, name + ".json"), JobJson.Serialize(result));
+            if (!resumes)
+            {
+                try { Directory.Delete(jobDir, true); } catch (IOException) { /* wird beim nächsten Job nicht stören */ }
+            }
             DeliverPending();
+        }
+
+        /// <summary>Über eine Zwischendatei: ein Abbruch mitten im Schreiben hinterlässt so keine halbe Datei unter dem endgültigen Namen.</summary>
+        private static void WriteAtomically(string path, string content)
+        {
+            File.WriteAllText(path + ".tmp", content, new UTF8Encoding(false));
+            File.Delete(path);
+            File.Move(path + ".tmp", path);
+        }
+
+        private const string ResumeFile = "resume.json";
+
+        /// <summary>Folgeauftrag nach einem Neustart, im Job-Verzeichnis neben den Paketdateien.</summary>
+        private sealed class ResumeState
+        {
+            public JobManifest Manifest { get; set; } = new JobManifest();
+            /// <summary>Laufende Nummer der Fortsetzung (1 = erste); benennt das abgelegte Ergebnis.</summary>
+            public int Sequence { get; set; }
+            public DateTime SavedUtc { get; set; }
+            /// <summary>true = die Fortsetzung hat begonnen; findet sie sich so wieder, wurde sie unterbrochen.</summary>
+            public bool Started { get; set; }
+        }
+
+        /// <summary>So lange wartet ein Folgeauftrag auf den Neustart, danach meldet er einen Fehler und verfällt.</summary>
+        private static readonly TimeSpan ResumeLimit = TimeSpan.FromDays(PendingDays);
+
+        /// <summary>
+        /// Setzt Jobs fort, die mit einem Neustart endeten, sobald der Rechner tatsächlich neu gestartet ist – ohne den Server zu
+        /// fragen, damit auch ein Notebook ohne Verbindung zum Server weitermacht. Das Ergebnis geht über die Ablage an den Server.
+        /// </summary>
+        private void ContinueAfterRestart()
+        {
+            var jobsDir = Path.Combine(_baseDir, JobFiles.JobsFolder);
+            if (!Directory.Exists(jobsDir))
+                return;
+            foreach (var jobDir in Directory.GetDirectories(jobsDir))
+            {
+                if (_stop.IsCancellationRequested)
+                    return;
+                var statePath = Path.Combine(jobDir, ResumeFile);
+                if (!File.Exists(statePath))
+                    continue;
+                var jobId = Path.GetFileName(jobDir);
+                ResumeState? state;
+                try
+                {
+                    state = JobJson.Deserialize<ResumeState>(File.ReadAllText(statePath, Encoding.UTF8));
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is InvalidDataException || ex is FormatException)
+                {
+                    state = null;
+                }
+                if (state == null)
+                {
+                    Finish(jobId, jobDir, new JobManifest { JobId = jobId }, JobResult.Failed(jobId, "Agent: the continuation after the restart could not be read"), 1);
+                    continue;
+                }
+                if (state.Started)
+                {
+                    // Der Agent oder der Rechner wurde mitten in der Fortsetzung beendet: nicht blind wiederholen.
+                    Finish(jobId, jobDir, state.Manifest, JobResult.Failed(jobId, "Agent: the continuation after the restart was interrupted"), state.Sequence);
+                    continue;
+                }
+                var previousBoot = state.Manifest.RequireBootAfterUtc;
+                if (previousBoot is DateTime boot && JobExecutor.BootTimeUtc() <= boot.AddSeconds(5))
+                {
+                    if (DateTime.UtcNow - state.SavedUtc > ResumeLimit)
+                        Finish(jobId, jobDir, state.Manifest, JobResult.Failed(jobId, "Agent: the computer did not restart"), state.Sequence);
+                    continue;
+                }
+
+                Log($"Setze {jobId} nach dem Neustart fort.");
+                state.Started = true;
+                WriteAtomically(statePath, JobJson.Serialize(state));
+                WriteAtomically(Path.Combine(jobDir, JobFiles.Manifest), JobJson.Serialize(state.Manifest));
+                File.Delete(Path.Combine(jobDir, JobFiles.Progress));
+                JobResult result;
+                try
+                {
+                    var executor = new JobExecutor(jobDir);
+                    _running = executor;
+                    result = executor.Run();
+                }
+                catch (Exception ex)
+                {
+                    result = JobResult.Failed(jobId, "Agent: " + ex.Message);
+                }
+                finally
+                {
+                    _running = null;
+                }
+                File.Delete(statePath);
+                Finish(jobId, jobDir, state.Manifest, result, state.Sequence);
+            }
         }
 
         private string PendingDir => Path.Combine(_baseDir, "pending");
@@ -235,8 +360,16 @@ namespace Inventory.Runner
         {
             if (!Directory.Exists(PendingDir))
                 return;
-            foreach (var file in Directory.GetFiles(PendingDir, "*.json"))
+            // Fortsetzungen erst nach dem Ergebnis, das sie angekündigt hat: sortiert und je Job nur, solange das vorige angenommen ist.
+            var files = Directory.GetFiles(PendingDir, "*.json");
+            Array.Sort(files, StringComparer.Ordinal);
+            var blocked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in files)
             {
+                var name = Path.GetFileNameWithoutExtension(file);
+                var jobId = name.Split('.')[0];
+                if (blocked.Contains(jobId))
+                    continue;
                 try
                 {
                     if (DateTime.UtcNow - File.GetLastWriteTimeUtc(file) > TimeSpan.FromDays(PendingDays))
@@ -244,7 +377,6 @@ namespace Inventory.Runner
                         File.Delete(file);
                         continue;
                     }
-                    var jobId = Path.GetFileNameWithoutExtension(file);
                     using (var content = new StringContent(File.ReadAllText(file, Encoding.UTF8), Encoding.UTF8, "application/json"))
                     using (var response = _http.PostAsync($"{AgentProtocol.JobsPath}/{jobId}/result", content, _stop.Token).GetAwaiter().GetResult())
                     {
@@ -252,6 +384,8 @@ namespace Inventory.Runner
                         // Angenommen, oder der Server will es nicht (Job unbekannt, Ergebnis unlesbar, Rechner gelöscht): beides ist endgültig.
                         if (response.IsSuccessStatusCode || (status >= 400 && status < 500 && status != 408 && status != 429))
                             File.Delete(file);
+                        else
+                            blocked.Add(jobId);
                     }
                 }
                 catch (Exception ex) when (ex is HttpRequestException || ex is IOException || ex is UnauthorizedAccessException || ex is OperationCanceledException)

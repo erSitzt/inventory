@@ -363,6 +363,11 @@ A job's result is not lost when the server is unreachable at that moment: the ag
 as the server answers again, for up to seven days. If the server was restarted while the job ran, the deployment shows
 the computer as failed ("the server was stopped during execution") until the result arrives and replaces that.
 
+A package with a **reboot** in the middle does not depend on the server either: the agent keeps the remaining steps and
+their files, and continues by itself once the computer has restarted – also on a notebook that comes back without a
+connection to the server. The deployment shows "Restarting – the agent continues …" until the result arrives. If the
+deployment is cancelled in the meantime, a continuation that already ran is not undone; its result is discarded.
+
 **How it works**
 
 | | |
