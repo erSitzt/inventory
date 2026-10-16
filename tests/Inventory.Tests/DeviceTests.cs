@@ -36,8 +36,12 @@ public class DeviceTests
     public void Invalid_ranges_are_rejected(string text) => Assert.NotNull(IpRanges.Validate(text));
 
     [Fact]
-    public void Ranges_are_capped() =>
+    public void Ranges_are_capped()
+    {
         Assert.Throws<ArgumentException>(() => IpRanges.Expand("10.0.0.0/20, 10.1.0.0/24"));
+        // Überlappungen zählen nur einmal.
+        Assert.Equal(4094, IpRanges.Expand(string.Join(",", Enumerable.Repeat("10.0.0.0/20", 3)) + ", 10.0.0.0/24").Count);
+    }
 
     [Fact]
     public void Object_identifiers_round_trip()
@@ -45,6 +49,10 @@ public class DeviceTests
         Assert.Equal(new byte[] { 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x15 }, Ber.EncodeOid("1.3.6.1.4.1.311.21"));
         Assert.Equal("1.3.6.1.4.1.41112.1.6.3.3", Ber.ReadOid(Ber.EncodeOid("1.3.6.1.4.1.41112.1.6.3.3")));
         Assert.Equal("1.3.6.1.2.1.4.22.1.2.4.192.168.0.1", Ber.ReadOid(Ber.EncodeOid(".1.3.6.1.2.1.4.22.1.2.4.192.168.0.1")));
+        // Erster Teilbezeichner über 127 (2.100 = 180) braucht zwei Bytes.
+        Assert.Equal(new byte[] { 0x81, 0x34, 0x03 }, Ber.EncodeOid("2.100.3"));
+        Assert.Equal("2.100.3", Ber.ReadOid(Ber.EncodeOid("2.100.3")));
+        Assert.Throws<FormatException>(() => Ber.EncodeOid("1.40"));
     }
 
     [Theory]

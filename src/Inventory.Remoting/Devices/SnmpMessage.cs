@@ -149,11 +149,12 @@ internal static class Ber
 
     public static byte[] EncodeOid(string oid)
     {
-        var parts = oid.TrimStart('.').Split('.').Select(p => uint.Parse(p, CultureInfo.InvariantCulture)).ToArray();
-        if (parts.Length < 2)
+        var parts = oid.TrimStart('.').Split('.').Select(p => ulong.Parse(p, CultureInfo.InvariantCulture)).ToArray();
+        if (parts.Length < 2 || parts[0] > 2 || (parts[0] < 2 && parts[1] >= 40))
             throw new FormatException($"'{oid}' is not an object identifier.");
-        var bytes = new List<byte> { (byte)(parts[0] * 40 + parts[1]) };
-        foreach (var part in parts.Skip(2))
+        // Die ersten beiden Bögen bilden zusammen den ersten Teilbezeichner (X * 40 + Y), base-128 wie alle anderen.
+        var bytes = new List<byte>();
+        foreach (var part in parts.Skip(2).Prepend(parts[0] * 40 + parts[1]))
         {
             var chunk = new Stack<byte>();
             var v = part;
@@ -167,18 +168,26 @@ internal static class Ber
 
     public static string ReadOid(byte[] data)
     {
-        if (data.Length == 0)
-            throw new InvalidDataException("Empty object identifier.");
-        var parts = new List<ulong> { (ulong)Math.Min(data[0] / 40, 2), (ulong)(data[0] - Math.Min(data[0] / 40, 2) * 40) };
+        if (data.Length == 0 || (data[^1] & 0x80) != 0)
+            throw new InvalidDataException("Invalid object identifier.");
+        var parts = new List<ulong>();
         ulong value = 0;
-        for (var i = 1; i < data.Length; i++)
+        foreach (var b in data)
         {
-            value = (value << 7) | (uint)(data[i] & 0x7F);
-            if ((data[i] & 0x80) == 0)
+            value = (value << 7) | (uint)(b & 0x7F);
+            if ((b & 0x80) != 0)
+                continue;
+            if (parts.Count == 0)
+            {
+                var first = Math.Min(value / 40, 2);
+                parts.Add(first);
+                parts.Add(value - first * 40);
+            }
+            else
             {
                 parts.Add(value);
-                value = 0;
             }
+            value = 0;
         }
         return string.Join(".", parts);
     }

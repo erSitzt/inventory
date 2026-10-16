@@ -19,11 +19,11 @@ public static class IpRanges
         foreach (var part in text.Split([',', ';', '\n', '\r', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries))
         {
             var (first, last) = Parse(part);
-            if ((long)last - first + 1 + values.Count > MaxAddresses)
-                throw new ArgumentException($"More than {MaxAddresses} addresses.");
+            // Gezählt wird nach dem Zusammenführen: überlappende Angaben belasten die Grenze nicht doppelt.
             for (var v = first; ; v++)
             {
-                values.Add(v);
+                if (values.Add(v) && values.Count > MaxAddresses)
+                    throw new ArgumentException($"More than {MaxAddresses} addresses.");
                 if (v == last)
                     break;
             }

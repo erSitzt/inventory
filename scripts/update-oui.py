@@ -2,7 +2,7 @@
 """Erzeugt src/Inventory.Core/Resources/oui.txt.gz aus dem öffentlichen MA-L-Register der IEEE (MAC-Präfix -> Hersteller)."""
 import csv, gzip, io, pathlib, urllib.request
 
-URL = "http://standards-oui.ieee.org/oui/oui.csv"
+URL = "https://standards-oui.ieee.org/oui/oui.csv"
 TARGET = pathlib.Path(__file__).resolve().parent.parent / "src/Inventory.Core/Resources/oui.txt.gz"
 
 request = urllib.request.Request(URL, headers={"User-Agent": "curl/8.5.0"})
