@@ -148,7 +148,10 @@ Subnets, routers, network devices and computers as an interactive diagram, deriv
 address and mask of every computer's network adapters, the interfaces routers report over SNMP (`ipAddrTable`), the
 CIDR ranges of the device scan and the default gateways of the computers. The device scan of all ranges also checks
 these gateways; gateways that turn out to be the same box (shared interfaces, MAC address, serial number or SNMP name)
-become one node, typically the central firewall in the middle with the subnets around it. The map starts with this
+become one node, typically the central firewall in the middle with the subnets around it. The scan also traces the
+path from the server to one target in every subnet (ICMP with rising TTL, like `tracert`): consecutive hops connect
+routers with each other, the last router before a subnet is taken as its gateway (so gateway addresses fall into place
+even without SNMP), and a node for the Inventory server shows where it sits. The map starts with this
 overview – each subnet as a card with its device types and counts. A click opens a subnet: infrastructure first, then
 servers and storage, then peripherals, then the computers as a group that opens with another click. Search opens the
 subnets of its hits, a subnet filter and the device types narrow the view, hovering highlights the connections,

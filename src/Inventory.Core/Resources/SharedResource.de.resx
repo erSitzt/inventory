@@ -1985,6 +1985,9 @@
   <data name="Inventory scan started" xml:space="preserve">
     <value>Inventar-Scan gestartet</value>
   </data>
+  <data name="Inventory server" xml:space="preserve">
+    <value>Inventory-Server</value>
+  </data>
   <data name="inventory-per-computer" xml:space="preserve">
     <value>inventar-je-rechner</value>
   </data>
@@ -2395,6 +2398,9 @@
   </data>
   <data name="Network map" xml:space="preserve">
     <value>Netzwerkkarte</value>
+  </data>
+  <data name="Network paths" xml:space="preserve">
+    <value>Netzwege</value>
   </data>
   <data name="network-devices" xml:space="preserve">
     <value>netzwerkgeräte</value>
@@ -3079,6 +3085,9 @@
   </data>
   <data name="Patch status" xml:space="preserve">
     <value>Patch-Stand</value>
+  </data>
+  <data name="Paths to {0} subnets traced." xml:space="preserve">
+    <value>Wege zu {0} Subnetzen verfolgt.</value>
   </data>
   <data name="Pause after a message (minutes)" xml:space="preserve">
     <value>Pause nach einer Nachricht (Minuten)</value>
@@ -4381,6 +4390,9 @@
   </data>
   <data name='The deployment of "{0}" has finished; {1} of {2} computers failed.' xml:space="preserve">
     <value>Die Verteilung von „{0}“ ist abgeschlossen; {1} von {2} Rechnern sind fehlgeschlagen.</value>
+  </data>
+  <data name="The device scan traces the path from the server into every subnet; the hops connect routers with each other and show where the server sits." xml:space="preserve">
+    <value>Der Gerätescan verfolgt den Weg vom Server in jedes Subnetz; die Hops verbinden Router untereinander und zeigen, wo der Server steht.</value>
   </data>
   <data name="The device scan tries these communities one after another (SNMP v2c, then v1). They are stored encrypted and never shown again. Ranges can have their own." xml:space="preserve">
     <value>Der Gerätescan probiert diese Communities nacheinander (SNMP v2c, dann v1). Sie werden verschlüsselt gespeichert und nie wieder angezeigt. Bereiche können eigene haben.</value>

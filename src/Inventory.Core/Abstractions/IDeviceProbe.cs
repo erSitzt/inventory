@@ -62,11 +62,17 @@ public sealed class DeviceObservation
     public bool Responded => PingReply || OpenPorts.Count > 0 || Snmp is not null;
 }
 
+/// <param name="Reached">Das Ziel hat geantwortet.</param>
+public sealed record TraceResult(IReadOnlyList<string?> Hops, bool Reached);
+
 /// <summary>Prüft eine einzelne Adresse ohne Anmeldung: Ping, Standardports, Banner, SNMP.</summary>
 public interface IDeviceProbe
 {
     /// <param name="communities">SNMP-Communities in der Reihenfolge, in der sie versucht werden; leer = kein SNMP.</param>
     Task<DeviceObservation> ProbeAsync(System.Net.IPAddress address, IReadOnlyList<string> communities, CancellationToken ct = default);
+
+    /// <summary>Traceroute per Ping mit steigender TTL: die antwortenden Router der Reihe nach (null = keine Antwort), ohne das Ziel.</summary>
+    Task<TraceResult> TraceAsync(System.Net.IPAddress target, CancellationToken ct = default);
 
     /// <summary>MAC-Adressen aus der ARP-Tabelle des Servers (nur Geräte im selben Netzsegment); Schlüssel = IP.</summary>
     IReadOnlyDictionary<string, string> LocalNeighbors();

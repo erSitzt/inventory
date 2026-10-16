@@ -151,7 +151,10 @@ Subnetze, Router, Netzwerkgeräte und Rechner als interaktives Diagramm, abgelei
 Adresse und Maske der Netzwerkadapter jedes Rechners, die Schnittstellen, die Router per SNMP melden (`ipAddrTable`),
 die CIDR-Bereiche des Gerätescans und die Standard-Gateways der Rechner. Der Gerätescan aller Bereiche prüft auch diese
 Gateways; stellen sie sich als dasselbe Gerät heraus (gemeinsame Schnittstellen, MAC-Adresse, Seriennummer oder
-SNMP-Name), werden sie ein Knoten – typischerweise die zentrale Firewall in der Mitte, die Subnetze darum. Die Karte
+SNMP-Name), werden sie ein Knoten – typischerweise die zentrale Firewall in der Mitte, die Subnetze darum. Außerdem verfolgt der
+Scan den Weg vom Server zu je einem Ziel in jedem Subnetz (ICMP mit steigender TTL, wie `tracert`): aufeinanderfolgende
+Hops verbinden Router untereinander, der letzte Router vor einem Subnetz gilt als dessen Gateway (so finden
+Gateway-Adressen auch ohne SNMP zu ihrem Router), und ein Knoten für den Inventory-Server zeigt, wo er im Netz steht. Die Karte
 beginnt mit dieser Übersicht, jedes Subnetz als Karte mit seinen Gerätearten und deren Anzahl. Ein Klick öffnet ein
 Subnetz: zuerst die Netzinfrastruktur, dann Server und Speicher, dann Peripherie, zuletzt die Rechner als Gruppe, die
 sich mit einem weiteren Klick öffnet. Die Suche öffnet die Subnetze ihrer Treffer, Subnetz-Filter und Gerätearten

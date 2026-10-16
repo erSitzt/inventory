@@ -12,6 +12,8 @@ public static class MapNodeType
     /// <summary>Sammelknoten für die Rechner eines Subnetzes.</summary>
     public const string Group = "group";
     public const string Computer = "computer";
+    /// <summary>Der Inventory-Server selbst; seine Wege (Traceroute) zeigen, wo er im Netz steht.</summary>
+    public const string Server = "server";
 }
 
 /// <param name="Icon">Art des Geräts (<see cref="DeviceKind"/>) oder Rolle des Rechners (<see cref="ChassisKind"/>); die Oberfläche wählt daraus das Symbol.</param>
@@ -40,8 +42,11 @@ public static class NetworkMapBuilder
 {
     private const int AssumedPrefix = 24;
 
-    public static NetworkMap Build(IReadOnlyList<MapComputer> computers, IReadOnlyList<NetworkDevice> devices, IReadOnlyList<(string Name, string Addresses)> ranges)
+    public static NetworkMap Build(IReadOnlyList<MapComputer> computers, IReadOnlyList<NetworkDevice> devices, IReadOnlyList<(string Name, string Addresses)> ranges,
+        IReadOnlyList<NetworkTrace>? traces = null)
     {
+        traces ??= [];
+        var ranged = new HashSet<string>();
         var subnets = new Dictionary<string, (string? Name, bool Assumed)>();
         void AddSubnet(string? cidr, string? name = null)
         {
@@ -59,8 +64,11 @@ public static class NetworkMapBuilder
                 AddSubnet(IpRanges.Network(ip, prefix));
         foreach (var (name, addresses) in ranges)
             foreach (var token in addresses.Split([',', ';', '\n', '\r', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries).Where(t => t.Contains('/')))
-                if (token.Split('/') is [var network, var bits] && int.TryParse(bits, out var prefix))
-                    AddSubnet(IpRanges.Network(network, prefix), name);
+                if (token.Split('/') is [var network, var bits] && int.TryParse(bits, out var prefix) && IpRanges.Network(network, prefix) is { } cidr)
+                {
+                    AddSubnet(cidr, name);
+                    ranged.Add(cidr);
+                }
 
         // Längster Präfix gewinnt; ohne bekanntes Netz ein angenommenes /24.
         string SubnetOf(string ip)
@@ -77,41 +85,97 @@ public static class NetworkMapBuilder
         var edges = new HashSet<MapEdge>();
         var linkedComputers = computers.Select(c => c.Id).ToHashSet();
 
-        // Router: gescannte Geräte, die routen (oder deren Adresse ein Gateway ist), zusammengeführt über Schnittstellen und MAC.
+        // Router: Adressen, die zum selben Gerät gehören, werden zusammengefasst (Union-Find über die Adressen). Belege: die
+        // Schnittstellen eines Routers (SNMP), dasselbe Gerät unter mehreren Adressen (MAC, Seriennummer, SNMP-Name) und der
+        // Traceroute: der letzte Router vor einem Ziel ist das Gateway des Zielnetzes.
         var gateways = computers.SelectMany(c => c.Gateways).Where(IpRanges.IsUsable).ToHashSet();
-        var routerDevices = devices.Where(d => d.Kind is DeviceKind.Router or DeviceKind.Firewall || Interfaces(d).Any() || gateways.Contains(d.IpAddress)).ToList();
-        var routers = new List<(string Id, HashSet<string> Addresses, NetworkDevice Device)>();
-        foreach (var device in routerDevices.OrderByDescending(d => Interfaces(d).Count()))
+        var hopAddresses = traces.SelectMany(t => t.HopList).OfType<string>().Where(IpRanges.IsUsable).ToHashSet();
+        var routerDevices = devices.Where(d => d.Kind is DeviceKind.Router or DeviceKind.Firewall || Interfaces(d).Any()
+            || gateways.Contains(d.IpAddress) || hopAddresses.Contains(d.IpAddress)).ToList();
+        var root = new Dictionary<string, string>();
+        string Find(string ip)
         {
-            var addresses = Interfaces(device).Select(i => i.Ip).Append(device.IpAddress).ToHashSet();
-            var same = routers.FirstOrDefault(r => r.Addresses.Overlaps(addresses) || SameBox(r.Device, device));
-            if (same.Id is not null)
-            {
-                same.Addresses.UnionWith(addresses);
+            if (!root.TryGetValue(ip, out var parent))
+                return root[ip] = ip;
+            return parent == ip ? ip : root[ip] = Find(parent);
+        }
+        void Union(string a, string b)
+        {
+            var (ra, rb) = (Find(a), Find(b));
+            if (ra != rb)
+                root[ra] = rb;
+        }
+
+        foreach (var device in routerDevices)
+            foreach (var (ip, _) in Interfaces(device))
+                Union(ip, device.IpAddress);
+        for (var i = 0; i < routerDevices.Count; i++)
+            for (var j = i + 1; j < routerDevices.Count; j++)
+                if (SameBox(routerDevices[i], routerDevices[j]))
+                    Union(routerDevices[i].IpAddress, routerDevices[j].IpAddress);
+        foreach (var gateway in gateways)
+            Find(gateway);
+        foreach (var hop in hopAddresses)
+            Find(hop);
+        foreach (var trace in traces.Where(t => t.Reached && IpRanges.IsUsable(t.Target)))
+        {
+            var last = trace.HopList.LastOrDefault();
+            var subnet = SubnetOf(trace.Target);
+            if (last is null || IpRanges.Contains(subnet, last))
                 continue;
-            }
-            routers.Add(($"d{device.Id}", addresses, device));
+            // Das Gateway des Zielnetzes: von den Rechnern gemeldet oder eine Router-Schnittstelle in diesem Netz.
+            var candidates = gateways.Where(g => IpRanges.Contains(subnet, g))
+                .Concat(routerDevices.SelectMany(d => Interfaces(d).Select(i => i.Ip).Append(d.IpAddress)).Where(ip => IpRanges.Contains(subnet, ip)))
+                .Select(Find).Distinct().ToList();
+            if (candidates.Count == 1)
+                Union(last, candidates[0]);
         }
-        foreach (var (id, addresses, device) in routers)
+
+        // Je Gruppe ein Knoten: das gescannte Gerät mit den meisten Schnittstellen, sonst ein Gateway oder Hop ohne Gerät.
+        var routerOf = new Dictionary<string, string>();
+        foreach (var group in root.Keys.ToList().GroupBy(Find))
         {
-            nodes.Add(new MapNode(id, MapNodeType.Router, device.DisplayName, string.Join(", ", addresses.OrderBy(IpRanges.SortKey)), null, $"devices/{device.Id}", device.Kind.ToString()));
-            foreach (var (ip, prefix) in Interfaces(device))
-                edges.Add(new MapEdge(id, IpRanges.Network(ip, prefix)!));
-            edges.Add(new MapEdge(id, SubnetOf(device.IpAddress)));
-        }
-        // Gateways der Rechner, für die kein Router gefunden wurde.
-        foreach (var computer in computers)
-        {
-            foreach (var gateway in computer.Gateways.Where(IpRanges.IsUsable).Distinct())
+            var addresses = group.OrderBy(IpRanges.SortKey).ToList();
+            var device = routerDevices.Where(d => group.Contains(d.IpAddress)).OrderByDescending(d => Interfaces(d).Count()).FirstOrDefault();
+            var id = device is null ? $"g{addresses.FirstOrDefault(gateways.Contains) ?? addresses[0]}" : $"d{device.Id}";
+            foreach (var ip in addresses)
+                routerOf[ip] = id;
+            if (device is not null)
+                nodes.Add(new MapNode(id, MapNodeType.Router, device.DisplayName, string.Join(", ", addresses), null, $"devices/{device.Id}", device.Kind.ToString()));
+            else
+                nodes.Add(new MapNode(id, MapNodeType.Gateway, addresses.FirstOrDefault(gateways.Contains) ?? addresses[0], string.Join(", ", addresses), null, null, nameof(DeviceKind.Router)));
+
+            // Kanten in die Netze, in denen der Router eine Adresse hat – nicht für reine Hop-Adressen (sonst entstünden Transfernetze als /24).
+            foreach (var d in routerDevices.Where(d => group.Contains(d.IpAddress)))
             {
-                var routerId = routers.FirstOrDefault(r => r.Addresses.Contains(gateway)).Id;
-                if (routerId is null)
+                foreach (var (ip, prefix) in Interfaces(d))
+                    edges.Add(new MapEdge(id, IpRanges.Network(ip, prefix)!));
+                edges.Add(new MapEdge(id, SubnetOf(d.IpAddress)));
+            }
+            foreach (var gateway in addresses.Where(gateways.Contains))
+                edges.Add(new MapEdge(id, SubnetOf(gateway)));
+        }
+
+        // Wege des Servers: Router hintereinander, der Server am Anfang.
+        if (traces.Count > 0)
+        {
+            nodes.Add(new MapNode("server", MapNodeType.Server, "Inventory", null, null, null, nameof(ChassisKind.Server)));
+            foreach (var trace in traces)
+            {
+                var chain = trace.HopList.OfType<string>().Where(routerOf.ContainsKey).Select(h => routerOf[h]).ToList();
+                if (routerOf.TryGetValue(trace.Target, out var targetRouter))
+                    chain.Add(targetRouter);
+                chain = [.. chain.Where((id, i) => i == 0 || chain[i - 1] != id)];
+                if (chain.Count == 0)
                 {
-                    routerId = $"g{gateway}";
-                    if (nodes.All(n => n.Id != routerId))
-                        nodes.Add(new MapNode(routerId, MapNodeType.Gateway, gateway, null, null, null, nameof(DeviceKind.Router)));
+                    // Ohne Router dazwischen steht der Server im selben Netz wie das Ziel.
+                    if (trace.Reached && trace.HopList.Count == 0)
+                        edges.Add(new MapEdge("server", SubnetOf(trace.Target)));
+                    continue;
                 }
-                edges.Add(new MapEdge(routerId, SubnetOf(gateway)));
+                edges.Add(new MapEdge("server", chain[0]));
+                for (var i = 1; i < chain.Count; i++)
+                    edges.Add(new MapEdge(chain[i - 1], chain[i]));
             }
         }
 
@@ -143,10 +207,13 @@ public static class NetworkMapBuilder
         }
 
         // Subnetze zuletzt: erst jetzt stehen auch die angenommenen fest. Leere Netze (nur aus einem Bereich) entfallen.
-        var used = nodes.Select(n => n.Parent).Concat(edges.Select(e => e.Target)).ToHashSet();
-        nodes.InsertRange(0, subnets.Where(s => used.Contains(s.Key)).OrderBy(s => IpRanges.SortKey(s.Key.Split('/')[0]))
+        // Transfernetze (/29 und kleiner) ohne Mitglieder zeigt die Karte als Verbindung zwischen Routern, nicht als eigenes Netz.
+        var parents = nodes.Select(n => n.Parent).ToHashSet();
+        var used = parents.Concat(edges.Select(e => e.Target)).ToHashSet();
+        nodes.InsertRange(0, subnets.Where(s => used.Contains(s.Key) && (IpRanges.PrefixOf(s.Key) < 29 || parents.Contains(s.Key) || ranged.Contains(s.Key))).OrderBy(s => IpRanges.SortKey(s.Key.Split('/')[0]))
             .Select(s => new MapNode(s.Key, MapNodeType.Subnet, s.Key, s.Value.Name, null, null, "subnet", Assumed: s.Value.Assumed)));
-        return new NetworkMap(nodes, [.. edges.Where(e => nodes.Any(n => n.Id == e.Target))]);
+        var ids = nodes.Select(n => n.Id).ToHashSet();
+        return new NetworkMap(nodes, [.. edges.Where(e => e.Source != e.Target && ids.Contains(e.Source) && ids.Contains(e.Target))]);
     }
 
     /// <summary>

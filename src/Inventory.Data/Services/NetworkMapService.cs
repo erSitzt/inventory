@@ -16,6 +16,7 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
             .ToListAsync(ct);
         var devices = await db.NetworkDevices.AsNoTracking().ToListAsync(ct);
         var ranges = await db.NetworkRanges.AsNoTracking().Select(r => new { r.Name, r.Addresses }).ToListAsync(ct);
+        var traces = await db.NetworkTraces.AsNoTracking().ToListAsync(ct);
 
         var mapComputers = computers.Where(c => allowedComputers is null || allowedComputers.Contains(c.Id)).Select(c =>
         {
@@ -35,7 +36,7 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
         }).ToList();
         // Geräte, die zu einem nicht sichtbaren Rechner gehören, bleiben ebenfalls weg.
         var visibleDevices = devices.Where(d => d.ComputerId is not { } id || allowedComputers is null || allowedComputers.Contains(id)).ToList();
-        return NetworkMapBuilder.Build(mapComputers, visibleDevices, [.. ranges.Select(r => (r.Name, r.Addresses))]);
+        return NetworkMapBuilder.Build(mapComputers, visibleDevices, [.. ranges.Select(r => (r.Name, r.Addresses))], traces);
     }
 
     private static string[] Split(string? text) => (text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

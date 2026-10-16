@@ -167,6 +167,8 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
                 await StoreAsync(null, found, ct);
                 results.Add(L["Gateways of the computers: {0} of {1} responded.", found.Count, extra.Count]);
             }
+            if (rangeId is null)
+                results.Add(L["Paths to {0} subnets traced.", await TraceAsync(ct)]);
             return string.Join(" ", results);
         }
         finally
@@ -194,6 +196,73 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         var added = await StoreAsync(range.Id, found, ct);
         return await FinishRangeAsync(range.Id,
             L["{0}: {1} of {2} addresses responded, {3} new.", range.Name, found.Count, addresses.Count, added], ct);
+    }
+
+    /// <summary>
+    /// Traceroute zu je einem Ziel in jedem bekannten Subnetz: bevorzugt ein antwortendes Gerät oder ein erreichbarer Rechner,
+    /// sonst das Gateway. Ersetzt die Wege der letzten Messung; liefert die Zahl der gemessenen Subnetze.
+    /// </summary>
+    internal async Task<int> TraceAsync(CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var adapters = await db.NetworkAdapters.AsNoTracking().Select(a => new { a.IpAddresses, a.SubnetMasks, a.Gateways, Online = db.Computers.Any(c => c.Id == a.ComputerId && c.IsOnline) }).ToListAsync(ct);
+        var devices = await db.NetworkDevices.AsNoTracking().Select(d => new { d.IpAddress, d.InterfaceAddresses, d.DetectedKind, d.PingReply }).ToListAsync(ct);
+        var ranges = await db.NetworkRanges.AsNoTracking().Where(r => r.Enabled).Select(r => r.Addresses).ToListAsync(ct);
+
+        static string[] Split(string? text) => (text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var subnets = new HashSet<string>();
+        var hosts = new List<(string Ip, int Rank)>();
+        foreach (var adapter in adapters)
+        {
+            var ips = Split(adapter.IpAddresses);
+            var masks = Split(adapter.SubnetMasks);
+            for (var i = 0; i < ips.Length; i++)
+            {
+                if (!IpRanges.IsUsable(ips[i]) || i >= masks.Length || IpRanges.PrefixLength(masks[i]) is not { } prefix)
+                    continue;
+                subnets.Add(IpRanges.Network(ips[i], prefix)!);
+                if (adapter.Online)
+                    hosts.Add((ips[i], 1));
+            }
+            hosts.AddRange(Split(adapter.Gateways).Where(IpRanges.IsUsable).Select(g => (g, 2)));
+        }
+        foreach (var device in devices)
+        {
+            foreach (var entry in Split(device.InterfaceAddresses))
+                if (entry.Split('/') is [var ip, var bits] && int.TryParse(bits, out var prefix))
+                    subnets.Add(IpRanges.Network(ip, prefix)!);
+            // Router antworten oft nicht von ihrer gescannten Adresse; als Ziel taugen andere Geräte besser.
+            hosts.Add((device.IpAddress, device.DetectedKind is DeviceKind.Router or DeviceKind.Firewall ? 2 : device.PingReply ? 0 : 1));
+        }
+        foreach (var token in ranges.SelectMany(r => r.Split([',', ';', '\n', '\r', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries)))
+            if (token.Split('/') is [var ip, var bits] && int.TryParse(bits, out var prefix))
+                subnets.Add(IpRanges.Network(ip, prefix)!);
+
+        // Transfernetze (/29 und kleiner) liegen ohnehin auf dem Weg; höchstens 64 Netze je Messung.
+        var targets = subnets.Where(s => IpRanges.PrefixOf(s) is >= 8 and < 29)
+            .Select(s => hosts.Where(h => IpRanges.Contains(s, h.Ip)).OrderBy(h => h.Rank).Select(h => h.Ip).FirstOrDefault())
+            .Where(t => t is not null).Distinct().Take(64).ToList();
+        if (targets.Count == 0)
+            return 0;
+
+        var traces = new ConcurrentBag<NetworkTrace>();
+        Report(new DeviceScanProgress(L["Network paths"], 0, targets.Count, 0));
+        var done = 0;
+        await Parallel.ForEachAsync(targets, new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = ct }, async (target, token) =>
+        {
+            var result = await probe.TraceAsync(IPAddress.Parse(target!), token);
+            if (result.Reached || result.Hops.Any(h => h is not null))
+                traces.Add(new NetworkTrace
+                {
+                    Target = target!, Reached = result.Reached, TracedUtc = _clock.GetUtcNow().UtcDateTime,
+                    Hops = string.Join(",", result.Hops.Select(h => h ?? "*")),
+                });
+            Report(new DeviceScanProgress(L["Network paths"], Interlocked.Increment(ref done), targets.Count, traces.Count));
+        });
+        await db.NetworkTraces.ExecuteDeleteAsync(ct);
+        db.NetworkTraces.AddRange(traces);
+        await db.SaveChangesAsync(ct);
+        return traces.Count;
     }
 
     /// <summary>Prüft die Adressen parallel; MAC-Adressen kommen aus der ARP-Tabelle des Servers (gleiches Segment) oder eines gefundenen Routers.</summary>

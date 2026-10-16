@@ -284,6 +284,8 @@ public class DeviceTests
             return Task.FromResult(new DeviceObservation { IpAddress = address.ToString(), PingReply = true });
         }
 
+        public Task<TraceResult> TraceAsync(IPAddress target, CancellationToken ct = default) => Task.FromResult(new TraceResult([], true));
+
         public IReadOnlyDictionary<string, string> LocalNeighbors() => new Dictionary<string, string>();
     }
 }

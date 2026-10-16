@@ -33,7 +33,8 @@ window.inventoryMap = (() => {
     // --- Was sichtbar ist -------------------------------------------------------------------------------------------------
 
     const subnets = () => map.nodes.filter(n => n.type === 'subnet' && (!onlySubnet || n.id === onlySubnet));
-    const routers = () => map.nodes.filter(n => (n.type === 'router' || n.type === 'gateway')
+    const isRouter = n => n.type === 'router' || n.type === 'gateway' || n.type === 'server';
+    const routers = () => map.nodes.filter(n => isRouter(n)
         && (!onlySubnet || map.edges.some(e => e.source === n.id && e.target === onlySubnet)));
 
     function members(subnetId) {
@@ -85,7 +86,7 @@ window.inventoryMap = (() => {
             classes: [n.type, n.online === false ? 'offline' : ''].join(' '),
         });
         for (const r of routers())
-            els.push(node(r, { label: r.type === 'gateway' ? `${labels.gateway}\n${r.label}` : r.label }));
+            els.push(node(r, { label: r.type === 'gateway' ? `${labels.gateway}\n${r.label}` : r.type === 'server' ? labels.server : r.label }));
         for (const s of subnets()) {
             const open = isOpen(s.id);
             const title = s.detail ? `${s.label} · ${s.detail}` : s.label;
@@ -103,7 +104,8 @@ window.inventoryMap = (() => {
         const ids = new Set(els.map(e => e.data.id));
         for (const e of map.edges)
             if (ids.has(e.source) && ids.has(e.target))
-                els.push({ group: 'edges', data: { id: `${e.source}->${e.target}`, source: e.source, target: e.target } });
+                els.push({ group: 'edges', data: { id: `${e.source}->${e.target}`, source: e.source, target: e.target },
+                    classes: map.nodes.some(n => n.id === e.target && n.type === 'subnet') ? '' : 'backbone' });
         return els;
     }
 
@@ -136,34 +138,47 @@ window.inventoryMap = (() => {
         const links = r => map.edges.filter(e => e.source === r.id && size[e.target]).map(e => e.target);
         const routerList = routers().sort((a, b) => links(b).length - links(a).length);
         routerList.forEach(r => { size[r.id] = routerSize; });
+        const routerIds = new Set(routerList.map(r => r.id));
+        // Router, die über Traceroute mit anderen Routern (oder dem Server) verbunden sind.
+        const peers = r => map.edges.filter(e => (e.source === r.id && routerIds.has(e.target)) || (e.target === r.id && routerIds.has(e.source)))
+            .map(e => e.source === r.id ? e.target : e.source);
 
-        routerList.forEach((r, i) => {
-            const linked = links(r);
-            if (i === 0) {
-                pos[r.id] = { x: 0, y: 0 };
-            } else {
-                const known = linked.filter(id => pos[id]);
-                if (known.length) {
-                    // Zwischen die schon platzierten Netze, ein Stück nach außen.
+        // Der Router mit den meisten Netzen in die Mitte; im Ring um ihn seine Netze und die Router (und der Server), mit denen er
+        // verbunden ist. Jeder weitere Router legt seine eigenen Netze nach außen, vom Zentrum weg.
+        const pending = [...routerList];
+        let first = true;
+        while (pending.length) {
+            let index = first ? 0 : pending.findIndex(r => pos[r.id]);
+            if (index < 0) index = pending.findIndex(r => links(r).some(id => pos[id]) || peers(r).some(id => pos[id]));
+            if (index < 0) index = 0;
+            const [r] = pending.splice(index, 1);
+            if (!pos[r.id]) {
+                const known = [...links(r), ...peers(r)].filter(id => pos[id]);
+                if (first || !known.length) {
+                    pos[r.id] = first ? { x: 0, y: 0 } : { x: 0, y: -400 - 300 * Object.keys(pos).length };
+                } else {
                     const avg = known.reduce((a, id) => ({ x: a.x + pos[id].x / known.length, y: a.y + pos[id].y / known.length }), { x: 0, y: 0 });
                     const len = Math.hypot(avg.x, avg.y) || 1;
                     pos[r.id] = { x: avg.x + avg.x / len * 260, y: avg.y + avg.y / len * 260 };
-                } else {
-                    pos[r.id] = { x: 0, y: 0 };
                 }
             }
-            const own = linked.filter(id => !pos[id]);
-            if (!own.length) return;
-            const span = own.reduce((sum, id) => sum + Math.max(size[id].w, size[id].h) + margin, 0);
-            const radius = Math.max(i === 0 ? 300 : 240, span / (2 * Math.PI));
-            const center = pos[r.id];
-            const outward = Math.atan2(center.y, center.x);
-            const arc = i === 0 ? 2 * Math.PI : Math.min(1.6 * Math.PI, span / radius);
-            own.forEach((id, k) => {
-                const angle = i === 0 ? -Math.PI / 2 + k * arc / own.length : outward - arc / 2 + (k + 0.5) * arc / own.length;
-                pos[id] = { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle) };
-            });
-        });
+            const ring = [...links(r), ...peers(r)].filter(id => !pos[id]);
+            if (ring.length) {
+                const span = ring.reduce((sum, id) => sum + Math.max(size[id].w, size[id].h) + margin, 0);
+                const radius = Math.max(first ? 320 : 260, span / (2 * Math.PI));
+                const center = pos[r.id];
+                const outward = Math.atan2(center.y, center.x);
+                const arc = first ? 2 * Math.PI : Math.min(1.4 * Math.PI, Math.max(span / radius, 0.8));
+                // Router und Server zuerst, damit sie im Ring gleichmäßig zwischen den Netzen verteilt liegen.
+                ring.sort((a, b) => (routerIds.has(b) ? 1 : 0) - (routerIds.has(a) ? 1 : 0));
+                const order = first ? interleave(ring, id => routerIds.has(id)) : ring;
+                order.forEach((id, k) => {
+                    const angle = first ? -Math.PI / 2 + k * arc / order.length : outward - arc / 2 + (k + 0.5) * arc / order.length;
+                    pos[id] = { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle) };
+                });
+            }
+            first = false;
+        }
 
         // Netze ohne bekannten Router in einer Reihe darunter.
         const loose = subnetIds.filter(id => !pos[id]);
@@ -177,6 +192,17 @@ window.inventoryMap = (() => {
         Object.keys(pos).forEach(id => { if (fixed[id]) pos[id] = { ...fixed[id] }; });
         separate(pos, size, new Set([routerList[0]?.id, ...Object.keys(fixed)]));
         return pos;
+    }
+
+    /** Verteilt die markierten Einträge (Router) gleichmäßig zwischen die übrigen (Netze). */
+    function interleave(items, marked) {
+        const special = items.filter(marked), rest = items.filter(i => !marked(i));
+        if (!special.length || !rest.length) return items;
+        const result = [], every = (special.length + rest.length) / special.length;
+        let s = 0, r = 0;
+        for (let k = 0; k < items.length; k++)
+            result.push(s < special.length && k >= Math.round(s * every) ? special[s++] : rest[r++] ?? special[s++]);
+        return result;
     }
 
     /** Schiebt überlappende Router und Subnetze auseinander, jeweils das äußere weiter nach außen. */
@@ -264,6 +290,8 @@ window.inventoryMap = (() => {
             { selector: 'node.router, node.gateway', style: {
                 'width': 62, 'height': 62, 'font-size': 13, 'font-weight': 'bold', 'border-width': 4,
                 'underlay-color': 'data(color)', 'underlay-opacity': 0.18, 'underlay-padding': 10, 'underlay-shape': 'ellipse' } },
+            { selector: 'node.server', style: { 'shape': 'round-rectangle', 'width': 56, 'height': 56 } },
+            { selector: 'edge.backbone', style: { 'width': 5, 'line-color': secondary, 'opacity': 0.75 } },
             { selector: 'node.gateway', style: { 'border-style': 'dashed', 'border-color': secondary, 'background-opacity': 0.8 } },
             { selector: 'node.subnet.closed', style: {
                 'shape': 'round-rectangle', 'width': card.w, 'height': card.h, 'background-color': surface,

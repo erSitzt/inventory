@@ -13,13 +13,22 @@ public sealed class SimulatedDeviceProbe : IDeviceProbe
         var octet = address.GetAddressBytes()[3];
         var snmp = communities.Count > 0;
         var o = new DeviceObservation { IpAddress = ip };
+        // In der Filiale ist .1 ein eigener Router, über eine Transferstrecke mit der Firewall der Zentrale verbunden.
+        if (address.GetAddressBytes()[1] == 20 && octet == 1)
+        {
+            Set(o, [22, 80, 443], "rt-hamburg", "SSH-2.0-OpenSSH_7.4", "LANCOM 1793VA");
+            if (snmp)
+                o.Snmp = new SnmpFacts { SysName = "rt-hamburg", SysDescr = "LANCOM 1793VA (over ISDN) 10.80.0154 / 04.07.2024", SysObjectId = "1.3.6.1.4.1.2356.11.1.5",
+                    Forwarding = true, Model = "LANCOM 1793VA", SerialNumber = "4003123456100011", InterfaceAddresses = ["10.20.0.1/24", "172.16.0.2/30"] };
+            return o;
+        }
         switch (octet)
         {
             case 1:
                 Set(o, [22, 443], "fw-01", ssh: null, title: "FortiGate - Login");
                 if (snmp)
                     o.Snmp = new SnmpFacts { SysName = "fw-01", SysDescr = "FortiGate-60F v7.2.8,build1639,240313 (GA.M)", SysObjectId = "1.3.6.1.4.1.12356.101.1.6005", SysLocation = "Server room", Forwarding = true, SerialNumber = "FGT60FTK2209XXXX", Model = "FortiGate-60F", UptimeSeconds = 3_600_000,
-                        InterfaceAddresses = ["10.0.0.1/24", "10.0.1.1/24", "10.20.0.1/24"] };
+                        InterfaceAddresses = ["10.0.0.1/24", "10.0.1.1/24", "172.16.0.1/30"] };
                 break;
             case 2:
             case 3:
@@ -129,6 +138,19 @@ public sealed class SimulatedDeviceProbe : IDeviceProbe
         // Gleiche Geräte in verschiedenen Netzen bekommen verschiedene MAC-Adressen.
         o.MacAddress = o.MacAddress?.Replace(":AA:", $":{address.GetAddressBytes()[2]:X2}:");
         return o;
+    }
+
+    /// <summary>Der simulierte Server steht im Servernetz 10.0.1.0/24 hinter der Firewall; die Filiale liegt hinter einem weiteren Router.</summary>
+    public Task<TraceResult> TraceAsync(IPAddress target, CancellationToken ct = default)
+    {
+        var bytes = target.GetAddressBytes();
+        IReadOnlyList<string?> hops = (bytes[1], bytes[2]) switch
+        {
+            (0, 1) => [],
+            (20, _) => ["10.0.1.1", "172.16.0.2"],
+            _ => ["10.0.1.1"],
+        };
+        return Task.FromResult(new TraceResult(hops, true));
     }
 
     public IReadOnlyDictionary<string, string> LocalNeighbors() => new Dictionary<string, string>();

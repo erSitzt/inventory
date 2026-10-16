@@ -96,6 +96,44 @@ public class NetworkMapTests
     }
 
     [Fact]
+    public void Traceroute_links_routers_and_places_the_server()
+    {
+        var map = NetworkMapBuilder.Build(
+            [Pc(1, "PC-1", "10.0.0.10", gateway: "10.0.0.1"), Pc(2, "PC-2", "10.20.0.5", gateway: "10.20.0.1"), Pc(3, "SRV-1", "10.0.1.20", gateway: "10.0.1.1")],
+            [],
+            [],
+            [
+                new NetworkTrace { Target = "10.0.0.10", Hops = "10.0.1.1", Reached = true },
+                new NetworkTrace { Target = "10.20.0.5", Hops = "10.0.1.1,*,172.16.0.2", Reached = true },
+                new NetworkTrace { Target = "10.0.1.20", Hops = "", Reached = true },
+            ]);
+
+        // Ohne SNMP: der letzte Hop vor einem Ziel gehört zum Gateway des Zielnetzes – 10.0.1.1 und 10.0.0.1 sind dieselbe Firewall,
+        // 172.16.0.2 und 10.20.0.1 der Router der Filiale.
+        var routers = map.Nodes.Where(n => n.Type is MapNodeType.Router or MapNodeType.Gateway).ToList();
+        Assert.Equal(2, routers.Count);
+        var central = routers.Single(r => r.Detail!.Contains("10.0.0.1"));
+        Assert.Contains("10.0.1.1", central.Detail);
+        var branch = routers.Single(r => r.Detail!.Contains("172.16.0.2"));
+        Assert.Contains("10.20.0.1", branch.Detail);
+
+        Assert.Contains(new MapEdge("server", central.Id), map.Edges);
+        Assert.Contains(new MapEdge(central.Id, branch.Id), map.Edges);
+        Assert.Contains(new MapEdge("server", "10.0.1.0/24"), map.Edges);
+        Assert.Contains(new MapEdge(branch.Id, "10.20.0.0/24"), map.Edges);
+        // Hop-Adressen erzeugen keine eigenen (angenommenen) Netze.
+        Assert.DoesNotContain(map.Nodes, n => n.Id == "172.16.0.0/24");
+    }
+
+    [Fact]
+    public void Transfer_networks_from_router_interfaces_are_not_drawn()
+    {
+        var map = NetworkMapBuilder.Build([Pc(1, "PC-1", "10.0.0.10", gateway: "10.0.0.1")],
+            [Device(1, "10.0.0.1", DeviceKind.Firewall, "10.0.0.1/24,172.16.0.1/30")], []);
+        Assert.DoesNotContain(map.Nodes, n => n.Id == "172.16.0.0/30");
+    }
+
+    [Fact]
     public void Unknown_masks_assume_a_slash_24_and_the_longest_prefix_wins()
     {
         var map = NetworkMapBuilder.Build(
@@ -149,5 +187,23 @@ public class NetworkMapTests
         var facts = await SnmpCollector.CollectAsync(IPAddress.Loopback, ["public"], CancellationToken.None, agent.Port);
         Assert.NotNull(facts);
         Assert.Equal(["10.0.0.1/24", "10.20.0.1/16"], facts.InterfaceAddresses);
+    }
+
+    [Fact]
+    public async Task The_device_scan_traces_one_target_per_subnet()
+    {
+        using var db = new TestDb();
+        var service = new DeviceService(db, new SimulatedDeviceProbe(), new ReversingProtector());
+        await service.SaveRangeAsync(null, "Head office", "10.0.0.0/24", true, null, null);
+        await service.SaveRangeAsync(null, "Branch", "10.20.0.0/24", true, null, null);
+        Assert.Contains("Paths to 2 subnets traced.", await service.ScanAsync());
+
+        var map = await new NetworkMapService(db).BuildAsync();
+        Assert.Contains(map.Nodes, n => n.Type == MapNodeType.Server);
+        var firewall = map.Nodes.Single(n => n.Label == "fw-01");
+        var branch = map.Nodes.Single(n => n.Label == "rt-hamburg");
+        Assert.Contains(new MapEdge("server", firewall.Id), map.Edges);
+        Assert.Contains(new MapEdge(firewall.Id, branch.Id), map.Edges);
+        Assert.Contains(new MapEdge(branch.Id, "10.20.0.0/24"), map.Edges);
     }
 }
