@@ -19,6 +19,7 @@ public sealed class GuidedTour(IJSRuntime js, IStringLocalizer<SharedResource> L
         new(Target("attention"), L["Needs attention"], L["What deserves a look right now – firewall off, antivirus problems, pending updates and reboots. Each line leads to the computers behind it."]),
         new(Target("computers"), L["Computers"], L["Every computer with its status and inventory. Start here: add computers or import them from Active Directory, then scan them."]),
         new(Target("run"), L["Remote command"], L["Runs a command or PowerShell on several computers at once, with live output."]),
+        new(Target("devices"), L["Devices"], L["Printers, switches, routers and other network devices, found by scanning address ranges – with type, model and toner levels."]),
         new(Target("collections"), L["Collections"], L["Groups of computers – picked by hand or kept up to date by rules such as \"Chrome older than 141\". Deployments, schedules and reports work on them."]),
         new(Target("packages"), L["Packages"], L["What to install or change, as a list of steps: setups, scripts, registry, files, reboots."]),
         new(Target("library"), L["Package library"], L["Ready-made packages of common programs, imported with one click and kept up to date."]),

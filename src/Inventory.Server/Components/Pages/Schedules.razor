@@ -33,11 +33,17 @@
                 {
                     ScheduleAction.Scan => L["Inventory scan"],
                     ScheduleAction.Report => L["Report \"{0}\"", context.Item.Report?.Name],
+                    ScheduleAction.DeviceScan => L["Network device scan"],
                     _ => L["Package \"{0}\"", context.Item.Package?.Name],
                 })</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Target"]">
-            <CellTemplate>@(context.Item.Action == ScheduleAction.Report ? context.Item.NotificationChannel?.Name ?? L["all enabled channels"] : context.Item.Collection?.Name ?? L["All computers"])</CellTemplate>
+            <CellTemplate>@(context.Item.Action switch
+                {
+                    ScheduleAction.Report => context.Item.NotificationChannel?.Name ?? L["all enabled channels"],
+                    ScheduleAction.DeviceScan => L["All enabled address ranges"],
+                    _ => context.Item.Collection?.Name ?? L["All computers"],
+                })</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Rhythm"]">
             <CellTemplate>@Display.Trigger(context.Item)</CellTemplate>

@@ -42,6 +42,9 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<DailySnapshot> DailySnapshots => Set<DailySnapshot>();
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
+    public DbSet<NetworkRange> NetworkRanges => Set<NetworkRange>();
+    public DbSet<NetworkDevice> NetworkDevices => Set<NetworkDevice>();
+    public DbSet<DeviceSupply> DeviceSupplies => Set<DeviceSupply>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -103,6 +106,26 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.Property(l => l.Name).UseCollation("NOCASE").HasMaxLength(200);
             e.HasIndex(l => l.Name).IsUnique();
         });
+
+        modelBuilder.Entity<NetworkRange>(e =>
+        {
+            e.Property(r => r.Name).UseCollation("NOCASE").HasMaxLength(200);
+            e.HasIndex(r => r.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<NetworkDevice>(e =>
+        {
+            e.HasIndex(d => d.IpAddress).IsUnique();
+            e.HasIndex(d => d.MacAddress);
+            e.Ignore(d => d.Kind);
+            e.Ignore(d => d.DisplayName);
+            e.Ignore(d => d.Ports);
+            // Der Rechner verschwindet, das Gerät bleibt; ebenso ohne seinen Bereich.
+            e.HasOne(d => d.Computer).WithMany().HasForeignKey(d => d.ComputerId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(d => d.NetworkRange).WithMany().HasForeignKey(d => d.NetworkRangeId).OnDelete(DeleteBehavior.SetNull);
+            e.HasMany(d => d.Supplies).WithOne().HasForeignKey(s => s.NetworkDeviceId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<DeviceSupply>().Ignore(s => s.Percent);
 
         modelBuilder.Entity<Report>(e =>
         {

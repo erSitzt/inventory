@@ -6,7 +6,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Inventory.Data.Services;
 
-public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, ScanService scans, DeploymentService deployments, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null, Inventory.Core.Abstractions.IAlertSink? alerts = null, ReportMailer? reportMailer = null)
+public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFactory, CollectionService collections, ScanService scans, DeploymentService deployments, TimeProvider time, IStringLocalizer<SharedResource>? localizer = null, Inventory.Core.Abstractions.IAlertSink? alerts = null, ReportMailer? reportMailer = null, DeviceService? devices = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
@@ -26,9 +26,9 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
         schedule.Name = schedule.Name.Trim();
         if (schedule.Action != ScheduleAction.Deploy)
             schedule.PackageId = null;
-        if (schedule.Action == ScheduleAction.Report)
+        if (schedule.Action is ScheduleAction.Report or ScheduleAction.DeviceScan)
             schedule.CollectionId = null;
-        else
+        if (schedule.Action != ScheduleAction.Report)
             (schedule.ReportId, schedule.NotificationChannelId) = (null, null);
         schedule.RecheckDays = schedule.RecheckDays <= 0 ? 0 : Math.Clamp(schedule.RecheckDays, MinRecheckDays, 365);
         schedule.NextRunUtc = schedule.Enabled ? NextUtc(schedule) : null;
@@ -191,6 +191,9 @@ public sealed class ScheduleService(IDbContextFactory<InventoryDbContext> dbFact
                     return L["No report selected"];
                 return await (reportMailer ?? throw new InvalidOperationException("Report delivery is not available.")).SendAsync(reportId, schedule.NotificationChannelId, schedule.ReportFormat, ct);
             }
+
+            if (schedule.Action == ScheduleAction.DeviceScan)
+                return await (devices ?? throw new InvalidOperationException("The device scan is not available.")).ScanAsync(null, ct);
 
             var ids = await TargetIdsAsync(schedule, ct);
             if (ids.Count == 0)

@@ -48,7 +48,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
         if (input.Id == 0 || rule.Kind != input.Kind || rule.CollectionId != collectionId || rule.Threshold != threshold)
         {
             // Regeln, die auf Neues achten, sehen ab jetzt hin: nichts Älteres wird nachgemeldet, und nichts geht bis zum ersten Durchlauf verloren.
-            rule.State = input.Kind is AlertKind.DeploymentFailed or AlertKind.NewComputer ? Stamp(time.GetUtcNow().UtcDateTime) : null;
+            rule.State = input.Kind is AlertKind.DeploymentFailed or AlertKind.NewComputer or AlertKind.NewDevice ? Stamp(time.GetUtcNow().UtcDateTime) : null;
             rule.LastCheckedUtc = null;
         }
         rule.Name = input.Name.Trim();
@@ -234,6 +234,17 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
                     messages.Add(new Notification(L["{0} new computers", created.Count], L["New computers: {0}", Names(created.Select(c => c.Name).ToList())],
                         NotificationSeverity.Info, Link(baseUrl, "computers")));
                 return new Polled(messages, Stamp(created.Count == 0 ? since : created[^1].CreatedUtc));
+            }
+            case AlertKind.NewDevice:
+            {
+                var since = Since(rule, now);
+                var found = await db.NetworkDevices.AsNoTracking().Where(d => d.FirstSeenUtc > since).OrderBy(d => d.FirstSeenUtc)
+                    .Select(d => new { d.IpAddress, d.Name, d.DiscoveredName, d.FirstSeenUtc }).ToListAsync(ct);
+                if (found.Count > 0)
+                    messages.Add(new Notification(L["{0} new devices", found.Count],
+                        L["New devices on the network: {0}", Names(found.Select(d => (d.Name ?? d.DiscoveredName) is { } name ? $"{name} ({d.IpAddress})" : d.IpAddress).ToList())],
+                        NotificationSeverity.Info, Link(baseUrl, "devices")));
+                return new Polled(messages, Stamp(found.Count == 0 ? since : found[^1].FirstSeenUtc));
             }
             case AlertKind.LicenseExceeded:
             {

@@ -16,7 +16,7 @@ Zu jeder Funktion gehört unten ein Bild der passenden Seite. Die Bilder stammen
 - [Übersicht und Verläufe](#übersicht-und-verläufe) · [Rechnerliste](#rechnerliste) ·
   [Inventar je Rechner](#inventar-je-rechner) · [Sicherheit und Konfiguration](#sicherheit-und-konfiguration) ·
   [Updates und Patch-Stand](#updates-und-patch-stand) · [Software und Apps](#software-und-apps) ·
-  [Änderungsverlauf](#änderungsverlauf)
+  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte)
 - [Sammlungen und Wartungsfenster](#sammlungen-und-wartungsfenster) · [Pakete und Schritte](#pakete-und-schritte) ·
   [Erkennung, Voraussetzungen und Hinweis an den Benutzer](#erkennung-voraussetzungen-und-hinweis-an-den-benutzer) ·
   [Fertige Pakete](#fertige-pakete)
@@ -107,6 +107,39 @@ zu weit gefasster Name entfernt nichts.
 Jeder Scan wird mit dem vorigen verglichen: installierte, entfernte und aktualisierte Software, Hotfixes, Dienste,
 lokale Administratoren, Hardware und Systemkonfiguration erscheinen als Änderungen mit Zeitpunkt – je Rechner im Reiter
 *Verlauf* und für alle Rechner unter *Änderungen*.
+
+### Netzwerkgeräte
+
+![Netzwerkgeräte](docs/screenshots/de/devices.png)
+
+Drucker, Switches, Router, Firewalls, Access Points, Speicher, Linux-Server, Hypervisoren, Kameras, IP-Telefone und
+USVs: Der Server durchsucht die eingetragenen Adressbereiche (CIDR, von–bis oder einzelne Adressen, höchstens 4096 je
+Bereich) und stellt fest, was antwortet – ohne Anmeldung an den Geräten und ohne Agent:
+
+- **Ping und gängige Ports** (29 TCP-Ports wie SSH, HTTP/HTTPS, SMB, RDP, IPP, JetDirect 9100, RTSP, SIP).
+- **SNMP v1/v2c** mit den hinterlegten Communities (verschlüsselt gespeichert; ohne Eintrag `public`): Name,
+  Beschreibung, Standort, Kontakt, Laufzeit, Modell, Seriennummer und Firmware (ENTITY-MIB), Erkennung von Routern und
+  Switches (IP-Forwarding, Bridge-MIB) und die ARP-Tabelle von Routern, aus der die MAC-Adressen von Geräten in anderen
+  Subnetzen kommen. Drucker melden **Verbrauchsmaterial und Seitenzähler** (Drucker-MIB), USVs ihr Modell (USV-MIB).
+- **Banner und Weboberfläche**: das SSH-Banner (verrät Ubuntu, Debian, RouterOS …), Titel und Server-Kopfzeile der
+  Webseite, der Realm ihrer Anmeldung und das Subjekt ihres TLS-Zertifikats.
+- **MAC-Hersteller** aus dem öffentlichen IEEE-Register, für Geräte im eigenen Subnetz des Servers oder hinter einem
+  Router, der auf SNMP antwortet.
+- **Windows-Rechner** nennen ihren Namen über SMB und werden mit der Rechnerliste verknüpft; fehlen sie dort, sind sie
+  als *Nicht inventarisiert* markiert.
+
+![Gerätedetails](docs/screenshots/de/device-detail.png)
+
+Die Detailseite zeigt, was jeder Hinweis ergeben hat, und verlinkt die Weboberfläche des Geräts. Eine falsch erkannte
+Art lässt sich von Hand korrigieren; Name und Notizen bleiben beim nächsten Scan erhalten. Ein Zeitplan mit der Aktion
+*Gerätescan im Netzwerk* hält die Liste aktuell, die Alarmregel *Ein neues Gerät taucht im Netz auf* meldet
+Neuzugänge, und die Liste gibt es als CSV und über die API (`/api/devices`).
+
+![Adressbereiche](docs/screenshots/de/device-ranges.png)
+
+Der Scan spricht jede Adresse eines Bereichs auf 29 Ports an; ein Intrusion-Detection-System kann das als Portscan
+melden – also vorher dem Netzwerkteam Bescheid geben. Geroutete Subnetze müssen vom Server aus erreichbar sein (ICMP, die
+genannten Ports, UDP 161 für SNMP).
 
 ### Sammlungen und Wartungsfenster
 

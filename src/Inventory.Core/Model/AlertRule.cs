@@ -21,6 +21,8 @@ public enum AlertKind
     ScanErrors = 8,
     /// <summary>Für eine Lizenz sind mehr Installationen gefunden als Lizenzen vorhanden.</summary>
     LicenseExceeded = 9,
+    /// <summary>Der Gerätescan hat eine Adresse gefunden, die vorher nicht bekannt war.</summary>
+    NewDevice = 10,
 }
 
 /// <summary>Eine Regel, die bei einem Ereignis oder Zustand eine Nachricht über die Benachrichtigungskanäle schickt.</summary>

@@ -1,0 +1,89 @@
+@inject DeviceService Devices
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
+            <MudTextField @bind-Value="_addresses" Label="@L["Addresses"]" Variant="Variant.Outlined" Lines="3" Immediate="true"
+                          HelperText="@L["CIDR (192.168.10.0/24), range (192.168.10.20-192.168.10.80 or 192.168.10.20-80) or single addresses, separated by commas or lines. At most 4096 addresses."]" />
+            <MudText Typo="Typo.body2" Color="@(_check.Error is null ? Color.Default : Color.Warning)">@(_check.Error ?? (_check.Count > 0 ? L["{0} addresses", _check.Count] : " "))</MudText>
+            <MudSwitch T="bool" @bind-Value="_enabled" Color="Color.Primary" Label="@L["Include in scheduled scans"]" />
+            <MudTextField @bind-Value="_communities" Label="@L["SNMP communities for this range"]" Variant="Variant.Outlined" Lines="2"
+                          HelperText="@(_hasOwn ? L["Stored. Leave empty to keep them; tick below to use the general ones again."] : L["One per line. Empty = the general communities on the Devices page."])" />
+            @if (_hasOwn)
+            {
+                <MudCheckBox T="bool" @bind-Value="_resetCommunities" Label="@L["Use the general communities again"]" Dense="true" />
+            }
+            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="2" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(string.IsNullOrWhiteSpace(_name) || _check.Error is not null || _check.Count == 0)" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neuen Bereich anlegen.</summary>
+    [Parameter] public NetworkRange? Range { get; set; }
+
+    private string _name = "";
+    private string _addresses = "";
+    private bool _enabled = true;
+    private string? _communities;
+    private bool _hasOwn;
+    private bool _resetCommunities;
+    private string? _notes;
+    private string? _error;
+
+    private (int Count, string? Error) _check
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_addresses))
+                return (0, null);
+            try
+            {
+                return (IpRanges.Expand(_addresses).Count, null);
+            }
+            catch (Exception ex) when (ex is FormatException or ArgumentException)
+            {
+                return (0, ex.Message);
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Range is null)
+            return;
+        (_name, _addresses, _enabled, _notes) = (Range.Name, Range.Addresses, Range.Enabled, Range.Notes);
+        _hasOwn = Range.ProtectedCommunities is not null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        // null = unverändert, "" = allgemeine Communities.
+        var communities = _resetCommunities ? "" : string.IsNullOrWhiteSpace(_communities) ? (_hasOwn ? null : "") : _communities;
+        try
+        {
+            var saved = await Devices.SaveRangeAsync(Range?.Id, _name, _addresses, _enabled, communities, _notes);
+            await Audit.LogAsync(Range is null ? L["Address range created"] : L["Address range changed"], $"{saved.Name}: {saved.Addresses}");
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

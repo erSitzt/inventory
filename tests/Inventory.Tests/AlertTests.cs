@@ -134,6 +134,31 @@ public class AlertTests
     }
 
     [Fact]
+    public async Task Devices_found_after_the_rule_was_created_are_reported()
+    {
+        using var rig = new Rig();
+        await rig.ChannelAsync();
+        await using (var db = rig.Db.CreateDbContext())
+        {
+            db.NetworkDevices.Add(new NetworkDevice { IpAddress = "10.0.0.8", FirstSeenUtc = rig.Time.GetUtcNow().UtcDateTime });
+            await db.SaveChangesAsync();
+        }
+        await rig.Alerts.SaveAsync(new AlertRule { Name = "Geräte", Kind = AlertKind.NewDevice }, []);
+        Assert.Equal(0, await rig.NextAsync());
+
+        rig.Time.Advance(TimeSpan.FromMinutes(1));
+        await using (var db = rig.Db.CreateDbContext())
+        {
+            db.NetworkDevices.Add(new NetworkDevice { IpAddress = "10.0.0.9", DiscoveredName = "cam-01", FirstSeenUtc = rig.Time.GetUtcNow().UtcDateTime });
+            db.NetworkDevices.Add(new NetworkDevice { IpAddress = "10.0.0.10", FirstSeenUtc = rig.Time.GetUtcNow().UtcDateTime });
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(1, await rig.NextAsync());
+        Assert.Equal(0, await rig.NextAsync());
+        Assert.Contains("Geräte: 2 new devices", rig.Titles);
+    }
+
+    [Fact]
     public async Task Raised_events_reach_only_rules_of_their_kind_and_respect_the_pause_and_the_channels()
     {
         using var rig = new Rig();

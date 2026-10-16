@@ -32,6 +32,8 @@ public static class SettingKeys
     public const string DefenderAllowedHash = "Defender.AllowedHash";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
+    /// <summary>SNMP-Communities für den Gerätescan (eine je Zeile), verschlüsselt über <see cref="Abstractions.ISecretProtector"/>; leer = "public".</summary>
+    public const string DeviceSnmpCommunities = "Devices.SnmpCommunities";
     /// <summary>Bis zu diesem Zeitpunkt (UTC, ISO 8601) ist die Download-Seite für den Agenten ohne Anmeldung erreichbar; leer = geschlossen.</summary>
     public const string AgentPublicDownloadUntilUtc = "Agent.PublicDownloadUntilUtc";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>

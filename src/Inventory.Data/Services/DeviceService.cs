@@ -1,0 +1,325 @@
+using System.Collections.Concurrent;
+using System.Net;
+using Inventory.Core;
+using Inventory.Core.Abstractions;
+using Inventory.Core.Model;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
+
+namespace Inventory.Data.Services;
+
+public sealed record DeviceScanProgress(string Range, int Done, int Total, int Found);
+
+/// <summary>Verwaltet die IP-Bereiche des Gerätescans, sucht sie nach Geräten ab und hält die gefundenen Geräte.</summary>
+public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactory, IDeviceProbe probe, ISecretProtector protector,
+    TimeProvider? clock = null, IStringLocalizer<SharedResource>? localizer = null)
+{
+    /// <summary>So viele Adressen werden gleichzeitig geprüft; jede öffnet dabei bis zu 29 kurze Verbindungen.</summary>
+    private const int MaxParallelAddresses = 32;
+    private static readonly string[] DefaultCommunities = ["public"];
+    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+    private readonly TimeProvider _clock = clock ?? TimeProvider.System;
+    private readonly SemaphoreSlim _scanning = new(1, 1);
+
+    /// <summary>Bereich, der gerade gescannt wird; null = keiner.</summary>
+    public DeviceScanProgress? Current { get; private set; }
+    public event Action? ProgressChanged;
+
+    public async Task<List<NetworkDevice>> ListAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var devices = await db.NetworkDevices.AsNoTracking().Include(d => d.Computer).Include(d => d.NetworkRange).Include(d => d.Supplies).ToListAsync(ct);
+        return [.. devices.OrderBy(d => IpRanges.SortKey(d.IpAddress))];
+    }
+
+    public async Task<NetworkDevice?> GetAsync(int id, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.NetworkDevices.AsNoTracking().Include(d => d.Computer).Include(d => d.NetworkRange).Include(d => d.Supplies)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+    }
+
+    /// <summary>Name, Art und Notizen, die der Benutzer festlegt; leere Werte heben die Festlegung auf.</summary>
+    public async Task UpdateAsync(int id, string? name, DeviceKind? kind, string? notes, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var device = await db.NetworkDevices.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Device {0} not found", id]);
+        device.Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        device.KindOverride = kind;
+        device.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(int id, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await db.NetworkDevices.Where(d => d.Id == id).ExecuteDeleteAsync(ct);
+    }
+
+    public async Task<List<NetworkRange>> ListRangesAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.NetworkRanges.AsNoTracking().OrderBy(r => r.Name).ToListAsync(ct);
+    }
+
+    /// <param name="communities">null = unverändert lassen; leer = die allgemeine Einstellung verwenden; sonst eine je Zeile.</param>
+    public async Task<NetworkRange> SaveRangeAsync(int? id, string name, string addresses, bool enabled, string? communities, string? notes, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException(L["A name is required."], nameof(name));
+        if (IpRanges.Validate(addresses) is { } error)
+            throw new ArgumentException(L["Invalid addresses: {0}", error], nameof(addresses));
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        NetworkRange range;
+        if (id is null)
+        {
+            range = new NetworkRange { Name = name.Trim(), Addresses = addresses.Trim() };
+            db.NetworkRanges.Add(range);
+        }
+        else
+        {
+            range = await db.NetworkRanges.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException(L["Range {0} not found", id]);
+            range.Name = name.Trim();
+            range.Addresses = addresses.Trim();
+        }
+        if (await db.NetworkRanges.AnyAsync(r => r.Name == range.Name && r.Id != range.Id, ct))
+            throw new InvalidOperationException(L["A range named \"{0}\" already exists.", range.Name]);
+        range.Enabled = enabled;
+        range.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        if (communities is not null)
+            range.ProtectedCommunities = Lines(communities) is { Count: > 0 } list ? protector.Protect(string.Join("\n", list)) : null;
+        await db.SaveChangesAsync(ct);
+        return range;
+    }
+
+    public async Task DeleteRangeAsync(int id, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        // Die Geräte bleiben; ihr Bereich wird leer (SetNull).
+        var range = await db.NetworkRanges.FindAsync([id], ct);
+        if (range is null)
+            return;
+        db.NetworkRanges.Remove(range);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>True, wenn eigene Communities gespeichert sind (sonst gilt "public").</summary>
+    public async Task<bool> HasDefaultCommunitiesAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Settings.AnyAsync(s => s.Key == SettingKeys.DeviceSnmpCommunities && s.Value != null, ct);
+    }
+
+    /// <summary>Speichert die allgemeinen Communities; leer = wieder "public".</summary>
+    public async Task SetDefaultCommunitiesAsync(string? communities, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var setting = await db.Settings.FindAsync([SettingKeys.DeviceSnmpCommunities], ct);
+        var list = Lines(communities ?? "");
+        var value = list.Count > 0 ? protector.Protect(string.Join("\n", list)) : null;
+        if (setting is null)
+            db.Settings.Add(new Setting { Key = SettingKeys.DeviceSnmpCommunities, Value = value });
+        else
+            setting.Value = value;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Sucht einen Bereich (oder alle eingeschalteten) ab und gibt eine Zusammenfassung zurück. Läuft schon ein Scan, wird nichts gestartet.</summary>
+    public async Task<string> ScanAsync(int? rangeId = null, CancellationToken ct = default)
+    {
+        if (!await _scanning.WaitAsync(0, ct))
+            return L["A device scan is already running."];
+        try
+        {
+            List<NetworkRange> ranges;
+            string[] defaults;
+            await using (var db = await dbFactory.CreateDbContextAsync(ct))
+            {
+                ranges = await db.NetworkRanges.AsNoTracking().Where(r => rangeId == null ? r.Enabled : r.Id == rangeId).OrderBy(r => r.Name).ToListAsync(ct);
+                var stored = await db.Settings.Where(s => s.Key == SettingKeys.DeviceSnmpCommunities).Select(s => s.Value).FirstOrDefaultAsync(ct);
+                defaults = stored is null ? DefaultCommunities : [.. Lines(protector.Unprotect(stored))];
+            }
+            if (ranges.Count == 0)
+                return L["No address ranges to scan."];
+
+            var results = new List<string>();
+            foreach (var range in ranges)
+                results.Add(await ScanRangeAsync(range, defaults, ct));
+            return string.Join(" ", results);
+        }
+        finally
+        {
+            Current = null;
+            ProgressChanged?.Invoke();
+            _scanning.Release();
+        }
+    }
+
+    private async Task<string> ScanRangeAsync(NetworkRange range, string[] defaults, CancellationToken ct)
+    {
+        List<IPAddress> addresses;
+        try
+        {
+            addresses = IpRanges.Expand(range.Addresses);
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            return await FinishRangeAsync(range.Id, L["{0}: invalid addresses ({1})", range.Name, ex.Message], ct);
+        }
+        var communities = range.ProtectedCommunities is null ? defaults : [.. Lines(protector.Unprotect(range.ProtectedCommunities))];
+
+        var found = new ConcurrentBag<DeviceObservation>();
+        var done = 0;
+        Report(new DeviceScanProgress(range.Name, 0, addresses.Count, 0));
+        await Parallel.ForEachAsync(addresses, new ParallelOptions { MaxDegreeOfParallelism = MaxParallelAddresses, CancellationToken = ct }, async (address, token) =>
+        {
+            var observation = await probe.ProbeAsync(address, communities, token);
+            if (observation.Responded)
+                found.Add(observation);
+            var count = Interlocked.Increment(ref done);
+            if (count % 8 == 0 || count == addresses.Count)
+                Report(new DeviceScanProgress(range.Name, count, addresses.Count, found.Count));
+        });
+
+        // MAC-Adressen: aus der ARP-Tabelle des Servers (gleiches Segment) oder eines gefundenen Routers (andere Segmente).
+        var macs = new Dictionary<string, string>(probe.LocalNeighbors());
+        foreach (var router in found.Where(o => o.Snmp?.ArpTable.Count > 0))
+            foreach (var (ip, mac) in router.Snmp!.ArpTable)
+                macs.TryAdd(ip, mac);
+        foreach (var observation in found)
+            observation.MacAddress ??= macs.GetValueOrDefault(observation.IpAddress);
+
+        var added = await StoreAsync(range.Id, [.. found], ct);
+        return await FinishRangeAsync(range.Id,
+            L["{0}: {1} of {2} addresses responded, {3} new.", range.Name, found.Count, addresses.Count, added], ct);
+    }
+
+    private void Report(DeviceScanProgress progress)
+    {
+        Current = progress;
+        ProgressChanged?.Invoke();
+    }
+
+    private async Task<string> FinishRangeAsync(int rangeId, string result, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await db.NetworkRanges.Where(r => r.Id == rangeId).ExecuteUpdateAsync(u => u
+            .SetProperty(r => r.LastScanUtc, _clock.GetUtcNow().UtcDateTime)
+            .SetProperty(r => r.LastResult, result), ct);
+        return result;
+    }
+
+    /// <summary>Übernimmt die Beobachtungen; liefert die Zahl der neu angelegten Geräte.</summary>
+    internal async Task<int> StoreAsync(int? rangeId, IReadOnlyList<DeviceObservation> observations, CancellationToken ct)
+    {
+        var now = _clock.GetUtcNow().UtcDateTime;
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var devices = await db.NetworkDevices.Include(d => d.Supplies).ToListAsync(ct);
+        var byIp = devices.ToDictionary(d => d.IpAddress);
+        var computers = await db.Computers.AsNoTracking().Select(c => new { c.Id, c.Name, c.IpAddress }).ToListAsync(ct);
+        var added = 0;
+
+        foreach (var o in observations.OrderBy(o => IpRanges.SortKey(o.IpAddress)))
+        {
+            var mac = WakeOnLan.NormalizeMac(o.MacAddress);
+            if (!byIp.TryGetValue(o.IpAddress, out var device))
+            {
+                // Ein bekanntes Gerät mit neuer Adresse (DHCP) zieht um, statt doppelt aufzutauchen – aber nur innerhalb desselben
+                // Bereichs und nur, wenn es unter seiner alten Adresse nicht mehr antwortet. Sonst wären Geräte mit mehreren Adressen
+                // oder Router mit Proxy-ARP (eine MAC für viele Adressen) ein ständiges Hin und Her.
+                device = mac is null || rangeId is null ? null
+                    : devices.FirstOrDefault(d => d.MacAddress == mac && d.NetworkRangeId == rangeId && !observations.Any(x => x.IpAddress == d.IpAddress));
+                if (device is null)
+                {
+                    device = new NetworkDevice { IpAddress = o.IpAddress, FirstSeenUtc = now };
+                    db.NetworkDevices.Add(device);
+                    devices.Add(device);
+                    added++;
+                }
+                else
+                {
+                    byIp.Remove(device.IpAddress);
+                    device.IpAddress = o.IpAddress;
+                }
+                byIp[o.IpAddress] = device;
+            }
+            Apply(device, o, mac, now);
+            device.NetworkRangeId = rangeId ?? device.NetworkRangeId;
+
+            // Ein inventarisierter Rechner: über den Namen, den er selbst nennt, sonst über seine zuletzt gemeldete Adresse.
+            var computer = (o.WindowsName is { } windowsName ? computers.FirstOrDefault(c => c.Name.Split('.')[0].Equals(windowsName, StringComparison.OrdinalIgnoreCase)) : null)
+                ?? (device.Kind == DeviceKind.Windows ? computers.FirstOrDefault(c => c.IpAddress == o.IpAddress) : null);
+            device.ComputerId = computer?.Id ?? (o.WindowsName is null ? device.ComputerId : null);
+        }
+        await db.SaveChangesAsync(ct);
+        return added;
+    }
+
+    private static void Apply(NetworkDevice device, DeviceObservation o, string? mac, DateTime now)
+    {
+        device.LastSeenUtc = now;
+        device.PingReply = o.PingReply;
+        device.OpenPorts = o.OpenPorts.Count == 0 ? null : string.Join(",", o.OpenPorts);
+        if (mac is not null)
+        {
+            device.MacAddress = mac;
+            device.MacVendor = MacVendors.Lookup(mac);
+        }
+        device.ReverseName = o.ReverseName ?? device.ReverseName;
+        device.SshBanner = o.SshBanner ?? device.SshBanner;
+        device.Banner = o.Banner ?? device.Banner;
+        device.HttpServer = o.HttpServer ?? device.HttpServer;
+        device.HttpTitle = o.HttpTitle ?? device.HttpTitle;
+        device.TlsSubject = o.TlsSubject ?? device.TlsSubject;
+        device.DiscoveredName = o.Snmp?.SysName ?? o.WindowsName ?? o.ReverseName?.Split('.')[0] ?? device.DiscoveredName;
+
+        // Antwortet SNMP diesmal nicht (UDP geht verloren, Gerät beschäftigt), bleibt die Einordnung vom letzten Mal.
+        if (o.Snmp is null && device.SnmpResponded)
+            return;
+        var snmp = o.Snmp;
+        var classification = DeviceClassifier.Classify(o, device.MacVendor);
+        device.DetectedKind = classification.Kind;
+        device.KindReason = string.IsNullOrEmpty(classification.Reason) ? null : classification.Reason;
+        device.Manufacturer = classification.Manufacturer ?? device.Manufacturer;
+        device.Model = classification.Model ?? device.Model;
+        device.OsGuess = classification.Os ?? device.OsGuess;
+        if (snmp is null)
+            return;
+        device.SnmpResponded = true;
+        device.SysDescr = snmp.SysDescr;
+        device.SysObjectId = snmp.SysObjectId;
+        device.SysLocation = snmp.SysLocation;
+        device.SysContact = snmp.SysContact;
+        device.UptimeSeconds = snmp.UptimeSeconds;
+        device.SerialNumber = snmp.SerialNumber ?? device.SerialNumber;
+        device.Firmware = snmp.Firmware ?? device.Firmware;
+        device.PageCount = snmp.PageCount ?? device.PageCount;
+        if (snmp.IsPrinter)
+        {
+            device.Supplies.Clear();
+            device.Supplies.AddRange(snmp.Supplies.Select(s => new DeviceSupply { Description = s.Description, Level = s.Level, Capacity = s.Capacity }));
+        }
+    }
+
+    /// <summary>Alle Geräte als CSV (Semikolon, wie die übrigen Exporte).</summary>
+    public async Task<string> CsvAsync(Func<DeviceKind, string> kindName, CancellationToken ct = default)
+    {
+        var columns = new List<ReportColumn>
+        {
+            new("ip", L["IP address"]), new("name", L["Name"]), new("kind", L["Device type"]), new("manufacturer", L["Manufacturer"]), new("model", L["Model"]),
+            new("serial", L["Serial number"]), new("os", L["Operating system"]), new("mac", L["MAC address"]), new("vendor", L["MAC vendor"]),
+            new("ports", L["Open ports"]), new("location", L["Location"]), new("pages", L["Page count"], Numeric: true),
+            new("computer", L["Computer"]), new("range", L["Address range"]), new("firstSeen", L["First seen"]), new("lastSeen", L["Last seen"]),
+        };
+        var rows = (await ListAsync(ct)).Select(d => new string?[]
+        {
+            d.IpAddress, d.DisplayName, kindName(d.Kind), d.Manufacturer, d.Model, d.SerialNumber, d.OsGuess, d.MacAddress, d.MacVendor,
+            d.OpenPorts?.Replace(",", ", "), d.SysLocation, d.PageCount?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            d.Computer?.Name, d.NetworkRange?.Name, d.FirstSeenUtc.ToString("u"), d.LastSeenUtc.ToString("u"),
+        }).ToList();
+        return ReportExport.Csv(new ReportTable(columns, rows));
+    }
+
+    private static List<string> Lines(string text) =>
+        [.. text.Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.Ordinal)];
+}

@@ -1,0 +1,47 @@
+@inject DeviceService Devices
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" AutoFocus="true" Clearable="true"
+                          HelperText="@L["Empty = the discovered name ({0}).", Device.DiscoveredName ?? Device.IpAddress]" />
+            <MudSelect T="DeviceKind?" @bind-Value="_kind" Label="@L["Device type"]" Variant="Variant.Outlined"
+                       HelperText="@L["Overrides the detection, e.g. for devices that give little away."]">
+                <MudSelectItem T="DeviceKind?" Value="@((DeviceKind?)null)">@L["Detected: {0}", Display.DeviceKind(Device.DetectedKind)]</MudSelectItem>
+                @foreach (var kind in Enum.GetValues<DeviceKind>().Where(k => k != DeviceKind.Unknown).OrderBy(k => Display.DeviceKind(k)))
+                {
+                    <MudSelectItem T="DeviceKind?" Value="@kind">@Display.DeviceKind(kind)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="3" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public NetworkDevice Device { get; set; } = default!;
+
+    private string? _name;
+    private DeviceKind? _kind;
+    private string? _notes;
+
+    protected override void OnInitialized() => (_name, _kind, _notes) = (Device.Name, Device.KindOverride, Device.Notes);
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        await Devices.UpdateAsync(Device.Id, _name, _kind, _notes);
+        await Audit.LogAsync(L["Device changed"], $"{_name ?? Device.DisplayName} ({Device.IpAddress})");
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

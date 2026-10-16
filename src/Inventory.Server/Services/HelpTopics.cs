@@ -33,6 +33,19 @@ public static class HelpTopics
                 L["The filters and the search narrow the list; the CSV export can be edited and imported again for asset data."],
                 L["Scans need a stored credential with local administrator rights on the computers, or the agent."],
             ], L["computer-list"]),
+            ("devices", true) => new(L["Device details"], L["Everything the device scan found out about one network device, without signing in to it."],
+            [
+                L["\"Edit\" gives the device a name, fixes a wrongly detected type and holds notes; the next scan keeps them."],
+                L["\"What the device reports\" shows the raw clues (SNMP, banners, web page, certificate) the detection used."],
+                L["Printers that answer SNMP show their supplies and page count."],
+            ], L["network-devices"]),
+            ("devices", false) => new(L["Network devices"], L["Printers, switches, routers, storage, Linux servers and everything else found in the address ranges you enter."],
+            [
+                L["Add address ranges on the second tab; the server scans them itself with ping, common ports, SNMP v1/v2c and the web interface of the devices."],
+                L["Enter the SNMP communities of your network (\"SNMP communities\"); without them, only \"public\" is tried and many devices give less away."],
+                L["\"Not inventoried\" marks Windows computers on the network that are missing from the computer list."],
+                L["A schedule with the action \"Network device scan\" keeps the list current; an alert rule reports new devices."],
+            ], L["network-devices"]),
             ("run", _) => new(L["Remote command"], L["Runs a command or a short PowerShell script on several computers at once and shows the output live."],
             [
                 L["\"Local System\" has full rights on the computer; \"Logged-on user\" runs in the session of whoever is signed in."],
