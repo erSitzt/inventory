@@ -198,6 +198,23 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
             L["{0}: {1} of {2} addresses responded, {3} new.", range.Name, found.Count, addresses.Count, added], ct);
     }
 
+    /// <summary>Misst nur die Netzwege (für die Netzwerkkarte); läuft schon ein Scan, wird nichts gestartet.</summary>
+    public async Task<string> TracePathsAsync(CancellationToken ct = default)
+    {
+        if (!await _scanning.WaitAsync(0, ct))
+            return L["A device scan is already running."];
+        try
+        {
+            return L["Paths to {0} subnets traced.", await TraceAsync(ct)];
+        }
+        finally
+        {
+            Current = null;
+            ProgressChanged?.Invoke();
+            _scanning.Release();
+        }
+    }
+
     /// <summary>
     /// Traceroute zu je einem Ziel in jedem bekannten Subnetz: bevorzugt ein antwortendes Gerät oder ein erreichbarer Rechner,
     /// sonst das Gateway. Ersetzt die Wege der letzten Messung; liefert die Zahl der gemessenen Subnetze.

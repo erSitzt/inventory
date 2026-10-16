@@ -1811,6 +1811,9 @@
   <data name='HKCU needs "Run as: Logged-on user". As Local System the step would change the settings of the system account.' xml:space="preserve">
     <value>HKCU braucht „Ausführen als: Angemeldeter Benutzer“. Als Lokales System würde der Schritt die Einstellungen des Systemkontos ändern.</value>
   </data>
+  <data name="Home and other networks" xml:space="preserve">
+    <value>Heim- und Fremdnetze</value>
+  </data>
   <data name="Hotfix" xml:space="preserve">
     <value>Hotfix</value>
   </data>
@@ -2402,11 +2405,17 @@
   <data name="Network paths" xml:space="preserve">
     <value>Netzwege</value>
   </data>
+  <data name="Network paths traced" xml:space="preserve">
+    <value>Netzwege gemessen</value>
+  </data>
   <data name="network-devices" xml:space="preserve">
     <value>netzwerkgeräte</value>
   </data>
   <data name="network-map" xml:space="preserve">
     <value>netzwerkkarte</value>
+  </data>
+  <data name="Networks of computers that the server reaches through another address (VPN), e.g. at home" xml:space="preserve">
+    <value>Netze von Rechnern, die der Server über eine andere Adresse (VPN) erreicht, z. B. zu Hause</value>
   </data>
   <data name="never" xml:space="preserve">
     <value>nie</value>
@@ -4705,6 +4714,15 @@
   </data>
   <data name="TPM ready" xml:space="preserve">
     <value>TPM bereit</value>
+  </data>
+  <data name="Trace network paths" xml:space="preserve">
+    <value>Netzwege messen</value>
+  </data>
+  <data name="Traceroute from the server into every known subnet: shows which routers connect the networks" xml:space="preserve">
+    <value>Traceroute vom Server in jedes bekannte Subnetz: zeigt, welche Router die Netze verbinden</value>
+  </data>
+  <data name="Tracing …" xml:space="preserve">
+    <value>Messe …</value>
   </data>
   <data name="Transport" xml:space="preserve">
     <value>Transport</value>

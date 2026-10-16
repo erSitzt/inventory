@@ -28,11 +28,8 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
                 for (var i = 0; i < ips.Length; i++)
                     addresses.Add((ips[i], i < masks.Length ? IpRanges.PrefixLength(masks[i]) : null));
             }
-            // Ohne Adapterdaten (noch nicht gescannt) bleibt die Adresse aus der Erreichbarkeitsprüfung.
-            if (addresses.Count == 0 && c.IpAddress is not null)
-                addresses.Add((c.IpAddress, null));
             return new MapComputer(c.Id, c.Name, c.IsOnline, Chassis.Role(c.ChassisType, c.Model, c.OsName), addresses,
-                [.. c.Adapters.SelectMany(a => Split(a.Gateways)).Distinct()]);
+                [.. c.Adapters.SelectMany(a => Split(a.Gateways)).Distinct()], c.IpAddress);
         }).ToList();
         // Geräte, die zu einem nicht sichtbaren Rechner gehören, bleiben ebenfalls weg.
         var visibleDevices = devices.Where(d => d.ComputerId is not { } id || allowedComputers is null || allowedComputers.Contains(id)).ToList();

@@ -14,6 +14,8 @@ public static class MapNodeType
     public const string Computer = "computer";
     /// <summary>Der Inventory-Server selbst; seine Wege (Traceroute) zeigen, wo er im Netz steht.</summary>
     public const string Server = "server";
+    /// <summary>Id des Sammelknotens für Heim- und Fremdnetze (Homeoffice, Hotel), die der Server nicht erreicht.</summary>
+    public const string Remote = "remote";
 }
 
 /// <param name="Icon">Art des Geräts (<see cref="DeviceKind"/>) oder Rolle des Rechners (<see cref="ChassisKind"/>); die Oberfläche wählt daraus das Symbol.</param>
@@ -31,7 +33,9 @@ public sealed record NetworkMap(List<MapNode> Nodes, List<MapEdge> Edges)
 
 /// <summary>Ein Rechner mit seinen Adressen, wie die Karte ihn braucht.</summary>
 /// <param name="Addresses">Je Adresse die Präfixlänge (null = Maske unbekannt).</param>
-public sealed record MapComputer(int Id, string Name, bool Online, ChassisKind Role, IReadOnlyList<(string Ip, int? Prefix)> Addresses, IReadOnlyList<string> Gateways);
+/// <param name="ReachableIp">Die Adresse, unter der der Server den Rechner erreicht (DNS bzw. Erreichbarkeitsprüfung).</param>
+public sealed record MapComputer(int Id, string Name, bool Online, ChassisKind Role, IReadOnlyList<(string Ip, int? Prefix)> Addresses, IReadOnlyList<string> Gateways,
+    string? ReachableIp = null);
 
 /// <summary>
 /// Leitet aus dem Inventar eine Netzwerkkarte ab: Subnetze aus Adresse und Maske der Rechner, den Schnittstellen der Router und
@@ -81,6 +85,22 @@ public static class NetworkMapBuilder
             return assumed;
         }
 
+        // Heim- und Fremdnetze: ein Adapter-Netz eines Rechners, über das der Server ihn nicht erreicht (er kommt z. B. per VPN
+        // unter einer anderen Adresse herein), ohne gescannte Geräte und ohne eingetragenen Bereich. Viele Fritzboxen mit
+        // 192.168.178.0/24 wären sonst ein einziges, irreführendes Netz.
+        // Bestätigt ist ein Netz, wenn der Server darin gerade einen Rechner erreicht, ein Gerät darin gescannt hat oder es ein Bereich ist.
+        bool Confirmed(string cidr) => ranged.Contains(cidr) || devices.Any(d => IpRanges.Contains(cidr, d.IpAddress))
+            || computers.Any(c => c.Online && IpRanges.IsUsable(c.ReachableIp) && IpRanges.Contains(cidr, c.ReachableIp));
+        var remote = new HashSet<string>();
+        foreach (var computer in computers.Where(c => IpRanges.IsUsable(c.ReachableIp)))
+            foreach (var (ip, prefix) in computer.Addresses.Where(a => a.Prefix is not null && IpRanges.IsUsable(a.Ip)))
+                if (IpRanges.Network(ip, prefix!.Value) is { } cidr && !IpRanges.Contains(cidr, computer.ReachableIp) && !Confirmed(cidr))
+                    remote.Add(cidr);
+        // Die Adresse, über die der Server einen erreichbaren Rechner anspricht, zählt selbst als Adresse (z. B. das VPN-Netz).
+        computers = [.. computers.Select(c => c.Online && IpRanges.IsUsable(c.ReachableIp) && c.Addresses.All(a => a.Ip != c.ReachableIp)
+            ? c with { Addresses = [.. c.Addresses, (c.ReachableIp!, null)] } : c)];
+        bool IsRemote(string ip) => remote.Any(r => IpRanges.Contains(r, ip));
+
         var nodes = new List<MapNode>();
         var edges = new HashSet<MapEdge>();
         var linkedComputers = computers.Select(c => c.Id).ToHashSet();
@@ -88,7 +108,7 @@ public static class NetworkMapBuilder
         // Router: Adressen, die zum selben Gerät gehören, werden zusammengefasst (Union-Find über die Adressen). Belege: die
         // Schnittstellen eines Routers (SNMP), dasselbe Gerät unter mehreren Adressen (MAC, Seriennummer, SNMP-Name) und der
         // Traceroute: der letzte Router vor einem Ziel ist das Gateway des Zielnetzes.
-        var gateways = computers.SelectMany(c => c.Gateways).Where(IpRanges.IsUsable).ToHashSet();
+        var gateways = computers.SelectMany(c => c.Gateways).Where(g => IpRanges.IsUsable(g) && !IsRemote(g)).ToHashSet();
         var hopAddresses = traces.SelectMany(t => t.HopList).OfType<string>().Where(IpRanges.IsUsable).ToHashSet();
         var routerDevices = devices.Where(d => d.Kind is DeviceKind.Router or DeviceKind.Firewall || Interfaces(d).Any()
             || gateways.Contains(d.IpAddress) || hopAddresses.Contains(d.IpAddress)).ToList();
@@ -191,10 +211,11 @@ public static class NetworkMapBuilder
         foreach (var computer in computers)
         {
             foreach (var cidr in computer.Addresses.Where(a => IpRanges.IsUsable(a.Ip))
-                         .Select(a => a.Prefix is { } p && subnets.ContainsKey(IpRanges.Network(a.Ip, p)!) ? IpRanges.Network(a.Ip, p)! : SubnetOf(a.Ip)).Distinct())
+                         .Select(a => IsRemote(a.Ip) ? MapNodeType.Remote
+                             : a.Prefix is { } p && subnets.ContainsKey(IpRanges.Network(a.Ip, p)!) ? IpRanges.Network(a.Ip, p)! : SubnetOf(a.Ip)).Distinct())
             {
                 var group = $"c{cidr}";
-                var ip = computer.Addresses.First(a => IpRanges.Contains(cidr, a.Ip)).Ip;
+                var ip = cidr == MapNodeType.Remote ? computer.Addresses.First(a => IsRemote(a.Ip)).Ip : computer.Addresses.First(a => IpRanges.Contains(cidr, a.Ip)).Ip;
                 if (!members.TryGetValue(cidr, out var list))
                     members[cidr] = list = [];
                 list.Add(new MapNode($"c{computer.Id}@{cidr}", MapNodeType.Computer, computer.Name, ip, cidr, $"computers/{computer.Id}", computer.Role.ToString(), group, computer.Online));
@@ -212,6 +233,8 @@ public static class NetworkMapBuilder
         var used = parents.Concat(edges.Select(e => e.Target)).ToHashSet();
         nodes.InsertRange(0, subnets.Where(s => used.Contains(s.Key) && (IpRanges.PrefixOf(s.Key) < 29 || parents.Contains(s.Key) || ranged.Contains(s.Key))).OrderBy(s => IpRanges.SortKey(s.Key.Split('/')[0]))
             .Select(s => new MapNode(s.Key, MapNodeType.Subnet, s.Key, s.Value.Name, null, null, "subnet", Assumed: s.Value.Assumed)));
+        if (parents.Contains(MapNodeType.Remote))
+            nodes.Insert(0, new MapNode(MapNodeType.Remote, MapNodeType.Subnet, MapNodeType.Remote, string.Join(", ", remote.OrderBy(r => IpRanges.SortKey(r.Split('/')[0]))), null, null, "subnet"));
         var ids = nodes.Select(n => n.Id).ToHashSet();
         return new NetworkMap(nodes, [.. edges.Where(e => e.Source != e.Target && ids.Contains(e.Source) && ids.Contains(e.Target))]);
     }

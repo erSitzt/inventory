@@ -6,6 +6,9 @@
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
 @inject Access Access
+@inject DeviceService Devices
+@inject ISnackbar Snackbar
+@inject Auditor Audit
 
 <PageTitle>@L["Network map"] – Inventory</PageTitle>
 
@@ -16,6 +19,13 @@
     <MudTooltip Text="@L["Reset the arrangement (forget moved nodes)"]"><MudIconButton Icon="@Icons.Material.Filled.RestartAlt" aria-label="@L["Reset the arrangement (forget moved nodes)"]" OnClick="@(() => CallAsync("resetLayout"))" /></MudTooltip>
     <MudTooltip Text="@L["Expand all subnets"]"><MudIconButton Icon="@Icons.Material.Filled.UnfoldMore" aria-label="@L["Expand all subnets"]" OnClick="@(() => CallAsync("expandAll"))" /></MudTooltip>
     <MudTooltip Text="@L["Collapse everything"]"><MudIconButton Icon="@Icons.Material.Filled.UnfoldLess" aria-label="@L["Collapse everything"]" OnClick="CollapseAsync" /></MudTooltip>
+    <OperatorOnly>
+        <MudTooltip Text="@L["Traceroute from the server into every known subnet: shows which routers connect the networks"]">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Route" Disabled="_tracing" OnClick="TraceAsync">
+                @(_tracing ? L["Tracing …"] : L["Trace network paths"])
+            </MudButton>
+        </MudTooltip>
+    </OperatorOnly>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Image" OnClick="@(() => CallAsync("png"))">@L["Save as PNG"]</MudButton>
 </MudStack>
 <MudText Typo="Typo.body2" Class="mb-3">@L["The subnets and the routers that connect them. Click a subnet to show its devices and computers, click its frame to fold it again; drag subnets and routers to arrange them."]</MudText>
@@ -68,8 +78,26 @@ else if (_map is not null)
     private string? _subnet;
     private bool _individually;
     private bool _rendered;
+    private bool _tracing;
 
-    protected override async Task OnInitializedAsync()
+    private async Task TraceAsync()
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        _tracing = true;
+        await Audit.LogAsync(L["Network paths traced"]);
+        var result = await Task.Run(() => Devices.TracePathsAsync());
+        _tracing = false;
+        Snackbar.Add(result, Severity.Info);
+        // Neu aufbauen und zeichnen.
+        await LoadAsync();
+        _rendered = false;
+        StateHasChanged();
+    }
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         _map = await MapService.BuildAsync(await Access.AllowedComputersForDisplayAsync());
         _kinds = [.. _map.Nodes.Where(n => n.Type == MapNodeType.Device).Select(n => Enum.Parse<DeviceKind>(n.Icon)).Distinct().OrderBy(k => Display.DeviceKind(k))];
@@ -89,6 +117,8 @@ else if (_map is not null)
             empty = L["nothing found yet"].Value,
             gateway = L["Gateway"].Value,
             server = L["Inventory server"].Value,
+            remote = L["Home and other networks"].Value,
+            remoteHint = L["Networks of computers that the server reaches through another address (VPN), e.g. at home"].Value,
             assumedHint = L["Assumed as /24 – no subnet mask known"].Value,
             expand = L["Click to show the computers"].Value,
             expandSubnet = L["Click to show devices and computers"].Value,

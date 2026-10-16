@@ -89,11 +89,12 @@ window.inventoryMap = (() => {
             els.push(node(r, { label: r.type === 'gateway' ? `${labels.gateway}\n${r.label}` : r.type === 'server' ? labels.server : r.label }));
         for (const s of subnets()) {
             const open = isOpen(s.id);
-            const title = s.detail ? `${s.label} · ${s.detail}` : s.label;
+            const remote = s.id === 'remote';
+            const title = remote ? labels.remote : s.detail ? `${s.label} · ${s.detail}` : s.label;
             const bar = open ? null : strip(s.id);
-            const label = open ? title : [s.label, s.detail, bar ? null : labels.empty].filter(Boolean).join('\n');
+            const label = open ? title : remote ? labels.remote : [s.label, s.detail, bar ? null : labels.empty].filter(Boolean).join('\n');
             const el = node(s, { label, strip: bar?.url ?? 'none', stripWidth: bar?.width ?? 1 });
-            el.classes += (open ? ' open' : ' closed') + (s.assumed ? ' assumed' : '');
+            el.classes += (open ? ' open' : ' closed') + (s.assumed || remote ? ' assumed' : '');
             els.push(el);
             if (!open) continue;
             for (const m of members(s.id)) {
@@ -129,68 +130,112 @@ window.inventoryMap = (() => {
         return { w: Math.max(card.w, Math.max(...rows.map(r => r.length)) * cell.w + 2 * padding), h: rows.length * cell.h + 2 * padding + 10 };
     }
 
-    /** Mittelpunkte der Router und Subnetze: der Router mit den meisten Netzen in die Mitte, seine Subnetze im Kreis darum. */
+    /** Zahl für die Sortierung nach Adresse ("10.0.1.0/24" → 0x0A000100). */
+    const addressKey = cidr => cidr.split('/')[0].split('.').reduce((v, o) => v * 256 + (+o || 0), 0);
+
+    /**
+     * Mittelpunkte der Router und Subnetze. Jede zusammenhängende Gruppe (Router und ihre Netze) wird für sich als Stern gelegt:
+     * der Router mit den meisten Netzen in die Mitte, im Ring darum seine Netze und die Router, mit denen er verbunden ist.
+     * Die Gruppen werden dann in Reihen gepackt – die größte zuerst, danach die kleinen nach Adresse, damit Netze aus demselben
+     * Adressraum (Firma, Heimnetze im Homeoffice) beieinander liegen.
+     */
     function plan() {
-        const pos = {};
         const size = {};
-        const subnetIds = subnets().map(s => s.id);
-        subnetIds.forEach(id => { size[id] = extent(id); });
+        subnets().forEach(s => { size[s.id] = extent(s.id); });
         const links = r => map.edges.filter(e => e.source === r.id && size[e.target]).map(e => e.target);
         const routerList = routers().sort((a, b) => links(b).length - links(a).length);
         routerList.forEach(r => { size[r.id] = routerSize; });
         const routerIds = new Set(routerList.map(r => r.id));
-        // Router, die über Traceroute mit anderen Routern (oder dem Server) verbunden sind.
         const peers = r => map.edges.filter(e => (e.source === r.id && routerIds.has(e.target)) || (e.target === r.id && routerIds.has(e.source)))
             .map(e => e.source === r.id ? e.target : e.source);
 
-        // Der Router mit den meisten Netzen in die Mitte; im Ring um ihn seine Netze und die Router (und der Server), mit denen er
-        // verbunden ist. Jeder weitere Router legt seine eigenen Netze nach außen, vom Zentrum weg.
-        const pending = [...routerList];
-        let first = true;
-        while (pending.length) {
-            let index = first ? 0 : pending.findIndex(r => pos[r.id]);
-            if (index < 0) index = pending.findIndex(r => links(r).some(id => pos[id]) || peers(r).some(id => pos[id]));
-            if (index < 0) index = 0;
-            const [r] = pending.splice(index, 1);
-            if (!pos[r.id]) {
-                const known = [...links(r), ...peers(r)].filter(id => pos[id]);
-                if (first || !known.length) {
-                    pos[r.id] = first ? { x: 0, y: 0 } : { x: 0, y: -400 - 300 * Object.keys(pos).length };
-                } else {
-                    const avg = known.reduce((a, id) => ({ x: a.x + pos[id].x / known.length, y: a.y + pos[id].y / known.length }), { x: 0, y: 0 });
-                    const len = Math.hypot(avg.x, avg.y) || 1;
-                    pos[r.id] = { x: avg.x + avg.x / len * 260, y: avg.y + avg.y / len * 260 };
-                }
+        // Zusammenhängende Gruppen.
+        const neighbours = new Map(Object.keys(size).map(id => [id, []]));
+        map.edges.forEach(e => {
+            if (neighbours.has(e.source) && neighbours.has(e.target)) {
+                neighbours.get(e.source).push(e.target);
+                neighbours.get(e.target).push(e.source);
             }
-            const ring = [...links(r), ...peers(r)].filter(id => !pos[id]);
-            if (ring.length) {
-                const span = ring.reduce((sum, id) => sum + Math.max(size[id].w, size[id].h) + margin, 0);
-                const radius = Math.max(first ? 320 : 260, span / (2 * Math.PI));
-                const center = pos[r.id];
-                const outward = Math.atan2(center.y, center.x);
-                const arc = first ? 2 * Math.PI : Math.min(1.4 * Math.PI, Math.max(span / radius, 0.8));
-                // Router und Server zuerst, damit sie im Ring gleichmäßig zwischen den Netzen verteilt liegen.
-                ring.sort((a, b) => (routerIds.has(b) ? 1 : 0) - (routerIds.has(a) ? 1 : 0));
-                const order = first ? interleave(ring, id => routerIds.has(id)) : ring;
-                order.forEach((id, k) => {
-                    const angle = first ? -Math.PI / 2 + k * arc / order.length : outward - arc / 2 + (k + 0.5) * arc / order.length;
-                    pos[id] = { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle) };
-                });
+        });
+        const seen = new Set(), groups = [];
+        for (const id of [...routerList.map(r => r.id), ...Object.keys(size)]) {
+            if (seen.has(id)) continue;
+            const group = [], queue = [id];
+            seen.add(id);
+            while (queue.length) {
+                const current = queue.shift();
+                group.push(current);
+                neighbours.get(current).forEach(n => { if (!seen.has(n)) { seen.add(n); queue.push(n); } });
             }
-            first = false;
+            groups.push(group);
         }
 
-        // Netze ohne bekannten Router in einer Reihe darunter.
-        const loose = subnetIds.filter(id => !pos[id]);
-        if (loose.length) {
-            const bottom = Object.keys(pos).reduce((m, id) => Math.max(m, pos[id].y + size[id].h / 2), 0) + 160;
-            let x = -loose.reduce((s, id) => s + size[id].w + margin, 0) / 2;
-            loose.forEach(id => { pos[id] = { x: x + size[id].w / 2, y: bottom + size[id].h / 2 }; x += size[id].w + margin; });
-        }
+        const laid = groups.map(group => {
+            const members = new Set(group);
+            const pos = {};
+            const pending = routerList.filter(r => members.has(r.id));
+            let first = true;
+            while (pending.length) {
+                let index = first ? 0 : pending.findIndex(r => pos[r.id]);
+                if (index < 0) index = pending.findIndex(r => links(r).some(id => pos[id]) || peers(r).some(id => pos[id]));
+                if (index < 0) index = 0;
+                const [r] = pending.splice(index, 1);
+                if (!pos[r.id]) {
+                    const known = [...links(r), ...peers(r)].filter(id => pos[id]);
+                    const avg = known.length
+                        ? known.reduce((a, id) => ({ x: a.x + pos[id].x / known.length, y: a.y + pos[id].y / known.length }), { x: 0, y: 0 })
+                        : { x: 0, y: 0 };
+                    const len = Math.hypot(avg.x, avg.y) || 1;
+                    pos[r.id] = first ? { x: 0, y: 0 } : { x: avg.x + avg.x / len * 260, y: avg.y + avg.y / len * 260 };
+                }
+                const ring = [...links(r), ...peers(r)].filter(id => !pos[id]);
+                if (ring.length) {
+                    const span = ring.reduce((sum, id) => sum + Math.max(size[id].w, size[id].h) + margin, 0);
+                    // Ein einzelnes Netz unter seinem Gateway statt auf einem großen Kreis.
+                    const radius = ring.length === 1 && first ? 170 : Math.max(first ? 300 : 260, span / (2 * Math.PI));
+                    const center = pos[r.id];
+                    const outward = Math.atan2(center.y, center.x);
+                    const arc = first ? 2 * Math.PI : Math.min(1.4 * Math.PI, Math.max(span / radius, 0.8));
+                    ring.sort((a, b) => (routerIds.has(b) ? 1 : 0) - (routerIds.has(a) ? 1 : 0));
+                    const order = first ? interleave(ring, id => routerIds.has(id)) : ring;
+                    order.forEach((id, k) => {
+                        const angle = first ? (order.length === 1 ? Math.PI / 2 : -Math.PI / 2 + k * arc / order.length)
+                            : outward - arc / 2 + (k + 0.5) * arc / order.length;
+                        pos[id] = { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle) };
+                    });
+                }
+                first = false;
+            }
+            group.filter(id => !pos[id]).forEach((id, k) => { pos[id] = { x: k * (card.w + margin), y: 0 }; });
+            separate(pos, size, new Set([group[0]]));
+            const box = group.reduce((b, id) => ({
+                x1: Math.min(b.x1, pos[id].x - size[id].w / 2), y1: Math.min(b.y1, pos[id].y - size[id].h / 2),
+                x2: Math.max(b.x2, pos[id].x + size[id].w / 2), y2: Math.max(b.y2, pos[id].y + size[id].h / 2),
+            }), { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity });
+            const firstSubnet = group.filter(id => !routerIds.has(id)).sort((a, b) => addressKey(a) - addressKey(b))[0];
+            // Heim- und Fremdnetze ans Ende.
+            return { pos, box, count: group.length, key: group.includes('remote') ? Infinity : firstSubnet ? addressKey(firstSubnet) : 0 };
+        });
+
+        laid.sort((a, b) => (a.count > 3) !== (b.count > 3) ? (a.count > 3 ? -1 : 1) : a.count > 3 ? b.count - a.count : a.key - b.key);
+        const gap = margin * 1.5;
+        const area = laid.reduce((sum, g) => sum + (g.box.x2 - g.box.x1 + gap) * (g.box.y2 - g.box.y1 + gap), 0);
+        const rowWidth = Math.max(...laid.map(g => g.box.x2 - g.box.x1), Math.sqrt(area) * 1.6);
+        const pos = {};
+        let x = 0, y = 0, rowHeight = 0;
+        laid.forEach(g => {
+            const w = g.box.x2 - g.box.x1, h = g.box.y2 - g.box.y1;
+            if (x > 0 && x + w > rowWidth) { x = 0; y += rowHeight + gap; rowHeight = 0; }
+            Object.entries(g.pos).forEach(([id, p]) => { pos[id] = { x: p.x - g.box.x1 + x, y: p.y - g.box.y1 + y }; });
+            x += w + gap;
+            rowHeight = Math.max(rowHeight, h);
+        });
 
         const fixed = saved();
-        Object.keys(pos).forEach(id => { if (fixed[id]) pos[id] = { ...fixed[id] }; });
-        separate(pos, size, new Set([routerList[0]?.id, ...Object.keys(fixed)]));
+        const pinned = Object.keys(fixed).filter(id => pos[id]);
+        pinned.forEach(id => { pos[id] = { ...fixed[id] }; });
+        if (pinned.length)
+            separate(pos, size, new Set(pinned));
         return pos;
     }
 
@@ -325,7 +370,8 @@ window.inventoryMap = (() => {
         if (!raw) return;
         const lines = [];
         if (raw.type === 'subnet') {
-            lines.push(raw.detail ? `${raw.label} · ${raw.detail}` : raw.label, summary(raw.id), isOpen(raw.id) ? labels.collapse : labels.expandSubnet);
+            lines.push(raw.id === 'remote' ? `${labels.remote}\n${labels.remoteHint}\n${raw.detail}` : raw.detail ? `${raw.label} · ${raw.detail}` : raw.label,
+                summary(raw.id), isOpen(raw.id) ? labels.collapse : labels.expandSubnet);
             if (raw.assumed) lines.push(labels.assumedHint);
         } else if (raw.type === 'group') {
             lines.push(labels.computers.replace('{0}', raw.count), labels.expand);
