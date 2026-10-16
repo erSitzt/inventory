@@ -14,6 +14,7 @@ public class HelpTopicsTests
     [InlineData("run?ids=1,2", "Remote command")]
     [InlineData("devices", "Network devices")]
     [InlineData("devices/5", "Device details")]
+    [InlineData("network?focus=d3", "Network map")]
     [InlineData("collections", "Collections")]
     [InlineData("packages", "Packages")]
     [InlineData("packages/3", "Package")]

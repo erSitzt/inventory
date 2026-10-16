@@ -13,6 +13,7 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
     <MudText Typo="Typo.h5">@L["Network devices"]</MudText>
     <MudSpacer />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Href="network">@L["Network map"]</MudButton>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="api/devices/export.csv" Target="_blank">@L["Export (CSV)"]</MudButton>
     <OperatorOnly>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Radar" Disabled="@(_progress is not null || _ranges.Count == 0)"

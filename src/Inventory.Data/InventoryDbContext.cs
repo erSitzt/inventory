@@ -45,6 +45,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<NetworkRange> NetworkRanges => Set<NetworkRange>();
     public DbSet<NetworkDevice> NetworkDevices => Set<NetworkDevice>();
     public DbSet<DeviceSupply> DeviceSupplies => Set<DeviceSupply>();
+    public DbSet<NetworkTrace> NetworkTraces => Set<NetworkTrace>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -126,6 +127,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasMany(d => d.Supplies).WithOne().HasForeignKey(s => s.NetworkDeviceId).OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<DeviceSupply>().Ignore(s => s.Percent);
+        modelBuilder.Entity<NetworkTrace>().Ignore(t => t.HopList);
 
         modelBuilder.Entity<Report>(e =>
         {

@@ -88,6 +88,53 @@ public static class IpRanges
         return new IPAddress(bytes);
     }
 
+    /// <summary>Präfixlänge einer Subnetzmaske (255.255.255.0 → 24); null, wenn die Maske ungültig ist (Lücken, kein IPv4).</summary>
+    public static int? PrefixLength(string? mask)
+    {
+        if (!TryValue(mask, out var value))
+            return null;
+        var prefix = System.Numerics.BitOperations.PopCount(value);
+        // Eine gültige Maske besteht aus Einsen, gefolgt von Nullen.
+        return (prefix == 0 && value == 0) || value == uint.MaxValue << (32 - prefix) ? prefix : null;
+    }
+
+    /// <summary>Das Netz einer Adresse als CIDR ("10.0.0.0/24"); null bei ungültigen Angaben.</summary>
+    public static string? Network(string? address, int prefix)
+    {
+        if (!TryValue(address, out var value) || prefix is < 0 or > 32)
+            return null;
+        var mask = prefix == 0 ? 0 : uint.MaxValue << (32 - prefix);
+        return $"{ToAddress(value & mask)}/{prefix}";
+    }
+
+    /// <summary>True, wenn die Adresse im CIDR-Netz liegt.</summary>
+    public static bool Contains(string cidr, string? address)
+    {
+        var slash = cidr.IndexOf('/');
+        if (slash < 0 || !int.TryParse(cidr[(slash + 1)..], out var prefix) || prefix is < 0 or > 32
+            || !TryValue(cidr[..slash], out var network) || !TryValue(address, out var value))
+            return false;
+        var mask = prefix == 0 ? 0 : uint.MaxValue << (32 - prefix);
+        return (value & mask) == (network & mask);
+    }
+
+    /// <summary>Präfixlänge eines CIDR-Netzes; -1, wenn es keins ist.</summary>
+    public static int PrefixOf(string cidr) =>
+        cidr.IndexOf('/') is > 0 and var slash && int.TryParse(cidr[(slash + 1)..], out var prefix) ? prefix : -1;
+
+    /// <summary>Adressen, die in keinem Netzplan vorkommen: Loopback, Link-Local (APIPA), Multicast und 0.0.0.0.</summary>
+    public static bool IsUsable(string? address) =>
+        TryValue(address, out var value) && value != 0 && (value >> 24) != 127 && (value >> 16) != 0xA9FE && (value >> 28) != 0xE;
+
+    private static bool TryValue(string? text, out uint value)
+    {
+        value = 0;
+        if (text is null || text.Count(c => c == '.') != 3 || !IPAddress.TryParse(text.Trim(), out var address) || address.AddressFamily != AddressFamily.InterNetwork)
+            return false;
+        value = BinaryPrimitives.ReadUInt32BigEndian(address.GetAddressBytes());
+        return true;
+    }
+
     /// <summary>Sortierschlüssel für Adressen in Listen (10.0.0.9 vor 10.0.0.10).</summary>
     public static long SortKey(string? address) =>
         IPAddress.TryParse(address, out var ip) && ip.AddressFamily == AddressFamily.InterNetwork

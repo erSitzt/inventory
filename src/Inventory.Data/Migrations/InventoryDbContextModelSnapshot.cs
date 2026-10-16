@@ -1378,6 +1378,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("HttpTitle")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("InterfaceAddresses")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("IpAddress")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1508,6 +1511,31 @@ namespace Inventory.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("NetworkRanges");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.NetworkTrace", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Hops")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Reached")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("TracedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("NetworkTraces");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.NotificationChannel", b =>

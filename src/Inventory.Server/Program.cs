@@ -100,6 +100,7 @@ builder.Services.AddSingleton<SavedReportService>();
 builder.Services.AddSingleton<TrendService>();
 builder.Services.AddSingleton<LicenseService>();
 builder.Services.AddSingleton<DeviceService>();
+builder.Services.AddSingleton<NetworkMapService>();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<SignInLog>();
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System, Path.Combine(dataDirectory, "keys")));
