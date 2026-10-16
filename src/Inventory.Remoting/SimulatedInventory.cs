@@ -68,7 +68,7 @@ internal static class SimulatedInventory
         data.Hotfixes.Add(new HotfixItem { Id = "KB5044284", Description = "Security Update", InstalledOn = "10/8/2025" });
         data.Hotfixes.Add(new HotfixItem { Id = "KB5043080", Description = "Update", InstalledOn = "9/10/2025" });
         data.Disks.Add(new DiskItem { Drive = "C:", Label = "Windows", FileSystem = "NTFS", SizeBytes = diskGb * 1_000_000_000L, FreeBytes = diskGb * 1_000_000_000L * random.Next(5, 80) / 100 });
-        // Feste Netze wie in einer kleinen Firma: Zentrale, Server, Filiale – damit die Netzwerkkarte etwas zu zeigen hat.
+        // Feste Netze wie in einer kleinen Firma: Hauptsitz, Server, Filiale – damit die Netzwerkkarte etwas zu zeigen hat.
         var network = host.StartsWith("SRV", StringComparison.OrdinalIgnoreCase) ? 1 : random.Next(4) == 0 ? 20 : 0;
         var subnet = network == 20 ? "10.20.0" : $"10.0.{network}";
         data.NetworkAdapters.Add(new NetworkAdapterItem
