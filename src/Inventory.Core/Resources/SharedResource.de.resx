@@ -617,8 +617,8 @@
   <data name="Asset list" xml:space="preserve">
     <value>Bestandsliste</value>
   </data>
-  <data name="assumed" xml:space="preserve">
-    <value>angenommen</value>
+  <data name="Assumed as /24 – no subnet mask known" xml:space="preserve">
+    <value>Als /24 angenommen – keine Subnetzmaske bekannt</value>
   </data>
   <data name="At fixed intervals" xml:space="preserve">
     <value>In festen Abständen</value>
@@ -788,11 +788,14 @@
   <data name="Classification" xml:space="preserve">
     <value>Klassifizierung</value>
   </data>
-  <data name="Click a computer group to show its computers, right-click one of them to hide the group again; click a device or computer to open it." xml:space="preserve">
-    <value>Ein Klick auf eine Rechnergruppe zeigt ihre Rechner, ein Rechtsklick auf einen davon klappt die Gruppe wieder zu; ein Klick auf ein Gerät oder einen Rechner öffnet es.</value>
+  <data name="Click the frame to fold the subnet" xml:space="preserve">
+    <value>Klick auf den Rahmen klappt das Subnetz zu</value>
   </data>
   <data name="Click to open" xml:space="preserve">
     <value>Klicken zum Öffnen</value>
+  </data>
+  <data name="Click to show devices and computers" xml:space="preserve">
+    <value>Klicken, um Geräte und Rechner zu zeigen</value>
   </data>
   <data name="Click to show the computers" xml:space="preserve">
     <value>Klicken, um die Rechner zu zeigen</value>
@@ -809,8 +812,8 @@
   <data name="closes {0}" xml:space="preserve">
     <value>schließt {0}</value>
   </data>
-  <data name="Collapse all computers" xml:space="preserve">
-    <value>Alle Rechner zuklappen</value>
+  <data name="Collapse everything" xml:space="preserve">
+    <value>Alles zuklappen</value>
   </data>
   <data name="Collection" xml:space="preserve">
     <value>Sammlung</value>
@@ -1568,6 +1571,9 @@
   <data name="Expand a computer to see the output of every step." xml:space="preserve">
     <value>Einen Rechner aufklappen, um die Ausgabe jedes Schritts zu sehen.</value>
   </data>
+  <data name="Expand all subnets" xml:space="preserve">
+    <value>Alle Subnetze aufklappen</value>
+  </data>
   <data name="expired" xml:space="preserve">
     <value>abgelaufen</value>
   </data>
@@ -1735,6 +1741,18 @@
   </data>
   <data name="Full rights on the computer, but no access to a user's profile and settings." xml:space="preserve">
     <value>Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.</value>
+  </data>
+  <data name="Gateway" xml:space="preserve">
+    <value>Gateway</value>
+  </data>
+  <data name="Gateways" xml:space="preserve">
+    <value>Gateways</value>
+  </data>
+  <data name="Gateways of the computers: {0} of {1} responded." xml:space="preserve">
+    <value>Gateways der Rechner: {0} von {1} haben geantwortet.</value>
+  </data>
+  <data name="Gateways that belong to the same router or firewall (same interfaces, MAC address, serial number or SNMP name) form one node; the device scan of all ranges also checks the computers' default gateways." xml:space="preserve">
+    <value>Gateways, die zum selben Router oder zur selben Firewall gehören (gleiche Schnittstellen, MAC-Adresse, Seriennummer oder SNMP-Name), bilden einen Knoten; der Gerätescan aller Bereiche prüft auch die Standard-Gateways der Rechner.</value>
   </data>
   <data name="general" xml:space="preserve">
     <value>allgemein</value>
@@ -2669,6 +2687,9 @@
   <data name="Notes" xml:space="preserve">
     <value>Notizen</value>
   </data>
+  <data name="nothing found yet" xml:space="preserve">
+    <value>noch nichts gefunden</value>
+  </data>
   <data name="Nothing happens? Set up the launcher / show commands …" xml:space="preserve">
     <value>Passiert nichts? Starter einrichten / Befehle anzeigen …</value>
   </data>
@@ -3566,6 +3587,9 @@
   <data name="Rhythm" xml:space="preserve">
     <value>Rhythmus</value>
   </data>
+  <data name="Right-click folds the computers again" xml:space="preserve">
+    <value>Rechtsklick klappt die Rechner wieder zu</value>
+  </data>
   <data name='Right-click Install-Agent.cmd and choose "Run as administrator".' xml:space="preserve">
     <value>Install-Agent.cmd mit der rechten Maustaste anklicken und „Als Administrator ausführen“ wählen.</value>
   </data>
@@ -3574,9 +3598,6 @@
   </data>
   <data name="Router" xml:space="preserve">
     <value>Router</value>
-  </data>
-  <data name="Routers connect the subnets in which they have an address; a computer's default gateway without a scanned device appears as a dashed gateway." xml:space="preserve">
-    <value>Router verbinden die Subnetze, in denen sie eine Adresse haben; das Standard-Gateway eines Rechners ohne gescanntes Gerät erscheint als gestricheltes Gateway.</value>
   </data>
   <data name="Rows per page" xml:space="preserve">
     <value>Zeilen pro Seite</value>
@@ -4205,9 +4226,6 @@
   <data name="Subnets come from the address and mask of each computer's network adapters, the interfaces of routers (SNMP) and the CIDR ranges of the device scan." xml:space="preserve">
     <value>Subnetze ergeben sich aus Adresse und Maske der Netzwerkadapter jedes Rechners, den Schnittstellen der Router (SNMP) und den CIDR-Bereichen des Gerätescans.</value>
   </data>
-  <data name="Subnets from the addresses and masks of the computers and the device scan, connected by their routers. Click a group to show its computers (right-click hides them again), click a device or computer to open it, drag nodes to arrange them." xml:space="preserve">
-    <value>Subnetze aus Adressen und Masken der Rechner und dem Gerätescan, verbunden durch ihre Router. Ein Klick auf eine Gruppe zeigt ihre Rechner (Rechtsklick klappt sie wieder zu), ein Klick auf ein Gerät oder einen Rechner öffnet es; Knoten lassen sich verschieben.</value>
-  </data>
   <data name="Subnets, routers, devices and computers as an interactive diagram." xml:space="preserve">
     <value>Subnetze, Router, Geräte und Rechner als interaktives Diagramm.</value>
   </data>
@@ -4409,6 +4427,9 @@
   <data name="The maintenance window did not open before the deadline expired" xml:space="preserve">
     <value>Das Wartungsfenster hat sich bis zum Ablauf der Frist nicht geöffnet</value>
   </data>
+  <data name="The map starts with subnets and routers only; click a subnet to show its devices and computers, and a computer group to show the single computers." xml:space="preserve">
+    <value>Die Karte zeigt zuerst nur Subnetze und Router; ein Klick auf ein Subnetz zeigt seine Geräte und Rechner, ein Klick auf eine Rechnergruppe die einzelnen Rechner.</value>
+  </data>
   <data name='The name pattern decides which programs count, e.g. "Microsoft Office*".' xml:space="preserve">
     <value>Das Namensmuster bestimmt, welche Programme zählen, z. B. „Microsoft Office*“.</value>
   </data>
@@ -4492,6 +4513,9 @@
   </data>
   <data name="The steps of the selected package run at this point; its files are copied along." xml:space="preserve">
     <value>Die Schritte des gewählten Pakets laufen an dieser Stelle; seine Dateien werden mitkopiert.</value>
+  </data>
+  <data name="The subnets and the routers that connect them. Click a subnet to show its devices and computers, click its frame to fold it again; drag subnets and routers to arrange them." xml:space="preserve">
+    <value>Die Subnetze und die Router, die sie verbinden. Ein Klick auf ein Subnetz zeigt seine Geräte und Rechner, ein Klick auf den Rahmen klappt es wieder zu; Subnetze und Router lassen sich verschieben.</value>
   </data>
   <data name="The table contains none of the asset columns." xml:space="preserve">
     <value>Die Tabelle enthält keine der Bestandsspalten.</value>
@@ -5311,6 +5335,9 @@
   </data>
   <data name="{0} deleted" xml:space="preserve">
     <value>{0} gelöscht</value>
+  </data>
+  <data name="{0} devices" xml:space="preserve">
+    <value>{0} Geräte</value>
   </data>
   <data name="{0} disabled" xml:space="preserve">
     <value>{0} deaktiviert</value>

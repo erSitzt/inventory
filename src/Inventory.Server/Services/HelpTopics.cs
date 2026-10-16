@@ -49,8 +49,8 @@ public static class HelpTopics
             ("network", _) => new(L["Network map"], L["Subnets, routers, network devices and computers as an interactive diagram, derived from the inventory and the device scan."],
             [
                 L["Subnets come from the address and mask of each computer's network adapters, the interfaces of routers (SNMP) and the CIDR ranges of the device scan."],
-                L["Routers connect the subnets in which they have an address; a computer's default gateway without a scanned device appears as a dashed gateway."],
-                L["Click a computer group to show its computers, right-click one of them to hide the group again; click a device or computer to open it."],
+                L["Gateways that belong to the same router or firewall (same interfaces, MAC address, serial number or SNMP name) form one node; the device scan of all ranges also checks the computers' default gateways."],
+                L["The map starts with subnets and routers only; click a subnet to show its devices and computers, and a computer group to show the single computers."],
                 L["Search, the subnet selection and the type chips narrow the view; \"Save as PNG\" exports the current diagram."],
             ], L["network-map"]),
             ("run", _) => new(L["Remote command"], L["Runs a command or a short PowerShell script on several computers at once and shows the output live."],

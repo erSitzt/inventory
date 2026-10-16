@@ -84,7 +84,7 @@ public static class NetworkMapBuilder
         foreach (var device in routerDevices.OrderByDescending(d => Interfaces(d).Count()))
         {
             var addresses = Interfaces(device).Select(i => i.Ip).Append(device.IpAddress).ToHashSet();
-            var same = routers.FirstOrDefault(r => r.Addresses.Overlaps(addresses) || (device.MacAddress is not null && r.Device.MacAddress == device.MacAddress));
+            var same = routers.FirstOrDefault(r => r.Addresses.Overlaps(addresses) || SameBox(r.Device, device));
             if (same.Id is not null)
             {
                 same.Addresses.UnionWith(addresses);
@@ -148,6 +148,15 @@ public static class NetworkMapBuilder
             .Select(s => new MapNode(s.Key, MapNodeType.Subnet, s.Key, s.Value.Name, null, null, "subnet", Assumed: s.Value.Assumed)));
         return new NetworkMap(nodes, [.. edges.Where(e => nodes.Any(n => n.Id == e.Target))]);
     }
+
+    /// <summary>
+    /// Dasselbe Gerät unter verschiedenen Adressen – typisch für die zentrale Firewall, die in jedem Netz das Gateway ist:
+    /// gleiche MAC-Adresse, gleiche Seriennummer oder gleicher SNMP-Name.
+    /// </summary>
+    private static bool SameBox(NetworkDevice a, NetworkDevice b) =>
+        (a.MacAddress is not null && a.MacAddress == b.MacAddress)
+        || (!string.IsNullOrWhiteSpace(a.SerialNumber) && string.Equals(a.SerialNumber, b.SerialNumber, StringComparison.OrdinalIgnoreCase))
+        || (a.SnmpResponded && b.SnmpResponded && !string.IsNullOrWhiteSpace(a.DiscoveredName) && string.Equals(a.DiscoveredName, b.DiscoveredName, StringComparison.OrdinalIgnoreCase));
 
     private static IEnumerable<(string Ip, int Prefix)> Interfaces(NetworkDevice device) =>
         (device.InterfaceAddresses ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)

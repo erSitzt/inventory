@@ -142,12 +142,17 @@ SNMP).
 
 ![Network map](docs/screenshots/en/network-map.png)
 
+![Network map, one subnet opened](docs/screenshots/en/network-map-expanded.png)
+
 Subnets, routers, network devices and computers as an interactive diagram, derived from what is already known: the
 address and mask of every computer's network adapters, the interfaces routers report over SNMP (`ipAddrTable`), the
-CIDR ranges of the device scan and the default gateways of the computers. Routers sit above the subnets they connect;
-inside a subnet, infrastructure comes first, then servers and storage, then peripherals, then the computers – grouped
-into one node per subnet that opens with a click. Search, a subnet filter and the device types narrow the view, nodes
-can be dragged (the arrangement is kept in the browser), and the diagram exports as PNG. Subnets without a known mask
+CIDR ranges of the device scan and the default gateways of the computers. The device scan of all ranges also checks
+these gateways; gateways that turn out to be the same box (shared interfaces, MAC address, serial number or SNMP name)
+become one node, typically the central firewall in the middle with the subnets around it. The map starts with this
+overview – each subnet as a card with its device types and counts. A click opens a subnet: infrastructure first, then
+servers and storage, then peripherals, then the computers as a group that opens with another click. Search opens the
+subnets of its hits, a subnet filter and the device types narrow the view, hovering highlights the connections,
+subnets and routers can be dragged (the arrangement is kept in the browser), and the diagram exports as PNG. Subnets without a known mask
 are assumed as /24 and drawn dashed. The diagram uses [Cytoscape.js](https://js.cytoscape.org/) (MIT licence), which
 ships with the server.
 

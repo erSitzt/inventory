@@ -14,10 +14,11 @@
     <MudSpacer />
     <MudTooltip Text="@L["Fit to window"]"><MudIconButton Icon="@Icons.Material.Filled.FitScreen" aria-label="@L["Fit to window"]" OnClick="@(() => CallAsync("fit"))" /></MudTooltip>
     <MudTooltip Text="@L["Reset the arrangement (forget moved nodes)"]"><MudIconButton Icon="@Icons.Material.Filled.RestartAlt" aria-label="@L["Reset the arrangement (forget moved nodes)"]" OnClick="@(() => CallAsync("resetLayout"))" /></MudTooltip>
-    <MudTooltip Text="@L["Collapse all computers"]"><MudIconButton Icon="@Icons.Material.Filled.UnfoldLess" aria-label="@L["Collapse all computers"]" OnClick="CollapseAsync" /></MudTooltip>
+    <MudTooltip Text="@L["Expand all subnets"]"><MudIconButton Icon="@Icons.Material.Filled.UnfoldMore" aria-label="@L["Expand all subnets"]" OnClick="@(() => CallAsync("expandAll"))" /></MudTooltip>
+    <MudTooltip Text="@L["Collapse everything"]"><MudIconButton Icon="@Icons.Material.Filled.UnfoldLess" aria-label="@L["Collapse everything"]" OnClick="CollapseAsync" /></MudTooltip>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Image" OnClick="@(() => CallAsync("png"))">@L["Save as PNG"]</MudButton>
 </MudStack>
-<MudText Typo="Typo.body2" Class="mb-3">@L["Subnets from the addresses and masks of the computers and the device scan, connected by their routers. Click a group to show its computers (right-click hides them again), click a device or computer to open it, drag nodes to arrange them."]</MudText>
+<MudText Typo="Typo.body2" Class="mb-3">@L["The subnets and the routers that connect them. Click a subnet to show its devices and computers, click its frame to fold it again; drag subnets and routers to arrange them."]</MudText>
 
 @if (_map is { Nodes.Count: > 0 })
 {
@@ -84,8 +85,14 @@ else if (_map is not null)
         var labels = new
         {
             computers = L["{0} computers"].Value,
-            assumed = L["assumed"].Value,
+            devices = L["{0} devices"].Value,
+            empty = L["nothing found yet"].Value,
+            gateway = L["Gateway"].Value,
+            assumedHint = L["Assumed as /24 – no subnet mask known"].Value,
             expand = L["Click to show the computers"].Value,
+            expandSubnet = L["Click to show devices and computers"].Value,
+            collapse = L["Click the frame to fold the subnet"].Value,
+            collapseComputers = L["Right-click folds the computers again"].Value,
             open = L["Click to open"].Value,
         };
         await JS.InvokeVoidAsync("inventoryMap.render", _element, _map, NodeIcons(), labels, _callbacks, "lib/cytoscape/cytoscape.min.js");
@@ -93,17 +100,17 @@ else if (_map is not null)
             await JS.InvokeVoidAsync("inventoryMap.focus", Focus);
     }
 
-    /// <summary>Weiße Symbole (MudBlazor-Pfade) als SVG-Daten für die Knoten, je Geräteart und Rechnerrolle.</summary>
-    private Dictionary<string, string> NodeIcons()
+    /// <summary>Symbole (MudBlazor-Pfade) je Geräteart und Rechnerrolle: als weiße SVG-Daten für die Knoten und roh für die Symbolleiste der Subnetze.</summary>
+    private object NodeIcons()
     {
-        static string Svg(string path) => "data:image/svg+xml;utf8," + Uri.EscapeDataString($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"#ffffff\">{path}</svg>");
-        var icons = Enum.GetValues<DeviceKind>().ToDictionary(k => k.ToString(), k => Svg(Display.DeviceIcon(k)));
-        icons[nameof(ChassisKind.Desktop)] = Svg(MudBlazor.Icons.Material.Filled.DesktopWindows);
-        icons[nameof(ChassisKind.Laptop)] = Svg(MudBlazor.Icons.Material.Filled.LaptopWindows);
-        icons[nameof(ChassisKind.Server)] = Svg(MudBlazor.Icons.Material.Filled.Dns);
-        icons[nameof(ChassisKind.VirtualMachine)] = Svg(MudBlazor.Icons.Material.Filled.Cloud);
-        icons[nameof(ChassisKind.Tablet)] = Svg(MudBlazor.Icons.Material.Filled.TabletMac);
-        return icons;
+        var paths = Enum.GetValues<DeviceKind>().ToDictionary(k => k.ToString(), k => Display.DeviceIcon(k));
+        paths[nameof(ChassisKind.Desktop)] = MudBlazor.Icons.Material.Filled.DesktopWindows;
+        paths[nameof(ChassisKind.Laptop)] = MudBlazor.Icons.Material.Filled.LaptopWindows;
+        paths[nameof(ChassisKind.Server)] = MudBlazor.Icons.Material.Filled.Dns;
+        paths[nameof(ChassisKind.VirtualMachine)] = MudBlazor.Icons.Material.Filled.Cloud;
+        paths[nameof(ChassisKind.Tablet)] = MudBlazor.Icons.Material.Filled.TabletMac;
+        var icons = paths.ToDictionary(p => p.Key, p => "data:image/svg+xml;utf8," + Uri.EscapeDataString($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"#ffffff\">{p.Value}</svg>"));
+        return new { icons, paths };
     }
 
     private async Task CallAsync(string method)

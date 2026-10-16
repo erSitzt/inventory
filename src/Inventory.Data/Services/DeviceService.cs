@@ -133,18 +133,40 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         {
             List<NetworkRange> ranges;
             string[] defaults;
+            List<string> gateways;
             await using (var db = await dbFactory.CreateDbContextAsync(ct))
             {
                 ranges = await db.NetworkRanges.AsNoTracking().Where(r => rangeId == null ? r.Enabled : r.Id == rangeId).OrderBy(r => r.Name).ToListAsync(ct);
                 var stored = await db.Settings.Where(s => s.Key == SettingKeys.DeviceSnmpCommunities).Select(s => s.Value).FirstOrDefaultAsync(ct);
                 defaults = stored is null ? DefaultCommunities : [.. Lines(protector.Unprotect(stored))];
+                // Beim Scan aller Bereiche kommen die Standard-Gateways der Rechner dazu: erst sie zeigen, welche Router die Netze verbinden.
+                gateways = rangeId is not null ? [] : (await db.NetworkAdapters.AsNoTracking().Where(a => a.Gateways != null).Select(a => a.Gateways!).ToListAsync(ct))
+                    .SelectMany(g => g.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Where(IpRanges.IsUsable).Distinct().ToList();
             }
-            if (ranges.Count == 0)
+            if (ranges.Count == 0 && gateways.Count == 0)
                 return L["No address ranges to scan."];
 
             var results = new List<string>();
+            var covered = new HashSet<string>();
             foreach (var range in ranges)
+            {
                 results.Add(await ScanRangeAsync(range, defaults, ct));
+                try
+                {
+                    covered.UnionWith(IpRanges.Expand(range.Addresses).Select(a => a.ToString()));
+                }
+                catch (Exception ex) when (ex is FormatException or ArgumentException)
+                {
+                    // Schon im Ergebnis des Bereichs gemeldet.
+                }
+            }
+            var extra = gateways.Where(g => !covered.Contains(g)).Select(IPAddress.Parse).ToList();
+            if (extra.Count > 0)
+            {
+                var found = await ProbeAllAsync(L["Gateways"], extra, defaults, ct);
+                await StoreAsync(null, found, ct);
+                results.Add(L["Gateways of the computers: {0} of {1} responded.", found.Count, extra.Count]);
+            }
             return string.Join(" ", results);
         }
         finally
@@ -168,9 +190,18 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         }
         var communities = range.ProtectedCommunities is null ? defaults : [.. Lines(protector.Unprotect(range.ProtectedCommunities))];
 
+        var found = await ProbeAllAsync(range.Name, addresses, communities, ct);
+        var added = await StoreAsync(range.Id, found, ct);
+        return await FinishRangeAsync(range.Id,
+            L["{0}: {1} of {2} addresses responded, {3} new.", range.Name, found.Count, addresses.Count, added], ct);
+    }
+
+    /// <summary>Prüft die Adressen parallel; MAC-Adressen kommen aus der ARP-Tabelle des Servers (gleiches Segment) oder eines gefundenen Routers.</summary>
+    private async Task<List<DeviceObservation>> ProbeAllAsync(string label, IReadOnlyList<IPAddress> addresses, IReadOnlyList<string> communities, CancellationToken ct)
+    {
         var found = new ConcurrentBag<DeviceObservation>();
         var done = 0;
-        Report(new DeviceScanProgress(range.Name, 0, addresses.Count, 0));
+        Report(new DeviceScanProgress(label, 0, addresses.Count, 0));
         await Parallel.ForEachAsync(addresses, new ParallelOptions { MaxDegreeOfParallelism = MaxParallelAddresses, CancellationToken = ct }, async (address, token) =>
         {
             var observation = await probe.ProbeAsync(address, communities, token);
@@ -178,20 +209,16 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
                 found.Add(observation);
             var count = Interlocked.Increment(ref done);
             if (count % 8 == 0 || count == addresses.Count)
-                Report(new DeviceScanProgress(range.Name, count, addresses.Count, found.Count));
+                Report(new DeviceScanProgress(label, count, addresses.Count, found.Count));
         });
 
-        // MAC-Adressen: aus der ARP-Tabelle des Servers (gleiches Segment) oder eines gefundenen Routers (andere Segmente).
         var macs = new Dictionary<string, string>(probe.LocalNeighbors());
         foreach (var router in found.Where(o => o.Snmp?.ArpTable.Count > 0))
             foreach (var (ip, mac) in router.Snmp!.ArpTable)
                 macs.TryAdd(ip, mac);
         foreach (var observation in found)
             observation.MacAddress ??= macs.GetValueOrDefault(observation.IpAddress);
-
-        var added = await StoreAsync(range.Id, [.. found], ct);
-        return await FinishRangeAsync(range.Id,
-            L["{0}: {1} of {2} addresses responded, {3} new.", range.Name, found.Count, addresses.Count, added], ct);
+        return [.. found];
     }
 
     private void Report(DeviceScanProgress progress)

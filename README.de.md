@@ -145,13 +145,18 @@ genannten Ports, UDP 161 für SNMP).
 
 ![Netzwerkkarte](docs/screenshots/de/network-map.png)
 
+![Netzwerkkarte, ein Subnetz aufgeklappt](docs/screenshots/de/network-map-expanded.png)
+
 Subnetze, Router, Netzwerkgeräte und Rechner als interaktives Diagramm, abgeleitet aus dem, was ohnehin bekannt ist:
 Adresse und Maske der Netzwerkadapter jedes Rechners, die Schnittstellen, die Router per SNMP melden (`ipAddrTable`),
-die CIDR-Bereiche des Gerätescans und die Standard-Gateways der Rechner. Router stehen über den Subnetzen, die sie
-verbinden; innerhalb eines Subnetzes kommt zuerst die Netzinfrastruktur, dann Server und Speicher, dann Peripherie,
-zuletzt die Rechner – zusammengefasst zu einem Knoten je Subnetz, der sich per Klick öffnet. Suche, Subnetz-Filter und
-die Gerätearten grenzen die Ansicht ein, Knoten lassen sich verschieben (die Anordnung merkt sich der Browser), und das
-Diagramm lässt sich als PNG speichern. Subnetze ohne bekannte Maske werden als /24 angenommen und gestrichelt gezeichnet.
+die CIDR-Bereiche des Gerätescans und die Standard-Gateways der Rechner. Der Gerätescan aller Bereiche prüft auch diese
+Gateways; stellen sie sich als dasselbe Gerät heraus (gemeinsame Schnittstellen, MAC-Adresse, Seriennummer oder
+SNMP-Name), werden sie ein Knoten – typischerweise die zentrale Firewall in der Mitte, die Subnetze darum. Die Karte
+beginnt mit dieser Übersicht, jedes Subnetz als Karte mit seinen Gerätearten und deren Anzahl. Ein Klick öffnet ein
+Subnetz: zuerst die Netzinfrastruktur, dann Server und Speicher, dann Peripherie, zuletzt die Rechner als Gruppe, die
+sich mit einem weiteren Klick öffnet. Die Suche öffnet die Subnetze ihrer Treffer, Subnetz-Filter und Gerätearten
+grenzen die Ansicht ein, beim Überfahren werden die Verbindungen hervorgehoben, Subnetze und Router lassen sich
+verschieben (die Anordnung merkt sich der Browser), und das Diagramm lässt sich als PNG speichern. Subnetze ohne bekannte Maske werden als /24 angenommen und gestrichelt gezeichnet.
 Das Diagramm nutzt [Cytoscape.js](https://js.cytoscape.org/) (MIT-Lizenz), das mit dem Server ausgeliefert wird.
 
 ### Sammlungen und Wartungsfenster

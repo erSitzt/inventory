@@ -85,6 +85,17 @@ public class NetworkMapTests
     }
 
     [Fact]
+    public void Gateways_with_the_same_serial_number_are_one_router()
+    {
+        var first = Device(1, "10.0.0.1", DeviceKind.Firewall);
+        var second = Device(2, "10.20.0.1", DeviceKind.Firewall);
+        first.SerialNumber = second.SerialNumber = "FGT60F0001";
+        var map = NetworkMapBuilder.Build(
+            [Pc(1, "PC-1", "10.0.0.10", gateway: "10.0.0.1"), Pc(2, "PC-2", "10.20.0.5", gateway: "10.20.0.1")], [first, second], []);
+        Assert.Single(map.Nodes, n => n.Type is MapNodeType.Router or MapNodeType.Gateway);
+    }
+
+    [Fact]
     public void Unknown_masks_assume_a_slash_24_and_the_longest_prefix_wins()
     {
         var map = NetworkMapBuilder.Build(

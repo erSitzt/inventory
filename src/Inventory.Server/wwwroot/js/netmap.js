@@ -1,8 +1,11 @@
-// Netzwerkkarte: Subnetze als Container, Router dazwischen, Geräte einzeln, Rechner je Subnetz als aufklappbarer Sammelknoten.
-// Zeichnet mit Cytoscape.js (wwwroot/lib/cytoscape, MIT); die Daten baut der Server (NetworkMapBuilder).
+// Netzwerkkarte. Zuerst nur die Übersicht: Router (die zentrale Firewall in der Mitte) und die Subnetze sternförmig darum, jedes
+// Subnetz als Karte mit der Zahl seiner Geräte und Rechner. Ein Klick klappt ein Subnetz auf (Geräte einzeln, Rechner als Gruppe,
+// die sich ihrerseits aufklappen lässt), ein Klick auf den Rahmen klappt es wieder zu. Zeichnet mit Cytoscape.js
+// (wwwroot/lib/cytoscape, MIT); die Daten baut der Server (NetworkMapBuilder).
 window.inventoryMap = (() => {
-    let cy = null, map = null, icons = {}, labels = {}, dotnet = null, tip = null;
-    let expanded = new Set(), individually = false, hiddenKinds = new Set(), onlySubnet = null, query = '';
+    let cy = null, map = null, icons = {}, paths = {}, labels = {}, dotnet = null, tip = null;
+    let openSubnets = new Set(), openGroups = new Set(), individually = false, hiddenKinds = new Set(), onlySubnet = null;
+    let centers = {};
 
     const colors = {
         Router: '#ef6c00', Firewall: '#c62828', Gateway: '#8d6e63', Switch: '#1565c0', AccessPoint: '#0277bd', Printer: '#00897b',
@@ -13,41 +16,235 @@ window.inventoryMap = (() => {
     const css = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
     const color = n => n.type === 'gateway' ? colors.Gateway : colors[n.icon] || colors.Unknown;
 
-    function visible(n) {
-        if (n.type === 'device' && hiddenKinds.has(n.icon)) return false;
-        if (n.type === 'computer') return individually || expanded.has(n.group);
-        if (n.type === 'group') return !individually && !expanded.has(n.id);
-        return true;
+    // Maße für die Anordnung.
+    const card = { w: 220, h: 112 }, routerSize = { w: 90, h: 100 }, cell = { w: 108, h: 84 }, maxCols = 7, padding = 34, margin = 60;
+    // Zeilen in einem aufgeklappten Subnetz, wie in üblichen Topologie-Ansichten nach Rolle: Infrastruktur, Server, Peripherie, Rechner.
+    const tiers = {
+        Switch: 0, AccessPoint: 0, Firewall: 0, Router: 0, Management: 1, Hypervisor: 1, Storage: 1, Linux: 1, Ups: 1, Windows: 1,
+        Printer: 2, Phone: 2, Camera: 2, Iot: 2, Apple: 2, Unknown: 2,
+    };
+    const tierOf = n => n.type === 'device' ? tiers[n.icon] ?? 2 : 3;
+
+    // Verschobene Router und Subnetze merkt sich der Browser (nur für diesen Betrachter); "Anordnung zurücksetzen" vergisst sie.
+    const storeKey = 'inventory.netmap.positions';
+    const saved = () => { try { return JSON.parse(localStorage.getItem(storeKey) || '{}'); } catch { return {}; } };
+    const save = positions => { try { localStorage.setItem(storeKey, JSON.stringify(positions)); } catch { } };
+
+    // --- Was sichtbar ist -------------------------------------------------------------------------------------------------
+
+    const subnets = () => map.nodes.filter(n => n.type === 'subnet' && (!onlySubnet || n.id === onlySubnet));
+    const routers = () => map.nodes.filter(n => (n.type === 'router' || n.type === 'gateway')
+        && (!onlySubnet || map.edges.some(e => e.source === n.id && e.target === onlySubnet)));
+
+    function members(subnetId) {
+        return map.nodes.filter(n => n.parent === subnetId && (
+            n.type === 'device' ? !hiddenKinds.has(n.icon)
+                : n.type === 'group' ? !individually && !openGroups.has(n.id)
+                    : n.type === 'computer' ? individually || openGroups.has(n.group) : false));
+    }
+
+    function summary(subnetId) {
+        const devices = map.nodes.filter(n => n.parent === subnetId && n.type === 'device' && !hiddenKinds.has(n.icon)).length;
+        const computers = map.nodes.filter(n => n.parent === subnetId && n.type === 'computer').length;
+        const parts = [];
+        if (devices) parts.push(labels.devices.replace('{0}', devices));
+        if (computers) parts.push(labels.computers.replace('{0}', computers));
+        return parts.length ? parts.join(' · ') : labels.empty;
+    }
+
+    const isOpen = id => openSubnets.has(id) && members(id).length > 0;
+
+    /** Symbolleiste für die zugeklappte Karte: je Geräteart (und für die Rechner) ein farbiger Kreis mit Anzahl. */
+    function strip(subnetId) {
+        const counts = new Map();
+        map.nodes.filter(n => n.parent === subnetId && n.type === 'device' && !hiddenKinds.has(n.icon))
+            .forEach(n => counts.set(n.icon, (counts.get(n.icon) || 0) + 1));
+        const computers = map.nodes.filter(n => n.parent === subnetId && n.type === 'computer').length;
+        const items = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+        if (computers) items.unshift(['Desktop', computers]);
+        if (!items.length) return null;
+        const shown = items.slice(0, 7), step = 28, width = shown.length * step;
+        const textColor = css('--mud-palette-text-secondary', '#757575');
+        const parts = shown.map(([kind, count], i) => {
+            const x = i * step + step / 2;
+            // MudBlazor-Symbole beginnen mit einem unsichtbaren Rahmenpfad (fill="none"); der darf nicht weiß gefüllt werden.
+            const path = (paths[kind] || paths.Unknown || '').replace(/<path[^>]*fill="none"[^>]*\/>/g, '');
+            return `<circle cx="${x}" cy="11" r="10" fill="${colors[kind] || colors.Unknown}"/>`
+                + `<g transform="translate(${x - 7} 4) scale(0.583)" fill="#fff">${path}</g>`
+                + `<text x="${x}" y="33" font-family="Roboto, Arial, sans-serif" font-size="10" text-anchor="middle" fill="${textColor}">${count}</text>`;
+        });
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="38" viewBox="0 0 ${width} 38">${parts.join('')}</svg>`;
+        return { url: 'data:image/svg+xml;utf8,' + encodeURIComponent(svg), width };
     }
 
     function elements() {
-        let nodes = map.nodes.filter(visible);
-        if (onlySubnet) {
-            // Nur das Subnetz, seine Router und deren übrige Subnetze als leere Hüllen.
-            const routers = new Set(map.edges.filter(e => e.target === onlySubnet).map(e => e.source));
-            nodes = nodes.filter(n => n.id === onlySubnet || n.parent === onlySubnet || routers.has(n.id));
+        const els = [];
+        const node = (n, extra = {}) => ({
+            group: 'nodes',
+            data: { id: n.id, type: n.type, href: n.href, detail: n.detail, color: color(n), icon: icons[n.type === 'gateway' ? 'Router' : n.icon] || icons.Unknown, raw: n, ...extra },
+            classes: [n.type, n.online === false ? 'offline' : ''].join(' '),
+        });
+        for (const r of routers())
+            els.push(node(r, { label: r.type === 'gateway' ? `${labels.gateway}\n${r.label}` : r.label }));
+        for (const s of subnets()) {
+            const open = isOpen(s.id);
+            const title = s.detail ? `${s.label} · ${s.detail}` : s.label;
+            const bar = open ? null : strip(s.id);
+            const label = open ? title : [s.label, s.detail, bar ? null : labels.empty].filter(Boolean).join('\n');
+            const el = node(s, { label, strip: bar?.url ?? 'none', stripWidth: bar?.width ?? 1 });
+            el.classes += (open ? ' open' : ' closed') + (s.assumed ? ' assumed' : '');
+            els.push(el);
+            if (!open) continue;
+            for (const m of members(s.id)) {
+                const text = m.type === 'group' ? labels.computers.replace('{0}', m.count) : m.label;
+                els.push(node(m, { label: text, parent: s.id }));
+            }
         }
-        const ids = new Set(nodes.map(n => n.id));
-        const used = new Set(nodes.map(n => n.parent).filter(Boolean));
-        map.edges.forEach(e => { if (ids.has(e.source)) used.add(e.target); });
-        // Subnetze ohne sichtbaren Inhalt und ohne Router bleiben weg, damit Filter die Karte wirklich aufräumen.
-        nodes = nodes.filter(n => n.type !== 'subnet' || used.has(n.id));
-        const kept = new Set(nodes.map(n => n.id));
-        return [
-            ...nodes.map(n => ({
-                group: 'nodes',
-                data: {
-                    id: n.id, parent: n.parent && kept.has(n.parent) ? n.parent : undefined, type: n.type, href: n.href,
-                    label: n.type === 'subnet' ? (n.detail ? `${n.label}\n${n.detail}` : n.label) + (n.assumed ? ` (${labels.assumed})` : '')
-                        : n.type === 'group' ? labels.computers.replace('{0}', n.count) : n.label,
-                    detail: n.detail, color: color(n), icon: icons[n.type === 'gateway' ? 'Router' : n.icon] || icons.Unknown,
-                    online: n.online, raw: n,
-                },
-                classes: [n.type, n.assumed ? 'assumed' : '', n.online ? '' : 'offline'].join(' '),
-            })),
-            ...map.edges.filter(e => kept.has(e.source) && kept.has(e.target)).map(e => ({ group: 'edges', data: { id: `${e.source}->${e.target}`, source: e.source, target: e.target } })),
-        ];
+        const ids = new Set(els.map(e => e.data.id));
+        for (const e of map.edges)
+            if (ids.has(e.source) && ids.has(e.target))
+                els.push({ group: 'edges', data: { id: `${e.source}->${e.target}`, source: e.source, target: e.target } });
+        return els;
     }
+
+    // --- Anordnung ---------------------------------------------------------------------------------------------------------
+
+    /** Zeilen der aufgeklappten Mitglieder eines Subnetzes. */
+    function rowsOf(subnetId) {
+        const byTier = [[], [], [], []];
+        members(subnetId).forEach(m => byTier[tierOf(m)].push(m));
+        const rows = [];
+        byTier.forEach(list => {
+            list.sort((a, b) => a.icon.localeCompare(b.icon) || a.label.localeCompare(b.label));
+            for (let i = 0; i < list.length; i += maxCols) rows.push(list.slice(i, i + maxCols));
+        });
+        return rows;
+    }
+
+    function extent(id) {
+        if (!isOpen(id)) return card;
+        const rows = rowsOf(id);
+        return { w: Math.max(card.w, Math.max(...rows.map(r => r.length)) * cell.w + 2 * padding), h: rows.length * cell.h + 2 * padding + 10 };
+    }
+
+    /** Mittelpunkte der Router und Subnetze: der Router mit den meisten Netzen in die Mitte, seine Subnetze im Kreis darum. */
+    function plan() {
+        const pos = {};
+        const size = {};
+        const subnetIds = subnets().map(s => s.id);
+        subnetIds.forEach(id => { size[id] = extent(id); });
+        const links = r => map.edges.filter(e => e.source === r.id && size[e.target]).map(e => e.target);
+        const routerList = routers().sort((a, b) => links(b).length - links(a).length);
+        routerList.forEach(r => { size[r.id] = routerSize; });
+
+        routerList.forEach((r, i) => {
+            const linked = links(r);
+            if (i === 0) {
+                pos[r.id] = { x: 0, y: 0 };
+            } else {
+                const known = linked.filter(id => pos[id]);
+                if (known.length) {
+                    // Zwischen die schon platzierten Netze, ein Stück nach außen.
+                    const avg = known.reduce((a, id) => ({ x: a.x + pos[id].x / known.length, y: a.y + pos[id].y / known.length }), { x: 0, y: 0 });
+                    const len = Math.hypot(avg.x, avg.y) || 1;
+                    pos[r.id] = { x: avg.x + avg.x / len * 260, y: avg.y + avg.y / len * 260 };
+                } else {
+                    pos[r.id] = { x: 0, y: 0 };
+                }
+            }
+            const own = linked.filter(id => !pos[id]);
+            if (!own.length) return;
+            const span = own.reduce((sum, id) => sum + Math.max(size[id].w, size[id].h) + margin, 0);
+            const radius = Math.max(i === 0 ? 300 : 240, span / (2 * Math.PI));
+            const center = pos[r.id];
+            const outward = Math.atan2(center.y, center.x);
+            const arc = i === 0 ? 2 * Math.PI : Math.min(1.6 * Math.PI, span / radius);
+            own.forEach((id, k) => {
+                const angle = i === 0 ? -Math.PI / 2 + k * arc / own.length : outward - arc / 2 + (k + 0.5) * arc / own.length;
+                pos[id] = { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle) };
+            });
+        });
+
+        // Netze ohne bekannten Router in einer Reihe darunter.
+        const loose = subnetIds.filter(id => !pos[id]);
+        if (loose.length) {
+            const bottom = Object.keys(pos).reduce((m, id) => Math.max(m, pos[id].y + size[id].h / 2), 0) + 160;
+            let x = -loose.reduce((s, id) => s + size[id].w + margin, 0) / 2;
+            loose.forEach(id => { pos[id] = { x: x + size[id].w / 2, y: bottom + size[id].h / 2 }; x += size[id].w + margin; });
+        }
+
+        const fixed = saved();
+        Object.keys(pos).forEach(id => { if (fixed[id]) pos[id] = { ...fixed[id] }; });
+        separate(pos, size, new Set([routerList[0]?.id, ...Object.keys(fixed)]));
+        return pos;
+    }
+
+    /** Schiebt überlappende Router und Subnetze auseinander, jeweils das äußere weiter nach außen. */
+    function separate(pos, size, pinned) {
+        const ids = Object.keys(pos);
+        for (let round = 0; round < 80; round++) {
+            let moved = false;
+            for (let i = 0; i < ids.length; i++) {
+                for (let j = i + 1; j < ids.length; j++) {
+                    const a = ids[i], b = ids[j];
+                    const dx = pos[b].x - pos[a].x, dy = pos[b].y - pos[a].y;
+                    const ox = (size[a].w + size[b].w) / 2 + margin / 2 - Math.abs(dx);
+                    const oy = (size[a].h + size[b].h) / 2 + margin / 2 - Math.abs(dy);
+                    if (ox <= 0 || oy <= 0) continue;
+                    const pinA = pinned.has(a), pinB = pinned.has(b);
+                    if (pinA && pinB) continue;
+                    const outer = pinA ? b : pinB ? a : Math.hypot(pos[a].x, pos[a].y) > Math.hypot(pos[b].x, pos[b].y) ? a : b;
+                    const other = outer === a ? b : a;
+                    // Entlang der kleineren Überlappung schieben, weg vom anderen.
+                    const sx = Math.sign(pos[outer].x - pos[other].x) || 1, sy = Math.sign(pos[outer].y - pos[other].y) || 1;
+                    if (ox < oy) pos[outer].x += sx * (ox + 1); else pos[outer].y += sy * (oy + 1);
+                    moved = true;
+                }
+            }
+            if (!moved) break;
+        }
+    }
+
+    function arrange(animate, focus) {
+        const pos = plan();
+        const target = {};
+        Object.entries(pos).forEach(([id, p]) => { if (!isOpen(id)) target[id] = { ...p }; });
+        subnets().filter(s => isOpen(s.id)).forEach(s => {
+            const rows = rowsOf(s.id);
+            const cols = Math.max(...rows.map(r => r.length));
+            const left = pos[s.id].x - cols * cell.w / 2, top = pos[s.id].y - rows.length * cell.h / 2 + 5;
+            rows.forEach((row, r) => {
+                const offset = (cols - row.length) * cell.w / 2;
+                row.forEach((m, i) => { target[m.id] = { x: left + offset + i * cell.w + cell.w / 2, y: top + r * cell.h + cell.h / 2 }; });
+            });
+        });
+        centers = pos;
+        const layout = cy.layout({
+            name: 'preset', positions: n => target[n.id()], fit: !focus, padding: 50,
+            animate: animate && cy.nodes().length < 500, animationDuration: 450, animationEasing: 'ease-in-out-cubic',
+        });
+        if (focus)
+            layout.one('layoutstop', () => cy.animate({ fit: { eles: focus(), padding: 80 } }, { duration: 400 }));
+        layout.run();
+    }
+
+    function redraw(animate = true, focusId = null) {
+        if (!cy) return;
+        const before = {};
+        cy.nodes().forEach(n => { before[n.id()] = { ...n.position() }; });
+        cy.elements().remove();
+        // Neue Knoten erscheinen dort, wo vorher ihr Subnetz stand, und wandern von da an ihren Platz.
+        cy.add(elements().map(e => {
+            if (e.group === 'nodes')
+                // Kopie: Cytoscape übernimmt das Objekt als Position, mehrere Knoten dürfen es nicht teilen.
+                e.position = { ...(before[e.data.id] ?? before[e.data.parent] ?? centers[e.data.parent] ?? centers[e.data.id] ?? { x: 0, y: 0 }) };
+            return e;
+        }));
+        const focus = focusId ? () => cy.getElementById(focusId).union(cy.getElementById(focusId).neighborhood()) : null;
+        arrange(animate, focus);
+    }
+
+    // --- Aussehen ----------------------------------------------------------------------------------------------------------
 
     function style() {
         const text = css('--mud-palette-text-primary', '#212121');
@@ -55,119 +252,76 @@ window.inventoryMap = (() => {
         const surface = css('--mud-palette-surface', '#ffffff');
         const primary = css('--mud-palette-primary', '#594ae2');
         const lines = css('--mud-palette-lines-default', '#bdbdbd');
+        const warning = css('--mud-palette-warning', '#ff9800');
         return [
-            { selector: 'node', style: { 'label': 'data(label)', 'color': text, 'font-size': 12, 'text-valign': 'bottom', 'text-margin-y': 4,
-                'text-wrap': 'wrap', 'text-max-width': 120, 'background-color': 'data(color)', 'background-image': 'data(icon)',
-                'background-width': '60%', 'background-height': '60%', 'width': 34, 'height': 34, 'text-background-color': surface,
-                'text-background-opacity': 0.8, 'text-background-padding': 2, 'text-background-shape': 'roundrectangle' } },
-            { selector: 'node.router, node.gateway', style: { 'shape': 'round-diamond', 'width': 46, 'height': 46, 'font-weight': 'bold' } },
-            { selector: 'node.gateway', style: { 'border-width': 2, 'border-style': 'dashed', 'border-color': secondary } },
-            { selector: 'node.group', style: { 'shape': 'round-rectangle', 'width': 52, 'height': 40, 'border-width': 3, 'border-color': surface,
-                'border-opacity': 1, 'font-weight': 'bold' } },
-            { selector: 'node.offline', style: { 'opacity': 0.55 } },
-            { selector: ':parent', style: { 'shape': 'round-rectangle', 'background-color': primary, 'background-opacity': 0.06,
-                'background-image': 'none', 'border-width': 1.5, 'border-color': primary, 'border-opacity': 0.5, 'padding': 18,
-                'text-valign': 'top', 'text-halign': 'center', 'text-margin-y': -4, 'font-size': 13, 'font-weight': 'bold',
+            { selector: 'node', style: {
+                'label': 'data(label)', 'color': text, 'font-size': 11, 'font-family': 'Roboto, Helvetica, Arial, sans-serif',
+                'text-valign': 'bottom', 'text-margin-y': 5, 'text-wrap': 'wrap', 'text-max-width': 110,
+                'background-color': 'data(color)', 'background-image': 'data(icon)', 'background-width': '58%', 'background-height': '58%',
+                'width': 38, 'height': 38, 'border-width': 3, 'border-color': surface,
+                'text-background-color': surface, 'text-background-opacity': 0.85, 'text-background-padding': 2, 'text-background-shape': 'roundrectangle',
+                'transition-property': 'opacity', 'transition-duration': 200 } },
+            { selector: 'node.router, node.gateway', style: {
+                'width': 62, 'height': 62, 'font-size': 13, 'font-weight': 'bold', 'border-width': 4,
+                'underlay-color': 'data(color)', 'underlay-opacity': 0.18, 'underlay-padding': 10, 'underlay-shape': 'ellipse' } },
+            { selector: 'node.gateway', style: { 'border-style': 'dashed', 'border-color': secondary, 'background-opacity': 0.8 } },
+            { selector: 'node.subnet.closed', style: {
+                'shape': 'round-rectangle', 'width': card.w, 'height': card.h, 'background-color': surface,
+                'border-width': 2, 'border-color': primary, 'text-valign': 'center', 'text-margin-y': -22, 'text-max-width': card.w - 20,
+                'font-size': 13, 'font-weight': 'bold', 'line-height': 1.4, 'text-background-opacity': 0,
+                'background-image': 'data(strip)', 'background-fit': 'none', 'background-width': 'data(stripWidth)', 'background-height': 38,
+                'background-position-y': '88%', 'background-clip': 'none', 'background-image-containment': 'over',
+                'underlay-color': primary, 'underlay-opacity': 0.08, 'underlay-padding': 7, 'underlay-shape': 'round-rectangle' } },
+            { selector: 'node.subnet.open', style: {
+                'shape': 'round-rectangle', 'background-color': primary, 'background-opacity': 0.05, 'background-image': 'none',
+                'border-width': 2, 'border-color': primary, 'border-opacity': 0.6, 'padding': padding,
+                'text-valign': 'top', 'text-halign': 'center', 'text-margin-y': -6, 'font-size': 14, 'font-weight': 'bold',
                 'text-background-opacity': 0 } },
             { selector: 'node.subnet.assumed', style: { 'border-style': 'dashed' } },
-            { selector: 'node.subnet:childless', style: { 'width': 120, 'height': 50, 'background-image': 'none', 'shape': 'round-rectangle',
-                'background-opacity': 0.06, 'background-color': primary, 'border-width': 1.5, 'border-color': primary, 'text-valign': 'center', 'text-margin-y': 0 } },
-            { selector: 'edge', style: { 'width': 2.5, 'line-color': lines, 'curve-style': 'bezier' } },
-            { selector: '.faded', style: { 'opacity': 0.15 } },
-            { selector: 'node.match', style: { 'border-width': 4, 'border-color': css('--mud-palette-warning', '#ff9800'), 'border-opacity': 1 } },
-            { selector: 'node:selected', style: { 'border-width': 4, 'border-color': primary } },
+            { selector: 'node.group', style: { 'shape': 'round-rectangle', 'width': 58, 'height': 44, 'font-weight': 'bold' } },
+            { selector: 'node.offline', style: { 'background-opacity': 0.45 } },
+            { selector: 'edge', style: {
+                'width': 3, 'line-color': lines, 'curve-style': 'straight', 'opacity': 0.9,
+                'transition-property': 'line-color, width, opacity', 'transition-duration': 200 } },
+            { selector: '.dim', style: { 'opacity': 0.25 } },
+            { selector: 'edge.hot', style: { 'line-color': primary, 'width': 4, 'opacity': 1 } },
+            { selector: 'node.match', style: { 'border-color': warning, 'border-width': 5 } },
+            { selector: 'node:selected', style: { 'border-color': primary, 'border-width': 5 } },
         ];
     }
 
-    // Festes Layout wie ein Netzplan (wie bei üblichen Topologie-Ansichten nach Rolle geschichtet): Router oben, darunter die
-    // Subnetze nebeneinander (umbrechend). In jedem Subnetz eine Zeile je Rolle: Netzinfrastruktur, Server und Speicher,
-    // Peripherie, zuletzt die Rechner. Kräftebasierte Layouts kommen mit verschachtelten Subnetzen und kantenlosen Geräten nicht zurecht.
-    const cell = { w: 104, h: 78 }, gap = 70, routerGap = 150, maxCols = 8, subnetsPerRow = 4;
-    const tiers = {
-        Switch: 0, AccessPoint: 0, Firewall: 0, Router: 0, Management: 1, Hypervisor: 1, Storage: 1, Linux: 1, Ups: 1, Windows: 1,
-        Printer: 2, Phone: 2, Camera: 2, Iot: 2, Apple: 2, Unknown: 2,
-    };
-    const tier = n => n.data('type') === 'device' ? tiers[n.data('raw').icon] ?? 2 : 3;
-    // Verschobene Knoten merkt sich der Browser (nur für diesen Betrachter); "Anordnung zurücksetzen" vergisst sie.
-    const storeKey = 'inventory.netmap.positions';
-    const saved = () => { try { return JSON.parse(localStorage.getItem(storeKey) || '{}'); } catch { return {}; } };
-    const save = positions => { try { localStorage.setItem(storeKey, JSON.stringify(positions)); } catch { } };
-
-    function layout(animate) {
-        const positions = {};
-        let x = 0, y = 0, rowHeight = 0, inRow = 0;
-        const centers = {};
-        cy.nodes('.subnet').forEach(subnet => {
-            const byTier = [[], [], [], []];
-            subnet.children().forEach(c => byTier[tier(c)].push(c));
-            const rows = [];
-            byTier.forEach(list => {
-                list.sort((a, b) => a.data('raw').icon.localeCompare(b.data('raw').icon) || a.data('label').localeCompare(b.data('label')));
-                for (let i = 0; i < list.length; i += maxCols) rows.push(list.slice(i, i + maxCols));
-            });
-            const cols = Math.max(1, ...rows.map(r => r.length));
-            const width = cols * cell.w, height = Math.max(1, rows.length) * cell.h;
-            // Subnetze nebeneinander, damit die Kanten der Router nicht durch andere Subnetze laufen; ab vier eine neue Reihe.
-            if (inRow === subnetsPerRow) { x = 0; y += rowHeight + gap + routerGap; rowHeight = 0; inRow = 0; }
-            inRow++;
-            rows.forEach((row, r) => {
-                // Jede Zeile mittig, damit kurze Zeilen nicht links kleben.
-                const offset = (cols - row.length) * cell.w / 2;
-                row.forEach((child, i) => { positions[child.id()] = { x: x + offset + i * cell.w + cell.w / 2, y: y + r * cell.h + cell.h / 2 }; });
-            });
-            if (rows.length === 0) positions[subnet.id()] = { x: x + width / 2, y: y + height / 2 };
-            centers[subnet.id()] = { x: x + width / 2, top: y };
-            x += width + gap;
-            rowHeight = Math.max(rowHeight, height);
-        });
-        // Router über die Mitte ihrer Subnetze; mehrere auf derselben Höhe rücken auseinander.
-        const taken = [];
-        cy.nodes('.router, .gateway').sort((a, b) => b.connectedEdges().length - a.connectedEdges().length).forEach(router => {
-            const linked = router.connectedEdges().connectedNodes('.subnet').map(n => centers[n.id()]).filter(Boolean);
-            let rx = linked.length ? linked.reduce((sum, c) => sum + c.x, 0) / linked.length : 0;
-            const ry = (linked.length ? Math.min(...linked.map(c => c.top)) : 0) - routerGap;
-            while (taken.some(t => Math.abs(t.x - rx) < 140 && t.y === ry)) rx += 150;
-            taken.push({ x: rx, y: ry });
-            positions[router.id()] = { x: rx, y: ry };
-        });
-        const moved = saved();
-        cy.layout({
-            name: 'preset', positions: node => moved[node.id()] ?? positions[node.id()], fit: true, padding: 40,
-            animate: animate && cy.nodes().length < 400, animationDuration: 350,
-        }).run();
-    }
-
-    function redraw(animate) {
-        cy.elements().remove();
-        cy.add(elements());
-        layout(animate);
-        applySearch();
-    }
-
-    function applySearch() {
-        cy.elements().removeClass('faded match');
-        const text = query.trim().toLowerCase();
-        if (!text) return;
-        const hits = cy.nodes().filter(n => n.data('type') !== 'subnet'
-            && `${n.data('label')} ${n.data('detail') || ''}`.toLowerCase().includes(text));
-        if (hits.length === 0) return;
-        cy.elements().addClass('faded');
-        hits.removeClass('faded').addClass('match');
-        hits.ancestors().removeClass('faded');
-        hits.connectedEdges().removeClass('faded');
-    }
+    // --- Bedienung ---------------------------------------------------------------------------------------------------------
 
     function showTip(node, event) {
         const raw = node.data('raw');
-        if (!raw || raw.type === 'subnet') return;
-        const parts = [raw.type === 'group' ? labels.computers.replace('{0}', raw.count) : raw.label];
-        if (raw.detail) parts.push(raw.detail);
-        if (raw.type === 'group') parts.push(labels.expand);
-        else if (raw.href) parts.push(labels.open);
-        tip.textContent = parts.join('\n');
-        tip.style.left = `${event.renderedPosition.x + 14}px`;
-        tip.style.top = `${event.renderedPosition.y + 14}px`;
+        if (!raw) return;
+        const lines = [];
+        if (raw.type === 'subnet') {
+            lines.push(raw.detail ? `${raw.label} · ${raw.detail}` : raw.label, summary(raw.id), isOpen(raw.id) ? labels.collapse : labels.expandSubnet);
+            if (raw.assumed) lines.push(labels.assumedHint);
+        } else if (raw.type === 'group') {
+            lines.push(labels.computers.replace('{0}', raw.count), labels.expand);
+        } else {
+            lines.push(raw.label);
+            if (raw.detail) lines.push(raw.detail);
+            if (raw.type === 'computer' && !individually) lines.push(labels.collapseComputers);
+            if (raw.href) lines.push(labels.open);
+        }
+        tip.textContent = lines.join('\n');
+        tip.style.left = `${event.renderedPosition.x + 16}px`;
+        tip.style.top = `${event.renderedPosition.y + 16}px`;
         tip.style.display = 'block';
+    }
+
+    function hover(node) {
+        const keep = node.closedNeighborhood().union(node.ancestors()).union(node.descendants()).union(node.ancestors().closedNeighborhood());
+        cy.elements().not(keep).addClass('dim');
+        node.connectedEdges().union(node.ancestors().connectedEdges()).addClass('hot');
+    }
+
+    function unhover() {
+        cy.elements().removeClass('dim hot');
+        tip.style.display = 'none';
     }
 
     // Cytoscape wird erst geladen, wenn die Karte geöffnet wird; die übrigen Seiten bleiben schlank.
@@ -184,57 +338,86 @@ window.inventoryMap = (() => {
         return loading;
     }
 
+    function find(text) {
+        const query = text.trim().toLowerCase();
+        return query ? map.nodes.filter(n => n.type !== 'subnet' && n.type !== 'group' && `${n.label} ${n.detail || ''}`.toLowerCase().includes(query)) : [];
+    }
+
     return {
         async render(element, data, iconSet, texts, reference, library) {
             await load(library);
             this.dispose();
-            map = data; icons = iconSet; labels = texts; dotnet = reference;
-            expanded = new Set(); individually = false; hiddenKinds = new Set(); onlySubnet = null; query = '';
+            map = data; icons = iconSet.icons; paths = iconSet.paths; labels = texts; dotnet = reference;
+            openSubnets = new Set(); openGroups = new Set(); individually = false; hiddenKinds = new Set(); onlySubnet = null; centers = {};
             tip = document.createElement('div');
             tip.className = 'netmap-tip';
             element.appendChild(tip);
-            cy = cytoscape({ container: element, elements: elements(), style: style(), wheelSensitivity: 0.3, minZoom: 0.1, maxZoom: 3 });
-            layout(true);
+            cy = cytoscape({ container: element, style: style(), wheelSensitivity: 0.3, minZoom: 0.08, maxZoom: 2.5, boxSelectionEnabled: false });
+            redraw(false);
+
             cy.on('tap', 'node', e => {
-                const n = e.target, raw = n.data('raw');
+                const raw = e.target.data('raw');
                 if (!raw) return;
-                if (raw.type === 'group') { expanded.add(raw.id); redraw(true); }
-                else if (raw.href) dotnet.invokeMethodAsync('Open', raw.href);
+                unhover();
+                if (raw.type === 'subnet') {
+                    if (openSubnets.has(raw.id)) openSubnets.delete(raw.id); else openSubnets.add(raw.id);
+                    redraw(true, openSubnets.has(raw.id) ? raw.id : null);
+                } else if (raw.type === 'group') {
+                    openGroups.add(raw.id);
+                    redraw(true, raw.parent);
+                } else if (raw.href) {
+                    dotnet.invokeMethodAsync('Open', raw.href);
+                }
             });
-            cy.on('cxttap', 'node.computer', e => { expanded.delete(e.target.data('raw').group); redraw(true); });
-            cy.on('mouseover', 'node', e => showTip(e.target, e));
-            cy.on('mouseout', 'node', () => { tip.style.display = 'none'; });
-            cy.on('pan zoom', () => { tip.style.display = 'none'; });
+            cy.on('cxttap', 'node.computer', e => { unhover(); openGroups.delete(e.target.data('raw').group); redraw(true); });
+            cy.on('mouseover', 'node', e => { hover(e.target); showTip(e.target, e); });
+            cy.on('mouseout', 'node', unhover);
+            cy.on('pan zoom drag', () => { tip.style.display = 'none'; });
             cy.on('dragfree', 'node', e => {
+                if (e.target.isChild()) return;
                 const positions = saved();
-                // Ein verschobenes Subnetz nimmt seinen Inhalt mit.
-                e.target.union(e.target.descendants()).filter(n => !n.isParent()).forEach(n => { positions[n.id()] = { ...n.position() }; });
+                positions[e.target.id()] = { ...e.target.position() };
                 save(positions);
             });
         },
-        setIndividually(value) { individually = value; expanded.clear(); redraw(true); },
-        resetLayout() { save({}); layout(true); },
-        collapseAll() { individually = false; expanded.clear(); redraw(true); },
-        setHiddenKinds(kinds) { hiddenKinds = new Set(kinds); redraw(false); },
-        setSubnet(cidr) { onlySubnet = cidr || null; redraw(true); },
-        search(text) { query = text || ''; applySearch(); },
+        expandAll() { subnets().forEach(s => openSubnets.add(s.id)); redraw(true); },
+        collapseAll() { openSubnets.clear(); openGroups.clear(); redraw(true); },
+        setIndividually(value) { individually = value; openGroups.clear(); redraw(true); },
+        setHiddenKinds(kinds) { hiddenKinds = new Set(kinds); redraw(true); },
+        setSubnet(cidr) { onlySubnet = cidr || null; if (onlySubnet) openSubnets.add(onlySubnet); redraw(true); },
+        resetLayout() { save({}); redraw(true); },
+        search(text) {
+            if (!cy) return;
+            const hits = find(text || '');
+            if (!hits.length) { cy.nodes().removeClass('match'); return; }
+            // Treffer in zugeklappten Subnetzen und Gruppen werden sichtbar gemacht.
+            hits.forEach(n => {
+                if (n.parent) openSubnets.add(n.parent);
+                if (n.type === 'computer' && !individually) openGroups.add(n.group);
+            });
+            redraw(false);
+            const found = cy.collection(hits.map(n => cy.getElementById(n.id)).filter(n => n.nonempty()));
+            found.addClass('match');
+            cy.animate({ fit: { eles: found, padding: 120 } }, { duration: 400 });
+        },
         focus(id) {
             if (!cy) return;
             const node = map.nodes.find(n => n.id === id || n.id.startsWith(`${id}@`));
             if (!node) return;
-            if (node.type === 'computer') { expanded.add(node.group); redraw(false); }
+            if (node.parent) openSubnets.add(node.parent);
+            if (node.type === 'computer' && !individually) openGroups.add(node.group);
+            redraw(false);
             const target = cy.getElementById(node.id);
-            cy.animate({ center: { eles: target }, zoom: 1.4 }, { duration: 500 });
             target.select();
+            cy.animate({ center: { eles: target }, zoom: 1.3 }, { duration: 500 });
         },
         /** Für Tests und Fehlersuche im Browser. */
         instance() { return cy; },
-        fit() { cy?.animate({ fit: { padding: 30 } }, { duration: 300 }); },
+        fit() { cy?.animate({ fit: { eles: cy.elements(), padding: 50 } }, { duration: 300 }); },
         png() {
             if (!cy) return;
-            const url = cy.png({ full: true, scale: 2, bg: css('--mud-palette-background', '#ffffff') });
             const link = document.createElement('a');
-            link.href = url;
+            link.href = cy.png({ full: true, scale: 2, bg: css('--mud-palette-surface', '#ffffff') });
             link.download = 'network-map.png';
             link.click();
         },

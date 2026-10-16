@@ -183,6 +183,19 @@ public class DeviceTests
         Assert.Equal(["own"], probe.Seen["10.0.1.1"]);
         Assert.False(probe.Seen.ContainsKey("10.0.2.1"));
 
+        // Ohne Bereich: nur die Gateways der Rechner, die in keinem Bereich liegen.
+        var computers = await new ComputerService(db, new SimulatedHostProbe()).ImportAsync("pc-01");
+        await using (var context = db.CreateDbContext())
+        {
+            context.NetworkAdapters.Add(new ComputerNetworkAdapter { ComputerId = computers[0].Id, Name = "LAN", Gateways = "10.0.0.1, 10.9.0.1" });
+            await context.SaveChangesAsync();
+        }
+        probe.Seen.Clear();
+        Assert.Contains("1 of 1", await service.ScanAsync());
+        Assert.True(probe.Seen.ContainsKey("10.9.0.1"));
+        Assert.Equal(1, probe.Seen.Keys.Count(k => k == "10.0.0.1"));
+        Assert.DoesNotContain("10.9.0.1", (await service.ScanAsync(1)) ?? "");
+
         await service.SetDefaultCommunitiesAsync("one\ntwo");
         await service.ScanAsync();
         Assert.Equal(["one", "two"], probe.Seen["10.0.0.1"]);
