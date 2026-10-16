@@ -13,7 +13,7 @@ public sealed class SimulatedDeviceProbe : IDeviceProbe
         var octet = address.GetAddressBytes()[3];
         var snmp = communities.Count > 0;
         var o = new DeviceObservation { IpAddress = ip };
-        // In der Filiale ist .1 ein eigener Router, über eine Transferstrecke mit der Firewall der Zentrale verbunden.
+        // In der Filiale ist .1 ein eigener Router, über eine Transferstrecke mit der Firewall des Hauptsitzes verbunden.
         if (address.GetAddressBytes()[1] == 20 && octet == 1)
         {
             Set(o, [22, 80, 443], "rt-hamburg", "SSH-2.0-OpenSSH_7.4", "LANCOM 1793VA");
