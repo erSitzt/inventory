@@ -16,7 +16,7 @@ Every feature below comes with a picture of the page that belongs to it. The pic
 - [Overview and trends](#overview-and-trends) · [Computer list](#computer-list) ·
   [Inventory per computer](#inventory-per-computer) · [Security and configuration](#security-and-configuration) ·
   [Updates and patch status](#updates-and-patch-status) · [Software and apps](#software-and-apps) ·
-  [Change history](#change-history) · [Network devices](#network-devices)
+  [Change history](#change-history) · [Network devices](#network-devices) · [Network map](#network-map)
 - [Collections and maintenance windows](#collections-and-maintenance-windows) · [Packages and steps](#packages-and-steps) ·
   [Detection, prerequisites and user notice](#detection-prerequisites-and-user-notice) ·
   [Ready-made packages](#ready-made-packages)
@@ -137,6 +137,19 @@ through the API (`/api/devices`).
 The scan contacts every address of a range on 29 ports; an intrusion detection system may report it as a port scan, so
 let the network team know. Routed subnets need to be reachable from the server (ICMP, the ports above, UDP 161 for
 SNMP).
+
+### Network map
+
+![Network map](docs/screenshots/en/network-map.png)
+
+Subnets, routers, network devices and computers as an interactive diagram, derived from what is already known: the
+address and mask of every computer's network adapters, the interfaces routers report over SNMP (`ipAddrTable`), the
+CIDR ranges of the device scan and the default gateways of the computers. Routers sit above the subnets they connect;
+inside a subnet, infrastructure comes first, then servers and storage, then peripherals, then the computers – grouped
+into one node per subnet that opens with a click. Search, a subnet filter and the device types narrow the view, nodes
+can be dragged (the arrangement is kept in the browser), and the diagram exports as PNG. Subnets without a known mask
+are assumed as /24 and drawn dashed. The diagram uses [Cytoscape.js](https://js.cytoscape.org/) (MIT licence), which
+ships with the server.
 
 ### Collections and maintenance windows
 
@@ -926,5 +939,5 @@ of required schedules stay, because the schedule recognises by them where the pa
 
 ## License
 
-[MIT](LICENSE). Inventory uses, among others, MudBlazor (MIT), Entity Framework Core and ASP.NET Core (MIT) and
+[MIT](LICENSE). Inventory uses, among others, MudBlazor (MIT), Cytoscape.js (MIT), Entity Framework Core and ASP.NET Core (MIT) and
 SQLite (public domain).

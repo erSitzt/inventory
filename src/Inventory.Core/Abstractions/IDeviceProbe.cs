@@ -30,6 +30,8 @@ public sealed class SnmpFacts
     public bool IsUps { get; set; }
     /// <summary>ARP-Tabelle des Geräts (IP → MAC), wenn es routet; liefert MAC-Adressen für Geräte hinter dem Router.</summary>
     public Dictionary<string, string> ArpTable { get; set; } = [];
+    /// <summary>Eigene Adressen eines Routers als "ip/präfix" (ipAddrTable); verbinden in der Netzwerkkarte seine Subnetze.</summary>
+    public List<string> InterfaceAddresses { get; set; } = [];
 }
 
 /// <param name="Level">Füllstand in Einheiten von <paramref name="Capacity"/>; negativ = unbekannt (-3 = vorhanden, Menge unbekannt).</param>

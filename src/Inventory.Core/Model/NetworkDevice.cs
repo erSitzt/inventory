@@ -68,6 +68,9 @@ public class NetworkDevice
     /// <summary>Geschätztes Betriebssystem (z. B. aus dem SSH-Banner oder sysDescr).</summary>
     public string? OsGuess { get; set; }
 
+    /// <summary>Eigene Adressen eines Routers als "ip/präfix", kommagetrennt (per SNMP); null bei anderen Geräten.</summary>
+    public string? InterfaceAddresses { get; set; }
+
     /// <summary>Offene TCP-Ports, kommagetrennt und aufsteigend.</summary>
     public string? OpenPorts { get; set; }
     public bool PingReply { get; set; }

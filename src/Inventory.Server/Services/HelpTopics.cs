@@ -46,6 +46,13 @@ public static class HelpTopics
                 L["\"Not inventoried\" marks Windows computers on the network that are missing from the computer list."],
                 L["A schedule with the action \"Network device scan\" keeps the list current; an alert rule reports new devices."],
             ], L["network-devices"]),
+            ("network", _) => new(L["Network map"], L["Subnets, routers, network devices and computers as an interactive diagram, derived from the inventory and the device scan."],
+            [
+                L["Subnets come from the address and mask of each computer's network adapters, the interfaces of routers (SNMP) and the CIDR ranges of the device scan."],
+                L["Routers connect the subnets in which they have an address; a computer's default gateway without a scanned device appears as a dashed gateway."],
+                L["Click a computer group to show its computers, right-click one of them to hide the group again; click a device or computer to open it."],
+                L["Search, the subnet selection and the type chips narrow the view; \"Save as PNG\" exports the current diagram."],
+            ], L["network-map"]),
             ("run", _) => new(L["Remote command"], L["Runs a command or a short PowerShell script on several computers at once and shows the output live."],
             [
                 L["\"Local System\" has full rights on the computer; \"Logged-on user\" runs in the session of whoever is signed in."],

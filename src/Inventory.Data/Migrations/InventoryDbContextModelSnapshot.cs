@@ -1378,6 +1378,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("HttpTitle")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("InterfaceAddresses")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("IpAddress")
                         .IsRequired()
                         .HasColumnType("TEXT");

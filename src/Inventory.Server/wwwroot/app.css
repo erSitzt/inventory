@@ -443,3 +443,10 @@ a:hover > .kpi {
     background: var(--mud-palette-primary);
     color: var(--mud-palette-primary-text);
 }
+
+/* Netzwerkkarte */
+.netmap { position: relative; width: 100%; height: calc(100vh - 260px); min-height: 420px; border-radius: 8px;
+    border: 1px solid var(--mud-palette-lines-default); background: var(--mud-palette-surface); overflow: hidden; }
+.netmap-tip { position: absolute; display: none; z-index: 10; pointer-events: none; white-space: pre-line; max-width: 320px;
+    padding: 6px 8px; border-radius: 4px; font-size: 12px; background: var(--mud-palette-dark); color: var(--mud-palette-dark-text);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .3); }

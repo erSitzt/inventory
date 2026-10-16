@@ -30,6 +30,9 @@ public static class SnmpCollector
     // ENTITY-MIB: Spalten von entPhysicalTable.
     private const string EntityTable = "1.3.6.1.2.1.47.1.1.1.1";
     private const string ArpTable = "1.3.6.1.2.1.4.22.1.2";
+    // ipAddrTable: eigene Adressen und Masken.
+    private const string AddressTable = "1.3.6.1.2.1.4.20.1.1";
+    private const string MaskTable = "1.3.6.1.2.1.4.20.1.3";
     // Herstellereigene Angaben für Geräte, deren Standard-MIBs kein Modell nennen.
     private const string SynologyModel = "1.3.6.1.4.1.6574.1.5.1.0";
     private const string SynologySerial = "1.3.6.1.4.1.6574.1.5.2.0";
@@ -41,13 +44,13 @@ public static class SnmpCollector
     private static readonly TimeSpan Timeout = TimeSpan.FromMilliseconds(1200);
 
     /// <summary>Versucht die Communities nacheinander (erst v2c, dann v1); null, wenn keine Antwort kommt.</summary>
-    public static async Task<SnmpFacts?> CollectAsync(IPAddress address, IReadOnlyList<string> communities, CancellationToken ct)
+    public static async Task<SnmpFacts?> CollectAsync(IPAddress address, IReadOnlyList<string> communities, CancellationToken ct, int port = 161)
     {
         foreach (var community in communities.Where(c => c.Length > 0))
         {
             foreach (var version in new[] { SnmpClient.V2c, SnmpClient.V1 })
             {
-                var client = new SnmpClient(address, community, version, Timeout);
+                var client = new SnmpClient(address, community, version, Timeout, port);
                 var system = await client.GetAsync([SysDescr, SysObjectId, SysUpTime, SysContact, SysName, SysLocation], ct);
                 if (system is null || system.Count == 0)
                     continue;
@@ -100,7 +103,10 @@ public static class SnmpCollector
         if (facts.Model is null || facts.SerialNumber is null)
             await EntityAsync(client, facts, ct);
         if (facts.Forwarding == true)
+        {
             facts.ArpTable = await ArpAsync(client, ct);
+            facts.InterfaceAddresses = await InterfacesAsync(client, ct);
+        }
         return facts;
     }
 
@@ -152,6 +158,21 @@ public static class SnmpCollector
                 table[string.Join(".", parts[1..])] = mac;
         }
         return table;
+    }
+
+    /// <summary>Die eigenen Adressen als "ip/präfix"; der Index der Tabelle ist die Adresse selbst.</summary>
+    private static async Task<List<string>> InterfacesAsync(SnmpClient client, CancellationToken ct)
+    {
+        var masks = (await client.WalkAsync(MaskTable, 256, ct)).ToDictionary(v => v.Oid[(MaskTable.Length + 1)..], v => v.AsText());
+        var result = new List<string>();
+        foreach (var entry in await client.WalkAsync(AddressTable, 256, ct))
+        {
+            var ip = entry.AsText();
+            if (!IpRanges.IsUsable(ip) || IpRanges.PrefixLength(masks.GetValueOrDefault(entry.Oid[(AddressTable.Length + 1)..])) is not { } prefix)
+                continue;
+            result.Add($"{ip}/{prefix}");
+        }
+        return result;
     }
 
     private static string Index(string oid) => oid[(oid.LastIndexOf('.') + 1)..];

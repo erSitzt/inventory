@@ -28,6 +28,7 @@
     {
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.OpenInNew" Href="@url" Target="_blank" rel="noopener noreferrer">@label</MudButton>
     }
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Href="@($"network?focus=d{_device.Id}")">@L["Show on the map"]</MudButton>
     <OperatorOnly>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="EditAsync">@L["Edit"]</MudButton>
     </OperatorOnly>

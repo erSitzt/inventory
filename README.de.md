@@ -16,7 +16,7 @@ Zu jeder Funktion gehört unten ein Bild der passenden Seite. Die Bilder stammen
 - [Übersicht und Verläufe](#übersicht-und-verläufe) · [Rechnerliste](#rechnerliste) ·
   [Inventar je Rechner](#inventar-je-rechner) · [Sicherheit und Konfiguration](#sicherheit-und-konfiguration) ·
   [Updates und Patch-Stand](#updates-und-patch-stand) · [Software und Apps](#software-und-apps) ·
-  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte)
+  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte) · [Netzwerkkarte](#netzwerkkarte)
 - [Sammlungen und Wartungsfenster](#sammlungen-und-wartungsfenster) · [Pakete und Schritte](#pakete-und-schritte) ·
   [Erkennung, Voraussetzungen und Hinweis an den Benutzer](#erkennung-voraussetzungen-und-hinweis-an-den-benutzer) ·
   [Fertige Pakete](#fertige-pakete)
@@ -140,6 +140,19 @@ Neuzugänge, und die Liste gibt es als CSV und über die API (`/api/devices`).
 Der Scan spricht jede Adresse eines Bereichs auf 29 Ports an; ein Intrusion-Detection-System kann das als Portscan
 melden – also vorher dem Netzwerkteam Bescheid geben. Geroutete Subnetze müssen vom Server aus erreichbar sein (ICMP, die
 genannten Ports, UDP 161 für SNMP).
+
+### Netzwerkkarte
+
+![Netzwerkkarte](docs/screenshots/de/network-map.png)
+
+Subnetze, Router, Netzwerkgeräte und Rechner als interaktives Diagramm, abgeleitet aus dem, was ohnehin bekannt ist:
+Adresse und Maske der Netzwerkadapter jedes Rechners, die Schnittstellen, die Router per SNMP melden (`ipAddrTable`),
+die CIDR-Bereiche des Gerätescans und die Standard-Gateways der Rechner. Router stehen über den Subnetzen, die sie
+verbinden; innerhalb eines Subnetzes kommt zuerst die Netzinfrastruktur, dann Server und Speicher, dann Peripherie,
+zuletzt die Rechner – zusammengefasst zu einem Knoten je Subnetz, der sich per Klick öffnet. Suche, Subnetz-Filter und
+die Gerätearten grenzen die Ansicht ein, Knoten lassen sich verschieben (die Anordnung merkt sich der Browser), und das
+Diagramm lässt sich als PNG speichern. Subnetze ohne bekannte Maske werden als /24 angenommen und gestrichelt gezeichnet.
+Das Diagramm nutzt [Cytoscape.js](https://js.cytoscape.org/) (MIT-Lizenz), das mit dem Server ausgeliefert wird.
 
 ### Sammlungen und Wartungsfenster
 
@@ -962,5 +975,5 @@ schon ist.
 
 ## Lizenz
 
-[MIT](LICENSE). Inventory verwendet unter anderem MudBlazor (MIT), Entity Framework Core und ASP.NET Core (MIT) sowie
+[MIT](LICENSE). Inventory verwendet unter anderem MudBlazor (MIT), Cytoscape.js (MIT), Entity Framework Core und ASP.NET Core (MIT) sowie
 SQLite (Public Domain).

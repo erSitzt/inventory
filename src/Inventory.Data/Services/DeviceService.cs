@@ -294,6 +294,7 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         device.SerialNumber = snmp.SerialNumber ?? device.SerialNumber;
         device.Firmware = snmp.Firmware ?? device.Firmware;
         device.PageCount = snmp.PageCount ?? device.PageCount;
+        device.InterfaceAddresses = snmp.InterfaceAddresses.Count > 0 ? string.Join(",", snmp.InterfaceAddresses) : device.InterfaceAddresses;
         if (snmp.IsPrinter)
         {
             device.Supplies.Clear();

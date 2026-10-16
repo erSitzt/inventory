@@ -1,0 +1,169 @@
+@page "/network"
+@implements IAsyncDisposable
+@inject NetworkMapService MapService
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<PageTitle>@L["Network map"] – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">@L["Network map"]</MudText>
+    <MudSpacer />
+    <MudTooltip Text="@L["Fit to window"]"><MudIconButton Icon="@Icons.Material.Filled.FitScreen" aria-label="@L["Fit to window"]" OnClick="@(() => CallAsync("fit"))" /></MudTooltip>
+    <MudTooltip Text="@L["Reset the arrangement (forget moved nodes)"]"><MudIconButton Icon="@Icons.Material.Filled.RestartAlt" aria-label="@L["Reset the arrangement (forget moved nodes)"]" OnClick="@(() => CallAsync("resetLayout"))" /></MudTooltip>
+    <MudTooltip Text="@L["Collapse all computers"]"><MudIconButton Icon="@Icons.Material.Filled.UnfoldLess" aria-label="@L["Collapse all computers"]" OnClick="CollapseAsync" /></MudTooltip>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Image" OnClick="@(() => CallAsync("png"))">@L["Save as PNG"]</MudButton>
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-3">@L["Subnets from the addresses and masks of the computers and the device scan, connected by their routers. Click a group to show its computers (right-click hides them again), click a device or computer to open it, drag nodes to arrange them."]</MudText>
+
+@if (_map is { Nodes.Count: > 0 })
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2" Wrap="Wrap.Wrap">
+        <MudTextField T="string" Value="_search" ValueChanged="SearchAsync" Placeholder="@L["Find name or address …"]" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true" DebounceInterval="250" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 300px" />
+        <MudSelect T="string" Value="_subnet" ValueChanged="SubnetAsync" Label="@L["Subnet"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Style="max-width: 260px">
+            @foreach (var subnet in _map.Nodes.Where(n => n.Type == MapNodeType.Subnet))
+            {
+                <MudSelectItem T="string" Value="@subnet.Id">@(subnet.Detail is null ? subnet.Label : $"{subnet.Label} – {subnet.Detail}")</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSwitch T="bool" Value="_individually" ValueChanged="IndividuallyAsync" Color="Color.Primary" Label="@L["Show computers individually"]" />
+    </MudStack>
+    <MudChipSet T="string" SelectedValues="_shownKinds" SelectedValuesChanged="KindsAsync" SelectionMode="SelectionMode.MultiSelection" Class="mb-2">
+        @foreach (var kind in _kinds)
+        {
+            <MudChip T="string" Value="@kind.ToString()" Icon="@Display.DeviceIcon(kind)" Size="Size.Small" Variant="Variant.Outlined" Default="true">@Display.DeviceKind(kind)</MudChip>
+        }
+    </MudChipSet>
+}
+else if (_map is not null)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-3">@L["Nothing to draw yet. Scan computers (their network adapters give the subnets) or run the device scan on the Devices page."]</MudAlert>
+}
+
+<div @ref="_element" class="netmap" style="@(_map is { Nodes.Count: > 0 } ? null : "display: none")"></div>
+
+@if (_map is { Nodes.Count: > 0 })
+{
+    <MudText Typo="Typo.caption" Class="mt-2 d-block" Style="color: var(--mud-palette-text-secondary)">
+        @L["{0} subnets, {1} routers, {2} devices, {3} computers. Dashed outline: subnet assumed as /24 because no mask is known.", _map.Subnets,
+            _map.Nodes.Count(n => n.Type is MapNodeType.Router or MapNodeType.Gateway), _map.Nodes.Count(n => n.Type == MapNodeType.Device),
+            _map.Nodes.Where(n => n.Type == MapNodeType.Computer).Select(n => n.Href).Distinct().Count()]
+    </MudText>
+}
+
+@code {
+    [SupplyParameterFromQuery] public string? Focus { get; set; }
+
+    private ElementReference _element;
+    private Inventory.Core.NetworkMap? _map;
+    private DotNetObjectReference<MapCallbacks>? _callbacks;
+    private List<DeviceKind> _kinds = [];
+    private IReadOnlyCollection<string> _shownKinds = [];
+    private string? _search;
+    private string? _subnet;
+    private bool _individually;
+    private bool _rendered;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _map = await MapService.BuildAsync(await Access.AllowedComputersForDisplayAsync());
+        _kinds = [.. _map.Nodes.Where(n => n.Type == MapNodeType.Device).Select(n => Enum.Parse<DeviceKind>(n.Icon)).Distinct().OrderBy(k => Display.DeviceKind(k))];
+        _shownKinds = [.. _kinds.Select(k => k.ToString())];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_rendered || _map is not { Nodes.Count: > 0 })
+            return;
+        _rendered = true;
+        _callbacks = DotNetObjectReference.Create(new MapCallbacks(Navigation));
+        var labels = new
+        {
+            computers = L["{0} computers"].Value,
+            assumed = L["assumed"].Value,
+            expand = L["Click to show the computers"].Value,
+            open = L["Click to open"].Value,
+        };
+        await JS.InvokeVoidAsync("inventoryMap.render", _element, _map, NodeIcons(), labels, _callbacks, "lib/cytoscape/cytoscape.min.js");
+        if (!string.IsNullOrEmpty(Focus))
+            await JS.InvokeVoidAsync("inventoryMap.focus", Focus);
+    }
+
+    /// <summary>Weiße Symbole (MudBlazor-Pfade) als SVG-Daten für die Knoten, je Geräteart und Rechnerrolle.</summary>
+    private Dictionary<string, string> NodeIcons()
+    {
+        static string Svg(string path) => "data:image/svg+xml;utf8," + Uri.EscapeDataString($"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"#ffffff\">{path}</svg>");
+        var icons = Enum.GetValues<DeviceKind>().ToDictionary(k => k.ToString(), k => Svg(Display.DeviceIcon(k)));
+        icons[nameof(ChassisKind.Desktop)] = Svg(MudBlazor.Icons.Material.Filled.DesktopWindows);
+        icons[nameof(ChassisKind.Laptop)] = Svg(MudBlazor.Icons.Material.Filled.LaptopWindows);
+        icons[nameof(ChassisKind.Server)] = Svg(MudBlazor.Icons.Material.Filled.Dns);
+        icons[nameof(ChassisKind.VirtualMachine)] = Svg(MudBlazor.Icons.Material.Filled.Cloud);
+        icons[nameof(ChassisKind.Tablet)] = Svg(MudBlazor.Icons.Material.Filled.TabletMac);
+        return icons;
+    }
+
+    private async Task CallAsync(string method)
+    {
+        if (_rendered)
+            await JS.InvokeVoidAsync($"inventoryMap.{method}");
+    }
+
+    private async Task CollapseAsync()
+    {
+        _individually = false;
+        await CallAsync("collapseAll");
+    }
+
+    private async Task SearchAsync(string? text)
+    {
+        _search = text;
+        if (_rendered)
+            await JS.InvokeVoidAsync("inventoryMap.search", text ?? "");
+    }
+
+    private async Task SubnetAsync(string? subnet)
+    {
+        _subnet = subnet;
+        if (_rendered)
+            await JS.InvokeVoidAsync("inventoryMap.setSubnet", subnet);
+    }
+
+    private async Task IndividuallyAsync(bool value)
+    {
+        _individually = value;
+        if (_rendered)
+            await JS.InvokeVoidAsync("inventoryMap.setIndividually", value);
+    }
+
+    private async Task KindsAsync(IReadOnlyCollection<string>? shown)
+    {
+        _shownKinds = shown ?? [];
+        if (_rendered)
+            await JS.InvokeVoidAsync("inventoryMap.setHiddenKinds", _kinds.Select(k => k.ToString()).Except(_shownKinds).ToArray());
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_rendered)
+                await JS.InvokeVoidAsync("inventoryMap.dispose");
+        }
+        catch (JSDisconnectedException)
+        {
+            // Die Verbindung zum Browser ist schon weg.
+        }
+        _callbacks?.Dispose();
+    }
+
+    /// <summary>Rückrufe aus der Karte: Navigation zur Detailseite.</summary>
+    public sealed class MapCallbacks(NavigationManager navigation)
+    {
+        [JSInvokable]
+        public void Open(string href) => navigation.NavigateTo(href);
+    }
+}

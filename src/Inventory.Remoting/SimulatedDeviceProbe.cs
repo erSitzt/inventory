@@ -18,7 +18,8 @@ public sealed class SimulatedDeviceProbe : IDeviceProbe
             case 1:
                 Set(o, [22, 443], "fw-01", ssh: null, title: "FortiGate - Login");
                 if (snmp)
-                    o.Snmp = new SnmpFacts { SysName = "fw-01", SysDescr = "FortiGate-60F v7.2.8,build1639,240313 (GA.M)", SysObjectId = "1.3.6.1.4.1.12356.101.1.6005", SysLocation = "Server room", Forwarding = true, SerialNumber = "FGT60FTK2209XXXX", Model = "FortiGate-60F", UptimeSeconds = 3_600_000 };
+                    o.Snmp = new SnmpFacts { SysName = "fw-01", SysDescr = "FortiGate-60F v7.2.8,build1639,240313 (GA.M)", SysObjectId = "1.3.6.1.4.1.12356.101.1.6005", SysLocation = "Server room", Forwarding = true, SerialNumber = "FGT60FTK2209XXXX", Model = "FortiGate-60F", UptimeSeconds = 3_600_000,
+                        InterfaceAddresses = ["10.0.0.1/24", "10.0.1.1/24", "10.20.0.1/24"] };
                 break;
             case 2:
             case 3:
