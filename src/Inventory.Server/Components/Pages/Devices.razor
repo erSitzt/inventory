@@ -1,0 +1,275 @@
+@page "/devices"
+@implements IDisposable
+@inject DeviceService DeviceService
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<PageTitle>@L["Devices"] – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">@L["Network devices"]</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="api/devices/export.csv" Target="_blank">@L["Export (CSV)"]</MudButton>
+    <OperatorOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Radar" Disabled="@(_progress is not null || _ranges.Count == 0)"
+                   OnClick="@(() => ScanAsync(null))">@L["Scan all ranges"]</MudButton>
+    </OperatorOnly>
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">@L["Printers, switches, routers, storage, Linux servers and everything else that answers on the network – found without signing in, by ping, common ports, SNMP and the web interface of the devices."]</MudText>
+
+@if (_progress is { } progress)
+{
+    <MudPaper Outlined="true" Class="pa-3 mb-4">
+        <MudText Typo="Typo.body2">@L["Scanning \"{0}\": {1} of {2} addresses, {3} responded", progress.Range, progress.Done, progress.Total, progress.Found]</MudText>
+        <MudProgressLinear Color="Color.Primary" Value="@(progress.Total == 0 ? 0 : progress.Done * 100.0 / progress.Total)" Class="mt-2" />
+    </MudPaper>
+}
+
+<MudTabs Elevation="0" Outlined="true" Rounded="true" PanelClass="pa-3" @bind-ActivePanelIndex="_tab">
+    <MudTabPanel Text="@L["Devices ({0})", _devices.Count]">
+        @if (_devices.Count > 0)
+        {
+            <MudChipSet T="DeviceKind?" @bind-SelectedValue="_kind" SelectionMode="SelectionMode.ToggleSelection" Class="mb-2">
+                @foreach (var group in _devices.GroupBy(d => d.Kind).OrderByDescending(g => g.Count()))
+                {
+                    <MudChip T="DeviceKind?" Value="@group.Key" Icon="@Display.DeviceIcon(group.Key)" Size="Size.Small" Variant="Variant.Outlined">@Display.DeviceKind(group.Key): @group.Count()</MudChip>
+                }
+                @if (_devices.Any(UnmanagedWindows))
+                {
+                    <MudTooltip Text="@L["Windows computers on the network that are not in the inventory"]">
+                        <MudChip T="DeviceKind?" Value="@((DeviceKind)(-1))" Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">@L["Not inventoried"]: @_devices.Count(UnmanagedWindows)</MudChip>
+                    </MudTooltip>
+                }
+            </MudChipSet>
+        }
+        <MudDataGrid T="NetworkDevice" Items="@Filtered" Dense="true" Hover="true" SortMode="SortMode.Single" QuickFilter="QuickFilter" Filterable="false">
+            <ToolBarContent>
+                <MudTextField @bind-Value="_search" Placeholder="@L["Search name, address, model, manufacturer …"]" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 420px" />
+            </ToolBarContent>
+            <Columns>
+                <TemplateColumn Title="@L["Type"]" SortBy="d => Display.DeviceKind(d.Kind)">
+                    <CellTemplate>
+                        <MudTooltip Text="@(context.Item.KindReason is { } reason ? L["Detected by: {0}", reason] : null)" Disabled="@(context.Item.KindReason is null || context.Item.KindOverride is not null)">
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Display.DeviceIcon(context.Item.Kind)" Size="Size.Small" />
+                                <span>@Display.DeviceKind(context.Item.Kind)</span>
+                            </MudStack>
+                        </MudTooltip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["Name"]" SortBy="d => d.DisplayName">
+                    <CellTemplate><MudLink Href="@($"devices/{context.Item.Id}")">@context.Item.DisplayName</MudLink></CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["IP address"]" SortBy="d => IpRanges.SortKey(d.IpAddress)">
+                    <CellTemplate>@context.Item.IpAddress</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["Manufacturer / model"]" SortBy="d => (d.Manufacturer ?? d.MacVendor) + d.Model">
+                    <CellTemplate>
+                        @MakeAndModel(context.Item)
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="d => d.OsGuess" Title="@L["Operating system"]" />
+                <TemplateColumn Title="@L["Details"]" Sortable="false">
+                    <CellTemplate>
+                        @if (context.Item.Computer is { } computer)
+                        {
+                            <MudLink Href="@($"computers/{computer.Id}")"><MudIcon Icon="@Icons.Material.Filled.Computer" Size="Size.Small" Class="mr-1" Style="vertical-align: middle" />@computer.Name</MudLink>
+                        }
+                        else if (UnmanagedWindows(context.Item))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@L["Not inventoried"]</MudChip>
+                        }
+                        else if (context.Item.Supplies.Where(s => s.Percent is not null).MinBy(s => s.Percent) is { } lowest)
+                        {
+                            <MudTooltip Text="@string.Join(" · ", context.Item.Supplies.Select(s => $"{s.Description}: {(s.Percent is { } p ? p + " %" : "?")}"))">
+                                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.WaterDrop" Color="@(lowest.Percent <= 10 ? Color.Error : lowest.Percent <= 25 ? Color.Warning : Color.Default)" Variant="Variant.Outlined">@lowest.Description: @lowest.Percent %</MudChip>
+                            </MudTooltip>
+                        }
+                        else if (context.Item.SysLocation is { } location)
+                        {
+                            <span>@location</span>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["Last seen"]" SortBy="d => d.LastSeenUtc">
+                    <CellTemplate>
+                        <span style="@(Stale(context.Item) ? "color: var(--mud-palette-text-disabled)" : null)">@Display.LocalTime(context.Item.LastSeenUtc)</span>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <MudText Class="pa-4">@(_ranges.Count == 0 ? L["No devices yet. Add an address range on the second tab and start a scan."] : L["No devices found."])</MudText>
+            </NoRecordsContent>
+            <PagerContent><MudDataGridPager T="NetworkDevice" PageSizeOptions="@(new[] { 50, 100, 250 })" /></PagerContent>
+        </MudDataGrid>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@L["Address ranges ({0})", _ranges.Count]">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+            <MudText Typo="Typo.body2">@L["The server scans these ranges itself. SNMP communities: {0}.", _customCommunities ? L["custom"] : "public"]</MudText>
+            <MudSpacer />
+            <AdminOnly>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Key" OnClick="EditCommunitiesAsync">@L["SNMP communities"]</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditRangeAsync(null))">@L["Add range"]</MudButton>
+            </AdminOnly>
+        </MudStack>
+        <MudDataGrid T="NetworkRange" Items="_ranges" Dense="true" Hover="true" SortMode="SortMode.None">
+            <Columns>
+                <PropertyColumn Property="r => r.Name" Title="@L["Name"]" />
+                <PropertyColumn Property="r => r.Addresses" Title="@L["Addresses"]" />
+                <TemplateColumn Title="@L["Scheduled"]">
+                    <CellTemplate><MudIcon Icon="@(context.Item.Enabled ? Icons.Material.Filled.Check : Icons.Material.Filled.Remove)" Size="Size.Small" /></CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["SNMP"]">
+                    <CellTemplate>@(context.Item.ProtectedCommunities is null ? L["general"] : L["own"])</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@L["Last scan"]">
+                    <CellTemplate>
+                        @if (context.Item.LastScanUtc is not null)
+                        {
+                            <div>@Display.LocalTime(context.Item.LastScanUtc)</div>
+                            <MudText Typo="Typo.caption">@context.Item.LastResult</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn CellStyle="width: 1%; white-space: nowrap" Sortable="false">
+                    <CellTemplate>
+                        <OperatorOnly>
+                            <MudTooltip Text="@L["Scan now"]"><MudIconButton Icon="@Icons.Material.Filled.Radar" Size="Size.Small" aria-label="@L["Scan now"]" Disabled="@(_progress is not null)" OnClick="@(() => ScanAsync(context.Item))" /></MudTooltip>
+                        </OperatorOnly>
+                        <AdminOnly>
+                            <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditRangeAsync(context.Item))" /></MudTooltip>
+                            <MudTooltip Text="@L["Delete"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="@L["Delete"]" OnClick="@(() => DeleteRangeAsync(context.Item))" /></MudTooltip>
+                        </AdminOnly>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent><MudText Class="pa-4">@L["No address ranges yet."]</MudText></NoRecordsContent>
+        </MudDataGrid>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private List<NetworkDevice> _devices = [];
+    private List<NetworkRange> _ranges = [];
+    private bool _customCommunities;
+    private DeviceScanProgress? _progress;
+    private DeviceKind? _kind;
+    private string? _search;
+    private int _tab;
+
+    private IEnumerable<NetworkDevice> Filtered => _kind switch
+    {
+        null => _devices,
+        (DeviceKind)(-1) => _devices.Where(UnmanagedWindows),
+        { } kind => _devices.Where(d => d.Kind == kind),
+    };
+
+    /// <summary>"HP LaserJet …" statt "HP HP LaserJet …": viele Geräte nennen den Hersteller schon im Modell.</summary>
+    private static string MakeAndModel(NetworkDevice d)
+    {
+        var maker = d.Manufacturer ?? DeviceClassifier.ShortVendor(d.MacVendor);
+        if (string.IsNullOrEmpty(d.Model))
+            return maker ?? "";
+        return maker is null || d.Model.StartsWith(maker, StringComparison.OrdinalIgnoreCase) ? d.Model : $"{maker} {d.Model}";
+    }
+
+    private static bool UnmanagedWindows(NetworkDevice d) => d.Kind == DeviceKind.Windows && d.ComputerId is null;
+
+    /// <summary>Beim letzten Scan seines Bereichs nicht mehr gesehen.</summary>
+    private bool Stale(NetworkDevice d) => d.NetworkRange?.LastScanUtc is { } scanned && d.LastSeenUtc < scanned.AddMinutes(-30);
+
+    private bool QuickFilter(NetworkDevice d) => string.IsNullOrWhiteSpace(_search)
+        || new[] { d.DisplayName, d.IpAddress, d.Model, d.Manufacturer, d.MacVendor, d.MacAddress, d.OsGuess, d.SysLocation, d.SerialNumber, d.Computer?.Name, Display.DeviceKind(d.Kind) }
+            .Any(t => t?.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase) == true);
+
+    protected override async Task OnInitializedAsync()
+    {
+        DeviceService.ProgressChanged += OnProgress;
+        _progress = DeviceService.Current;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _devices = await DeviceService.ListAsync();
+        _ranges = await DeviceService.ListRangesAsync();
+        _customCommunities = await DeviceService.HasDefaultCommunitiesAsync();
+        if (_ranges.Count == 0)
+            _tab = 1;
+    }
+
+    private DateTime _lastRefresh;
+
+    private void OnProgress() => _ = InvokeAsync(async () =>
+    {
+        var finished = _progress is not null && DeviceService.Current is null;
+        _progress = DeviceService.Current;
+        // Während des Scans höchstens alle paar Sekunden neu laden; am Ende immer.
+        if (finished || DateTime.UtcNow - _lastRefresh > TimeSpan.FromSeconds(5))
+        {
+            _lastRefresh = DateTime.UtcNow;
+            await LoadAsync();
+        }
+        StateHasChanged();
+    });
+
+    private async Task ScanAsync(NetworkRange? range)
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        await Audit.LogAsync(L["Device scan started"], range?.Name);
+        _progress = new DeviceScanProgress(range?.Name ?? "", 0, 0, 0);
+        // Der Scan läuft unabhängig von der Seite weiter; wer sie wieder öffnet, sieht den Fortschritt.
+        _ = Task.Run(async () =>
+        {
+            var result = await DeviceService.ScanAsync(range?.Id, CancellationToken.None);
+            try
+            {
+                await InvokeAsync(() => Snackbar.Add(result, Severity.Info));
+            }
+            catch (ObjectDisposedException)
+            {
+                // Seite inzwischen geschlossen.
+            }
+        });
+    }
+
+    private async Task EditRangeAsync(NetworkRange? range)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var parameters = new DialogParameters<EditRangeDialog> { { d => d.Range, range } };
+        var dialog = await Dialogs.ShowAsync<EditRangeDialog>(range?.Name ?? L["Add range"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    private async Task DeleteRangeAsync(NetworkRange range)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete range"], L["Really delete \"{0}\"? The devices found in it remain.", range.Name], yesText: L["Delete"], cancelText: L["Cancel"]);
+        if (confirmed != true)
+            return;
+        await DeviceService.DeleteRangeAsync(range.Id);
+        await Audit.LogAsync(L["Address range deleted"], range.Name);
+        await LoadAsync();
+    }
+
+    private async Task EditCommunitiesAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var dialog = await Dialogs.ShowAsync<SnmpCommunitiesDialog>(L["SNMP communities"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    public void Dispose() => DeviceService.ProgressChanged -= OnProgress;
+}

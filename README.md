@@ -16,7 +16,7 @@ Every feature below comes with a picture of the page that belongs to it. The pic
 - [Overview and trends](#overview-and-trends) · [Computer list](#computer-list) ·
   [Inventory per computer](#inventory-per-computer) · [Security and configuration](#security-and-configuration) ·
   [Updates and patch status](#updates-and-patch-status) · [Software and apps](#software-and-apps) ·
-  [Change history](#change-history)
+  [Change history](#change-history) · [Network devices](#network-devices)
 - [Collections and maintenance windows](#collections-and-maintenance-windows) · [Packages and steps](#packages-and-steps) ·
   [Detection, prerequisites and user notice](#detection-prerequisites-and-user-notice) ·
   [Ready-made packages](#ready-made-packages)
@@ -104,6 +104,39 @@ ones. Parts of Windows and runtime libraries are left alone, and a name that mat
 Every scan is compared with the previous one: installed, removed and updated software, hotfixes, services, local
 administrators, hardware and system configuration appear as changes with time – per computer on its *History* tab and
 for all computers on *Changes*.
+
+### Network devices
+
+![Network devices](docs/screenshots/en/devices.png)
+
+Printers, switches, routers, firewalls, access points, storage, Linux servers, hypervisors, cameras, IP phones and UPS
+units: the server scans the address ranges you enter (CIDR, from–to or single addresses, at most 4096 per range) and
+finds out what answers – without signing in to the devices and without an agent:
+
+- **Ping and common ports** (29 TCP ports such as SSH, HTTP/HTTPS, SMB, RDP, IPP, JetDirect 9100, RTSP, SIP).
+- **SNMP v1/v2c** with the communities you store (encrypted; `public` if none): name, description, location, contact,
+  uptime, model, serial number and firmware (ENTITY MIB), router and switch detection (IP forwarding, bridge MIB) and
+  the ARP table of routers, which supplies MAC addresses for devices in other subnets. Printers report their **supplies
+  and page count** (printer MIB), UPS units their model (UPS MIB).
+- **Banners and web interface**: the SSH banner (gives away Ubuntu, Debian, RouterOS …), the title and server header of
+  the web page, the realm of its sign-in prompt and the subject of its TLS certificate.
+- **MAC vendor** from the public IEEE registry, for devices in the server's own subnet or behind a router that answers
+  SNMP.
+- **Windows computers** name themselves over SMB and are linked to the computer list; those missing from it are marked
+  *Not inventoried*.
+
+![Device details](docs/screenshots/en/device-detail.png)
+
+The detail page shows what each clue revealed and links to the device's web interface. A wrongly detected type can be
+corrected by hand, and name and notes survive the next scan. A schedule with the action *Network device scan* keeps the
+list current, the alert rule *A new device appears on the network* reports newcomers, and the list exports as CSV and
+through the API (`/api/devices`).
+
+![Address ranges](docs/screenshots/en/device-ranges.png)
+
+The scan contacts every address of a range on 29 ports; an intrusion detection system may report it as a port scan, so
+let the network team know. Routed subnets need to be reachable from the server (ICMP, the ports above, UDP 161 for
+SNMP).
 
 ### Collections and maintenance windows
 

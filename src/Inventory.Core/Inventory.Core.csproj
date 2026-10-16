@@ -8,6 +8,10 @@
     <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\oui.txt.gz" LogicalName="Inventory.Core.oui.txt.gz" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

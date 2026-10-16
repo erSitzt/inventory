@@ -16,6 +16,7 @@
                 <MudSelectItem T="ScheduleAction" Value="ScheduleAction.Scan">@L["Inventory scan"]</MudSelectItem>
                 <MudSelectItem T="ScheduleAction" Value="ScheduleAction.Deploy">@L["Deploy package"]</MudSelectItem>
                 <MudSelectItem T="ScheduleAction" Value="ScheduleAction.Report">@L["Send report"]</MudSelectItem>
+                <MudSelectItem T="ScheduleAction" Value="ScheduleAction.DeviceScan">@L["Network device scan"]</MudSelectItem>
             </MudSelect>
             @if (_s.Action == ScheduleAction.Report)
             {
@@ -56,7 +57,11 @@
                     <PilotEditor Collections="_collections" @bind-CollectionId="_s.PilotCollectionId" @bind-HoldHours="_s.PilotHoldHours" @bind-MaxFailurePercent="_s.PilotMaxFailurePercent" />
                 }
             }
-            @if (_s.Action != ScheduleAction.Report)
+            @if (_s.Action == ScheduleAction.DeviceScan)
+            {
+                <MudText Typo="Typo.body2">@L["Scans all enabled address ranges on the Devices page."]</MudText>
+            }
+            @if (_s.Action is not (ScheduleAction.Report or ScheduleAction.DeviceScan))
             {
                 <MudSelect T="int?" @bind-Value="_s.CollectionId" Label="@L["Target"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Placeholder="@L["All computers"]"
                            HelperText="@L["Dynamic collections are re-evaluated on every run."]">

@@ -1284,6 +1284,32 @@ namespace Inventory.Data.Migrations
                     b.ToTable("DeploymentTargets");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.DeviceSupply", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("NetworkDeviceId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NetworkDeviceId");
+
+                    b.ToTable("DeviceSupplies");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>
                 {
                     b.Property<long>("Id")
@@ -1320,6 +1346,168 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("TimeUtc");
 
                     b.ToTable("InventoryChanges");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.NetworkDevice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Banner")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DetectedKind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DiscoveredName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Firmware")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("FirstSeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HttpServer")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HttpTitle")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("KindOverride")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("KindReason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastSeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MacAddress")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MacVendor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Manufacturer")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("NetworkRangeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OpenPorts")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OsGuess")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("PageCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PingReply")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ReverseName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SerialNumber")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SnmpResponded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SshBanner")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SysContact")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SysDescr")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SysLocation")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SysObjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TlsSubject")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("UptimeSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.HasIndex("IpAddress")
+                        .IsUnique();
+
+                    b.HasIndex("MacAddress");
+
+                    b.HasIndex("NetworkRangeId");
+
+                    b.ToTable("NetworkDevices");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.NetworkRange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Addresses")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastResult")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastScanUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedCommunities")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("NetworkRanges");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.NotificationChannel", b =>
@@ -1938,6 +2126,15 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.DeviceSupply", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.NetworkDevice", null)
+                        .WithMany("Supplies")
+                        .HasForeignKey("NetworkDeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -1945,6 +2142,23 @@ namespace Inventory.Data.Migrations
                         .HasForeignKey("ComputerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.NetworkDevice", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", "Computer")
+                        .WithMany()
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Inventory.Core.Model.NetworkRange", "NetworkRange")
+                        .WithMany()
+                        .HasForeignKey("NetworkRangeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Computer");
+
+                    b.Navigation("NetworkRange");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.NotificationChannel", b =>
@@ -2075,6 +2289,11 @@ namespace Inventory.Data.Migrations
             modelBuilder.Entity("Inventory.Core.Model.Deployment", b =>
                 {
                     b.Navigation("Targets");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.NetworkDevice", b =>
+                {
+                    b.Navigation("Supplies");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Package", b =>

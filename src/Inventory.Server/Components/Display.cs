@@ -32,9 +32,50 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
         Inventory.Core.Model.AlertKind.BackupFailed => T("The database backup fails"),
         Inventory.Core.Model.AlertKind.UpdateFailed => T("The update of the server fails"),
         Inventory.Core.Model.AlertKind.NewComputer => T("A computer is added"),
+        Inventory.Core.Model.AlertKind.NewDevice => T("A new device appears on the network"),
         Inventory.Core.Model.AlertKind.ScanErrors => T("Scan errors reach a number of computers"),
         Inventory.Core.Model.AlertKind.LicenseExceeded => T("A licence is exceeded"),
         _ => kind.ToString(),
+    };
+
+    public string DeviceKind(DeviceKind kind) => kind switch
+    {
+        Inventory.Core.Model.DeviceKind.Printer => T("Printer"),
+        Inventory.Core.Model.DeviceKind.Switch => T("Switch"),
+        Inventory.Core.Model.DeviceKind.Router => T("Router"),
+        Inventory.Core.Model.DeviceKind.Firewall => T("Firewall"),
+        Inventory.Core.Model.DeviceKind.AccessPoint => T("Access point"),
+        Inventory.Core.Model.DeviceKind.Storage => T("Storage (NAS)"),
+        Inventory.Core.Model.DeviceKind.Linux => T("Linux/Unix"),
+        Inventory.Core.Model.DeviceKind.Windows => T("Windows"),
+        Inventory.Core.Model.DeviceKind.Hypervisor => T("Hypervisor"),
+        Inventory.Core.Model.DeviceKind.Camera => T("Camera"),
+        Inventory.Core.Model.DeviceKind.Phone => T("IP phone"),
+        Inventory.Core.Model.DeviceKind.Ups => T("UPS"),
+        Inventory.Core.Model.DeviceKind.Management => T("Server management"),
+        Inventory.Core.Model.DeviceKind.Iot => T("IoT / media"),
+        Inventory.Core.Model.DeviceKind.Apple => T("Apple"),
+        _ => T("Unknown type"),
+    };
+
+    public static string DeviceIcon(DeviceKind kind) => kind switch
+    {
+        Inventory.Core.Model.DeviceKind.Printer => MudBlazor.Icons.Material.Filled.Print,
+        Inventory.Core.Model.DeviceKind.Switch => MudBlazor.Icons.Material.Filled.Hub,
+        Inventory.Core.Model.DeviceKind.Router => MudBlazor.Icons.Material.Filled.Router,
+        Inventory.Core.Model.DeviceKind.Firewall => MudBlazor.Icons.Material.Filled.Security,
+        Inventory.Core.Model.DeviceKind.AccessPoint => MudBlazor.Icons.Material.Filled.Wifi,
+        Inventory.Core.Model.DeviceKind.Storage => MudBlazor.Icons.Material.Filled.Storage,
+        Inventory.Core.Model.DeviceKind.Linux => MudBlazor.Icons.Material.Filled.Terminal,
+        Inventory.Core.Model.DeviceKind.Windows => MudBlazor.Icons.Material.Filled.Computer,
+        Inventory.Core.Model.DeviceKind.Hypervisor => MudBlazor.Icons.Material.Filled.Layers,
+        Inventory.Core.Model.DeviceKind.Camera => MudBlazor.Icons.Material.Filled.Videocam,
+        Inventory.Core.Model.DeviceKind.Phone => MudBlazor.Icons.Material.Filled.Phone,
+        Inventory.Core.Model.DeviceKind.Ups => MudBlazor.Icons.Material.Filled.BatteryChargingFull,
+        Inventory.Core.Model.DeviceKind.Management => MudBlazor.Icons.Material.Filled.SettingsRemote,
+        Inventory.Core.Model.DeviceKind.Iot => MudBlazor.Icons.Material.Filled.DevicesOther,
+        Inventory.Core.Model.DeviceKind.Apple => MudBlazor.Icons.Material.Filled.PhoneIphone,
+        _ => MudBlazor.Icons.Material.Filled.QuestionMark,
     };
 
     /// <summary>Der Auslöser einer Regel samt Sammlung und Schwelle.</summary>

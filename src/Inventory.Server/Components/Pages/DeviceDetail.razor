@@ -1,0 +1,203 @@
+@page "/devices/{Id:int}"
+@inject DeviceService DeviceService
+@inject IDialogService Dialogs
+@inject NavigationManager Navigation
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<PageTitle>@(_device?.DisplayName ?? L["Device"]) – Inventory</PageTitle>
+
+@if (_device is null)
+{
+    @if (_loaded)
+    {
+        <MudAlert Severity="Severity.Warning">@L["This device does not exist (anymore)."] <MudLink Href="devices">@L["Back to the list"]</MudLink></MudAlert>
+    }
+    return;
+}
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudTooltip Text="@L["Back to the list"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="devices" aria-label="@L["Back to the list"]" /></MudTooltip>
+    <MudIcon Icon="@Display.DeviceIcon(_device.Kind)" />
+    <MudText Typo="Typo.h5">@_device.DisplayName</MudText>
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@Display.DeviceKind(_device.Kind)</MudChip>
+    <MudSpacer />
+    @foreach (var (url, label) in WebLinks())
+    {
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.OpenInNew" Href="@url" Target="_blank" rel="noopener noreferrer">@label</MudButton>
+    }
+    <OperatorOnly>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="EditAsync">@L["Edit"]</MudButton>
+    </OperatorOnly>
+    <AdminOnly>
+        <MudTooltip Text="@L["Delete"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="@L["Delete"]" OnClick="DeleteAsync" /></MudTooltip>
+    </AdminOnly>
+</MudStack>
+
+@if (_device.Kind == DeviceKind.Windows && _device.ComputerId is null)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">@L["A Windows computer that is not in the inventory. Add it on the Computers page (or let the AD synchronization find it) to scan it and deploy software."]</MudAlert>
+}
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+            <tbody>
+                @Row(L["IP address"], _device.IpAddress)
+                @Row(L["Discovered name"], _device.DiscoveredName)
+                @Row(L["Reverse DNS"], _device.ReverseName)
+                @Row(L["MAC address"], _device.MacAddress)
+                @Row(L["MAC vendor"], _device.MacVendor)
+                @Row(L["Manufacturer"], _device.Manufacturer)
+                @Row(L["Model"], _device.Model)
+                @Row(L["Serial number"], _device.SerialNumber)
+                @Row(L["Firmware"], _device.Firmware)
+                @Row(L["Operating system"], _device.OsGuess)
+                @Row(L["Detected by"], _device.KindOverride is null ? _device.KindReason : L["set by hand (detected: {0})", Display.DeviceKind(_device.DetectedKind)])
+            </tbody>
+        </MudSimpleTable>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+            <tbody>
+                <tr>
+                    <td style="width: 40%; color: var(--mud-palette-text-secondary)">@L["Computer"]</td>
+                    <td>
+                        @if (_device.Computer is { } computer)
+                        {
+                            <MudLink Href="@($"computers/{computer.Id}")">@computer.Name</MudLink>
+                        }
+                        else
+                        {
+                            <span>–</span>
+                        }
+                    </td>
+                </tr>
+                @Row(L["Address range"], _device.NetworkRange?.Name)
+                @Row(L["Location"], _device.SysLocation)
+                @Row(L["Contact"], _device.SysContact)
+                @Row(L["Uptime"], _device.UptimeSeconds is { } up ? Uptime(up) : null)
+                @Row(L["Responds to ping"], Display.YesNo(_device.PingReply))
+                @Row(L["Responds to SNMP"], Display.YesNo(_device.SnmpResponded))
+                @Row(L["First seen"], Display.LocalTime(_device.FirstSeenUtc))
+                @Row(L["Last seen"], Display.LocalTime(_device.LastSeenUtc))
+                @Row(L["Notes"], _device.Notes)
+            </tbody>
+        </MudSimpleTable>
+    </MudItem>
+
+    @if (_device.Supplies.Count > 0 || _device.PageCount is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudPaper Outlined="true" Class="pa-3">
+                <MudText Typo="Typo.h6" Class="mb-2">@L["Supplies"]</MudText>
+                @if (_device.PageCount is { } pages)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-2">@L["Page count: {0}", pages.ToString("N0")]</MudText>
+                }
+                @foreach (var supply in _device.Supplies)
+                {
+                    <MudText Typo="Typo.body2">@supply.Description: @(supply.Percent is { } percent ? $"{percent} %" : SupplyState(supply))</MudText>
+                    @if (supply.Percent is { } value)
+                    {
+                        <MudProgressLinear Value="value" Color="@(value <= 10 ? Color.Error : value <= 25 ? Color.Warning : Color.Primary)" Size="Size.Medium" Rounded="true" Class="mb-2" />
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    }
+
+    <MudItem xs="12" md="6">
+        <MudPaper Outlined="true" Class="pa-3">
+            <MudText Typo="Typo.h6" Class="mb-2">@L["Open ports"]</MudText>
+            @if (!_device.Ports.Any())
+            {
+                <MudText Typo="Typo.body2">@L["None of the checked ports is open."]</MudText>
+            }
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                @foreach (var port in _device.Ports)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@DevicePorts.Describe(port)</MudChip>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Outlined="true" Class="pa-3">
+            <MudText Typo="Typo.h6" Class="mb-2">@L["What the device reports"]</MudText>
+            <MudSimpleTable Dense="true" Elevation="0">
+                <tbody>
+                    @Row("sysDescr", _device.SysDescr)
+                    @Row("sysObjectID", _device.SysObjectId)
+                    @Row(L["SSH banner"], _device.SshBanner)
+                    @Row(L["Banner"], _device.Banner)
+                    @Row(L["Web server"], _device.HttpServer)
+                    @Row(L["Web page title"], _device.HttpTitle)
+                    @Row(L["TLS certificate"], _device.TlsSubject)
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private NetworkDevice? _device;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _device = await DeviceService.GetAsync(Id);
+        _loaded = true;
+    }
+
+    /// <summary>Weboberfläche des Geräts, HTTPS bevorzugt.</summary>
+    private IEnumerable<(string Url, string Label)> WebLinks()
+    {
+        var ports = _device!.Ports.ToHashSet();
+        if (DevicePorts.Https.FirstOrDefault(ports.Contains) is > 0 and var https)
+            yield return ($"https://{_device.IpAddress}{(https == 443 ? "" : $":{https}")}/", L["Web interface"]);
+        else if (DevicePorts.Http.FirstOrDefault(ports.Contains) is > 0 and var http)
+            yield return ($"http://{_device.IpAddress}{(http == 80 ? "" : $":{http}")}/", L["Web interface"]);
+    }
+
+    private string Uptime(long seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        return span.TotalDays >= 1 ? L["{0} days, {1} hours", (int)span.TotalDays, span.Hours] : L["{0} hours, {1} minutes", span.Hours, span.Minutes];
+    }
+
+    /// <summary>Drucker-MIB: -3 = vorhanden, Menge unbekannt; -2 = unbekannt; -1 = keine Angabe.</summary>
+    private string SupplyState(DeviceSupply supply) => supply.Level == -3 ? L["present"] : L["unknown"];
+
+    private async Task EditAsync()
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        var parameters = new DialogParameters<EditDeviceDialog> { { d => d.Device, _device } };
+        var dialog = await Dialogs.ShowAsync<EditDeviceDialog>(_device!.DisplayName, parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            _device = await DeviceService.GetAsync(Id);
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Delete device"], L["Really delete \"{0}\"? The next scan finds it again if it still answers.", _device!.DisplayName], yesText: L["Delete"], cancelText: L["Cancel"]);
+        if (confirmed != true)
+            return;
+        await DeviceService.DeleteAsync(_device.Id);
+        await Audit.LogAsync(L["Device deleted"], $"{_device.DisplayName} ({_device.IpAddress})");
+        Navigation.NavigateTo("devices");
+    }
+
+    private static RenderFragment Row(string label, string? value) => @<tr>
+        <td style="width: 40%; color: var(--mud-palette-text-secondary)">@label</td>
+        <td style="word-break: break-word">@(string.IsNullOrWhiteSpace(value) ? "–" : value)</td>
+    </tr>;
+}

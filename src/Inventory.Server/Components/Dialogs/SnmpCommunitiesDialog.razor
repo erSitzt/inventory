@@ -1,0 +1,36 @@
+@inject DeviceService Devices
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">@L["The device scan tries these communities one after another (SNMP v2c, then v1). They are stored encrypted and never shown again. Ranges can have their own."]</MudText>
+            <MudTextField @bind-Value="_communities" Label="@L["SNMP communities"]" Variant="Variant.Outlined" Lines="3" AutoFocus="true"
+                          HelperText="@(_stored ? L["Custom communities are stored. Enter new ones to replace them, or leave empty to go back to \"public\"."] : L["One per line. Empty = \"public\"."])" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string? _communities;
+    private bool _stored;
+
+    protected override async Task OnInitializedAsync() => _stored = await Devices.HasDefaultCommunitiesAsync();
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await Devices.SetDefaultCommunitiesAsync(_communities);
+        await Audit.LogAsync(L["SNMP communities changed"]);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

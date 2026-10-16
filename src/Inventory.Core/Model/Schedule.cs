@@ -6,6 +6,8 @@ public enum ScheduleAction
     Deploy,
     /// <summary>Einen gespeicherten Bericht über die Benachrichtigungskanäle verschicken.</summary>
     Report = 2,
+    /// <summary>Alle eingeschalteten IP-Bereiche nach Netzwerkgeräten absuchen.</summary>
+    DeviceScan = 3,
 }
 
 public enum ScheduleTrigger

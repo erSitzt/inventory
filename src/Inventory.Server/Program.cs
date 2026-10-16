@@ -64,12 +64,14 @@ if (options.ResolveSimulate())
     builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.SmbService));
     builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.WinRm));
     builder.Services.AddSingleton<IDirectorySource, SimulatedDirectorySource>();
+    builder.Services.AddSingleton<IDeviceProbe, SimulatedDeviceProbe>();
 }
 else
 {
     builder.Services.AddSingleton<IHostProbe, TcpHostProbe>();
     builder.Services.AddSingleton<IWakeSender, UdpWakeSender>();
     builder.Services.AddSingleton<IDirectorySource, LdapDirectorySource>();
+    builder.Services.AddSingleton<IDeviceProbe, Inventory.Remoting.Devices.DeviceProbe>();
     if (OperatingSystem.IsWindows())
     {
         builder.Services.AddSingleton<IRemoteTransport, SmbServiceTransport>();
@@ -97,6 +99,7 @@ builder.Services.AddSingleton<ReportService>();
 builder.Services.AddSingleton<SavedReportService>();
 builder.Services.AddSingleton<TrendService>();
 builder.Services.AddSingleton<LicenseService>();
+builder.Services.AddSingleton<DeviceService>();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<SignInLog>();
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System, Path.Combine(dataDirectory, "keys")));
@@ -226,6 +229,7 @@ app.MapStaticAssets();
 app.MapComputerEndpoints();
 app.MapPackageEndpoints();
 app.MapReportEndpoints();
+app.MapDeviceEndpoints();
 app.MapManagementEndpoints();
 app.MapAgentEndpoints();
 // Dokumentation unter /api/docs, Beschreibung unter /api/openapi.json; gleiche Anmeldung wie die übrige API.
