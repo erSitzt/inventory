@@ -26,7 +26,8 @@ public sealed record MapNode(string Id, string Type, string Label, string? Detai
 
 public sealed record MapEdge(string Source, string Target);
 
-public sealed record NetworkMap(List<MapNode> Nodes, List<MapEdge> Edges)
+/// <param name="Networks">Die relevanten Netze, auf die die Karte beschränkt ist; leer = alle.</param>
+public sealed record NetworkMap(List<MapNode> Nodes, List<MapEdge> Edges, IReadOnlyList<string>? Networks = null)
 {
     public int Subnets => Nodes.Count(n => n.Type == MapNodeType.Subnet);
 }
@@ -42,19 +43,26 @@ public sealed record MapComputer(int Id, string Name, bool Online, ChassisKind R
 /// den CIDR-Angaben der Gerätebereiche; Router aus dem Gerätescan und den Gateways der Rechner. Rechner werden je Subnetz zu einem
 /// Sammelknoten zusammengefasst, Netzwerkgeräte stehen einzeln.
 /// </summary>
+/// <remarks>
+/// Sind relevante Netze angegeben, zeichnet die Karte nur Subnetze, Geräte und Wege darin; Rechner-Adressen außerhalb landen
+/// im Sammelknoten der Heim- und Fremdnetze, ohne die Netze einzeln aufzuführen.
+/// </remarks>
 public static class NetworkMapBuilder
 {
     private const int AssumedPrefix = 24;
 
     public static NetworkMap Build(IReadOnlyList<MapComputer> computers, IReadOnlyList<NetworkDevice> devices, IReadOnlyList<(string Name, string Addresses)> ranges,
-        IReadOnlyList<NetworkTrace>? traces = null)
+        IReadOnlyList<NetworkTrace>? traces = null, IReadOnlyList<string>? networks = null)
     {
-        traces ??= [];
+        networks ??= [];
+        bool Relevant(string? addressOrCidr) => IpRanges.InAny(networks, addressOrCidr);
+        devices = [.. devices.Where(d => Relevant(d.IpAddress))];
+        traces = [.. (traces ?? []).Where(t => Relevant(t.Target))];
         var ranged = new HashSet<string>();
         var subnets = new Dictionary<string, (string? Name, bool Assumed)>();
         void AddSubnet(string? cidr, string? name = null)
         {
-            if (cidr is null || IpRanges.PrefixOf(cidr) is < 8 or > 30)
+            if (cidr is null || IpRanges.PrefixOf(cidr) is < 8 or > 30 || !Relevant(cidr))
                 return;
             if (!subnets.TryGetValue(cidr, out var known) || known.Assumed || (known.Name is null && name is not null))
                 subnets[cidr] = (name ?? (subnets.TryGetValue(cidr, out var old) ? old.Name : null), false);
@@ -94,12 +102,12 @@ public static class NetworkMapBuilder
         var remote = new HashSet<string>();
         foreach (var computer in computers.Where(c => IpRanges.IsUsable(c.ReachableIp)))
             foreach (var (ip, prefix) in computer.Addresses.Where(a => a.Prefix is not null && IpRanges.IsUsable(a.Ip)))
-                if (IpRanges.Network(ip, prefix!.Value) is { } cidr && !IpRanges.Contains(cidr, computer.ReachableIp) && !Confirmed(cidr))
+                if (IpRanges.Network(ip, prefix!.Value) is { } cidr && !IpRanges.Contains(cidr, computer.ReachableIp) && Relevant(cidr) && !Confirmed(cidr))
                     remote.Add(cidr);
         // Die Adresse, über die der Server einen erreichbaren Rechner anspricht, zählt selbst als Adresse (z. B. das VPN-Netz).
         computers = [.. computers.Select(c => c.Online && IpRanges.IsUsable(c.ReachableIp) && c.Addresses.All(a => a.Ip != c.ReachableIp)
             ? c with { Addresses = [.. c.Addresses, (c.ReachableIp!, null)] } : c)];
-        bool IsRemote(string ip) => remote.Any(r => IpRanges.Contains(r, ip));
+        bool IsRemote(string ip) => !Relevant(ip) || remote.Any(r => IpRanges.Contains(r, ip));
 
         var nodes = new List<MapNode>();
         var edges = new HashSet<MapEdge>();
@@ -234,9 +242,10 @@ public static class NetworkMapBuilder
         nodes.InsertRange(0, subnets.Where(s => used.Contains(s.Key) && (IpRanges.PrefixOf(s.Key) < 29 || parents.Contains(s.Key) || ranged.Contains(s.Key))).OrderBy(s => IpRanges.SortKey(s.Key.Split('/')[0]))
             .Select(s => new MapNode(s.Key, MapNodeType.Subnet, s.Key, s.Value.Name, null, null, "subnet", Assumed: s.Value.Assumed)));
         if (parents.Contains(MapNodeType.Remote))
-            nodes.Insert(0, new MapNode(MapNodeType.Remote, MapNodeType.Subnet, MapNodeType.Remote, string.Join(", ", remote.OrderBy(r => IpRanges.SortKey(r.Split('/')[0]))), null, null, "subnet"));
+            nodes.Insert(0, new MapNode(MapNodeType.Remote, MapNodeType.Subnet, MapNodeType.Remote,
+                remote.Count == 0 ? null : string.Join(", ", remote.OrderBy(r => IpRanges.SortKey(r.Split('/')[0]))), null, null, "subnet"));
         var ids = nodes.Select(n => n.Id).ToHashSet();
-        return new NetworkMap(nodes, [.. edges.Where(e => e.Source != e.Target && ids.Contains(e.Source) && ids.Contains(e.Target))]);
+        return new NetworkMap(nodes, [.. edges.Where(e => e.Source != e.Target && ids.Contains(e.Source) && ids.Contains(e.Target))], networks);
     }
 
     /// <summary>

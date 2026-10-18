@@ -17,6 +17,7 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
         var devices = await db.NetworkDevices.AsNoTracking().ToListAsync(ct);
         var ranges = await db.NetworkRanges.AsNoTracking().Select(r => new { r.Name, r.Addresses }).ToListAsync(ct);
         var traces = await db.NetworkTraces.AsNoTracking().ToListAsync(ct);
+        var networks = await NetworksAsync(db, ct);
 
         var mapComputers = computers.Where(c => allowedComputers is null || allowedComputers.Contains(c.Id)).Select(c =>
         {
@@ -33,7 +34,44 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
         }).ToList();
         // Geräte, die zu einem nicht sichtbaren Rechner gehören, bleiben ebenfalls weg.
         var visibleDevices = devices.Where(d => d.ComputerId is not { } id || allowedComputers is null || allowedComputers.Contains(id)).ToList();
-        return NetworkMapBuilder.Build(mapComputers, visibleDevices, [.. ranges.Select(r => (r.Name, r.Addresses))], traces);
+        return NetworkMapBuilder.Build(mapComputers, visibleDevices, [.. ranges.Select(r => (r.Name, r.Addresses))], traces, networks);
+    }
+
+    /// <summary>Die relevanten Netze; leer = alle.</summary>
+    public async Task<List<string>> GetNetworksAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await NetworksAsync(db, ct);
+    }
+
+    /// <summary>Speichert die relevanten Netze; leer = alle.</summary>
+    /// <exception cref="FormatException">Eine Angabe ist kein IPv4-Netz.</exception>
+    public async Task SetNetworksAsync(string? text, CancellationToken ct = default)
+    {
+        var networks = IpRanges.ParseNetworks(text);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var setting = await db.Settings.FindAsync([SettingKeys.NetworkMapNetworks], ct);
+        var value = networks.Count > 0 ? string.Join(",", networks) : null;
+        if (setting is null)
+            db.Settings.Add(new Setting { Key = SettingKeys.NetworkMapNetworks, Value = value });
+        else
+            setting.Value = value;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Für Dienste, die bereits einen Kontext offen haben (Gerätescan).</summary>
+    internal static async Task<List<string>> NetworksAsync(InventoryDbContext db, CancellationToken ct)
+    {
+        var stored = await db.Settings.Where(s => s.Key == SettingKeys.NetworkMapNetworks).Select(s => s.Value).FirstOrDefaultAsync(ct);
+        try
+        {
+            return IpRanges.ParseNetworks(stored);
+        }
+        catch (FormatException)
+        {
+            // Nur über SetNetworksAsync gespeichert; ein beschädigter Wert soll die Karte nicht leeren.
+            return [];
+        }
     }
 
     private static string[] Split(string? text) => (text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

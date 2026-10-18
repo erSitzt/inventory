@@ -118,6 +118,48 @@ public static class IpRanges
         return (value & mask) == (network & mask);
     }
 
+    /// <summary>
+    /// Liest eine Liste von Netzen beliebiger Größe ("10.0.0.0/15", "192.168.10.x", einzelne Adressen als /32) und gibt sie
+    /// als CIDR auf der Netzadresse zurück, ohne Doppelte.
+    /// </summary>
+    /// <exception cref="FormatException">Eine Angabe ist kein IPv4-Netz.</exception>
+    public static List<string> ParseNetworks(string? text)
+    {
+        var networks = new List<string>();
+        foreach (var part in (text ?? "").Split([',', ';', '\n', '\r', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var (address, prefix) = (part, 32);
+            if (part.IndexOf('/') is > 0 and var slash)
+            {
+                if (!int.TryParse(part[(slash + 1)..], out prefix) || prefix is < 1 or > 32)
+                    throw new FormatException($"'{part}': the prefix must be between /1 and /32.");
+                address = part[..slash];
+            }
+            else
+            {
+                // 192.168.10.x oder 10.*.*.*: Platzhalter am Ende stehen für ganze Oktette.
+                var octets = part.Split('.');
+                var wild = octets.Reverse().TakeWhile(o => o is "x" or "X" or "*").Count();
+                if (octets.Length == 4 && wild is > 0 and < 4)
+                    (address, prefix) = (string.Join('.', octets.Take(4 - wild).Concat(Enumerable.Repeat("0", wild))), 32 - 8 * wild);
+            }
+            var network = Network(ToAddress(ToValue(address)).ToString(), prefix)!;
+            if (!networks.Contains(network))
+                networks.Add(network);
+        }
+        return networks;
+    }
+
+    /// <summary>True, wenn sich zwei CIDR-Netze überschneiden (eines liegt im anderen).</summary>
+    public static bool Overlaps(string a, string b) =>
+        Contains(a, a.Split('/')[0]) && Contains(b, b.Split('/')[0]) && (Contains(a, b.Split('/')[0]) || Contains(b, a.Split('/')[0]));
+
+    /// <summary>True, wenn die Adresse (oder das CIDR-Netz) in einem der Netze liegt bzw. sich mit einem überschneidet; eine leere Liste lässt alles zu.</summary>
+    public static bool InAny(IReadOnlyCollection<string> networks, string? addressOrCidr) =>
+        networks.Count == 0 || (addressOrCidr is not null && (addressOrCidr.Contains('/')
+            ? networks.Any(n => Overlaps(n, addressOrCidr))
+            : networks.Any(n => Contains(n, addressOrCidr))));
+
     /// <summary>Präfixlänge eines CIDR-Netzes; -1, wenn es keins ist.</summary>
     public static int PrefixOf(string cidr) =>
         cidr.IndexOf('/') is > 0 and var slash && int.TryParse(cidr[(slash + 1)..], out var prefix) ? prefix : -1;

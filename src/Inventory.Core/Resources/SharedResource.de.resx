@@ -359,6 +359,9 @@
   <data name="Administrator" xml:space="preserve">
     <value>Administrator</value>
   </data>
+  <data name='Administrators can limit the map to the relevant networks ("Relevant networks"); home networks of notebooks then only count under "Home and other networks", and traceroute and the gateway check stay inside.' xml:space="preserve">
+    <value>Administratoren können die Karte auf die relevanten Netze beschränken („Relevante Netze“); Heimnetze der Notebooks zählen dann nur gesammelt unter „Heim- und Fremdnetze“, und Traceroute und Gateway-Prüfung bleiben innerhalb.</value>
+  </data>
   <data name="Adopt new versions automatically" xml:space="preserve">
     <value>Neue Versionen automatisch übernehmen</value>
   </data>
@@ -784,6 +787,9 @@
   </data>
   <data name="CIDR (192.168.10.0/24), range (192.168.10.20-192.168.10.80 or 192.168.10.20-80) or single addresses, separated by commas or lines. At most 4096 addresses." xml:space="preserve">
     <value>CIDR (192.168.10.0/24), Bereich (192.168.10.20-192.168.10.80 oder 192.168.10.20-80) oder einzelne Adressen, getrennt durch Komma oder Zeilenumbruch. Höchstens 4096 Adressen.</value>
+  </data>
+  <data name="CIDR of any size (10.0.0.0/8) or 192.168.10.x, separated by commas or lines. Empty = all networks." xml:space="preserve">
+    <value>CIDR beliebiger Größe (10.0.0.0/8) oder 192.168.10.x, getrennt durch Kommas oder Zeilen. Leer = alle Netze.</value>
   </data>
   <data name="Classification" xml:space="preserve">
     <value>Klassifizierung</value>
@@ -2180,6 +2186,9 @@
   <data name="Light" xml:space="preserve">
     <value>Hell</value>
   </data>
+  <data name="Limited to the relevant networks {0}." xml:space="preserve">
+    <value>Beschränkt auf die relevanten Netze {0}.</value>
+  </data>
   <data name="Limits (active)" xml:space="preserve">
     <value>Grenzen (aktiv)</value>
   </data>
@@ -2416,6 +2425,9 @@
   </data>
   <data name="Networks of computers that the server reaches through another address (VPN), e.g. at home" xml:space="preserve">
     <value>Netze von Rechnern, die der Server über eine andere Adresse (VPN) erreicht, z. B. zu Hause</value>
+  </data>
+  <data name="Networks outside the relevant networks, and networks of computers that the server reaches through another address (VPN)" xml:space="preserve">
+    <value>Netze außerhalb der relevanten Netze und Netze von Rechnern, die der Server über eine andere Adresse (VPN) erreicht</value>
   </data>
   <data name="never" xml:space="preserve">
     <value>nie</value>
@@ -3400,6 +3412,12 @@
   </data>
   <data name="Released" xml:space="preserve">
     <value>Veröffentlicht</value>
+  </data>
+  <data name="Relevant networks" xml:space="preserve">
+    <value>Relevante Netze</value>
+  </data>
+  <data name="Relevant networks changed" xml:space="preserve">
+    <value>Relevante Netze geändert</value>
   </data>
   <data name="Reload" xml:space="preserve">
     <value>Neu laden</value>
@@ -4453,6 +4471,9 @@
   </data>
   <data name='The name pattern decides which programs count, e.g. "Microsoft Office*".' xml:space="preserve">
     <value>Das Namensmuster bestimmt, welche Programme zählen, z. B. „Microsoft Office*“.</value>
+  </data>
+  <data name="The network map, the network paths and the check of the computers' gateways stay within these networks. Everything else – home networks, hotels, mobile hotspots – is only counted under &quot;Home and other networks&quot;." xml:space="preserve">
+    <value>Netzwerkkarte, Netzwege und die Prüfung der Gateways der Rechner bleiben innerhalb dieser Netze. Alles andere – Heimnetze, Hotels, mobile Hotspots – zählt nur gesammelt unter „Heim- und Fremdnetze“.</value>
   </data>
   <data name="The next run deletes {0}{1}." xml:space="preserve">
     <value>Der nächste Lauf löscht {0}{1}.</value>

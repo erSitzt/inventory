@@ -9,6 +9,7 @@
 @inject DeviceService Devices
 @inject ISnackbar Snackbar
 @inject Auditor Audit
+@inject IDialogService Dialogs
 
 <PageTitle>@L["Network map"] – Inventory</PageTitle>
 
@@ -26,9 +27,16 @@
             </MudButton>
         </MudTooltip>
     </OperatorOnly>
+    <AdminOnly>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.FilterAlt" OnClick="NetworksAsync">@L["Relevant networks"]</MudButton>
+    </AdminOnly>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Image" OnClick="@(() => CallAsync("png"))">@L["Save as PNG"]</MudButton>
 </MudStack>
 <MudText Typo="Typo.body2" Class="mb-3">@L["The subnets and the routers that connect them. Click a subnet to show its devices and computers, click its frame to fold it again; drag subnets and routers to arrange them."]</MudText>
+@if (_map?.Networks is { Count: > 0 } networks)
+{
+    <MudText Typo="Typo.body2" Class="mb-3" Style="color: var(--mud-palette-text-secondary)">@L["Limited to the relevant networks {0}.", string.Join(", ", networks)]</MudText>
+}
 
 @if (_map is { Nodes.Count: > 0 })
 {
@@ -80,6 +88,16 @@ else if (_map is not null)
     private bool _rendered;
     private bool _tracing;
 
+    private async Task NetworksAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<NetworkScopeDialog>(L["Relevant networks"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if ((await dialog.Result) is not { Canceled: false })
+            return;
+        await LoadAsync();
+        _rendered = false;
+        StateHasChanged();
+    }
+
     private async Task TraceAsync()
     {
         if (!await Access.DemandOperatorAsync())
@@ -118,7 +136,9 @@ else if (_map is not null)
             gateway = L["Gateway"].Value,
             server = L["Inventory server"].Value,
             remote = L["Home and other networks"].Value,
-            remoteHint = L["Networks of computers that the server reaches through another address (VPN), e.g. at home"].Value,
+            remoteHint = (_map.Networks is { Count: > 0 }
+                ? L["Networks outside the relevant networks, and networks of computers that the server reaches through another address (VPN)"]
+                : L["Networks of computers that the server reaches through another address (VPN), e.g. at home"]).Value,
             assumedHint = L["Assumed as /24 – no subnet mask known"].Value,
             expand = L["Click to show the computers"].Value,
             expandSubnet = L["Click to show devices and computers"].Value,

@@ -53,6 +53,7 @@ public static class HelpTopics
                 L["The device scan traces the path from the server into every subnet; the hops connect routers with each other and show where the server sits."],
                 L["The map starts with subnets and routers only; click a subnet to show its devices and computers, and a computer group to show the single computers."],
                 L["Search, the subnet selection and the type chips narrow the view; \"Save as PNG\" exports the current diagram."],
+                L["Administrators can limit the map to the relevant networks (\"Relevant networks\"); home networks of notebooks then only count under \"Home and other networks\", and traceroute and the gateway check stay inside."],
             ], L["network-map"]),
             ("run", _) => new(L["Remote command"], L["Runs a command or a short PowerShell script on several computers at once and shows the output live."],
             [

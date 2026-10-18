@@ -160,6 +160,9 @@ Subnetz: zuerst die Netzinfrastruktur, dann Server und Speicher, dann Peripherie
 sich mit einem weiteren Klick öffnet. Die Suche öffnet die Subnetze ihrer Treffer, Subnetz-Filter und Gerätearten
 grenzen die Ansicht ein, beim Überfahren werden die Verbindungen hervorgehoben, Subnetze und Router lassen sich
 verschieben (die Anordnung merkt sich der Browser), und das Diagramm lässt sich als PNG speichern. Subnetze ohne bekannte Maske werden als /24 angenommen und gestrichelt gezeichnet.
+Unter „Relevante Netze“ legen Administratoren fest, welche Netze zum Unternehmen gehören (CIDR beliebiger Größe
+oder `192.168.10.x`, etwa das Firmennetz und die VPN-Pools). Die Karte zeichnet dann nur diese; die Heimnetze der Notebooks
+zählen gesammelt unter „Heim- und Fremdnetze“, und Traceroute und Gateway-Prüfung bleiben innerhalb dieser Netze.
 Das Diagramm nutzt [Cytoscape.js](https://js.cytoscape.org/) (MIT-Lizenz), das mit dem Server ausgeliefert wird.
 
 ### Sammlungen und Wartungsfenster

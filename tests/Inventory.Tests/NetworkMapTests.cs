@@ -206,4 +206,84 @@ public class NetworkMapTests
         Assert.Contains(new MapEdge(firewall.Id, branch.Id), map.Edges);
         Assert.Contains(new MapEdge(branch.Id, "10.20.0.0/24"), map.Edges);
     }
+
+    [Theory]
+    [InlineData("10.0.0.0/8", new[] { "10.0.0.0/8" })]
+    [InlineData("10.1.2.3/15, 192.168.7.x\n192.168.8.*", new[] { "10.0.0.0/15", "192.168.7.0/24", "192.168.8.0/24" })]
+    [InlineData("10.*.*.*; 10.0.0.0/8", new[] { "10.0.0.0/8" })]
+    [InlineData("10.0.0.5", new[] { "10.0.0.5/32" })]
+    [InlineData("", new string[0])]
+    public void Relevant_networks_are_parsed_as_cidr(string text, string[] expected) => Assert.Equal(expected, IpRanges.ParseNetworks(text));
+
+    [Theory]
+    [InlineData("10.0.0.0/0")]
+    [InlineData("10.0.0.0/33")]
+    [InlineData("10.0.0")]
+    [InlineData("*.*.*.*")]
+    [InlineData("fe80::/10")]
+    public void Invalid_relevant_networks_are_rejected(string text) => Assert.Throws<FormatException>(() => IpRanges.ParseNetworks(text));
+
+    [Fact]
+    public void Networks_overlap_when_one_lies_in_the_other()
+    {
+        Assert.True(IpRanges.Overlaps("10.0.0.0/8", "10.20.0.0/24"));
+        Assert.True(IpRanges.Overlaps("10.20.0.0/24", "10.0.0.0/8"));
+        Assert.False(IpRanges.Overlaps("10.0.0.0/15", "10.2.0.0/24"));
+        Assert.True(IpRanges.InAny([], "192.168.178.20"));
+        Assert.False(IpRanges.InAny(["10.0.0.0/15"], "192.168.178.20"));
+    }
+
+    [Fact]
+    public void Relevant_networks_keep_home_networks_off_the_map()
+    {
+        // Notebook im Homeoffice, über das VPN-Netz erreichbar; ein anderes offline im Heimnetz; ein Drucker zu Hause.
+        var vpn = new MapComputer(1, "NB-1", true, ChassisKind.Laptop, [("192.168.178.20", 24)], ["192.168.178.1"], "10.99.0.7");
+        var offline = new MapComputer(2, "NB-2", false, ChassisKind.Laptop, [("192.168.2.30", 24)], ["192.168.2.1"], "192.168.2.30");
+        var office = Pc(3, "PC-3", "10.0.0.10", gateway: "10.0.0.1");
+        var traces = new List<NetworkTrace>
+        {
+            new() { Target = "10.0.0.10", Reached = true, Hops = "10.1.0.1" },
+            new() { Target = "192.168.2.30", Reached = true, Hops = "10.1.0.1,192.168.2.1" },
+        };
+
+        var map = NetworkMapBuilder.Build([vpn, offline, office], [Device(10, "192.168.2.50", DeviceKind.Printer)], [], traces, IpRanges.ParseNetworks("10.0.0.0/15, 10.99.0.x"));
+
+        Assert.Equal([MapNodeType.Remote, "10.0.0.0/24", "10.99.0.0/24"], map.Nodes.Where(n => n.Type == MapNodeType.Subnet).Select(n => n.Id));
+        Assert.Equal(["10.0.0.0/15", "10.99.0.0/24"], map.Networks);
+        // Die Heimnetze stehen nicht einzeln im Sammelknoten, ihre Router, Geräte und Wege fehlen.
+        Assert.Null(map.Nodes.Single(n => n.Id == MapNodeType.Remote).Detail);
+        Assert.Equal(2, map.Nodes.Single(n => n.Id == $"c{MapNodeType.Remote}").Count);
+        Assert.DoesNotContain(map.Nodes, n => n.Id is "g192.168.178.1" or "g192.168.2.1" or "d10");
+        Assert.Contains(map.Nodes, n => n.Id == "c1@10.99.0.0/24");
+    }
+
+    [Fact]
+    public async Task The_device_scan_stays_inside_the_relevant_networks()
+    {
+        using var db = new TestDb();
+        var computers = await new ComputerService(db, new SimulatedHostProbe()).ImportAsync("pc-01 nb-01");
+        await using (var context = db.CreateDbContext())
+        {
+            context.NetworkAdapters.Add(new ComputerNetworkAdapter { ComputerId = computers[0].Id, Name = "LAN", IpAddresses = "10.0.0.10", SubnetMasks = "255.255.255.0", Gateways = "10.0.0.1" });
+            context.NetworkAdapters.Add(new ComputerNetworkAdapter { ComputerId = computers[1].Id, Name = "WLAN", IpAddresses = "192.168.178.20", SubnetMasks = "255.255.255.0", Gateways = "192.168.178.1" });
+            await context.SaveChangesAsync();
+        }
+        var map = new NetworkMapService(db);
+        await map.SetNetworksAsync("10.0.0.0/16");
+        Assert.Equal(["10.0.0.0/16"], await map.GetNetworksAsync());
+
+        var service = new DeviceService(db, new SimulatedDeviceProbe(), new ReversingProtector());
+        var result = await service.ScanAsync();
+        Assert.Contains("1 of 1", result);
+        Assert.Contains("Paths to 1 subnets traced.", result);
+        await using (var context = db.CreateDbContext())
+        {
+            Assert.DoesNotContain(context.NetworkDevices, d => d.IpAddress.StartsWith("192.168."));
+            Assert.All(context.NetworkTraces, t => Assert.StartsWith("10.0.", t.Target));
+        }
+
+        await map.SetNetworksAsync("");
+        Assert.Empty(await map.GetNetworksAsync());
+        Assert.Throws<FormatException>(() => map.SetNetworksAsync("10.0.0.0/40").GetAwaiter().GetResult());
+    }
 }

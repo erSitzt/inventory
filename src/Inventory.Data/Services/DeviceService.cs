@@ -142,6 +142,9 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
                 // Beim Scan aller Bereiche kommen die Standard-Gateways der Rechner dazu: erst sie zeigen, welche Router die Netze verbinden.
                 gateways = rangeId is not null ? [] : (await db.NetworkAdapters.AsNoTracking().Where(a => a.Gateways != null).Select(a => a.Gateways!).ToListAsync(ct))
                     .SelectMany(g => g.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Where(IpRanges.IsUsable).Distinct().ToList();
+                // Heimrouter im Homeoffice gehören nicht dazu, wenn die relevanten Netze festgelegt sind.
+                var networks = await NetworkMapService.NetworksAsync(db, ct);
+                gateways = [.. gateways.Where(g => IpRanges.InAny(networks, g))];
             }
             if (ranges.Count == 0 && gateways.Count == 0)
                 return L["No address ranges to scan."];
@@ -255,8 +258,9 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
             if (token.Split('/') is [var ip, var bits] && int.TryParse(bits, out var prefix))
                 subnets.Add(IpRanges.Network(ip, prefix)!);
 
-        // Transfernetze (/29 und kleiner) liegen ohnehin auf dem Weg; höchstens 64 Netze je Messung.
-        var targets = subnets.Where(s => IpRanges.PrefixOf(s) is >= 8 and < 29)
+        // Transfernetze (/29 und kleiner) liegen ohnehin auf dem Weg; höchstens 64 Netze je Messung, nur in den relevanten Netzen.
+        var networks = await NetworkMapService.NetworksAsync(db, ct);
+        var targets = subnets.Where(s => IpRanges.PrefixOf(s) is >= 8 and < 29 && IpRanges.InAny(networks, s))
             .Select(s => hosts.Where(h => IpRanges.Contains(s, h.Ip)).OrderBy(h => h.Rank).Select(h => h.Ip).FirstOrDefault())
             .Where(t => t is not null).Distinct().Take(64).ToList();
         if (targets.Count == 0)

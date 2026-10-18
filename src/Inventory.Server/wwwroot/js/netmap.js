@@ -370,7 +370,7 @@ window.inventoryMap = (() => {
         if (!raw) return;
         const lines = [];
         if (raw.type === 'subnet') {
-            lines.push(raw.id === 'remote' ? `${labels.remote}\n${labels.remoteHint}\n${raw.detail}` : raw.detail ? `${raw.label} · ${raw.detail}` : raw.label,
+            lines.push(raw.id === 'remote' ? [labels.remote, labels.remoteHint, raw.detail].filter(Boolean).join('\n') : raw.detail ? `${raw.label} · ${raw.detail}` : raw.label,
                 summary(raw.id), isOpen(raw.id) ? labels.collapse : labels.expandSubnet);
             if (raw.assumed) lines.push(labels.assumedHint);
         } else if (raw.type === 'group') {

@@ -156,7 +156,10 @@ overview – each subnet as a card with its device types and counts. A click ope
 servers and storage, then peripherals, then the computers as a group that opens with another click. Search opens the
 subnets of its hits, a subnet filter and the device types narrow the view, hovering highlights the connections,
 subnets and routers can be dragged (the arrangement is kept in the browser), and the diagram exports as PNG. Subnets without a known mask
-are assumed as /24 and drawn dashed. The diagram uses [Cytoscape.js](https://js.cytoscape.org/) (MIT licence), which
+are assumed as /24 and drawn dashed. Under "Relevant networks", administrators define which networks belong to the
+organisation (CIDR of any size or `192.168.10.x`, e.g. the company network and the VPN pools). The map then draws only
+those; the home networks of notebooks are only counted under "Home and other networks", and traceroute and the gateway
+check stay inside these networks. The diagram uses [Cytoscape.js](https://js.cytoscape.org/) (MIT licence), which
 ships with the server.
 
 ### Collections and maintenance windows
