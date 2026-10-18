@@ -168,7 +168,9 @@ builder.Services.Configure<RequestLocalizationOptions>(o =>
     o.FallBackToParentCultures = true;
     o.FallBackToParentUICultures = true;
 });
-builder.Services.AddSingleton<Display>();
+builder.Services.AddScoped<BrowserTime>();
+// Je Sitzung: Zeiten erscheinen in der Zeitzone des jeweiligen Browsers.
+builder.Services.AddScoped<Display>();
 builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
 {
     document.Info.Title = "Inventory API";

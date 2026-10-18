@@ -6,6 +6,7 @@
 @inject CollectionService Collections
 @inject ScheduleService Schedules
 @inject Display Display
+@inject BrowserTime BrowserTime
 @inject IStringLocalizer<SharedResource> L
 
 <PageTitle>@L["Audit log"] – Inventory</PageTitle>
@@ -89,7 +90,11 @@
     /// <summary>null, solange nichts eingegrenzt ist. Das Ende des Zeitraums schließt den gewählten Tag ein.</summary>
     private AuditFilter? Filter => string.IsNullOrWhiteSpace(_user) && string.IsNullOrWhiteSpace(_action) && string.IsNullOrWhiteSpace(_search) && _range?.Start is null && _range?.End is null
         ? null
-        : new AuditFilter(_user, _action, _range?.Start?.Date.ToUniversalTime(), _range?.End?.Date.AddDays(1).ToUniversalTime(), _search);
+        : new AuditFilter(_user, _action, FromUtc, ToUtc, _search);
+
+    // Der gewählte Zeitraum meint Kalendertage des Browsers.
+    private DateTime? FromUtc => _range?.Start is { } start ? BrowserTime.StartOfDayUtc(start) : null;
+    private DateTime? ToUtc => _range?.End is { } end ? BrowserTime.StartOfDayUtc(end.Date.AddDays(1)) : null;
 
     private string ExportUrl
     {
@@ -104,8 +109,8 @@
             Add("user", _user);
             Add("action", _action);
             Add("q", _search);
-            Add("from", _range?.Start?.Date.ToUniversalTime().ToString("o"));
-            Add("to", _range?.End?.Date.AddDays(1).ToUniversalTime().ToString("o"));
+            Add("from", FromUtc is { } from ? DateTime.SpecifyKind(from, DateTimeKind.Utc).ToString("o") : null);
+            Add("to", ToUtc is { } to ? DateTime.SpecifyKind(to, DateTimeKind.Utc).ToString("o") : null);
             return "api/audit/export.csv" + (query.Count == 0 ? "" : "?" + string.Join("&", query));
         }
     }

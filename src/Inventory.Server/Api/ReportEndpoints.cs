@@ -82,11 +82,13 @@ public static class ReportEndpoints
 
         foreach (var (extension, format, summary) in new[] { ("csv", ReportFormat.Csv, "Saved report as CSV"), ("xlsx", ReportFormat.Excel, "Saved report as Excel workbook"), ("pdf", ReportFormat.Pdf, "Saved report as PDF") })
         {
-            saved.MapGet($"{{id:int}}.{extension}", async (int id, SavedReportService service, TimeProvider time, CancellationToken ct) =>
+            saved.MapGet($"{{id:int}}.{extension}", async (int id, SavedReportService service, TimeProvider time, HttpContext http, CancellationToken ct) =>
             {
                 if (await service.GetAsync(id, ct) is not { } report)
                     return Results.NotFound();
-                var file = await service.ExportAsync(report, format, TimeZoneInfo.ConvertTime(time.GetUtcNow(), time.LocalTimeZone), ct);
+                // Aus der Oberfläche heruntergeladen: Zeiten in der Zeitzone des Browsers; per API ohne Cookie in der des Servers.
+                var zone = BrowserTime.Resolve(http.Request.Cookies[BrowserTime.Cookie]) ?? time.LocalTimeZone;
+                var file = await service.ExportAsync(report, format, TimeZoneInfo.ConvertTime(time.GetUtcNow(), zone), ct, zone);
                 return Results.File(file.Content, file.ContentType, file.FileName);
             }).WithSummary(summary).WithDescription(format switch
             {
@@ -131,7 +133,7 @@ public static class ReportEndpoints
 
         audit.MapGet("export.csv", async (AuditService service, HttpContext http, IStringLocalizer<SharedResource> L, string? user, string? action, DateTime? from, DateTime? to, string? q, CancellationToken ct) =>
         {
-            var content = await service.CsvAsync(L, Filter(user, action, from, to, q), ct);
+            var content = await service.CsvAsync(L, Filter(user, action, from, to, q), ct, BrowserTime.Resolve(http.Request.Cookies[BrowserTime.Cookie]));
             await service.LogAsync(http.Actor(), L["Audit log exported"], http.Request.QueryString.HasValue ? Uri.UnescapeDataString(http.Request.QueryString.Value!.TrimStart('?')) : null, ct);
             return Csv(content, "audit.csv");
         }).WithSummary("Audit log as CSV").WithDescription($"Same filters as the list; at most {AuditService.MaxExportRows} rows, newest first. The export itself is logged.").Produces<string>(200, "text/csv");

@@ -7,6 +7,7 @@
 @inject TrendService Trends
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
+@inject BrowserTime BrowserTime
 @inject Access Access
 
 <PageTitle>@L["Overview"] – Inventory</PageTitle>
@@ -22,7 +23,7 @@
 <div class="dash-hero mb-4">
     <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="6">
         <div style="flex: 1; min-width: 260px">
-            <MudText Typo="Typo.overline" Class="muted">Inventory · @DateTime.Now.ToString("D")</MudText>
+            <MudText Typo="Typo.overline" Class="muted">Inventory · @BrowserTime.Now.ToString("D")</MudText>
             <div class="big mt-1">@_stats.Computers <span style="font-size: 1.25rem; font-weight: 500">@L["Computers"]</span></div>
             <MudText Typo="Typo.body1" Class="muted mt-2">
                 @if (_stats.Computers == 0)

@@ -10,11 +10,28 @@
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["Inventory.Server.styles.css"]" />
     <ImportMap />
+    @* Zeitzone des Browsers als Cookie: der Server zeigt Zeiten darin an. Fehlt sie beim ersten Besuch oder hat sie sich geändert,
+       wird die Seite einmal neu geladen (nur wenn das Cookie danach lesbar ist, sonst bleibt es bei der Zeit des Servers). *@
+    <script>
+        (function () {
+            try {
+                var zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                var name = '@BrowserTime.Cookie';
+                var current = (document.cookie.match('(?:^|; )' + name.replace('.', '\\.') + '=([^;]*)') || [])[1];
+                if (!zone || decodeURIComponent(current || '') === zone) return;
+                document.cookie = name + '=' + encodeURIComponent(zone) + '; path=/; max-age=31536000; samesite=lax';
+                if (document.cookie.indexOf(name + '=') >= 0 && !sessionStorage.getItem(name)) {
+                    sessionStorage.setItem(name, '1');
+                    location.reload();
+                }
+            } catch (e) { }
+        })();
+    </script>
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveServer" />
+    <Routes @rendermode="InteractiveServer" TimeZone="@HttpContext?.Request.Cookies[BrowserTime.Cookie]" />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
@@ -23,3 +40,7 @@
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+}

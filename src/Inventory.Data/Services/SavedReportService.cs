@@ -61,16 +61,18 @@ public sealed class SavedReportService(IDbContextFactory<InventoryDbContext> dbF
         await db.Reports.Where(r => r.Id == id).ExecuteDeleteAsync(ct);
     }
 
-    public static ReportQuery Query(Report report) =>
-        new(report.Source, report.CollectionId, report.Days, report.ColumnKeys, report.SortColumn, report.SortDescending);
+    public static ReportQuery Query(Report report, TimeZoneInfo? zone = null) =>
+        new(report.Source, report.CollectionId, report.Days, report.ColumnKeys, report.SortColumn, report.SortDescending, zone);
 
-    public Task<ReportTable> RunAsync(Report report, CancellationToken ct = default) => reports.TableAsync(Query(report), ct);
+    /// <param name="zone">Zeitzone der Zeitangaben (die des Browsers); null = die des Servers.</param>
+    public Task<ReportTable> RunAsync(Report report, CancellationToken ct = default, TimeZoneInfo? zone = null) => reports.TableAsync(Query(report, zone), ct);
 
     public sealed record ReportFile(string FileName, string ContentType, byte[] Content);
 
     /// <summary>Führt den Bericht aus und bringt ihn in das gewünschte Format.</summary>
-    public async Task<ReportFile> ExportAsync(Report report, ReportFormat format, DateTimeOffset localNow, CancellationToken ct = default) =>
-        Render(report, await RunAsync(report, ct), format, localNow);
+    /// <param name="zone">Zeitzone der Zeitangaben; null = die des Servers. <paramref name="localNow"/> sollte in derselben Zone sein.</param>
+    public async Task<ReportFile> ExportAsync(Report report, ReportFormat format, DateTimeOffset localNow, CancellationToken ct = default, TimeZoneInfo? zone = null) =>
+        Render(report, await RunAsync(report, ct, zone), format, localNow);
 
     /// <summary>Bringt die Zeilen eines Berichts in ein Dateiformat. Download und Versand gehen beide hier durch.</summary>
     public ReportFile Render(Report report, ReportTable table, ReportFormat format, DateTimeOffset localNow)

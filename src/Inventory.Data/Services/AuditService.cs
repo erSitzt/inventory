@@ -50,14 +50,16 @@ public sealed class AuditService(IDbContextFactory<InventoryDbContext> dbFactory
         return (users, actions);
     }
 
-    /// <summary>Protokoll als CSV, jüngste Einträge zuerst; Zeiten in der Ortszeit des Servers.</summary>
-    public async Task<string> CsvAsync(IStringLocalizer L, AuditFilter? filter = null, CancellationToken ct = default)
+    /// <summary>Protokoll als CSV, jüngste Einträge zuerst.</summary>
+    /// <param name="zone">Zeitzone der Zeitangaben (die des Browsers); null = die des Servers.</param>
+    public async Task<string> CsvAsync(IStringLocalizer L, AuditFilter? filter = null, CancellationToken ct = default, TimeZoneInfo? zone = null)
     {
+        zone ??= TimeZoneInfo.Local;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var csv = new StringBuilder();
         ReportExport.Row(csv, L["Time"], L["User"], L["Role"], L["Source"], L["Action"], L["Details"]);
         await foreach (var e in Query(db, filter).OrderByDescending(e => e.Id).Take(MaxExportRows).AsAsyncEnumerable().WithCancellation(ct))
-            ReportExport.Row(csv, DateTime.SpecifyKind(e.TimeUtc, DateTimeKind.Utc).ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
+            ReportExport.Row(csv, TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(e.TimeUtc, DateTimeKind.Utc), zone).ToString("yyyy-MM-dd HH:mm:ss"),
                 e.User, e.Role?.ToString(), e.Source == AuditSource.Unknown ? null : e.Source.ToString(), e.Action, e.Details);
         return csv.ToString();
     }

@@ -1,6 +1,7 @@
 @page "/reports/{Id:int}"
 @inject SavedReportService Saved
 @inject Display Display
+@inject BrowserTime BrowserTime
 @inject IStringLocalizer<SharedResource> L
 
 <PageTitle>@(_report?.Name ?? L["Report"]) – Inventory</PageTitle>
@@ -64,7 +65,7 @@ else
         _report = await Saved.GetAsync(Id);
         if (_report is not null)
         {
-            _table = await Saved.RunAsync(_report);
+            _table = await Saved.RunAsync(_report, zone: BrowserTime.Zone);
             _asOfUtc = DateTime.UtcNow;
         }
         _loaded = true;
