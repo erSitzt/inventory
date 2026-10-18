@@ -31,6 +31,13 @@
             <MudSelectItem T="string" Value="@($"c:{summary.Collection.Id}")">@L["Collection"]: @summary.Collection.Name (@summary.Count)</MudSelectItem>
         }
     </MudSelect>
+    <MudSelect T="ChassisKind?" Value="_type" ValueChanged="SetType" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 200px"
+               Label="@L["Device type"]" Clearable="true" aria-label="@L["Device type"]">
+        @foreach (var kind in Enum.GetValues<ChassisKind>().Where(k => _computers.Any(c => RoleOf(c) == k)))
+        {
+            <MudSelectItem T="ChassisKind?" Value="@kind">@L[Chassis.Label(kind)] (@_computers.Count(c => RoleOf(c) == kind))</MudSelectItem>
+        }
+    </MudSelect>
     <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" Immediate="true"
                   AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 240px" />
     <AdminOnly>
@@ -227,6 +234,19 @@
 @code {
     [SupplyParameterFromQuery(Name = "collection")] public int? CollectionId { get; set; }
     [SupplyParameterFromQuery(Name = "filter")] public string? Filter { get; set; }
+    /// <summary>Geräteklasse (server, desktop, laptop …); kombiniert mit Ansicht oder Sammlung.</summary>
+    [SupplyParameterFromQuery(Name = "type")] public string? Type { get; set; }
+
+    private ChassisKind? _type;
+
+    /// <summary>Die Klasse, wie die Liste sie mit dem Symbol zeigt: ein Server-Betriebssystem macht einen Server.</summary>
+    private static ChassisKind RoleOf(Computer c) => Chassis.Role(c.ChassisType, c.Model, c.OsName);
+
+    private void SetType(ChassisKind? type)
+    {
+        var uri = Navigation.GetUriWithQueryParameter("type", type?.ToString().ToLowerInvariant());
+        Navigation.NavigateTo(uri);
+    }
 
     private static readonly (string Key, string Label)[] BuiltInViews =
     [
@@ -268,6 +288,7 @@
 
     private async Task ReloadAsync()
     {
+        _type = Enum.TryParse<ChassisKind>(Type, true, out var type) && Enum.IsDefined(type) ? type : null;
         _collections = await CollectionService.ListAsync();
         _activeCollection = _collections.FirstOrDefault(c => c.Collection.Id == CollectionId)?.Collection;
         _all = await ComputerService.ListAsync();
@@ -285,14 +306,21 @@
         _selected = [];
     }
 
-    private void SetView(string view) => Navigation.NavigateTo(view switch
+    private void SetView(string view)
     {
-        "all" or null or "" => "computers",
-        ['c', ':', .. var id] => $"computers?collection={id}",
-        _ => $"computers?filter={view}",
-    });
+        var target = view switch
+        {
+            "all" or null or "" => "computers",
+            ['c', ':', .. var id] => $"computers?collection={id}",
+            _ => $"computers?filter={view}",
+        };
+        // Der Typ-Filter bleibt beim Wechsel der Ansicht erhalten.
+        Navigation.NavigateTo(_type is { } type ? $"{target}{(target.Contains('?') ? '&' : '?')}type={type.ToString().ToLowerInvariant()}" : target);
+    }
 
-    private bool Matches(Computer c) =>
+    private bool Matches(Computer c) => (_type is null || RoleOf(c) == _type) && MatchesSearch(c);
+
+    private bool MatchesSearch(Computer c) =>
         string.IsNullOrWhiteSpace(_search)
         || new[] { c.Name, c.ReportedName, c.IpAddress, c.Description, c.OsName, c.Model, c.LoggedOnUser, c.SerialNumber,
                 c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.Tags, c.PrimaryUser, c.Notes,
