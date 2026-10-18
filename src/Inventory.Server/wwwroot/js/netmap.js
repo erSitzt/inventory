@@ -479,9 +479,11 @@ window.inventoryMap = (() => {
             found.addClass('match');
             cy.animate({ fit: { eles: found, padding: 120 } }, { duration: 400 });
         },
-        focus(id) {
+        focus(id, address) {
             if (!cy) return;
-            const node = map.nodes.find(n => n.id === id || n.id.startsWith(`${id}@`));
+            // Mit anderen zusammengefasste Router stehen unter dem Knoten, der ihre Adresse trägt.
+            const node = map.nodes.find(n => n.id === id || n.id.startsWith(`${id}@`))
+                || (address && map.nodes.find(n => n.type !== 'subnet' && (n.detail || '').split(/[\s,·]+/).includes(address)));
             if (!node) return;
             if (node.parent) openSubnets.add(node.parent);
             if (node.type === 'computer' && !individually) openGroups.add(node.group);

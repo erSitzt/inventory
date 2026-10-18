@@ -76,6 +76,8 @@ else if (_map is not null)
 
 @code {
     [SupplyParameterFromQuery] public string? Focus { get; set; }
+    /// <summary>Adresse des fokussierten Geräts, falls es in einem anderen Knoten aufgeht (zusammengefasster Router).</summary>
+    [SupplyParameterFromQuery] public string? Ip { get; set; }
 
     private ElementReference _element;
     private Inventory.Core.NetworkMap? _map;
@@ -172,7 +174,7 @@ else if (_map is not null)
         };
         await JS.InvokeVoidAsync("inventoryMap.render", _element, _map, NodeIcons(), labels, _callbacks, "lib/cytoscape/cytoscape.min.js");
         if (!string.IsNullOrEmpty(Focus))
-            await JS.InvokeVoidAsync("inventoryMap.focus", Focus);
+            await JS.InvokeVoidAsync("inventoryMap.focus", Focus, Ip);
     }
 
     /// <summary>Symbole (MudBlazor-Pfade) je Geräteart und Rechnerrolle: als weiße SVG-Daten für die Knoten und roh für die Symbolleiste der Subnetze.</summary>

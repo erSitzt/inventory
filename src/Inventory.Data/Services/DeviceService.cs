@@ -417,7 +417,9 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         device.SerialNumber = snmp.SerialNumber ?? device.SerialNumber;
         device.Firmware = snmp.Firmware ?? device.Firmware;
         device.PageCount = snmp.PageCount ?? device.PageCount;
-        device.InterfaceAddresses = snmp.InterfaceAddresses.Count > 0 ? string.Join(",", snmp.InterfaceAddresses) : device.InterfaceAddresses;
+        // Leitet das Gerät nicht (mehr) weiter, sind alte Schnittstellen hinfällig; ein leerer Walk bei einem Router behält die letzten.
+        device.InterfaceAddresses = snmp.InterfaceAddresses.Count > 0 ? string.Join(",", snmp.InterfaceAddresses)
+            : snmp.Forwarding == false ? null : device.InterfaceAddresses;
         if (snmp.IsPrinter)
         {
             device.Supplies.Clear();
