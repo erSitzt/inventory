@@ -29,7 +29,7 @@
                 <MudNumericField T="decimal?" @bind-Value="_cost" Label="@L["Cost per licence"]" Variant="Variant.Outlined" Min="0" HideSpinButtons="true" Format="N2" />
             </MudStack>
             <MudDatePicker @bind-Date="_validUntil" Label="@L["Valid until"]" Variant="Variant.Outlined" Clearable="true" Editable="true" />
-            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="2" HelperText="@L["E.g. contract number, supplier, where the keys are kept."]" />
+            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto" MaxLines="12" HelperText="@L["E.g. contract number, supplier, where the keys are kept."]" />
             @if (_error is not null)
             {
                 <MudAlert Severity="Severity.Error">@_error</MudAlert>

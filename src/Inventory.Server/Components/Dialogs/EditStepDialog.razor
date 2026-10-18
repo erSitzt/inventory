@@ -24,11 +24,11 @@
                 @switch (Type)
                 {
                     case StepType.Command:
-                        <MudTextField @bind-Value="_step.Script" Label="@L["Command"]" Variant="Variant.Outlined" Lines="3" Style="font-family: monospace" Immediate="true"
+                        <MudTextField @bind-Value="_step.Script" Label="@L["Command"]" Variant="Variant.Outlined" Lines="3" Sizing="InputSizing.Auto" MaxLines="25" Style="font-family: monospace" Immediate="true"
                                       HelperText="@CommandHelp" />
                         break;
                     case StepType.PowerShell:
-                        <MudTextField @bind-Value="_step.Script" Label="@L["Script"]" Variant="Variant.Outlined" Lines="10" Style="font-family: monospace" Immediate="true"
+                        <MudTextField @bind-Value="_step.Script" Label="@L["Script"]" Variant="Variant.Outlined" Lines="10" Sizing="InputSizing.Auto" MaxLines="25" Style="font-family: monospace" Immediate="true"
                                       HelperText="@L["Windows PowerShell 5.1, 64 bit. The script's exit code (exit N) decides about success."]" />
                         break;
                     case StepType.Install:
@@ -112,7 +112,7 @@
                                     <MudSelectItem T="RegistryDataType" Value="type">@Display.RegistryTypeName(type)</MudSelectItem>
                                 }
                             </MudSelect>
-                            <MudTextField @bind-Value="_step.RegistryData" Label="@L["Data"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="@(_step.RegistryDataType == RegistryDataType.MultiString ? 3 : 1)"
+                            <MudTextField @bind-Value="_step.RegistryData" Label="@L["Data"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="@(_step.RegistryDataType == RegistryDataType.MultiString ? 3 : 1)" Sizing="@(_step.RegistryDataType == RegistryDataType.MultiString ? InputSizing.Auto : InputSizing.Fixed)" MaxLines="12"
                                           HelperText="@(_step.RegistryDataType switch
                                           {
                                               RegistryDataType.DWord or RegistryDataType.QWord => L["Decimal, or hexadecimal with 0x"],

@@ -2,7 +2,7 @@
 
 <MudDialog>
     <DialogContent>
-        <MudTextField @bind-Value="_names" Label="@L["Computer names"]" Lines="8" Variant="Variant.Outlined" AutoFocus="true" Immediate="true"
+        <MudTextField @bind-Value="_names" Label="@L["Computer names"]" Lines="8" Sizing="InputSizing.Auto" MaxLines="25" Variant="Variant.Outlined" AutoFocus="true" Immediate="true"
                       HelperText="@L["One name per line; comma, semicolon or space work too. Names that already exist are skipped."]" />
     </DialogContent>
     <DialogActions>

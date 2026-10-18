@@ -17,7 +17,7 @@
                     <MudSelectItem T="DeviceKind?" Value="@kind">@Display.DeviceKind(kind)</MudSelectItem>
                 }
             </MudSelect>
-            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="3" />
+            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="3" Sizing="InputSizing.Auto" MaxLines="12" />
         </MudStack>
     </DialogContent>
     <DialogActions>

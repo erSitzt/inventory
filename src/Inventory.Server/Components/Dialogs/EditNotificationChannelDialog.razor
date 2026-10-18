@@ -32,7 +32,7 @@
                     }
                 </MudSelect>
                 <MudTextField @bind-Value="_sender" Label="@L["Sender address"]" Variant="Variant.Outlined" Immediate="true" />
-                <MudTextField @bind-Value="_recipients" Label="@L["Recipients"]" Variant="Variant.Outlined" Lines="2" Immediate="true"
+                <MudTextField @bind-Value="_recipients" Label="@L["Recipients"]" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto" MaxLines="12" Immediate="true"
                               HelperText="@L["Several addresses separated by comma or line break."]" />
             }
             else

@@ -7,7 +7,7 @@
     <DialogContent>
         <MudStack Spacing="3">
             <MudText Typo="Typo.body2">@L["The network map, the network paths and the check of the computers' gateways stay within these networks. Everything else – home networks, hotels, mobile hotspots – is only counted under \"Home and other networks\"."]</MudText>
-            <MudTextField T="string" @bind-Value="_text" Label="@L["Relevant networks"]" Variant="Variant.Outlined" Lines="4" AutoFocus="true" Immediate="true"
+            <MudTextField T="string" @bind-Value="_text" Label="@L["Relevant networks"]" Variant="Variant.Outlined" Lines="4" Sizing="InputSizing.Auto" MaxLines="12" AutoFocus="true" Immediate="true"
                           HelperText="@L["CIDR of any size (10.0.0.0/8) or 192.168.10.x, separated by commas or lines. Empty = all networks."]" />
             <MudText Typo="Typo.body2" Color="@(Error is null ? Color.Default : Color.Warning)">@(Error ?? " ")</MudText>
         </MudStack>
