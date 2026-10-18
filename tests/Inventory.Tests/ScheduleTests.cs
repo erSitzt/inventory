@@ -297,7 +297,13 @@ public class ScheduleTests
         var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
         var probed = new List<string>();
         // "alt" ist ein veralteter DNS-Eintrag: unter dem Namen antwortet PC-02.
-        var computers = new ComputerService(db, new FixedProbe(host => { probed.Add(host); return new ProbeResult(true, "10.1.1.1", MachineName: host == "alt" ? "PC-02" : host.ToUpperInvariant()); }));
+        var computers = new ComputerService(db, new FixedProbe(host =>
+        {
+            // Der Heartbeat prüft parallel; List<T> verträgt kein gleichzeitiges Add.
+            lock (probed)
+                probed.Add(host);
+            return new ProbeResult(true, "10.1.1.1", MachineName: host == "alt" ? "PC-02" : host.ToUpperInvariant());
+        }));
         var heartbeat = new HeartbeatService(computers, new SettingsService(db), clock);
         await computers.ImportAsync("pc-01 alt pc-03");
 
