@@ -30,6 +30,8 @@ public sealed class SnmpFacts
     public bool IsUps { get; set; }
     /// <summary>ARP-Tabelle des Geräts (IP → MAC), wenn es routet; liefert MAC-Adressen für Geräte hinter dem Router.</summary>
     public Dictionary<string, string> ArpTable { get; set; } = [];
+    /// <summary>Eigene Adressen eines Routers als "ip/präfix" (ipAddrTable); verbinden in der Netzwerkkarte seine Subnetze.</summary>
+    public List<string> InterfaceAddresses { get; set; } = [];
 }
 
 /// <param name="Level">Füllstand in Einheiten von <paramref name="Capacity"/>; negativ = unbekannt (-3 = vorhanden, Menge unbekannt).</param>
@@ -60,12 +62,21 @@ public sealed class DeviceObservation
     public bool Responded => PingReply || OpenPorts.Count > 0 || Snmp is not null;
 }
 
+/// <param name="Reached">Das Ziel hat geantwortet.</param>
+public sealed record TraceResult(IReadOnlyList<string?> Hops, bool Reached);
+
 /// <summary>Prüft eine einzelne Adresse ohne Anmeldung: Ping, Standardports, Banner, SNMP.</summary>
 public interface IDeviceProbe
 {
     /// <param name="communities">SNMP-Communities in der Reihenfolge, in der sie versucht werden; leer = kein SNMP.</param>
     Task<DeviceObservation> ProbeAsync(System.Net.IPAddress address, IReadOnlyList<string> communities, CancellationToken ct = default);
 
+    /// <summary>Traceroute per Ping mit steigender TTL: die antwortenden Router der Reihe nach (null = keine Antwort), ohne das Ziel.</summary>
+    Task<TraceResult> TraceAsync(System.Net.IPAddress target, CancellationToken ct = default);
+
     /// <summary>MAC-Adressen aus der ARP-Tabelle des Servers (nur Geräte im selben Netzsegment); Schlüssel = IP.</summary>
     IReadOnlyDictionary<string, string> LocalNeighbors();
+
+    /// <summary>Die eigenen IPv4-Adressen des Servers mit Präfixlänge: zeigen der Netzwerkkarte, in welchen Netzen er selbst steht.</summary>
+    IReadOnlyList<(string Ip, int Prefix)> LocalAddresses() => [];
 }

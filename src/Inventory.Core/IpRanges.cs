@@ -88,6 +88,95 @@ public static class IpRanges
         return new IPAddress(bytes);
     }
 
+    /// <summary>Präfixlänge einer Subnetzmaske (255.255.255.0 → 24); null, wenn die Maske ungültig ist (Lücken, kein IPv4).</summary>
+    public static int? PrefixLength(string? mask)
+    {
+        if (!TryValue(mask, out var value))
+            return null;
+        var prefix = System.Numerics.BitOperations.PopCount(value);
+        // Eine gültige Maske besteht aus Einsen, gefolgt von Nullen.
+        return (prefix == 0 && value == 0) || value == uint.MaxValue << (32 - prefix) ? prefix : null;
+    }
+
+    /// <summary>Das Netz einer Adresse als CIDR ("10.0.0.0/24"); null bei ungültigen Angaben.</summary>
+    public static string? Network(string? address, int prefix)
+    {
+        if (!TryValue(address, out var value) || prefix is < 0 or > 32)
+            return null;
+        var mask = prefix == 0 ? 0 : uint.MaxValue << (32 - prefix);
+        return $"{ToAddress(value & mask)}/{prefix}";
+    }
+
+    /// <summary>True, wenn die Adresse im CIDR-Netz liegt.</summary>
+    public static bool Contains(string cidr, string? address)
+    {
+        var slash = cidr.IndexOf('/');
+        if (slash < 0 || !int.TryParse(cidr[(slash + 1)..], out var prefix) || prefix is < 0 or > 32
+            || !TryValue(cidr[..slash], out var network) || !TryValue(address, out var value))
+            return false;
+        var mask = prefix == 0 ? 0 : uint.MaxValue << (32 - prefix);
+        return (value & mask) == (network & mask);
+    }
+
+    /// <summary>
+    /// Liest eine Liste von Netzen beliebiger Größe ("10.0.0.0/15", "192.168.10.x", einzelne Adressen als /32) und gibt sie
+    /// als CIDR auf der Netzadresse zurück, ohne Doppelte.
+    /// </summary>
+    /// <exception cref="FormatException">Eine Angabe ist kein IPv4-Netz.</exception>
+    public static List<string> ParseNetworks(string? text)
+    {
+        var networks = new List<string>();
+        foreach (var part in (text ?? "").Split([',', ';', '\n', '\r', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var (address, prefix) = (part, 32);
+            if (part.IndexOf('/') is > 0 and var slash)
+            {
+                if (!int.TryParse(part[(slash + 1)..], out prefix) || prefix is < 1 or > 32)
+                    throw new FormatException($"'{part}': the prefix must be between /1 and /32.");
+                address = part[..slash];
+            }
+            else
+            {
+                // 192.168.10.x oder 10.*.*.*: Platzhalter am Ende stehen für ganze Oktette.
+                var octets = part.Split('.');
+                var wild = octets.Reverse().TakeWhile(o => o is "x" or "X" or "*").Count();
+                if (octets.Length == 4 && wild is > 0 and < 4)
+                    (address, prefix) = (string.Join('.', octets.Take(4 - wild).Concat(Enumerable.Repeat("0", wild))), 32 - 8 * wild);
+            }
+            var network = Network(ToAddress(ToValue(address)).ToString(), prefix)!;
+            if (!networks.Contains(network))
+                networks.Add(network);
+        }
+        return networks;
+    }
+
+    /// <summary>True, wenn sich zwei CIDR-Netze überschneiden (eines liegt im anderen).</summary>
+    public static bool Overlaps(string a, string b) =>
+        Contains(a, a.Split('/')[0]) && Contains(b, b.Split('/')[0]) && (Contains(a, b.Split('/')[0]) || Contains(b, a.Split('/')[0]));
+
+    /// <summary>True, wenn die Adresse (oder das CIDR-Netz) in einem der Netze liegt bzw. sich mit einem überschneidet; eine leere Liste lässt alles zu.</summary>
+    public static bool InAny(IReadOnlyCollection<string> networks, string? addressOrCidr) =>
+        networks.Count == 0 || (addressOrCidr is not null && (addressOrCidr.Contains('/')
+            ? networks.Any(n => Overlaps(n, addressOrCidr))
+            : networks.Any(n => Contains(n, addressOrCidr))));
+
+    /// <summary>Präfixlänge eines CIDR-Netzes; -1, wenn es keins ist.</summary>
+    public static int PrefixOf(string cidr) =>
+        cidr.IndexOf('/') is > 0 and var slash && int.TryParse(cidr[(slash + 1)..], out var prefix) ? prefix : -1;
+
+    /// <summary>Adressen, die in keinem Netzplan vorkommen: Loopback, Link-Local (APIPA), Multicast und 0.0.0.0.</summary>
+    public static bool IsUsable(string? address) =>
+        TryValue(address, out var value) && value != 0 && (value >> 24) != 127 && (value >> 16) != 0xA9FE && (value >> 28) != 0xE;
+
+    private static bool TryValue(string? text, out uint value)
+    {
+        value = 0;
+        if (text is null || text.Count(c => c == '.') != 3 || !IPAddress.TryParse(text.Trim(), out var address) || address.AddressFamily != AddressFamily.InterNetwork)
+            return false;
+        value = BinaryPrimitives.ReadUInt32BigEndian(address.GetAddressBytes());
+        return true;
+    }
+
     /// <summary>Sortierschlüssel für Adressen in Listen (10.0.0.9 vor 10.0.0.10).</summary>
     public static long SortKey(string? address) =>
         IPAddress.TryParse(address, out var ip) && ip.AddressFamily == AddressFamily.InterNetwork

@@ -124,6 +124,11 @@ public static class DeviceClassifier
         ("VMware", DeviceKind.Unknown),
     ];
 
+    /// <summary>True für die MAC-Adressen virtueller Router (VRRP).</summary>
+    public static bool IsVrrp(string? mac) =>
+        mac is not null && (mac.Replace('-', ':').StartsWith("00:00:5E:00:01:", StringComparison.OrdinalIgnoreCase)
+            || mac.Replace('-', ':').StartsWith("00:00:5E:00:02:", StringComparison.OrdinalIgnoreCase));
+
     public static DeviceClassification Classify(DeviceObservation o, string? macVendor)
     {
         var snmp = o.Snmp;
@@ -176,6 +181,10 @@ public static class DeviceClassifier
             if (snmp.BridgePorts > 0)
                 return Result(DeviceKind.Switch, "Bridge MIB");
         }
+
+        // Virtuelle Router-Adresse (VRRP, 00:00:5E:00:01:xx bzw. :02:xx für IPv6): das Gateway eines redundanten Router-/Firewall-Paars.
+        if (IsVrrp(o.MacAddress))
+            return Result(DeviceKind.Router, "VRRP address");
 
         // Auch Samba und NAS-Systeme nennen über SMB einen Namen; ein SSH-Banner ohne Windows verrät sie.
         if (o.WindowsName is not null && (os is null or "Windows"))

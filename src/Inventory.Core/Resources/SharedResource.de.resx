@@ -359,6 +359,9 @@
   <data name="Administrator" xml:space="preserve">
     <value>Administrator</value>
   </data>
+  <data name='Administrators can limit the map to the relevant networks ("Relevant networks"); home networks of notebooks then only count under "Home and other networks", and traceroute and the gateway check stay inside.' xml:space="preserve">
+    <value>Administratoren können die Karte auf die relevanten Netze beschränken („Relevante Netze“); Heimnetze der Notebooks zählen dann nur gesammelt unter „Heim- und Fremdnetze“, und Traceroute und Gateway-Prüfung bleiben innerhalb.</value>
+  </data>
   <data name="Adopt new versions automatically" xml:space="preserve">
     <value>Neue Versionen automatisch übernehmen</value>
   </data>
@@ -617,6 +620,9 @@
   <data name="Asset list" xml:space="preserve">
     <value>Bestandsliste</value>
   </data>
+  <data name="Assumed as /24 – no subnet mask known" xml:space="preserve">
+    <value>Als /24 angenommen – keine Subnetzmaske bekannt</value>
+  </data>
   <data name="At fixed intervals" xml:space="preserve">
     <value>In festen Abständen</value>
   </data>
@@ -782,8 +788,26 @@
   <data name="CIDR (192.168.10.0/24), range (192.168.10.20-192.168.10.80 or 192.168.10.20-80) or single addresses, separated by commas or lines. At most 4096 addresses." xml:space="preserve">
     <value>CIDR (192.168.10.0/24), Bereich (192.168.10.20-192.168.10.80 oder 192.168.10.20-80) oder einzelne Adressen, getrennt durch Komma oder Zeilenumbruch. Höchstens 4096 Adressen.</value>
   </data>
+  <data name="CIDR of any size (10.0.0.0/8) or 192.168.10.x, separated by commas or lines. Empty = all networks." xml:space="preserve">
+    <value>CIDR beliebiger Größe (10.0.0.0/8) oder 192.168.10.x, getrennt durch Kommas oder Zeilen. Leer = alle Netze.</value>
+  </data>
   <data name="Classification" xml:space="preserve">
     <value>Klassifizierung</value>
+  </data>
+  <data name="Click the frame to fold the subnet" xml:space="preserve">
+    <value>Klick auf den Rahmen klappt das Subnetz zu</value>
+  </data>
+  <data name="Click to open" xml:space="preserve">
+    <value>Klicken zum Öffnen</value>
+  </data>
+  <data name="Click to rename" xml:space="preserve">
+    <value>Klicken zum Umbenennen</value>
+  </data>
+  <data name="Click to show devices and computers" xml:space="preserve">
+    <value>Klicken, um Geräte und Rechner zu zeigen</value>
+  </data>
+  <data name="Click to show the computers" xml:space="preserve">
+    <value>Klicken, um die Rechner zu zeigen</value>
   </data>
   <data name="Close" xml:space="preserve">
     <value>Schließen</value>
@@ -796,6 +820,9 @@
   </data>
   <data name="closes {0}" xml:space="preserve">
     <value>schließt {0}</value>
+  </data>
+  <data name="Collapse everything" xml:space="preserve">
+    <value>Alles zuklappen</value>
   </data>
   <data name="Collection" xml:space="preserve">
     <value>Sammlung</value>
@@ -1553,6 +1580,9 @@
   <data name="Expand a computer to see the output of every step." xml:space="preserve">
     <value>Einen Rechner aufklappen, um die Ausgabe jedes Schritts zu sehen.</value>
   </data>
+  <data name="Expand all subnets" xml:space="preserve">
+    <value>Alle Subnetze aufklappen</value>
+  </data>
   <data name="expired" xml:space="preserve">
     <value>abgelaufen</value>
   </data>
@@ -1619,6 +1649,9 @@
   <data name="Filter by user, action, period and text; the CSV export takes the filter along." xml:space="preserve">
     <value>Nach Benutzer, Aktion, Zeitraum und Text filtern; der CSV-Export übernimmt den Filter.</value>
   </data>
+  <data name="Find name or address …" xml:space="preserve">
+    <value>Name oder Adresse suchen …</value>
+  </data>
   <data name="finished" xml:space="preserve">
     <value>beendet</value>
   </data>
@@ -1673,6 +1706,9 @@
   <data name="First {0} of {1} rows." xml:space="preserve">
     <value>Die ersten {0} von {1} Zeilen.</value>
   </data>
+  <data name="Fit to window" xml:space="preserve">
+    <value>In Fenster einpassen</value>
+  </data>
   <data name='Fixed version: a separate package "{0}" is created that is never updated automatically. Vendors sometimes remove older setups from their servers; then the download fails. Older versions usually also contain known security vulnerabilities.' xml:space="preserve">
     <value>Feste Version: Es entsteht ein eigenständiges Paket „{0}“, das nicht automatisch aktualisiert wird. Ältere Setups nehmen Hersteller manchmal vom Server; dann schlägt der Download fehl. Ältere Versionen enthalten außerdem meist bekannte Sicherheitslücken.</value>
   </data>
@@ -1714,6 +1750,24 @@
   </data>
   <data name="Full rights on the computer, but no access to a user's profile and settings." xml:space="preserve">
     <value>Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.</value>
+  </data>
+  <data name="Gateway" xml:space="preserve">
+    <value>Gateway</value>
+  </data>
+  <data name="Gateway renamed" xml:space="preserve">
+    <value>Gateway umbenannt</value>
+  </data>
+  <data name="Gateway {0}. Empty = show the address again." xml:space="preserve">
+    <value>Gateway {0}. Leer = wieder die Adresse zeigen.</value>
+  </data>
+  <data name="Gateways" xml:space="preserve">
+    <value>Gateways</value>
+  </data>
+  <data name="Gateways of the computers: {0} of {1} responded." xml:space="preserve">
+    <value>Gateways der Rechner: {0} von {1} haben geantwortet.</value>
+  </data>
+  <data name="Gateways that belong to the same router or firewall (same interfaces, MAC address, serial number or SNMP name) form one node; the device scan of all ranges also checks the computers' default gateways." xml:space="preserve">
+    <value>Gateways, die zum selben Router oder zur selben Firewall gehören (gleiche Schnittstellen, MAC-Adresse, Seriennummer oder SNMP-Name), bilden einen Knoten; der Gerätescan aller Bereiche prüft auch die Standard-Gateways der Rechner.</value>
   </data>
   <data name="general" xml:space="preserve">
     <value>allgemein</value>
@@ -1771,6 +1825,9 @@
   </data>
   <data name='HKCU needs "Run as: Logged-on user". As Local System the step would change the settings of the system account.' xml:space="preserve">
     <value>HKCU braucht „Ausführen als: Angemeldeter Benutzer“. Als Lokales System würde der Schritt die Einstellungen des Systemkontos ändern.</value>
+  </data>
+  <data name="Home and other networks" xml:space="preserve">
+    <value>Heim- und Fremdnetze</value>
   </data>
   <data name="Hotfix" xml:space="preserve">
     <value>Hotfix</value>
@@ -1945,6 +2002,9 @@
   </data>
   <data name="Inventory scan started" xml:space="preserve">
     <value>Inventar-Scan gestartet</value>
+  </data>
+  <data name="Inventory server" xml:space="preserve">
+    <value>Inventory-Server</value>
   </data>
   <data name="inventory-per-computer" xml:space="preserve">
     <value>inventar-je-rechner</value>
@@ -2134,6 +2194,9 @@
   </data>
   <data name="Light" xml:space="preserve">
     <value>Hell</value>
+  </data>
+  <data name="Limited to the relevant networks {0}." xml:space="preserve">
+    <value>Beschränkt auf die relevanten Netze {0}.</value>
   </data>
   <data name="Limits (active)" xml:space="preserve">
     <value>Grenzen (aktiv)</value>
@@ -2354,8 +2417,26 @@
   <data name="Network level authentication" xml:space="preserve">
     <value>Authentifizierung auf Netzwerkebene (NLA)</value>
   </data>
+  <data name="Network map" xml:space="preserve">
+    <value>Netzwerkkarte</value>
+  </data>
+  <data name="Network paths" xml:space="preserve">
+    <value>Netzwege</value>
+  </data>
+  <data name="Network paths traced" xml:space="preserve">
+    <value>Netzwege gemessen</value>
+  </data>
   <data name="network-devices" xml:space="preserve">
     <value>netzwerkgeräte</value>
+  </data>
+  <data name="network-map" xml:space="preserve">
+    <value>netzwerkkarte</value>
+  </data>
+  <data name="Networks of computers that the server reaches through another address (VPN), e.g. at home" xml:space="preserve">
+    <value>Netze von Rechnern, die der Server über eine andere Adresse (VPN) erreicht, z. B. zu Hause</value>
+  </data>
+  <data name="Networks outside the relevant networks, and networks of computers that the server reaches through another address (VPN)" xml:space="preserve">
+    <value>Netze außerhalb der relevanten Netze und Netze von Rechnern, die der Server über eine andere Adresse (VPN) erreicht</value>
   </data>
   <data name="never" xml:space="preserve">
     <value>nie</value>
@@ -2642,6 +2723,9 @@
   <data name="Notes" xml:space="preserve">
     <value>Notizen</value>
   </data>
+  <data name="nothing found yet" xml:space="preserve">
+    <value>noch nichts gefunden</value>
+  </data>
   <data name="Nothing happens? Set up the launcher / show commands …" xml:space="preserve">
     <value>Passiert nichts? Starter einrichten / Befehle anzeigen …</value>
   </data>
@@ -2650,6 +2734,9 @@
   </data>
   <data name="Nothing selected = all columns. The order follows the source." xml:space="preserve">
     <value>Nichts ausgewählt = alle Spalten. Die Reihenfolge folgt der Quelle.</value>
+  </data>
+  <data name="Nothing to draw yet. Scan computers (their network adapters give the subnets) or run the device scan on the Devices page." xml:space="preserve">
+    <value>Noch nichts zu zeichnen. Rechner scannen (ihre Netzwerkadapter liefern die Subnetze) oder auf der Geräteseite den Gerätescan starten.</value>
   </data>
   <data name="Nothing was started: computers of this deployment are still running." xml:space="preserve">
     <value>Es wurde nichts gestartet: Rechner dieses Deployments laufen noch.</value>
@@ -3029,6 +3116,9 @@
   <data name="Patch status" xml:space="preserve">
     <value>Patch-Stand</value>
   </data>
+  <data name="Paths to {0} subnets traced." xml:space="preserve">
+    <value>Wege zu {0} Subnetzen verfolgt.</value>
+  </data>
   <data name="Pause after a message (minutes)" xml:space="preserve">
     <value>Pause nach einer Nachricht (Minuten)</value>
   </data>
@@ -3332,6 +3422,12 @@
   <data name="Released" xml:space="preserve">
     <value>Veröffentlicht</value>
   </data>
+  <data name="Relevant networks" xml:space="preserve">
+    <value>Relevante Netze</value>
+  </data>
+  <data name="Relevant networks changed" xml:space="preserve">
+    <value>Relevante Netze geändert</value>
+  </data>
   <data name="Reload" xml:space="preserve">
     <value>Neu laden</value>
   </data>
@@ -3416,6 +3512,9 @@
   <data name="Rename entry to {0}" xml:space="preserve">
     <value>Eintrag in {0} umbenennen</value>
   </data>
+  <data name="Rename gateway" xml:space="preserve">
+    <value>Gateway umbenennen</value>
+  </data>
   <data name="Renew secret" xml:space="preserve">
     <value>Geheimnis erneuern</value>
   </data>
@@ -3472,6 +3571,9 @@
   </data>
   <data name="Rescan inventory afterwards" xml:space="preserve">
     <value>Danach Inventar neu scannen</value>
+  </data>
+  <data name="Reset the arrangement (forget moved nodes)" xml:space="preserve">
+    <value>Anordnung zurücksetzen (verschobene Knoten vergessen)</value>
   </data>
   <data name="Responds to ping" xml:space="preserve">
     <value>Antwortet auf Ping</value>
@@ -3532,6 +3634,9 @@
   </data>
   <data name="Rhythm" xml:space="preserve">
     <value>Rhythmus</value>
+  </data>
+  <data name="Right-click folds the computers again" xml:space="preserve">
+    <value>Rechtsklick klappt die Rechner wieder zu</value>
   </data>
   <data name='Right-click Install-Agent.cmd and choose "Run as administrator".' xml:space="preserve">
     <value>Install-Agent.cmd mit der rechten Maustaste anklicken und „Als Administrator ausführen“ wählen.</value>
@@ -3622,6 +3727,9 @@
   </data>
   <data name="Save" xml:space="preserve">
     <value>Speichern</value>
+  </data>
+  <data name="Save as PNG" xml:space="preserve">
+    <value>Als PNG speichern</value>
   </data>
   <data name="Saved lists as CSV, Excel or PDF, or by mail on a schedule." xml:space="preserve">
     <value>Gespeicherte Listen als CSV, Excel oder PDF, oder per Zeitplan als Mail.</value>
@@ -3760,6 +3868,9 @@
   </data>
   <data name="Search software" xml:space="preserve">
     <value>Software suchen</value>
+  </data>
+  <data name='Search, the subnet selection and the type chips narrow the view; "Save as PNG" exports the current diagram.' xml:space="preserve">
+    <value>Suche, Subnetz-Auswahl und die Chips der Gerätearten grenzen die Ansicht ein; „Als PNG speichern“ exportiert das aktuelle Diagramm.</value>
   </data>
   <data name="Searching …" xml:space="preserve">
     <value>Suche …</value>
@@ -3925,6 +4036,12 @@
   </data>
   <data name="Short name of the service, e.g. Spooler" xml:space="preserve">
     <value>Kurzname des Dienstes, z. B. Spooler</value>
+  </data>
+  <data name="Show computers individually" xml:space="preserve">
+    <value>Rechner einzeln zeigen</value>
+  </data>
+  <data name="Show on the map" xml:space="preserve">
+    <value>In der Netzwerkkarte zeigen</value>
   </data>
   <data name="Show or hide the menu" xml:space="preserve">
     <value>Menü ein- oder ausblenden</value>
@@ -4151,6 +4268,18 @@
   <data name="Stored. Leave empty to keep them; tick below to use the general ones again." xml:space="preserve">
     <value>Gespeichert. Leer lassen, um sie zu behalten; unten ankreuzen, um wieder die allgemeinen zu verwenden.</value>
   </data>
+  <data name="Subnet" xml:space="preserve">
+    <value>Subnetz</value>
+  </data>
+  <data name="Subnets come from the address and mask of each computer's network adapters, the interfaces of routers (SNMP) and the CIDR ranges of the device scan." xml:space="preserve">
+    <value>Subnetze ergeben sich aus Adresse und Maske der Netzwerkadapter jedes Rechners, den Schnittstellen der Router (SNMP) und den CIDR-Bereichen des Gerätescans.</value>
+  </data>
+  <data name="Subnets, routers, devices and computers as an interactive diagram." xml:space="preserve">
+    <value>Subnetze, Router, Geräte und Rechner als interaktives Diagramm.</value>
+  </data>
+  <data name="Subnets, routers, network devices and computers as an interactive diagram, derived from the inventory and the device scan." xml:space="preserve">
+    <value>Subnetze, Router, Netzwerkgeräte und Rechner als interaktives Diagramm, abgeleitet aus dem Inventar und dem Gerätescan.</value>
+  </data>
   <data name="succeeded" xml:space="preserve">
     <value>erfolgreich</value>
   </data>
@@ -4301,6 +4430,9 @@
   <data name='The deployment of "{0}" has finished; {1} of {2} computers failed.' xml:space="preserve">
     <value>Die Verteilung von „{0}“ ist abgeschlossen; {1} von {2} Rechnern sind fehlgeschlagen.</value>
   </data>
+  <data name="The device scan traces the path from the server into every subnet; the hops connect routers with each other and show where the server sits." xml:space="preserve">
+    <value>Der Gerätescan verfolgt den Weg vom Server in jedes Subnetz; die Hops verbinden Router untereinander und zeigen, wo der Server steht.</value>
+  </data>
   <data name="The device scan tries these communities one after another (SNMP v2c, then v1). They are stored encrypted and never shown again. Ranges can have their own." xml:space="preserve">
     <value>Der Gerätescan probiert diese Communities nacheinander (SNMP v2c, dann v1). Sie werden verschlüsselt gespeichert und nie wieder angezeigt. Bereiche können eigene haben.</value>
   </data>
@@ -4346,8 +4478,14 @@
   <data name="The maintenance window did not open before the deadline expired" xml:space="preserve">
     <value>Das Wartungsfenster hat sich bis zum Ablauf der Frist nicht geöffnet</value>
   </data>
+  <data name="The map starts with subnets and routers only; click a subnet to show its devices and computers, and a computer group to show the single computers." xml:space="preserve">
+    <value>Die Karte zeigt zuerst nur Subnetze und Router; ein Klick auf ein Subnetz zeigt seine Geräte und Rechner, ein Klick auf eine Rechnergruppe die einzelnen Rechner.</value>
+  </data>
   <data name='The name pattern decides which programs count, e.g. "Microsoft Office*".' xml:space="preserve">
     <value>Das Namensmuster bestimmt, welche Programme zählen, z. B. „Microsoft Office*“.</value>
+  </data>
+  <data name="The network map, the network paths and the check of the computers' gateways stay within these networks. Everything else – home networks, hotels, mobile hotspots – is only counted under &quot;Home and other networks&quot;." xml:space="preserve">
+    <value>Netzwerkkarte, Netzwege und die Prüfung der Gateways der Rechner bleiben innerhalb dieser Netze. Alles andere – Heimnetze, Hotels, mobile Hotspots – zählt nur gesammelt unter „Heim- und Fremdnetze“.</value>
   </data>
   <data name="The next run deletes {0}{1}." xml:space="preserve">
     <value>Der nächste Lauf löscht {0}{1}.</value>
@@ -4429,6 +4567,9 @@
   </data>
   <data name="The steps of the selected package run at this point; its files are copied along." xml:space="preserve">
     <value>Die Schritte des gewählten Pakets laufen an dieser Stelle; seine Dateien werden mitkopiert.</value>
+  </data>
+  <data name="The subnets and the routers that connect them. Click a subnet to show its devices and computers, click its frame to fold it again; drag subnets and routers to arrange them." xml:space="preserve">
+    <value>Die Subnetze und die Router, die sie verbinden. Ein Klick auf ein Subnetz zeigt seine Geräte und Rechner, ein Klick auf den Rahmen klappt es wieder zu; Subnetze und Router lassen sich verschieben.</value>
   </data>
   <data name="The table contains none of the asset columns." xml:space="preserve">
     <value>Die Tabelle enthält keine der Bestandsspalten.</value>
@@ -4606,6 +4747,15 @@
   </data>
   <data name="TPM ready" xml:space="preserve">
     <value>TPM bereit</value>
+  </data>
+  <data name="Trace network paths" xml:space="preserve">
+    <value>Netzwege messen</value>
+  </data>
+  <data name="Traceroute from the server into every known subnet: shows which routers connect the networks" xml:space="preserve">
+    <value>Traceroute vom Server in jedes bekannte Subnetz: zeigt, welche Router die Netze verbinden</value>
+  </data>
+  <data name="Tracing …" xml:space="preserve">
+    <value>Messe …</value>
   </data>
   <data name="Transport" xml:space="preserve">
     <value>Transport</value>
@@ -5249,6 +5399,9 @@
   <data name="{0} deleted" xml:space="preserve">
     <value>{0} gelöscht</value>
   </data>
+  <data name="{0} devices" xml:space="preserve">
+    <value>{0} Geräte</value>
+  </data>
   <data name="{0} disabled" xml:space="preserve">
     <value>{0} deaktiviert</value>
   </data>
@@ -5347,6 +5500,9 @@
   </data>
   <data name="{0} skipped due to name anomaly" xml:space="preserve">
     <value>{0} wegen Namensauffälligkeit übersprungen</value>
+  </data>
+  <data name="{0} subnets, {1} routers, {2} devices, {3} computers. Dashed outline: subnet assumed as /24 because no mask is known." xml:space="preserve">
+    <value>{0} Subnetze, {1} Router, {2} Geräte, {3} Rechner. Gestrichelter Rand: Subnetz als /24 angenommen, weil keine Maske bekannt ist.</value>
   </data>
   <data name="{0} updated to {1}." xml:space="preserve">
     <value>{0} auf {1} aktualisiert.</value>

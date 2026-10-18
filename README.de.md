@@ -16,7 +16,7 @@ Zu jeder Funktion gehört unten ein Bild der passenden Seite. Die Bilder stammen
 - [Übersicht und Verläufe](#übersicht-und-verläufe) · [Rechnerliste](#rechnerliste) ·
   [Inventar je Rechner](#inventar-je-rechner) · [Sicherheit und Konfiguration](#sicherheit-und-konfiguration) ·
   [Updates und Patch-Stand](#updates-und-patch-stand) · [Software und Apps](#software-und-apps) ·
-  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte)
+  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte) · [Netzwerkkarte](#netzwerkkarte)
 - [Sammlungen und Wartungsfenster](#sammlungen-und-wartungsfenster) · [Pakete und Schritte](#pakete-und-schritte) ·
   [Erkennung, Voraussetzungen und Hinweis an den Benutzer](#erkennung-voraussetzungen-und-hinweis-an-den-benutzer) ·
   [Fertige Pakete](#fertige-pakete)
@@ -140,6 +140,30 @@ Neuzugänge, und die Liste gibt es als CSV und über die API (`/api/devices`).
 Der Scan spricht jede Adresse eines Bereichs auf 29 Ports an; ein Intrusion-Detection-System kann das als Portscan
 melden – also vorher dem Netzwerkteam Bescheid geben. Geroutete Subnetze müssen vom Server aus erreichbar sein (ICMP, die
 genannten Ports, UDP 161 für SNMP).
+
+### Netzwerkkarte
+
+![Netzwerkkarte](docs/screenshots/de/network-map.png)
+
+![Netzwerkkarte, ein Subnetz aufgeklappt](docs/screenshots/de/network-map-expanded.png)
+
+Subnetze, Router, Netzwerkgeräte und Rechner als interaktives Diagramm, abgeleitet aus dem, was ohnehin bekannt ist:
+Adresse und Maske der Netzwerkadapter jedes Rechners, die Schnittstellen, die Router per SNMP melden (`ipAddrTable`),
+die CIDR-Bereiche des Gerätescans und die Standard-Gateways der Rechner. Der Gerätescan aller Bereiche prüft auch diese
+Gateways; stellen sie sich als dasselbe Gerät heraus (gemeinsame Schnittstellen, MAC-Adresse, Seriennummer oder
+SNMP-Name), werden sie ein Knoten – typischerweise die zentrale Firewall in der Mitte, die Subnetze darum. Außerdem verfolgt der
+Scan den Weg vom Server zu je einem Ziel in jedem Subnetz (ICMP mit steigender TTL, wie `tracert`): aufeinanderfolgende
+Hops verbinden Router untereinander, der letzte Router vor einem Subnetz gilt als dessen Gateway (so finden
+Gateway-Adressen auch ohne SNMP zu ihrem Router), und ein Knoten für den Inventory-Server zeigt, wo er im Netz steht. Die Karte
+beginnt mit dieser Übersicht, jedes Subnetz als Karte mit seinen Gerätearten und deren Anzahl. Ein Klick öffnet ein
+Subnetz: zuerst die Netzinfrastruktur, dann Server und Speicher, dann Peripherie, zuletzt die Rechner als Gruppe, die
+sich mit einem weiteren Klick öffnet. Die Suche öffnet die Subnetze ihrer Treffer, Subnetz-Filter und Gerätearten
+grenzen die Ansicht ein, beim Überfahren werden die Verbindungen hervorgehoben, Subnetze und Router lassen sich
+verschieben (die Anordnung merkt sich der Browser), und das Diagramm lässt sich als PNG speichern. Subnetze ohne bekannte Maske werden als /24 angenommen und gestrichelt gezeichnet.
+Unter „Relevante Netze“ legen Administratoren fest, welche Netze zum Unternehmen gehören (CIDR beliebiger Größe
+oder `192.168.10.x`, etwa das Firmennetz und die VPN-Pools). Die Karte zeichnet dann nur diese; die Heimnetze der Notebooks
+zählen gesammelt unter „Heim- und Fremdnetze“, und Traceroute und Gateway-Prüfung bleiben innerhalb dieser Netze. Ein Gateway mehrerer Subnetze heißt einfach „Gateway“; Operatoren können ihm per Klick einen Namen geben.
+Das Diagramm nutzt [Cytoscape.js](https://js.cytoscape.org/) (MIT-Lizenz), das mit dem Server ausgeliefert wird.
 
 ### Sammlungen und Wartungsfenster
 
@@ -962,5 +986,5 @@ schon ist.
 
 ## Lizenz
 
-[MIT](LICENSE). Inventory verwendet unter anderem MudBlazor (MIT), Entity Framework Core und ASP.NET Core (MIT) sowie
+[MIT](LICENSE). Inventory verwendet unter anderem MudBlazor (MIT), Cytoscape.js (MIT), Entity Framework Core und ASP.NET Core (MIT) sowie
 SQLite (Public Domain).

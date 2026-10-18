@@ -31,6 +31,7 @@
     <MudText Typo="Typo.h5">@_computer.Name</MudText>
     <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : _computer.NameMismatch ? Color.Warning : Color.Default)">@(_computer.IsOnline ? L["online"] : _computer.NameMismatch ? L["unreachable"] : L["offline"])</MudChip>
     <MudSpacer />
+    <MudTooltip Text="@L["Show on the map"]"><MudIconButton Icon="@Icons.Material.Filled.AccountTree" Href="@($"network?focus=c{Id}")" aria-label="@L["Show on the map"]" /></MudTooltip>
     <OperatorOnly>
         <RemoteAccessMenu Computer="_computer" />
     </OperatorOnly>

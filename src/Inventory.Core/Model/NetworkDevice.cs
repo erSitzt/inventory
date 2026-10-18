@@ -68,6 +68,9 @@ public class NetworkDevice
     /// <summary>Geschätztes Betriebssystem (z. B. aus dem SSH-Banner oder sysDescr).</summary>
     public string? OsGuess { get; set; }
 
+    /// <summary>Eigene Adressen eines Routers als "ip/präfix", kommagetrennt (per SNMP); null bei anderen Geräten.</summary>
+    public string? InterfaceAddresses { get; set; }
+
     /// <summary>Offene TCP-Ports, kommagetrennt und aufsteigend.</summary>
     public string? OpenPorts { get; set; }
     public bool PingReply { get; set; }
@@ -98,6 +101,20 @@ public class NetworkDevice
     public List<DeviceSupply> Supplies { get; set; } = [];
 
     public IEnumerable<int> Ports => (OpenPorts ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse);
+}
+
+/// <summary>Der Weg vom Server zu einem Ziel (Traceroute), gemessen beim Gerätescan; zeigt, welche Router die Netze verbinden.</summary>
+public class NetworkTrace
+{
+    public int Id { get; set; }
+    public required string Target { get; set; }
+    /// <summary>Antwortende Router der Reihe nach, kommagetrennt; "*" = dieser Hop hat nicht geantwortet. Ohne das Ziel selbst.</summary>
+    public string Hops { get; set; } = "";
+    /// <summary>Das Ziel hat geantwortet; nur dann ist der letzte Hop sicher das Gateway seines Netzes.</summary>
+    public bool Reached { get; set; }
+    public DateTime TracedUtc { get; set; } = DateTime.UtcNow;
+
+    public IReadOnlyList<string?> HopList => Hops.Length == 0 ? [] : [.. Hops.Split(',').Select(h => h == "*" ? null : h)];
 }
 
 /// <summary>Verbrauchsmaterial eines Druckers (Toner, Trommel, Resttonerbehälter) aus der Drucker-MIB.</summary>

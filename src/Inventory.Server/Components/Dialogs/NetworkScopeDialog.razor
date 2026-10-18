@@ -1,0 +1,52 @@
+@inject NetworkMapService MapService
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">@L["The network map, the network paths and the check of the computers' gateways stay within these networks. Everything else – home networks, hotels, mobile hotspots – is only counted under \"Home and other networks\"."]</MudText>
+            <MudTextField T="string" @bind-Value="_text" Label="@L["Relevant networks"]" Variant="Variant.Outlined" Lines="4" AutoFocus="true" Immediate="true"
+                          HelperText="@L["CIDR of any size (10.0.0.0/8) or 192.168.10.x, separated by commas or lines. Empty = all networks."]" />
+            <MudText Typo="Typo.body2" Color="@(Error is null ? Color.Default : Color.Warning)">@(Error ?? " ")</MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Error is not null)" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string? _text;
+
+    protected override async Task OnInitializedAsync() => _text = string.Join("\n", await MapService.GetNetworksAsync());
+
+    private string? Error
+    {
+        get
+        {
+            try
+            {
+                IpRanges.ParseNetworks(_text);
+                return null;
+            }
+            catch (FormatException ex)
+            {
+                return ex.Message;
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await MapService.SetNetworksAsync(_text);
+        await Audit.LogAsync(L["Relevant networks changed"], string.Join(", ", IpRanges.ParseNetworks(_text)));
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

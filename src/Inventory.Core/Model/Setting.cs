@@ -34,6 +34,12 @@ public static class SettingKeys
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
     /// <summary>SNMP-Communities für den Gerätescan (eine je Zeile), verschlüsselt über <see cref="Abstractions.ISecretProtector"/>; leer = "public".</summary>
     public const string DeviceSnmpCommunities = "Devices.SnmpCommunities";
+    /// <summary>Relevante Netze (CIDR, kommagetrennt): Netzwerkkarte, Traceroute und Gateway-Prüfung beschränken sich darauf; leer = alle.</summary>
+    public const string NetworkMapNetworks = "NetworkMap.Networks";
+    /// <summary>Namen von Gateways ohne gescanntes Gerät (JSON: Adresse → Name).</summary>
+    public const string NetworkMapGatewayNames = "NetworkMap.GatewayNames";
+    /// <summary>Die eigenen Adressen des Servers bei der letzten Wegmessung ("ip/prefix", kommagetrennt).</summary>
+    public const string NetworkMapServerAddresses = "NetworkMap.ServerAddresses";
     /// <summary>Bis zu diesem Zeitpunkt (UTC, ISO 8601) ist die Download-Seite für den Agenten ohne Anmeldung erreichbar; leer = geschlossen.</summary>
     public const string AgentPublicDownloadUntilUtc = "Agent.PublicDownloadUntilUtc";
     /// <summary>Gesetzt, sobald die Beispiel-Zeitpläne einmal angelegt wurden; gelöschte Beispiele kommen nicht wieder.</summary>

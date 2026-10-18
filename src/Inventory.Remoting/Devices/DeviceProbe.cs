@@ -59,6 +59,58 @@ public sealed partial class DeviceProbe : IDeviceProbe
         return observation;
     }
 
+    private const int MaxHops = 16;
+    private static readonly byte[] TracePayload = new byte[32];
+
+    public async Task<TraceResult> TraceAsync(IPAddress target, CancellationToken ct = default)
+    {
+        var hops = new List<string?>();
+        using var ping = new Ping();
+        for (var ttl = 1; ttl <= MaxHops; ttl++)
+        {
+            string? hop = null;
+            // Router drosseln ihre ICMP-Antworten; ein zweiter Versuch je Hop genügt.
+            for (var attempt = 0; attempt < 2 && hop is null; attempt++)
+            {
+                try
+                {
+                    var reply = await ping.SendPingAsync(target, TimeSpan.FromSeconds(1), TracePayload, new PingOptions(ttl, true), ct);
+                    if (reply.Status == IPStatus.Success)
+                        return new TraceResult(hops, true);
+                    if (reply.Status is IPStatus.TtlExpired or IPStatus.TimeExceeded && reply.Address is { } address)
+                        hop = address.ToString();
+                }
+                catch (PingException)
+                {
+                    break;
+                }
+            }
+            hops.Add(hop);
+            // Vier stumme Hops in Folge: weiter kommt nichts mehr zurück.
+            if (hops.Count >= 4 && hops.TakeLast(4).All(h => h is null))
+                break;
+        }
+        while (hops.Count > 0 && hops[^1] is null)
+            hops.RemoveAt(hops.Count - 1);
+        return new TraceResult(hops, false);
+    }
+
+    public IReadOnlyList<(string Ip, int Prefix)> LocalAddresses()
+    {
+        try
+        {
+            return [.. NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+                .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork && IpRanges.IsUsable(a.Address.ToString()))
+                .Select(a => (a.Address.ToString(), a.PrefixLength))];
+        }
+        catch (NetworkInformationException)
+        {
+            return [];
+        }
+    }
+
     public IReadOnlyDictionary<string, string> LocalNeighbors()
     {
         try
