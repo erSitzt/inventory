@@ -164,9 +164,10 @@ public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> 
         };
     }
 
-    public async Task<string> ComputersCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await AllRowsAsync(ReportSource.Computers, ct));
+    /// <param name="zone">Zeitzone der Zeitangaben (die des Browsers); null = die des Servers. Gilt auch für die übrigen festen Exporte.</param>
+    public async Task<string> ComputersCsvAsync(CancellationToken ct = default, TimeZoneInfo? zone = null) => ReportExport.Csv(await AllRowsAsync(ReportSource.Computers, ct, zone));
 
-    public async Task<string> SoftwareCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await AllRowsAsync(ReportSource.Software, ct));
+    public async Task<string> SoftwareCsvAsync(CancellationToken ct = default, TimeZoneInfo? zone = null) => ReportExport.Csv(await AllRowsAsync(ReportSource.Software, ct, zone));
 
     public async Task<PatchCompliance> PatchComplianceAsync(CancellationToken ct = default)
     {
@@ -194,7 +195,7 @@ public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> 
         return await db.Computers.AsNoTracking().Where(c => ids.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
     }
 
-    public async Task<string> PendingUpdatesCsvAsync(CancellationToken ct = default) => ReportExport.Csv(await AllRowsAsync(ReportSource.PendingUpdates, ct));
+    public async Task<string> PendingUpdatesCsvAsync(CancellationToken ct = default, TimeZoneInfo? zone = null) => ReportExport.Csv(await AllRowsAsync(ReportSource.PendingUpdates, ct, zone));
 
     private string? YesNo(bool? value) => value is null ? null : value.Value ? L["yes"] : L["no"];
 }

@@ -114,7 +114,8 @@ public sealed partial class ReportService
     }
 
     /// <summary>Für die festen Exporte (alle Rechner, alle Software, alle Updates): ohne Obergrenze, wie bisher.</summary>
-    private Task<ReportTable> AllRowsAsync(ReportSource source, CancellationToken ct) => TableAsync(new ReportQuery(source), int.MaxValue, ct);
+    private Task<ReportTable> AllRowsAsync(ReportSource source, CancellationToken ct, TimeZoneInfo? zone = null) =>
+        TableAsync(new ReportQuery(source, TimeZone: zone), int.MaxValue, ct);
 
     private static ReportTable Build<T>(List<Column<T>> all, IEnumerable<T> items, ReportQuery query, int limit)
     {

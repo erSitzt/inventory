@@ -26,8 +26,8 @@ public static class DeviceEndpoints
             await devices.GetAsync(id, ct) is { } device ? Results.Ok(ToDto(device)) : Results.NotFound())
             .WithSummary("One network device");
 
-        group.MapGet("export.csv", async (DeviceService devices, Display display, CancellationToken ct) =>
-            Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(await devices.CsvAsync(display.DeviceKind, ct))).ToArray(), "text/csv; charset=utf-8", "devices.csv"))
+        group.MapGet("export.csv", async (DeviceService devices, Display display, HttpContext http, CancellationToken ct) =>
+            Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(await devices.CsvAsync(display.DeviceKind, ct, ReportEndpoints.Zone(http)))).ToArray(), "text/csv; charset=utf-8", "devices.csv"))
             .WithSummary("Network devices as CSV").Produces<string>(200, "text/csv");
 
         group.MapPost("scan", async (int? rangeId, DeviceService devices, AuditService audit, HttpContext http, CancellationToken ct) =>
