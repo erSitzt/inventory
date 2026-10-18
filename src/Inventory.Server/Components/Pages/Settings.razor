@@ -145,7 +145,7 @@
         <MudSwitch T="bool" @bind-Value="_adEnabled" Color="Color.Primary" Label="@L["Synchronize regularly"]" />
         <MudTextField @bind-Value="_adServer" Label="@L["Domain controller or domain"]" Variant="Variant.Outlined" Margin="Margin.Dense"
                       HelperText="@L["Empty = the domain this server belongs to"]" />
-        <MudTextField @bind-Value="_adBaseDns" Label="@L["Search roots (OUs)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3"
+        <MudTextField @bind-Value="_adBaseDns" Label="@L["Search roots (OUs)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3" Sizing="InputSizing.Auto" MaxLines="12"
                       Placeholder="OU=Clients,DC=example,DC=local" HelperText="@L["One per line; empty = whole domain"]" />
         <MudSelect T="int?" @bind-Value="_adCredentialId" Label="@L["Credentials"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
                    Placeholder="@L["Account of the server service"]">

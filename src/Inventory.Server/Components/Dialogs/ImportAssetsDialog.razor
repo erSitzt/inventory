@@ -15,7 +15,7 @@
                 <InputFile id="asset-file" OnChange="LoadAsync" accept=".csv,.txt" hidden />
                 <MudText Typo="Typo.caption">@_fileName</MudText>
             </MudStack>
-            <MudTextField @bind-Value="_csv" Label="@L["Or paste the table here"]" Variant="Variant.Outlined" Lines="8" Immediate="true" Style="font-family: monospace" />
+            <MudTextField @bind-Value="_csv" Label="@L["Or paste the table here"]" Variant="Variant.Outlined" Lines="8" Sizing="InputSizing.Auto" MaxLines="25" Immediate="true" Style="font-family: monospace" />
             @if (_error is not null)
             {
                 <MudAlert Severity="Severity.Error">@_error</MudAlert>

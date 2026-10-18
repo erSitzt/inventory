@@ -7,7 +7,7 @@
     <DialogContent>
         <MudStack Spacing="3">
             <MudText Typo="Typo.body2">@L["The device scan tries these communities one after another (SNMP v2c, then v1). They are stored encrypted and never shown again. Ranges can have their own."]</MudText>
-            <MudTextField @bind-Value="_communities" Label="@L["SNMP communities"]" Variant="Variant.Outlined" Lines="3" AutoFocus="true"
+            <MudTextField @bind-Value="_communities" Label="@L["SNMP communities"]" Variant="Variant.Outlined" Lines="3" Sizing="InputSizing.Auto" MaxLines="12" AutoFocus="true"
                           HelperText="@(_stored ? L["Custom communities are stored. Enter new ones to replace them, or leave empty to go back to \"public\"."] : L["One per line. Empty = \"public\"."])" />
         </MudStack>
     </DialogContent>

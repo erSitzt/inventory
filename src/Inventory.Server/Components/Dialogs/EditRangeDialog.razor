@@ -7,17 +7,17 @@
     <DialogContent>
         <MudStack Spacing="3">
             <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
-            <MudTextField @bind-Value="_addresses" Label="@L["Addresses"]" Variant="Variant.Outlined" Lines="3" Immediate="true"
+            <MudTextField @bind-Value="_addresses" Label="@L["Addresses"]" Variant="Variant.Outlined" Lines="3" Sizing="InputSizing.Auto" MaxLines="12" Immediate="true"
                           HelperText="@L["CIDR (192.168.10.0/24), range (192.168.10.20-192.168.10.80 or 192.168.10.20-80) or single addresses, separated by commas or lines. At most 4096 addresses."]" />
             <MudText Typo="Typo.body2" Color="@(_check.Error is null ? Color.Default : Color.Warning)">@(_check.Error ?? (_check.Count > 0 ? L["{0} addresses", _check.Count] : " "))</MudText>
             <MudSwitch T="bool" @bind-Value="_enabled" Color="Color.Primary" Label="@L["Include in scheduled scans"]" />
-            <MudTextField @bind-Value="_communities" Label="@L["SNMP communities for this range"]" Variant="Variant.Outlined" Lines="2"
+            <MudTextField @bind-Value="_communities" Label="@L["SNMP communities for this range"]" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto" MaxLines="12"
                           HelperText="@(_hasOwn ? L["Stored. Leave empty to keep them; tick below to use the general ones again."] : L["One per line. Empty = the general communities on the Devices page."])" />
             @if (_hasOwn)
             {
                 <MudCheckBox T="bool" @bind-Value="_resetCommunities" Label="@L["Use the general communities again"]" Dense="true" />
             }
-            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="2" />
+            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto" MaxLines="12" />
             @if (_error is not null)
             {
                 <MudAlert Severity="Severity.Error">@_error</MudAlert>

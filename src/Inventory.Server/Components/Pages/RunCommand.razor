@@ -32,7 +32,7 @@
                     <MudSelectItem T="StepRunAs" Value="StepRunAs.LoggedOnUser">@Display.RunAs(StepRunAs.LoggedOnUser)</MudSelectItem>
                 </MudSelect>
                 <MudTextField @bind-Value="_script" Label="@(_type == StepType.Command ? L["Command"] : L["Script"])" Variant="Variant.Outlined" Immediate="true"
-                              Lines="@(_type == StepType.Command ? 2 : 8)" Disabled="_running" Style="font-family: monospace"
+                              Lines="@(_type == StepType.Command ? 2 : 8)" Sizing="InputSizing.Auto" MaxLines="25" Disabled="_running" Style="font-family: monospace"
                               HelperText="@(_runAs == StepRunAs.LoggedOnUser
                                   ? L["Runs in the session of the logged-on user; nothing runs without a logged-on user."]
                                   : L["Runs on the target computer as Local System."])" />
