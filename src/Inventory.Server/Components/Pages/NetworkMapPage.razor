@@ -98,6 +98,28 @@ else if (_map is not null)
         StateHasChanged();
     }
 
+    /// <summary>Gateways ohne gescanntes Gerät bekommen einen Namen, z. B. „Firewall Hauptsitz“.</summary>
+    private async Task RenameAsync(string id)
+    {
+        if (_map?.Nodes.FirstOrDefault(n => n.Id == id && n.Type == MapNodeType.Gateway) is not { } node || !await Access.DemandOperatorAsync())
+            return;
+        var parameters = new DialogParameters<NameDialog>
+        {
+            { d => d.Name, node.Named ? node.Label : "" },
+            { d => d.Action, L["Save"].Value },
+            { d => d.AllowEmpty, true },
+            { d => d.Hint, L["Gateway {0}. Empty = show the address again.", node.Detail ?? id[1..]].Value },
+        };
+        var dialog = await Dialogs.ShowAsync<NameDialog>(L["Rename gateway"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
+        if (await dialog.Result is not { Canceled: false, Data: string name })
+            return;
+        await MapService.SetGatewayNameAsync(id[1..], name);
+        await Audit.LogAsync(L["Gateway renamed"], $"{id[1..]}: {name}");
+        await LoadAsync();
+        _rendered = false;
+        StateHasChanged();
+    }
+
     private async Task TraceAsync()
     {
         if (!await Access.DemandOperatorAsync())
@@ -127,7 +149,8 @@ else if (_map is not null)
         if (_rendered || _map is not { Nodes.Count: > 0 })
             return;
         _rendered = true;
-        _callbacks = DotNetObjectReference.Create(new MapCallbacks(Navigation));
+        _callbacks = DotNetObjectReference.Create(new MapCallbacks(Navigation, id => InvokeAsync(() => RenameAsync(id))));
+        var operator_ = await Access.IsOperatorAsync();
         var labels = new
         {
             computers = L["{0} computers"].Value,
@@ -145,6 +168,7 @@ else if (_map is not null)
             collapse = L["Click the frame to fold the subnet"].Value,
             collapseComputers = L["Right-click folds the computers again"].Value,
             open = L["Click to open"].Value,
+            rename = operator_ ? L["Click to rename"].Value : null,
         };
         await JS.InvokeVoidAsync("inventoryMap.render", _element, _map, NodeIcons(), labels, _callbacks, "lib/cytoscape/cytoscape.min.js");
         if (!string.IsNullOrEmpty(Focus))
@@ -218,10 +242,13 @@ else if (_map is not null)
         _callbacks?.Dispose();
     }
 
-    /// <summary>Rückrufe aus der Karte: Navigation zur Detailseite.</summary>
-    public sealed class MapCallbacks(NavigationManager navigation)
+    /// <summary>Rückrufe aus der Karte: Navigation zur Detailseite, Umbenennen eines Gateways.</summary>
+    public sealed class MapCallbacks(NavigationManager navigation, Func<string, Task> rename)
     {
         [JSInvokable]
         public void Open(string href) => navigation.NavigateTo(href);
+
+        [JSInvokable]
+        public Task Rename(string id) => rename(id);
     }
 }

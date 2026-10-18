@@ -800,6 +800,9 @@
   <data name="Click to open" xml:space="preserve">
     <value>Klicken zum Öffnen</value>
   </data>
+  <data name="Click to rename" xml:space="preserve">
+    <value>Klicken zum Umbenennen</value>
+  </data>
   <data name="Click to show devices and computers" xml:space="preserve">
     <value>Klicken, um Geräte und Rechner zu zeigen</value>
   </data>
@@ -1750,6 +1753,12 @@
   </data>
   <data name="Gateway" xml:space="preserve">
     <value>Gateway</value>
+  </data>
+  <data name="Gateway renamed" xml:space="preserve">
+    <value>Gateway umbenannt</value>
+  </data>
+  <data name="Gateway {0}. Empty = show the address again." xml:space="preserve">
+    <value>Gateway {0}. Leer = wieder die Adresse zeigen.</value>
   </data>
   <data name="Gateways" xml:space="preserve">
     <value>Gateways</value>
@@ -3502,6 +3511,9 @@
   </data>
   <data name="Rename entry to {0}" xml:space="preserve">
     <value>Eintrag in {0} umbenennen</value>
+  </data>
+  <data name="Rename gateway" xml:space="preserve">
+    <value>Gateway umbenennen</value>
   </data>
   <data name="Renew secret" xml:space="preserve">
     <value>Geheimnis erneuern</value>

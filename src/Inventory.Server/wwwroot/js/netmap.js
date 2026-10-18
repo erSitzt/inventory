@@ -85,8 +85,10 @@ window.inventoryMap = (() => {
             data: { id: n.id, type: n.type, href: n.href, detail: n.detail, color: color(n), icon: icons[n.type === 'gateway' ? 'Router' : n.icon] || icons.Unknown, raw: n, ...extra },
             classes: [n.type, n.online === false ? 'offline' : ''].join(' '),
         });
+        // Gateways ohne Namen: mit einem Subnetz die Adresse, mit mehreren (zentraler Router) nur "Gateway".
+        const gatewayLabel = r => r.named ? r.label : r.count > 1 ? labels.gateway : `${labels.gateway}\n${r.label}`;
         for (const r of routers())
-            els.push(node(r, { label: r.type === 'gateway' ? `${labels.gateway}\n${r.label}` : r.type === 'server' ? labels.server : r.label }));
+            els.push(node(r, { label: r.type === 'gateway' ? gatewayLabel(r) : r.type === 'server' ? labels.server : r.label }));
         for (const s of subnets()) {
             const open = isOpen(s.id);
             const remote = s.id === 'remote';
@@ -380,6 +382,7 @@ window.inventoryMap = (() => {
             if (raw.detail) lines.push(raw.detail);
             if (raw.type === 'computer' && !individually) lines.push(labels.collapseComputers);
             if (raw.href) lines.push(labels.open);
+            else if (raw.type === 'gateway' && labels.rename) lines.push(labels.rename);
         }
         tip.textContent = lines.join('\n');
         tip.style.left = `${event.renderedPosition.x + 16}px`;
@@ -441,6 +444,8 @@ window.inventoryMap = (() => {
                     redraw(true, raw.parent);
                 } else if (raw.href) {
                     dotnet.invokeMethodAsync('Open', raw.href);
+                } else if (raw.type === 'gateway' && labels.rename) {
+                    dotnet.invokeMethodAsync('Rename', raw.id);
                 }
             });
             cy.on('cxttap', 'node.computer', e => { unhover(); openGroups.delete(e.target.data('raw').group); redraw(true); });

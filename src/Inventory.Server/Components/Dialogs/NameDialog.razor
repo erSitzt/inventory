@@ -2,24 +2,34 @@
 
 <MudDialog>
     <DialogContent>
-        <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" AutoFocus="true" Immediate="true" OnKeyDown="OnKeyDown" />
+        <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" AutoFocus="true" Immediate="true" OnKeyDown="OnKeyDown" HelperText="@Hint" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@string.IsNullOrWhiteSpace(_name)" OnClick="Submit">@L["Create"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!AllowEmpty && string.IsNullOrWhiteSpace(_name))" OnClick="Submit">@(Action ?? L["Create"])</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
 
+    /// <summary>Vorbelegung, z. B. beim Umbenennen.</summary>
+    [Parameter] public string Name { get; set; } = "";
+    /// <summary>Beschriftung der Schaltfläche; Standard „Erstellen“.</summary>
+    [Parameter] public string? Action { get; set; }
+    /// <summary>Ein leerer Name ist erlaubt (setzt z. B. den Namen zurück).</summary>
+    [Parameter] public bool AllowEmpty { get; set; }
+    [Parameter] public string? Hint { get; set; }
+
     private string _name = "";
+
+    protected override void OnInitialized() => _name = Name;
 
     private void Submit() => MudDialog.Close(DialogResult.Ok(_name));
 
     private void OnKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_name))
+        if (e.Key == "Enter" && (AllowEmpty || !string.IsNullOrWhiteSpace(_name)))
             Submit();
     }
 }

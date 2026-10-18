@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Inventory.Core;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
         var ranges = await db.NetworkRanges.AsNoTracking().Select(r => new { r.Name, r.Addresses }).ToListAsync(ct);
         var traces = await db.NetworkTraces.AsNoTracking().ToListAsync(ct);
         var networks = await NetworksAsync(db, ct);
+        var names = await GatewayNamesAsync(db, ct);
 
         var mapComputers = computers.Where(c => allowedComputers is null || allowedComputers.Contains(c.Id)).Select(c =>
         {
@@ -34,7 +36,41 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
         }).ToList();
         // Geräte, die zu einem nicht sichtbaren Rechner gehören, bleiben ebenfalls weg.
         var visibleDevices = devices.Where(d => d.ComputerId is not { } id || allowedComputers is null || allowedComputers.Contains(id)).ToList();
-        return NetworkMapBuilder.Build(mapComputers, visibleDevices, [.. ranges.Select(r => (r.Name, r.Addresses))], traces, networks);
+        return NetworkMapBuilder.Build(mapComputers, visibleDevices, [.. ranges.Select(r => (r.Name, r.Addresses))], traces, networks, names);
+    }
+
+    /// <summary>Benennt ein Gateway ohne gescanntes Gerät; leer = wieder die Adresse.</summary>
+    /// <param name="address">Die Adresse, unter der der Name gespeichert wird (eine Adresse des Gateways).</param>
+    public async Task SetGatewayNameAsync(string address, string? name, CancellationToken ct = default)
+    {
+        if (!IpRanges.IsUsable(address))
+            throw new ArgumentException("Not an IPv4 address.", nameof(address));
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var names = await GatewayNamesAsync(db, ct);
+        if (string.IsNullOrWhiteSpace(name))
+            names.Remove(address);
+        else
+            names[address] = name.Trim();
+        var setting = await db.Settings.FindAsync([SettingKeys.NetworkMapGatewayNames], ct);
+        var value = names.Count > 0 ? JsonSerializer.Serialize(names) : null;
+        if (setting is null)
+            db.Settings.Add(new Setting { Key = SettingKeys.NetworkMapGatewayNames, Value = value });
+        else
+            setting.Value = value;
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task<Dictionary<string, string>> GatewayNamesAsync(InventoryDbContext db, CancellationToken ct)
+    {
+        var stored = await db.Settings.Where(s => s.Key == SettingKeys.NetworkMapGatewayNames).Select(s => s.Value).FirstOrDefaultAsync(ct);
+        try
+        {
+            return stored is null ? [] : JsonSerializer.Deserialize<Dictionary<string, string>>(stored) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     /// <summary>Die relevanten Netze; leer = alle.</summary>

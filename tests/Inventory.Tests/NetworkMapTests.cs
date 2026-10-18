@@ -117,9 +117,11 @@ public class NetworkMapTests
         var branch = routers.Single(r => r.Detail!.Contains("172.16.0.2"));
         Assert.Contains("10.20.0.1", branch.Detail);
 
-        Assert.Contains(new MapEdge("server", central.Id), map.Edges);
-        Assert.Contains(new MapEdge(central.Id, branch.Id), map.Edges);
+        // Der Server steht im Netz 10.0.1.0/24 (Ziel ohne Hop); sein Weg zur Firewall führt über dieses Netz, nicht direkt.
         Assert.Contains(new MapEdge("server", "10.0.1.0/24"), map.Edges);
+        Assert.DoesNotContain(new MapEdge("server", central.Id), map.Edges);
+        Assert.Contains(new MapEdge(central.Id, "10.0.1.0/24"), map.Edges);
+        Assert.Contains(new MapEdge(central.Id, branch.Id), map.Edges);
         Assert.Contains(new MapEdge(branch.Id, "10.20.0.0/24"), map.Edges);
         // Hop-Adressen erzeugen keine eigenen (angenommenen) Netze.
         Assert.DoesNotContain(map.Nodes, n => n.Id == "172.16.0.0/24");
@@ -285,5 +287,37 @@ public class NetworkMapTests
         await map.SetNetworksAsync("");
         Assert.Empty(await map.GetNetworksAsync());
         Assert.Throws<FormatException>(() => map.SetNetworksAsync("10.0.0.0/40").GetAwaiter().GetResult());
+    }
+
+    [Fact]
+    public void Gateways_count_their_subnets_and_can_be_named()
+    {
+        var computers = new[] { Pc(1, "PC-1", "10.0.0.10", gateway: "10.0.0.1"), Pc(2, "PC-2", "10.0.1.10", gateway: "10.0.1.1"), Pc(3, "PC-3", "10.20.0.5", gateway: "10.20.0.1") };
+        var traces = new List<NetworkTrace> { new() { Target = "10.0.0.10", Hops = "10.0.1.1", Reached = true } };
+
+        var map = NetworkMapBuilder.Build(computers, [], [], traces);
+        var central = map.Nodes.Single(n => n.Type == MapNodeType.Gateway && n.Detail!.Contains("10.0.1.1"));
+        Assert.Equal(2, central.Count);
+        Assert.False(central.Named);
+        Assert.Equal(1, map.Nodes.Single(n => n.Id == "g10.20.0.1").Count);
+
+        // Der Name gilt für die ganze Gruppe, auch wenn er unter einer anderen ihrer Adressen gespeichert ist.
+        var named = NetworkMapBuilder.Build(computers, [], [], traces, gatewayNames: new Dictionary<string, string> { ["10.0.1.1"] = "Core firewall" });
+        var renamed = named.Nodes.Single(n => n.Id == central.Id);
+        Assert.Equal("Core firewall", renamed.Label);
+        Assert.True(renamed.Named);
+    }
+
+    [Fact]
+    public async Task Gateway_names_are_stored_per_address()
+    {
+        using var db = new TestDb();
+        var service = new NetworkMapService(db);
+        await service.SetGatewayNameAsync("10.0.0.1", "Core firewall");
+        await service.SetGatewayNameAsync("10.20.0.1", "Branch");
+        await service.SetGatewayNameAsync("10.20.0.1", " ");
+        await using var context = db.CreateDbContext();
+        Assert.Equal("""{"10.0.0.1":"Core firewall"}""", context.Settings.Single(s => s.Key == SettingKeys.NetworkMapGatewayNames).Value);
+        await Assert.ThrowsAsync<ArgumentException>(() => service.SetGatewayNameAsync("not-an-ip", "x"));
     }
 }

@@ -159,7 +159,7 @@ subnets and routers can be dragged (the arrangement is kept in the browser), and
 are assumed as /24 and drawn dashed. Under "Relevant networks", administrators define which networks belong to the
 organisation (CIDR of any size or `192.168.10.x`, e.g. the company network and the VPN pools). The map then draws only
 those; the home networks of notebooks are only counted under "Home and other networks", and traceroute and the gateway
-check stay inside these networks. The diagram uses [Cytoscape.js](https://js.cytoscape.org/) (MIT licence), which
+check stay inside these networks. A gateway that serves several subnets is simply called "Gateway"; operators can name it with a click. The diagram uses [Cytoscape.js](https://js.cytoscape.org/) (MIT licence), which
 ships with the server.
 
 ### Collections and maintenance windows
