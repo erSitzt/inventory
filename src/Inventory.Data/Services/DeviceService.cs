@@ -282,6 +282,12 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         });
         await db.NetworkTraces.ExecuteDeleteAsync(ct);
         db.NetworkTraces.AddRange(traces);
+        // Mit den Wegen die eigenen Adressen: erst sie sagen sicher, in welchem Netz der Server steht.
+        var own = string.Join(",", probe.LocalAddresses().Select(a => $"{a.Ip}/{a.Prefix}"));
+        if (await db.Settings.FindAsync([SettingKeys.NetworkMapServerAddresses], ct) is { } setting)
+            setting.Value = own;
+        else
+            db.Settings.Add(new Setting { Key = SettingKeys.NetworkMapServerAddresses, Value = own });
         await db.SaveChangesAsync(ct);
         return traces.Count;
     }

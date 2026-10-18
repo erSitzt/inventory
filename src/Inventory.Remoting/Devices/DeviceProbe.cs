@@ -95,6 +95,22 @@ public sealed partial class DeviceProbe : IDeviceProbe
         return new TraceResult(hops, false);
     }
 
+    public IReadOnlyList<(string Ip, int Prefix)> LocalAddresses()
+    {
+        try
+        {
+            return [.. NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+                .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork && IpRanges.IsUsable(a.Address.ToString()))
+                .Select(a => (a.Address.ToString(), a.PrefixLength))];
+        }
+        catch (NetworkInformationException)
+        {
+            return [];
+        }
+    }
+
     public IReadOnlyDictionary<string, string> LocalNeighbors()
     {
         try

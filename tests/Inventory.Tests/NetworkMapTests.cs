@@ -204,7 +204,9 @@ public class NetworkMapTests
         Assert.Contains(map.Nodes, n => n.Type == MapNodeType.Server);
         var firewall = map.Nodes.Single(n => n.Label == "fw-01");
         var branch = map.Nodes.Single(n => n.Label == "rt-hamburg");
-        Assert.Contains(new MapEdge("server", firewall.Id), map.Edges);
+        // Der Server steht im Servernetz (eigene Adresse), die Firewall hängt an diesem Netz.
+        Assert.Contains(new MapEdge("server", "10.0.1.0/24"), map.Edges);
+        Assert.Contains(new MapEdge(firewall.Id, "10.0.1.0/24"), map.Edges);
         Assert.Contains(new MapEdge(firewall.Id, branch.Id), map.Edges);
         Assert.Contains(new MapEdge(branch.Id, "10.20.0.0/24"), map.Edges);
     }
@@ -319,5 +321,40 @@ public class NetworkMapTests
         await using var context = db.CreateDbContext();
         Assert.Equal("""{"10.0.0.1":"Core firewall"}""", context.Settings.Single(s => s.Key == SettingKeys.NetworkMapGatewayNames).Value);
         await Assert.ThrowsAsync<ArgumentException>(() => service.SetGatewayNameAsync("not-an-ip", "x"));
+    }
+
+    [Fact]
+    public void A_gateway_answering_without_hops_does_not_put_the_server_into_its_subnet()
+    {
+        // Server in 10.0.1.0/24; das Druckernetz 10.0.7.0/24 hängt an derselben Firewall, deren Adresse 10.0.7.1 (VRRP) direkt antwortet.
+        var computers = new[] { Pc(1, "SRV-1", "10.0.1.20", gateway: "10.0.1.1"), Pc(2, "PC-2", "10.0.9.10", gateway: "10.0.9.1") };
+        var printer = Device(10, "10.0.7.30", DeviceKind.Printer);
+        var vrrp = Device(11, "10.0.7.1", DeviceKind.Unknown, mac: "00:00:5E:00:01:F0");
+        vrrp.DiscoveredName = null;
+        var traces = new List<NetworkTrace>
+        {
+            new() { Target = "10.0.1.20", Hops = "", Reached = true },
+            new() { Target = "10.0.7.1", Hops = "", Reached = true },
+            new() { Target = "10.0.9.10", Hops = "10.0.1.1", Reached = true },
+        };
+
+        var map = NetworkMapBuilder.Build(computers, [printer, vrrp], [("Printers", "10.0.7.0/24")], traces, serverAddresses: [("10.0.1.5", 24), ("192.0.2.1", 24)]);
+
+        Assert.Equal([new MapEdge("server", "10.0.1.0/24")], map.Edges.Where(e => e.Source == "server"));
+        // 10.0.7.1 gehört zur Firewall (VRRP-Adresse, direkt hinter dem ersten Router), die alle drei Netze verbindet.
+        var firewall = map.Nodes.Single(n => n.Type is MapNodeType.Router && n.Detail!.Contains("10.0.7.1"));
+        Assert.Contains("10.0.1.1", firewall.Detail);
+        Assert.Contains(new MapEdge(firewall.Id, "10.0.7.0/24"), map.Edges);
+        Assert.Contains(new MapEdge(firewall.Id, "10.0.1.0/24"), map.Edges);
+        // Ohne Namen und mit mehreren Netzen zeigt die Karte sie als "Gateway"; benannt wird sie auf ihrer Geräteseite.
+        Assert.False(firewall.Named);
+        Assert.Equal(3, firewall.Count);
+        // Der virtuelle Hyper-V-Adapter des Servers wird kein Netz.
+        Assert.DoesNotContain(map.Nodes, n => n.Id.StartsWith("192.0.2."));
+        // Auch ohne eigene Adressen (Messung einer älteren Version) erkennt die Karte die VRRP-Adresse als Router.
+        var older = NetworkMapBuilder.Build(computers, [printer, vrrp], [("Printers", "10.0.7.0/24")], traces);
+        Assert.Equal([new MapEdge("server", "10.0.1.0/24")], older.Edges.Where(e => e.Source == "server"));
+        Assert.True(DeviceClassifier.IsVrrp("00-00-5e-00-02-01"));
+        Assert.False(DeviceClassifier.IsVrrp("00:00:5E:00:03:01"));
     }
 }

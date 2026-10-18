@@ -21,8 +21,8 @@ public static class MapNodeType
 /// <param name="Icon">Art des Geräts (<see cref="DeviceKind"/>) oder Rolle des Rechners (<see cref="ChassisKind"/>); die Oberfläche wählt daraus das Symbol.</param>
 /// <param name="Group">Bei Rechnern: der Sammelknoten, in dem sie zusammengefasst sind.</param>
 /// <param name="Assumed">Bei Subnetzen: nur angenommen (/24 um eine Adresse), weil keine Maske bekannt ist.</param>
-/// <param name="Count">Bei Sammelknoten die Zahl der Rechner, bei Gateways die Zahl ihrer Subnetze.</param>
-/// <param name="Named">Bei Gateways: der Name wurde vergeben (sonst ist das Label die Adresse).</param>
+/// <param name="Count">Bei Sammelknoten die Zahl der Rechner, bei Gateways und Routern die Zahl ihrer Subnetze.</param>
+/// <param name="Named">Bei Gateways und Routern: es gibt einen Namen (sonst ist das Label die Adresse).</param>
 public sealed record MapNode(string Id, string Type, string Label, string? Detail, string? Parent, string? Href, string Icon,
     string? Group = null, bool Online = true, int Count = 0, bool Assumed = false, bool Named = false);
 
@@ -54,7 +54,8 @@ public static class NetworkMapBuilder
     private const int AssumedPrefix = 24;
 
     public static NetworkMap Build(IReadOnlyList<MapComputer> computers, IReadOnlyList<NetworkDevice> devices, IReadOnlyList<(string Name, string Addresses)> ranges,
-        IReadOnlyList<NetworkTrace>? traces = null, IReadOnlyList<string>? networks = null, IReadOnlyDictionary<string, string>? gatewayNames = null)
+        IReadOnlyList<NetworkTrace>? traces = null, IReadOnlyList<string>? networks = null, IReadOnlyDictionary<string, string>? gatewayNames = null,
+        IReadOnlyList<(string Ip, int Prefix)>? serverAddresses = null)
     {
         gatewayNames ??= new Dictionary<string, string>();
         networks ??= [];
@@ -121,8 +122,23 @@ public static class NetworkMapBuilder
         // Traceroute: der letzte Router vor einem Ziel ist das Gateway des Zielnetzes.
         var gateways = computers.SelectMany(c => c.Gateways).Where(g => IpRanges.IsUsable(g) && !IsRemote(g)).ToHashSet();
         var hopAddresses = traces.SelectMany(t => t.HopList).OfType<string>().Where(IpRanges.IsUsable).ToHashSet();
+
+        // Die Netze des Servers: seine eigenen Adressen, soweit das Netz auch sonst bekannt ist oder er darin Ziele ohne Router
+        // erreicht (virtuelle Adapter wie Hyper-V bleiben so außen vor). Ohne eigene Adressen (ältere Messung) gelten die Ziele ohne Router.
+        var direct = traces.Where(t => t.Reached && t.HopList.Count == 0 && IpRanges.IsUsable(t.Target)).Select(t => t.Target).ToList();
+        var local = (serverAddresses ?? []).Where(a => IpRanges.IsUsable(a.Ip)).Select(a => IpRanges.Network(a.Ip, a.Prefix)).OfType<string>().Where(Relevant).ToHashSet();
+        // Ohne eigene Adressen: Ziele, die selbst Router sind (Gateway, VRRP-Adresse), sagen nichts über das Netz des Servers.
+        bool IsRouterAddress(string ip) => gateways.Contains(ip)
+            || devices.Any(d => d.IpAddress == ip && (d.Kind is DeviceKind.Router or DeviceKind.Firewall || DeviceClassifier.IsVrrp(d.MacAddress)));
+        var own = local.Count == 0
+            ? direct.Where(t => !IsRouterAddress(t)).Select(SubnetOf).ToHashSet()
+            : local.Where(n => (subnets.TryGetValue(n, out var known) && !known.Assumed) || direct.Any(t => IpRanges.Contains(n, t))).ToHashSet();
+        // Antwortet ein Ziel außerhalb der eigenen Netze ohne Router dazwischen, ist es eine Adresse des ersten Routers selbst –
+        // typisch das Gateway eines anderen Netzes an derselben Firewall. Es zählt dann als Gateway, nicht als Netz des Servers.
+        var adjacent = direct.Where(t => local.Count == 0 ? IsRouterAddress(t) : !local.Any(n => IpRanges.Contains(n, t))).ToHashSet();
+        gateways.UnionWith(adjacent);
         var routerDevices = devices.Where(d => d.Kind is DeviceKind.Router or DeviceKind.Firewall || Interfaces(d).Any()
-            || gateways.Contains(d.IpAddress) || hopAddresses.Contains(d.IpAddress)).ToList();
+            || gateways.Contains(d.IpAddress) || hopAddresses.Contains(d.IpAddress) || DeviceClassifier.IsVrrp(d.MacAddress)).ToList();
         var root = new Dictionary<string, string>();
         string Find(string ip)
         {
@@ -148,6 +164,10 @@ public static class NetworkMapBuilder
             Find(gateway);
         foreach (var hop in hopAddresses)
             Find(hop);
+        // Der erste Router der Wege: in der Regel das Gateway des Servers, das auch die direkt antwortenden Adressen trägt.
+        if (traces.Select(t => t.HopList.FirstOrDefault()).OfType<string>().GroupBy(h => h).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key is { } firstRouter)
+            foreach (var address in adjacent)
+                Union(address, firstRouter);
         foreach (var trace in traces.Where(t => t.Reached && IpRanges.IsUsable(t.Target)))
         {
             var last = trace.HopList.LastOrDefault();
@@ -182,7 +202,8 @@ public static class NetworkMapBuilder
                 edges.Add(new MapEdge(id, SubnetOf(gateway)));
 
             if (device is not null)
-                nodes.Add(new MapNode(id, MapNodeType.Router, device.DisplayName, string.Join(", ", addresses), null, $"devices/{device.Id}", device.Kind.ToString()));
+                nodes.Add(new MapNode(id, MapNodeType.Router, device.DisplayName, string.Join(", ", addresses), null, $"devices/{device.Id}", device.Kind.ToString(),
+                    Named: device.Name is not null || device.DiscoveredName is not null));
             else
             {
                 // Ein vergebener Name gilt für die ganze Gruppe, egal unter welcher ihrer Adressen er gespeichert ist.
@@ -196,9 +217,10 @@ public static class NetworkMapBuilder
         if (traces.Count > 0)
         {
             nodes.Add(new MapNode("server", MapNodeType.Server, "Inventory", null, null, null, nameof(ChassisKind.Server)));
-            // Das eigene Netz des Servers: Ziele, die er ohne Router erreicht. Hängt er darin, führt sein Weg über dieses Netz zum
-            // Gateway – eine zusätzliche Kante Server → Gateway wäre doppelt.
-            var homeSubnets = traces.Where(t => t.Reached && t.HopList.Count == 0).Select(t => SubnetOf(t.Target)).ToHashSet();
+            // Der Server hängt in seinen eigenen Netzen; sein Weg führt über dieses Netz zum Gateway – eine zusätzliche Kante
+            // Server → Gateway wäre doppelt.
+            foreach (var subnet in own)
+                edges.Add(new MapEdge("server", subnet));
             foreach (var trace in traces)
             {
                 var chain = trace.HopList.OfType<string>().Where(routerOf.ContainsKey).Select(h => routerOf[h]).ToList();
@@ -207,13 +229,10 @@ public static class NetworkMapBuilder
                 chain = [.. chain.Where((id, i) => i == 0 || chain[i - 1] != id)];
                 if (chain.Count == 0)
                 {
-                    // Ohne Router dazwischen steht der Server im selben Netz wie das Ziel.
-                    if (trace.Reached && trace.HopList.Count == 0)
-                        edges.Add(new MapEdge("server", SubnetOf(trace.Target)));
                     continue;
                 }
                 var firstHop = trace.HopList.FirstOrDefault();
-                if (homeSubnets.FirstOrDefault(h => firstHop is not null && IpRanges.Contains(h, firstHop)) is { } home)
+                if ((firstHop is not null ? own.FirstOrDefault(h => IpRanges.Contains(h, firstHop)) : own.Count == 1 ? own.First() : null) is { } home)
                     edges.Add(new MapEdge(chain[0], home));
                 else
                     edges.Add(new MapEdge("server", chain[0]));
@@ -261,10 +280,10 @@ public static class NetworkMapBuilder
                 remote.Count == 0 ? null : string.Join(", ", remote.OrderBy(r => IpRanges.SortKey(r.Split('/')[0]))), null, null, "subnet"));
         var ids = nodes.Select(n => n.Id).ToHashSet();
         var drawn = edges.Where(e => e.Source != e.Target && ids.Contains(e.Source) && ids.Contains(e.Target)).ToList();
-        // Gateways zählen ihre gezeichneten Subnetze; mit mehreren heißen sie in der Karte einfach "Gateway".
+        // Gateways und Router zählen ihre gezeichneten Subnetze; ohne Namen und mit mehreren heißen sie in der Karte einfach "Gateway".
         var subnetIds = nodes.Where(n => n.Type == MapNodeType.Subnet).Select(n => n.Id).ToHashSet();
         for (var i = 0; i < nodes.Count; i++)
-            if (nodes[i].Type == MapNodeType.Gateway)
+            if (nodes[i].Type is MapNodeType.Gateway or MapNodeType.Router)
                 nodes[i] = nodes[i] with { Count = drawn.Count(e => e.Source == nodes[i].Id && subnetIds.Contains(e.Target)) };
         return new NetworkMap(nodes, drawn, networks);
     }

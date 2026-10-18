@@ -76,4 +76,7 @@ public interface IDeviceProbe
 
     /// <summary>MAC-Adressen aus der ARP-Tabelle des Servers (nur Geräte im selben Netzsegment); Schlüssel = IP.</summary>
     IReadOnlyDictionary<string, string> LocalNeighbors();
+
+    /// <summary>Die eigenen IPv4-Adressen des Servers mit Präfixlänge: zeigen der Netzwerkkarte, in welchen Netzen er selbst steht.</summary>
+    IReadOnlyList<(string Ip, int Prefix)> LocalAddresses() => [];
 }

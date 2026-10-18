@@ -88,7 +88,7 @@ window.inventoryMap = (() => {
         // Gateways ohne Namen: mit einem Subnetz die Adresse, mit mehreren (zentraler Router) nur "Gateway".
         const gatewayLabel = r => r.named ? r.label : r.count > 1 ? labels.gateway : `${labels.gateway}\n${r.label}`;
         for (const r of routers())
-            els.push(node(r, { label: r.type === 'gateway' ? gatewayLabel(r) : r.type === 'server' ? labels.server : r.label }));
+            els.push(node(r, { label: r.type === 'server' ? labels.server : gatewayLabel(r) }));
         for (const s of subnets()) {
             const open = isOpen(s.id);
             const remote = s.id === 'remote';

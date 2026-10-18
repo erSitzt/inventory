@@ -155,6 +155,9 @@ public sealed class SimulatedDeviceProbe : IDeviceProbe
 
     public IReadOnlyDictionary<string, string> LocalNeighbors() => new Dictionary<string, string>();
 
+    /// <summary>Der simulierte Server steht im Servernetz.</summary>
+    public IReadOnlyList<(string Ip, int Prefix)> LocalAddresses() => [("10.0.1.5", 24)];
+
     private static void Set(DeviceObservation o, int[] ports, string? name, string? ssh, string? title)
     {
         o.PingReply = true;

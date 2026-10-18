@@ -20,6 +20,9 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
         var traces = await db.NetworkTraces.AsNoTracking().ToListAsync(ct);
         var networks = await NetworksAsync(db, ct);
         var names = await GatewayNamesAsync(db, ct);
+        var own = (await db.Settings.Where(s => s.Key == SettingKeys.NetworkMapServerAddresses).Select(s => s.Value).FirstOrDefaultAsync(ct) ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries).Select(a => a.Split('/'))
+            .Where(p => p.Length == 2 && IpRanges.IsUsable(p[0]) && int.TryParse(p[1], out _)).Select(p => (p[0], int.Parse(p[1]))).ToList();
 
         var mapComputers = computers.Where(c => allowedComputers is null || allowedComputers.Contains(c.Id)).Select(c =>
         {
@@ -36,7 +39,7 @@ public sealed class NetworkMapService(IDbContextFactory<InventoryDbContext> dbFa
         }).ToList();
         // Geräte, die zu einem nicht sichtbaren Rechner gehören, bleiben ebenfalls weg.
         var visibleDevices = devices.Where(d => d.ComputerId is not { } id || allowedComputers is null || allowedComputers.Contains(id)).ToList();
-        return NetworkMapBuilder.Build(mapComputers, visibleDevices, [.. ranges.Select(r => (r.Name, r.Addresses))], traces, networks, names);
+        return NetworkMapBuilder.Build(mapComputers, visibleDevices, [.. ranges.Select(r => (r.Name, r.Addresses))], traces, networks, names, own);
     }
 
     /// <summary>Benennt ein Gateway ohne gescanntes Gerät; leer = wieder die Adresse.</summary>
