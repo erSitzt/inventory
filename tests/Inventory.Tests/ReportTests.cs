@@ -72,6 +72,12 @@ public class ReportTests
         var deployment = (await reports.TableAsync(new ReportQuery(ReportSource.Deployments, Columns: ["package", "computers", "succeeded", "failed", "cancelled", "open"]))).Rows.Single();
         Assert.Equal(["Editor", "4", "2", "1", "0", "1"], deployment);
 
+        // Zeitangaben erscheinen in der Zeitzone des Lesers (hier fest UTC+5:30, ohne Sommerzeit).
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Test+0530", TimeSpan.FromMinutes(330), "Test", "Test");
+        var utc = (await reports.TableAsync(new ReportQuery(ReportSource.Deployments, Columns: ["started"], TimeZone: TimeZoneInfo.Utc))).Rows.Single()[0]!;
+        var local = (await reports.TableAsync(new ReportQuery(ReportSource.Deployments, Columns: ["started"], TimeZone: zone))).Rows.Single()[0]!;
+        Assert.Equal(TimeSpan.FromMinutes(330), DateTime.ParseExact(local, "yyyy-MM-dd HH:mm", null) - DateTime.ParseExact(utc, "yyyy-MM-dd HH:mm", null));
+
         var recent = await reports.TableAsync(new ReportQuery(ReportSource.Changes, Columns: ["computer", "kind", "item"]));
         Assert.Equal(["pc-01|new|Editor"], recent.Rows.Select(r => string.Join('|', r)));
         Assert.Equal(2, (await reports.TableAsync(new ReportQuery(ReportSource.Changes, Days: 365))).Rows.Count);

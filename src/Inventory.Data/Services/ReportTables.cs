@@ -12,8 +12,9 @@ public sealed record ReportColumn(string Key, string Title, bool Numeric = false
 public sealed record ReportTable(List<ReportColumn> Columns, List<string?[]> Rows);
 
 /// <param name="Columns">Schlüssel in der gewünschten Reihenfolge; null oder leer = alle Spalten der Quelle.</param>
+/// <param name="TimeZone">Zeitzone der Zeitangaben; null = die des Servers.</param>
 public sealed record ReportQuery(ReportSource Source, int? CollectionId = null, int? Days = null, IReadOnlyList<string>? Columns = null,
-    string? SortColumn = null, bool SortDescending = false);
+    string? SortColumn = null, bool SortDescending = false, TimeZoneInfo? TimeZone = null);
 
 public sealed partial class ReportService
 {
@@ -29,14 +30,18 @@ public sealed partial class ReportService
     private const string Date = "yyyy-MM-dd";
     private const string DateTimeFormat = "yyyy-MM-dd HH:mm";
 
+    /// <summary>Ein UTC-Zeitpunkt aus der Datenbank in der Zeitzone des Lesers (Browser, sonst Server).</summary>
+    private static string? Stamp(DateTime? utc, TimeZoneInfo zone) =>
+        utc is { } value ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(value, DateTimeKind.Utc), zone).ToString(DateTimeFormat, CultureInfo.InvariantCulture) : null;
+
     /// <summary>Alle Spalten einer Quelle in ihrer Standardreihenfolge.</summary>
     public IReadOnlyList<ReportColumn> ColumnsOf(ReportSource source) => source switch
     {
-        ReportSource.Computers => ComputerColumns().Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
-        ReportSource.Software => SoftwareColumns().Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
-        ReportSource.PendingUpdates => UpdateColumns().Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
-        ReportSource.Deployments => DeploymentColumns().Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
-        ReportSource.Changes => ChangeColumns().Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
+        ReportSource.Computers => ComputerColumns(TimeZoneInfo.Local).Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
+        ReportSource.Software => SoftwareColumns(TimeZoneInfo.Local).Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
+        ReportSource.PendingUpdates => UpdateColumns(TimeZoneInfo.Local).Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
+        ReportSource.Deployments => DeploymentColumns(TimeZoneInfo.Local).Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
+        ReportSource.Changes => ChangeColumns(TimeZoneInfo.Local).Select(c => new ReportColumn(c.Key, c.Title, c.Numeric)).ToList(),
         _ => [],
     };
 
@@ -53,13 +58,14 @@ public sealed partial class ReportService
         // Die Mitglieder gehen als Filter in die Abfrage: ein Bericht über eine kleine Sammlung lädt nicht den ganzen Bestand.
         var members = query.CollectionId is { } collectionId && Report.HasCollectionFilter(query.Source) ? (await _collections.GetMemberIdsAsync(collectionId, ct)).ToList() : null;
         var since = DateTime.UtcNow.AddDays(-Math.Clamp(query.Days ?? DefaultDays, 1, 3650));
+        var zone = query.TimeZone ?? TimeZoneInfo.Local;
 
         switch (query.Source)
         {
             case ReportSource.Computers:
             {
                 var computers = await db.Computers.AsNoTracking().Where(c => members == null || members.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
-                return Build(ComputerColumns(), computers, query, limit);
+                return Build(ComputerColumns(zone), computers, query, limit);
             }
             case ReportSource.Software:
             {
@@ -68,7 +74,7 @@ public sealed partial class ReportService
                         .Join(db.Computers, s => s.ComputerId, c => c.Id, (s, c) => new { c.Id, Computer = c.Name, s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser })
                         .OrderBy(r => r.Computer).ThenBy(r => r.Name).ToListAsync(ct))
                     .Select(r => new SoftwareRow(r.Id, r.Computer, r.Name, r.Version, r.Publisher, r.InstallDate, r.Is64Bit, r.PerUser));
-                return Build(SoftwareColumns(), rows, query, limit);
+                return Build(SoftwareColumns(zone), rows, query, limit);
             }
             case ReportSource.PendingUpdates:
             {
@@ -76,7 +82,7 @@ public sealed partial class ReportService
                         .Join(db.Computers, u => u.ComputerId, c => c.Id, (u, c) => new { c.Id, Computer = c.Name, c.UpdateLastSearchUtc, Update = u })
                         .OrderBy(r => r.Computer).ThenBy(r => r.Update.Title).ToListAsync(ct))
                     .Select(r => new UpdateRow(r.Id, r.Computer, r.UpdateLastSearchUtc, r.Update));
-                return Build(UpdateColumns(), rows, query, limit);
+                return Build(UpdateColumns(zone), rows, query, limit);
             }
             case ReportSource.Deployments:
             {
@@ -92,7 +98,7 @@ public sealed partial class ReportService
                     // Offen ist, was weder gelungen, gescheitert noch abgebrochen ist: in der Warteschlange, laufend oder wartend.
                     .Select(d => new DeploymentRow(d.Id, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc, d.StopReason, d.Total, d.Succeeded, d.Failed, d.Cancelled,
                         d.Total - d.Succeeded - d.Failed - d.Cancelled));
-                return Build(DeploymentColumns(), rows, query, limit);
+                return Build(DeploymentColumns(zone), rows, query, limit);
             }
             case ReportSource.Changes:
             {
@@ -100,7 +106,7 @@ public sealed partial class ReportService
                         .Join(db.Computers, c => c.ComputerId, c => c.Id, (change, computer) => new { computer.Id, computer.Name, Change = change })
                         .OrderByDescending(r => r.Change.TimeUtc).ThenByDescending(r => r.Change.Id).ToListAsync(ct))
                     .Select(r => new ChangeRow(r.Id, r.Name, r.Change));
-                return Build(ChangeColumns(), rows, query, limit);
+                return Build(ChangeColumns(zone), rows, query, limit);
             }
             default:
                 return new ReportTable([], []);
@@ -108,7 +114,8 @@ public sealed partial class ReportService
     }
 
     /// <summary>Für die festen Exporte (alle Rechner, alle Software, alle Updates): ohne Obergrenze, wie bisher.</summary>
-    private Task<ReportTable> AllRowsAsync(ReportSource source, CancellationToken ct) => TableAsync(new ReportQuery(source), int.MaxValue, ct);
+    private Task<ReportTable> AllRowsAsync(ReportSource source, CancellationToken ct, TimeZoneInfo? zone = null) =>
+        TableAsync(new ReportQuery(source, TimeZone: zone), int.MaxValue, ct);
 
     private static ReportTable Build<T>(List<Column<T>> all, IEnumerable<T> items, ReportQuery query, int limit)
     {
@@ -156,7 +163,7 @@ public sealed partial class ReportService
 
     private static string? Number(long? value) => value?.ToString(CultureInfo.InvariantCulture);
 
-    private List<Column<Computer>> ComputerColumns() =>
+    private List<Column<Computer>> ComputerColumns(TimeZoneInfo zone) =>
     [
         new("name", L["Name"], c => c.Name),
         new("reportedName", L["Reported name"], c => c.ReportedName),
@@ -171,16 +178,16 @@ public sealed partial class ReportService
         new("cpu", L["Processor"], c => c.CpuName),
         new("memoryGb", L["Memory (GB)"], c => c.MemoryBytes is { } bytes ? Math.Round(bytes / 1024d / 1024 / 1024).ToString(CultureInfo.InvariantCulture) : null, Numeric: true),
         new("user", L["User"], c => c.LoggedOnUser),
-        new("lastBoot", L["Last boot (UTC)"], c => c.LastBootUtc?.ToString(DateTimeFormat)),
-        new("lastScan", L["Last scan (UTC)"], c => c.LastScanUtc?.ToString(DateTimeFormat)),
+        new("lastBoot", L["Last boot"], c => Stamp(c.LastBootUtc, zone)),
+        new("lastScan", L["Last scan"], c => Stamp(c.LastScanUtc, zone)),
         new("description", L["Description"], c => c.Description),
         new("firewallDomain", L["Firewall domain"], c => YesNo(c.FirewallDomain)),
         new("firewallPrivate", L["Firewall private"], c => YesNo(c.FirewallPrivate)),
         new("firewallPublic", L["Firewall public"], c => YesNo(c.FirewallPublic)),
         new("defenderRealTime", L["Defender real-time protection"], c => YesNo(c.DefenderRealTime)),
-        new("defenderSignature", L["Defender signature (UTC)"], c => c.DefenderSignatureUpdatedUtc?.ToString(DateTimeFormat)),
+        new("defenderSignature", L["Defender signature"], c => Stamp(c.DefenderSignatureUpdatedUtc, zone)),
         new("antivirus", L["Antivirus"], c => c.AntivirusProducts),
-        new("lastUpdateInstall", L["Last update installation (UTC)"], c => c.UpdateLastInstallUtc?.ToString(DateTimeFormat)),
+        new("lastUpdateInstall", L["Last update installation"], c => Stamp(c.UpdateLastInstallUtc, zone)),
         new("pendingUpdates", L["Pending updates"], c => Number(c.UpdatePendingCount), Numeric: true),
         new("pendingSecurityUpdates", L["Pending security updates"], c => Number(c.UpdatePendingSecurityCount), Numeric: true),
         new("rebootPending", L["Reboot pending"], c => YesNo(c.UpdateRebootRequired)),
@@ -207,7 +214,7 @@ public sealed partial class ReportService
         new("adOu", L["AD organizational unit"], c => c.DirectoryOu),
         new("adGroups", L["AD groups"], c => string.Join(", ", c.DirectoryGroupNames)),
         new("adDescription", L["AD description"], c => c.DirectoryDescription),
-        new("adLastLogon", L["Last AD logon (UTC)"], c => c.DirectoryLastLogonUtc?.ToString(DateTimeFormat)),
+        new("adLastLogon", L["Last AD logon"], c => Stamp(c.DirectoryLastLogonUtc, zone)),
         new("primaryUser", L["Primary user"], c => c.PrimaryUser),
         new("owner", L["Owner"], c => c.Owner),
         new("location", L["Location"], c => c.Location),
@@ -219,7 +226,7 @@ public sealed partial class ReportService
         new("notes", L["Notes"], c => c.Notes),
     ];
 
-    private List<Column<SoftwareRow>> SoftwareColumns() =>
+    private List<Column<SoftwareRow>> SoftwareColumns(TimeZoneInfo zone) =>
     [
         new("computer", L["Computer"], r => r.Computer),
         new("program", L["Program"], r => r.Name),
@@ -230,7 +237,7 @@ public sealed partial class ReportService
         new("perUser", L["Installed per user"], r => YesNo(r.PerUser)),
     ];
 
-    private List<Column<UpdateRow>> UpdateColumns() =>
+    private List<Column<UpdateRow>> UpdateColumns(TimeZoneInfo zone) =>
     [
         new("computer", L["Computer"], r => r.Computer),
         new("kb", "KB", r => r.Update.KbIds),
@@ -240,16 +247,16 @@ public sealed partial class ReportService
         new("security", L["Security-relevant"], r => YesNo(r.Update.IsSecurity)),
         new("downloaded", L["Downloaded"], r => YesNo(r.Update.IsDownloaded)),
         new("sizeMb", L["Size (MB)"], r => r.Update.SizeBytes > 0 ? Math.Round(r.Update.SizeBytes / 1024d / 1024).ToString(CultureInfo.InvariantCulture) : null, Numeric: true),
-        new("lastSearch", L["Last search (UTC)"], r => r.LastSearchUtc?.ToString(DateTimeFormat)),
+        new("lastSearch", L["Last search"], r => Stamp(r.LastSearchUtc, zone)),
     ];
 
-    private List<Column<DeploymentRow>> DeploymentColumns() =>
+    private List<Column<DeploymentRow>> DeploymentColumns(TimeZoneInfo zone) =>
     [
         new("id", L["Number"], r => Number(r.Id), Numeric: true),
         new("package", L["Package"], r => r.Package),
         new("version", L["Version"], r => r.Version),
-        new("started", L["Started (UTC)"], r => r.CreatedUtc.ToString(DateTimeFormat)),
-        new("finished", L["Finished (UTC)"], r => r.FinishedUtc?.ToString(DateTimeFormat)),
+        new("started", L["Started"], r => Stamp(r.CreatedUtc, zone)),
+        new("finished", L["Ended"], r => Stamp(r.FinishedUtc, zone)),
         new("computers", L["Computers"], r => Number(r.Targets), Numeric: true),
         new("succeeded", L["Computers succeeded"], r => Number(r.Succeeded), Numeric: true),
         new("failed", L["Computers failed"], r => Number(r.Failed), Numeric: true),
@@ -258,9 +265,9 @@ public sealed partial class ReportService
         new("stopReason", L["Stopped because"], r => r.StopReason),
     ];
 
-    private List<Column<ChangeRow>> ChangeColumns() =>
+    private List<Column<ChangeRow>> ChangeColumns(TimeZoneInfo zone) =>
     [
-        new("time", L["Time (UTC)"], r => r.Change.TimeUtc.ToString(DateTimeFormat)),
+        new("time", L["Time"], r => Stamp(r.Change.TimeUtc, zone)),
         new("computer", L["Computer"], r => r.Computer),
         new("category", L["Area"], r => L[r.Change.Category]),
         new("kind", L["Change"], r => r.Change.Kind switch { ChangeKind.Added => L["new"], ChangeKind.Removed => L["removed"], _ => L["changed"] }),

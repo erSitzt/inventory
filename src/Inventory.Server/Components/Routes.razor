@@ -1,3 +1,5 @@
+@inject BrowserTime BrowserTime
+
 <Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         @* Prüft die [Authorize]-Angaben der Seiten auch bei der Navigation innerhalb der laufenden Sitzung. *@
@@ -9,3 +11,10 @@
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    /// <summary>Zeitzone des Browsers aus dem Cookie (siehe App.razor).</summary>
+    [Parameter] public string? TimeZone { get; set; }
+
+    protected override void OnParametersSet() => BrowserTime.Set(TimeZone);
+}

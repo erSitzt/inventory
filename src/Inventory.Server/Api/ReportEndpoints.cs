@@ -23,19 +23,20 @@ public static class ReportEndpoints
 {
     public static IEndpointRouteBuilder MapReportEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/reports/computers.csv", async (ReportService reports, CancellationToken ct) =>
-            Csv(await reports.ComputersCsvAsync(ct), "rechner.csv"))
+        // Aus der Oberfläche heruntergeladen (Cookie): Zeiten in der Zeitzone des Browsers, sonst in der des Servers.
+        app.MapGet("/api/reports/computers.csv", async (ReportService reports, HttpContext http, CancellationToken ct) =>
+            Csv(await reports.ComputersCsvAsync(ct, Zone(http)), "rechner.csv"))
             .WithTags("Reports").WithSummary("Computers as CSV").WithDescription("All computers with inventory and security status; UTF-8 with BOM, opens directly in Excel.").Produces<string>(200, "text/csv");
 
-        app.MapGet("/api/reports/software.csv", async (ReportService reports, CancellationToken ct) =>
-            Csv(await reports.SoftwareCsvAsync(ct), "software.csv"))
+        app.MapGet("/api/reports/software.csv", async (ReportService reports, HttpContext http, CancellationToken ct) =>
+            Csv(await reports.SoftwareCsvAsync(ct, Zone(http)), "software.csv"))
             .WithTags("Reports").WithSummary("Software as CSV").WithDescription("One row per computer and installed program.").Produces<string>(200, "text/csv");
 
         app.MapGet("/api/reports/software", async (ReportService reports, CancellationToken ct) => await reports.SoftwareAsync(ct))
             .WithTags("Reports").WithSummary("Software overview").WithDescription("Every combination of program and version with the number of computers it is installed on.");
 
-        app.MapGet("/api/reports/updates.csv", async (ReportService reports, CancellationToken ct) =>
-            Csv(await reports.PendingUpdatesCsvAsync(ct), "updates.csv"))
+        app.MapGet("/api/reports/updates.csv", async (ReportService reports, HttpContext http, CancellationToken ct) =>
+            Csv(await reports.PendingUpdatesCsvAsync(ct, Zone(http)), "updates.csv"))
             .WithTags("Reports").WithSummary("Pending updates as CSV").WithDescription("One row per computer and pending update, as of each computer's last own update search.").Produces<string>(200, "text/csv");
 
         app.MapGet("/api/reports/updates", async (ReportService reports, CancellationToken ct) => (await reports.PatchComplianceAsync(ct)).Updates)
@@ -82,11 +83,13 @@ public static class ReportEndpoints
 
         foreach (var (extension, format, summary) in new[] { ("csv", ReportFormat.Csv, "Saved report as CSV"), ("xlsx", ReportFormat.Excel, "Saved report as Excel workbook"), ("pdf", ReportFormat.Pdf, "Saved report as PDF") })
         {
-            saved.MapGet($"{{id:int}}.{extension}", async (int id, SavedReportService service, TimeProvider time, CancellationToken ct) =>
+            saved.MapGet($"{{id:int}}.{extension}", async (int id, SavedReportService service, TimeProvider time, HttpContext http, CancellationToken ct) =>
             {
                 if (await service.GetAsync(id, ct) is not { } report)
                     return Results.NotFound();
-                var file = await service.ExportAsync(report, format, TimeZoneInfo.ConvertTime(time.GetUtcNow(), time.LocalTimeZone), ct);
+                // Aus der Oberfläche heruntergeladen: Zeiten in der Zeitzone des Browsers; per API ohne Cookie in der des Servers.
+                var zone = Zone(http) ?? time.LocalTimeZone;
+                var file = await service.ExportAsync(report, format, TimeZoneInfo.ConvertTime(time.GetUtcNow(), zone), ct, zone);
                 return Results.File(file.Content, file.ContentType, file.FileName);
             }).WithSummary(summary).WithDescription(format switch
             {
@@ -131,7 +134,7 @@ public static class ReportEndpoints
 
         audit.MapGet("export.csv", async (AuditService service, HttpContext http, IStringLocalizer<SharedResource> L, string? user, string? action, DateTime? from, DateTime? to, string? q, CancellationToken ct) =>
         {
-            var content = await service.CsvAsync(L, Filter(user, action, from, to, q), ct);
+            var content = await service.CsvAsync(L, Filter(user, action, from, to, q), ct, Zone(http));
             await service.LogAsync(http.Actor(), L["Audit log exported"], http.Request.QueryString.HasValue ? Uri.UnescapeDataString(http.Request.QueryString.Value!.TrimStart('?')) : null, ct);
             return Csv(content, "audit.csv");
         }).WithSummary("Audit log as CSV").WithDescription($"Same filters as the list; at most {AuditService.MaxExportRows} rows, newest first. The export itself is logged.").Produces<string>(200, "text/csv");
@@ -177,6 +180,9 @@ public static class ReportEndpoints
 
     private static AuditFilter Filter(string? user, string? action, DateTime? from, DateTime? to, string? q) =>
         new(user, action, Utc(from), Utc(to), q);
+
+    /// <summary>Die Zeitzone des Browsers, wenn die Anfrage aus der Oberfläche kommt; null bei API-Aufrufen ohne Cookie.</summary>
+    internal static TimeZoneInfo? Zone(HttpContext http) => BrowserTime.Resolve(http.Request.Cookies[BrowserTime.Cookie]);
 
     private static DateTime? Utc(DateTime? value) => value is { } v ? v.ToUniversalTime() : null;
 

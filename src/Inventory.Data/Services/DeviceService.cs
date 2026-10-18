@@ -428,8 +428,11 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
     }
 
     /// <summary>Alle Geräte als CSV (Semikolon, wie die übrigen Exporte).</summary>
-    public async Task<string> CsvAsync(Func<DeviceKind, string> kindName, CancellationToken ct = default)
+    /// <param name="zone">Zeitzone der Zeitangaben (die des Browsers); null = die des Servers.</param>
+    public async Task<string> CsvAsync(Func<DeviceKind, string> kindName, CancellationToken ct = default, TimeZoneInfo? zone = null)
     {
+        zone ??= TimeZoneInfo.Local;
+        string Stamp(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), zone).ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
         var columns = new List<ReportColumn>
         {
             new("ip", L["IP address"]), new("name", L["Name"]), new("kind", L["Device type"]), new("manufacturer", L["Manufacturer"]), new("model", L["Model"]),
@@ -441,7 +444,7 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         {
             d.IpAddress, d.DisplayName, kindName(d.Kind), d.Manufacturer, d.Model, d.SerialNumber, d.OsGuess, d.MacAddress, d.MacVendor,
             d.OpenPorts?.Replace(",", ", "), d.SysLocation, d.PageCount?.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            d.Computer?.Name, d.NetworkRange?.Name, d.FirstSeenUtc.ToString("u"), d.LastSeenUtc.ToString("u"),
+            d.Computer?.Name, d.NetworkRange?.Name, Stamp(d.FirstSeenUtc), Stamp(d.LastSeenUtc),
         }).ToList();
         return ReportExport.Csv(new ReportTable(columns, rows));
     }

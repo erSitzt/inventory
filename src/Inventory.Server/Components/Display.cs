@@ -2,13 +2,14 @@ using System.Globalization;
 using Inventory.Contracts;
 using Inventory.Core;
 using Inventory.Core.Model;
+using Inventory.Server.Services;
 using Microsoft.Extensions.Localization;
 using MudBlazor;
 
 namespace Inventory.Server.Components;
 
 /// <summary>Anzeigetexte für die Oberfläche; alle Texte englisch, übersetzt über den <see cref="IStringLocalizer"/>.</summary>
-public sealed class Display(IStringLocalizer<SharedResource> localizer)
+public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserTime browserTime)
 {
     private string T(string text) => localizer[text];
 
@@ -120,14 +121,13 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer)
     /// <summary>Ein Agent gilt als verbunden, solange sein letzter Kontakt nur wenige Minuten zurückliegt.</summary>
     public bool AgentConnected(Computer c) => c.AgentLastSeenUtc is { } seen && DateTime.UtcNow - seen < TimeSpan.FromMinutes(5);
 
-    /// <summary>Datum und Uhrzeit in der Schreibweise der aktuellen Sprache.</summary>
     /// <summary>
-    /// Zeigt einen UTC-Zeitpunkt in Ortszeit. Werte aus der Datenbank tragen keine Kennzeichnung und gelten als UTC.
+    /// Zeigt einen UTC-Zeitpunkt in der Ortszeit des Browsers, in der Schreibweise der aktuellen Sprache. Werte aus der Datenbank tragen keine Kennzeichnung und gelten als UTC.
     /// Bewusst nur diese eine Überladung: eine zweite für nicht-nullbare Werte würde von allen Pflichtfeldern (CreatedUtc,
     /// TimeUtc) gewählt und zeigte sie unumgerechnet an.
     /// </summary>
     public string LocalTime(DateTime? utc) =>
-        utc is not { } value ? "–" : (value.Kind == DateTimeKind.Local ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc).ToLocalTime()).ToString("g", CultureInfo.CurrentCulture);
+        utc is not { } value ? "–" : browserTime.ToLocal(value).ToString("g", CultureInfo.CurrentCulture);
 
     /// <summary>Zeigt eine Uhrzeit, die schon in der Ortszeit des Servers gespeichert ist (z. B. <see cref="Schedule.StartLocal"/>).</summary>
     public string WallTime(DateTime local) => local.ToString("g", CultureInfo.CurrentCulture);
