@@ -3731,6 +3731,9 @@
   <data name="Saved." xml:space="preserve">
     <value>Gespeichert.</value>
   </data>
+  <data name="Scan" xml:space="preserve">
+    <value>Scannen</value>
+  </data>
   <data name="Scan ({0})" xml:space="preserve">
     <value>Scannen ({0})</value>
   </data>
@@ -3739,6 +3742,12 @@
   </data>
   <data name="Scan all ranges" xml:space="preserve">
     <value>Alle Bereiche scannen</value>
+  </data>
+  <data name="Scan all {0} computers shown now? Each one is contacted over the network." xml:space="preserve">
+    <value>Jetzt alle {0} angezeigten Rechner scannen? Jeder wird über das Netzwerk kontaktiert.</value>
+  </data>
+  <data name="Scan all {0} enabled ranges ({1} addresses) and the default gateways of the computers now?" xml:space="preserve">
+    <value>Jetzt alle {0} aktiven Bereiche ({1} Adressen) und die Standard-Gateways der Rechner scannen?</value>
   </data>
   <data name="Scan completed." xml:space="preserve">
     <value>Scan abgeschlossen.</value>
