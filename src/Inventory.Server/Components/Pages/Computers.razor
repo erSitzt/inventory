@@ -439,6 +439,10 @@
             return;
         if (ids.Count == 0)
             return;
+        // Ohne Auswahl trifft der Scan schnell Hunderte Rechner: erst nachfragen.
+        if (_selected.Count == 0 && await Dialogs.ShowMessageBoxAsync(L["Scan all"],
+                L["Scan all {0} computers shown now? Each one is contacted over the network.", ids.Count], yesText: L["Scan"], cancelText: L["Cancel"]) != true)
+            return;
         _busy = true;
         var done = 0;
         _progressText = L["Scanning {0} computers …", ids.Count];

@@ -224,6 +224,15 @@
     {
         if (!await Access.DemandOperatorAsync())
             return;
+        // Alle Bereiche zusammen können Tausende Adressen sein: erst nachfragen.
+        if (range is null)
+        {
+            var enabled = _ranges.Where(r => r.Enabled).ToList();
+            var addresses = enabled.Sum(r => { try { return IpRanges.Expand(r.Addresses).Count; } catch (Exception ex) when (ex is FormatException or ArgumentException) { return 0; } });
+            if (await Dialogs.ShowMessageBoxAsync(L["Scan all ranges"],
+                    L["Scan all {0} enabled ranges ({1} addresses) and the default gateways of the computers now?", enabled.Count, addresses], yesText: L["Scan"], cancelText: L["Cancel"]) != true)
+                return;
+        }
         await Audit.LogAsync(L["Device scan started"], range?.Name);
         _progress = new DeviceScanProgress(range?.Name ?? "", 0, 0, 0);
         // Der Scan läuft unabhängig von der Seite weiter; wer sie wieder öffnet, sieht den Fortschritt.
