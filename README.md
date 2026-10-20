@@ -541,6 +541,11 @@ The synchronization (*Settings → Active Directory*) creates computers from com
   units below it) or a name pattern with `*` and `?` (`KIOSK-*`). Matching accounts are treated like disabled ones:
   they are not created, and computers already in the list count as no longer found. The preview shows how many accounts
   the rules exclude.
+- **Presumably decommissioned**: computers whose account has not signed in to the domain for a set period (default 90
+  days, at least 30 because the directory replicates the last logon only about every two weeks; 0 = off) and that the
+  inventory has not seen in that time either – not online, no scan, no agent message – are marked: a chip in the
+  computer list, the view *Presumably decommissioned*, a tile on the overview, a note on the computer page, a rule
+  field for collections and a report column. Nothing is deleted; the mark disappears as soon as the computer answers.
 - **Directory facts**: every run also stores the organizational unit, the groups the computer account is a direct
   member of, its description and its last logon to the domain (the directory only replicates that value about every
   two weeks). They appear on the computer page and in the CSV export and can be used as collection rules, e.g.

@@ -215,6 +215,7 @@ public sealed partial class ReportService
         new("adGroups", L["AD groups"], c => string.Join(", ", c.DirectoryGroupNames)),
         new("adDescription", L["AD description"], c => c.DirectoryDescription),
         new("adLastLogon", L["Last AD logon"], c => Stamp(c.DirectoryLastLogonUtc, zone)),
+        new("adInactive", L["Presumably decommissioned"], c => YesNo(c.DirectoryInactive)),
         new("primaryUser", L["Primary user"], c => c.PrimaryUser),
         new("owner", L["Owner"], c => c.Owner),
         new("location", L["Location"], c => c.Location),

@@ -99,6 +99,8 @@ public enum RuleField
     DiskHealthProblem = 150,
     /// <summary>App-Paket (MSIX/AppX) vorhanden: Paketname oder Anzeigename.</summary>
     App = 151,
+    /// <summary>Weder Anmeldung an der Domäne noch Sichtung durch das Inventory seit der eingestellten Frist.</summary>
+    DirectoryInactive = 152,
     Online = 1,
     Scanned,
     OsName,

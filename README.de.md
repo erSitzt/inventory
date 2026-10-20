@@ -565,6 +565,12 @@ Die Synchronisation (*Einstellungen → Active Directory*) legt Computerkonten a
   Einheiten darunter) oder ein Namensmuster mit `*` und `?` (`KIOSK-*`). Passende Konten werden wie deaktivierte
   behandelt: Sie werden nicht angelegt, und Rechner, die schon in der Liste stehen, gelten als nicht mehr gefunden. Die
   Vorschau zeigt, wie viele Konten die Regeln ausschließen.
+- **Vermutlich außer Betrieb**: Rechner, deren Konto sich eine einstellbare Zeit nicht an der Domäne angemeldet hat
+  (Standard 90 Tage, mindestens 30, weil das Verzeichnis die letzte Anmeldung nur etwa alle zwei Wochen abgleicht;
+  0 = aus) und die das Inventory in dieser Zeit auch selbst nicht gesehen hat – nicht online, kein Scan, keine
+  Agent-Meldung –, werden markiert: Chip in der Rechnerliste, Ansicht *Vermutlich außer Betrieb*, Kachel in der
+  Übersicht, Hinweis auf der Rechnerseite, Regelfeld für Sammlungen und Berichtsspalte. Gelöscht wird nichts; die
+  Markierung verschwindet, sobald der Rechner wieder antwortet.
 - **Angaben aus dem Verzeichnis**: jeder Lauf speichert auch die Organisationseinheit, die Gruppen, in denen das
   Computerkonto direkt Mitglied ist, seine Beschreibung und seine letzte Anmeldung an der Domäne (das Verzeichnis
   gleicht diesen Wert nur etwa alle zwei Wochen ab). Sie stehen auf der Rechnerseite und im CSV-Export und lassen sich

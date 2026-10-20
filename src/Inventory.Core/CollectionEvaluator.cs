@@ -24,6 +24,7 @@ public static class CollectionEvaluator
         RuleField.ComputerName => Text(rule, computer.Name),
         RuleField.NameMismatch => Flag(rule, computer.NameMismatch),
         RuleField.MissingInDirectory => Flag(rule, computer.MissingInDirectory),
+        RuleField.DirectoryInactive => Flag(rule, computer.DirectoryInactive),
         RuleField.Online => Flag(rule, computer.IsOnline),
         RuleField.Scanned => Flag(rule, computer.LastScanUtc is not null),
         RuleField.OsName => Text(rule, computer.OsName),

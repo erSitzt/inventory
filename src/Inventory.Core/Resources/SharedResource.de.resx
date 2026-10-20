@@ -974,6 +974,9 @@
   <data name="Computers succeeded" xml:space="preserve">
     <value>Rechner erfolgreich</value>
   </data>
+  <data name="Computers that neither signed in to the domain nor were seen by the inventory for a set period are marked as presumably decommissioned." xml:space="preserve">
+    <value>Rechner, die sich eine einstellbare Zeit weder an der Domäne angemeldet haben noch vom Inventory gesehen wurden, gelten als vermutlich außer Betrieb.</value>
+  </data>
   <data name="Computers with {0} older than the library version" xml:space="preserve">
     <value>Rechner mit {0} älter als die Bibliotheksversion</value>
   </data>
@@ -1135,6 +1138,9 @@
   </data>
   <data name="Decimal, or hexadecimal with 0x" xml:space="preserve">
     <value>Dezimal, oder hexadezimal mit 0x</value>
+  </data>
+  <data name="decommissioned?" xml:space="preserve">
+    <value>außer Betrieb?</value>
   </data>
   <data name="Default" xml:space="preserve">
     <value>Standard</value>
@@ -2099,6 +2105,9 @@
   <data name="Last AD logon" xml:space="preserve">
     <value>Letzte AD-Anmeldung</value>
   </data>
+  <data name="Last AD logon {0}, last seen by the inventory {1}." xml:space="preserve">
+    <value>Letzte AD-Anmeldung {0}, zuletzt vom Inventory gesehen {1}.</value>
+  </data>
   <data name="Last attempt failed" xml:space="preserve">
     <value>Letzter Versuch fehlgeschlagen</value>
   </data>
@@ -2302,6 +2311,9 @@
   </data>
   <data name="Mark and delete after a grace period" xml:space="preserve">
     <value>Kennzeichnen und nach einer Frist löschen</value>
+  </data>
+  <data name="Mark as presumably decommissioned after (days)" xml:space="preserve">
+    <value>Als vermutlich außer Betrieb markieren nach (Tagen)</value>
   </data>
   <data name='Marked computers appear in the computer list under the filter "Not (anymore) in AD" and can be used in dynamic collections via the rule field "Not (anymore) in Active Directory", e.g. to exclude them from schedules.' xml:space="preserve">
     <value>Gekennzeichnete Rechner stehen in der Rechnerliste unter dem Filter „Nicht (mehr) im AD“ und lassen sich über das Regelfeld „Nicht (mehr) im Active Directory“ in dynamischen Sammlungen verwenden, etwa um sie von Zeitplänen auszunehmen.</value>
@@ -2509,6 +2521,9 @@
   </data>
   <data name="No access" xml:space="preserve">
     <value>Kein Zugriff</value>
+  </data>
+  <data name="No AD logon and no sign of life in the inventory for this long; 0 = off, at least {0}. Nothing is deleted." xml:space="preserve">
+    <value>So lange weder eine Anmeldung am AD noch ein Lebenszeichen im Inventory; 0 = aus, mindestens {0}. Gelöscht wird nichts.</value>
   </data>
   <data name="No address ranges to scan." xml:space="preserve">
     <value>Keine Adressbereiche zum Scannen.</value>
@@ -3247,6 +3262,12 @@
   </data>
   <data name="present" xml:space="preserve">
     <value>vorhanden</value>
+  </data>
+  <data name="Presumably decommissioned" xml:space="preserve">
+    <value>Vermutlich außer Betrieb</value>
+  </data>
+  <data name="Presumably decommissioned: last AD logon {0}, last seen by the inventory {1}." xml:space="preserve">
+    <value>Vermutlich außer Betrieb: letzte AD-Anmeldung {0}, zuletzt vom Inventory gesehen {1}.</value>
   </data>
   <data name="Preview" xml:space="preserve">
     <value>Vorschau</value>
@@ -4535,6 +4556,9 @@
   <data name="The package was deleted" xml:space="preserve">
     <value>Das Paket wurde gelöscht</value>
   </data>
+  <data name='The period is set under "Active Directory" in the settings; nothing is deleted automatically.' xml:space="preserve">
+    <value>Die Frist steht in den Einstellungen unter „Active Directory“; automatisch gelöscht wird nichts.</value>
+  </data>
   <data name="The play button runs a schedule once right away." xml:space="preserve">
     <value>Der Abspielknopf führt einen Zeitplan sofort einmal aus.</value>
   </data>
@@ -5375,6 +5399,9 @@
   <data name="{0} computers checked, {1} online" xml:space="preserve">
     <value>{0} Rechner geprüft, {1} online</value>
   </data>
+  <data name="{0} computers count as presumably decommissioned." xml:space="preserve">
+    <value>{0} Rechner gelten als vermutlich außer Betrieb.</value>
+  </data>
   <data name="{0} computers deleted." xml:space="preserve">
     <value>{0} Rechner gelöscht.</value>
   </data>
@@ -5515,6 +5542,9 @@
   </data>
   <data name="{0} postponements, {1} minutes each" xml:space="preserve">
     <value>{0} Verschiebungen, je {1} Minuten</value>
+  </data>
+  <data name="{0} presumably decommissioned (no sign of life for {1} days)" xml:space="preserve">
+    <value>{0} vermutlich außer Betrieb (seit {1} Tagen kein Lebenszeichen)</value>
   </data>
   <data name="{0} retries" xml:space="preserve">
     <value>{0} Wiederholungen</value>

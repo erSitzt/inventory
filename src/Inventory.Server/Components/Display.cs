@@ -148,6 +148,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.ComputerName => T("Computer name"),
         RuleField.NameMismatch => T("Reported name differs"),
         RuleField.MissingInDirectory => T("Not (anymore) in Active Directory"),
+        RuleField.DirectoryInactive => T("Presumably decommissioned"),
         RuleField.LocalAdmin => T("Local administrator"),
         RuleField.FirewallOff => T("Firewall (partly) off"),
         RuleField.AntivirusProblem => T("No real-time antivirus"),
@@ -226,7 +227,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     /// <summary>Operatoren, die für ein Feld sinnvoll sind.</summary>
     public IReadOnlyList<RuleOperator> OperatorsFor(RuleField field) => field switch
     {
-        RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
+        RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory or RuleField.DirectoryInactive
             or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
             or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
             or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
@@ -439,7 +440,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     };
 
     /// <summary>Felder, die nur "ja" oder "nein" kennen.</summary>
-    public bool IsFlag(RuleField field) => field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory
+    public bool IsFlag(RuleField field) => field is RuleField.Online or RuleField.Scanned or RuleField.NameMismatch or RuleField.MissingInDirectory or RuleField.DirectoryInactive
         or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
         or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
         or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated

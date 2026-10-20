@@ -151,6 +151,7 @@ public static class HelpTopics
             [
                 L["Active Directory imports computers regularly; agents connect computers the server cannot reach."],
                 L["Exclusions keep organizational units or name patterns out of the Active Directory import."],
+                L["Computers that neither signed in to the domain nor were seen by the inventory for a set period are marked as presumably decommissioned."],
                 L["Agentless access can be restricted to installing the agent, or switched off."],
             ], L["how-access-works"]),
             _ => new(L["Overview"], L["The state of all computers at a glance and what needs attention."],

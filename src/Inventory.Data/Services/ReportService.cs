@@ -52,6 +52,7 @@ public sealed class DashboardStats
     public int WithPendingUpdates { get; init; }
     public int NameMismatch { get; init; }
     public int MissingInDirectory { get; init; }
+    public int DirectoryInactive { get; init; }
     /// <summary>Garantie läuft innerhalb von <see cref="WarrantyWarningDays"/> Tagen ab oder ist abgelaufen.</summary>
     public int WarrantyEnding { get; init; }
     public const int WarrantyWarningDays = 90;
@@ -66,7 +67,7 @@ public sealed class DashboardStats
     public const int StaleDays = 7;
 
     /// <summary>Rechner, bei denen etwas zu tun ist (ein Rechner kann mehrfach zählen).</summary>
-    public int AttentionItems => FirewallOff + AntivirusProblems + RebootRequired + WithPendingUpdates + ScanErrors + NameMismatch + MissingInDirectory;
+    public int AttentionItems => FirewallOff + AntivirusProblems + RebootRequired + WithPendingUpdates + ScanErrors + NameMismatch + MissingInDirectory + DirectoryInactive;
 }
 
 public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> dbFactory, IStringLocalizer<SharedResource>? localizer = null, CollectionService? collectionService = null)
@@ -153,6 +154,7 @@ public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> 
             WithPendingUpdates = computers.Count(c => c.UpdatePendingCount > 0),
             NameMismatch = computers.Count(c => c.NameMismatch),
             MissingInDirectory = computers.Count(c => c.MissingInDirectory),
+            DirectoryInactive = computers.Count(c => c.DirectoryInactive),
             WarrantyEnding = computers.Count(c => c.WarrantyDaysLeft(DateOnly.FromDateTime(DateTime.Now)) <= DashboardStats.WarrantyWarningDays),
             RunningDeployments = await db.Deployments.CountAsync(d => d.FinishedUtc == null && d.Targets.Any(t => t.Status == TargetStatus.Running || t.Status == TargetStatus.Queued), ct),
             WaitingOffline = await db.Deployments.Where(d => d.FinishedUtc == null).SelectMany(d => d.Targets).CountAsync(t => t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot, ct),
