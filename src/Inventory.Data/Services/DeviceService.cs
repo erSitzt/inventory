@@ -343,7 +343,7 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         var devices = (await db.NetworkDevices.Where(d => deviceIds.Contains(d.Id) && d.ComputerId == null).ToListAsync(ct)).Where(d => d.CanAdopt).ToList();
         var computers = await db.Computers.ToListAsync(ct);
         var added = new List<Computer>();
-        var linked = 0;
+        var linked = new List<string>();
         foreach (var device in devices.OrderBy(d => IpRanges.SortKey(d.IpAddress)))
         {
             var name = new[] { device.WindowsName, device.ReverseName, device.IpAddress }.FirstOrDefault(n => n is not null && ComputerNames.IsValid(n))!;
@@ -358,7 +358,7 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
             }
             else if (!added.Contains(computer))
             {
-                linked++;
+                linked.Add($"{device.IpAddress} → {computer.Name}");
             }
             device.Computer = computer;
         }
@@ -490,5 +490,9 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
 }
 
 /// <param name="AddedIds">Neu angelegte Rechner.</param>
-/// <param name="Linked">Geräte, die mit einem schon vorhandenen Rechner verknüpft wurden.</param>
-public sealed record DeviceAdoption(List<int> AddedIds, List<string> AddedNames, int Linked);
+/// <param name="Linked">Geräte, die mit einem schon vorhandenen Rechner verknüpft wurden, als "Adresse → Rechner".</param>
+public sealed record DeviceAdoption(List<int> AddedIds, List<string> AddedNames, List<string> Linked)
+{
+    /// <summary>Für das Protokoll: neue Rechner und Verknüpfungen.</summary>
+    public string Details => string.Join(", ", AddedNames.Concat(Linked));
+}

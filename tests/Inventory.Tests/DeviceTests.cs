@@ -254,7 +254,8 @@ public class DeviceTests
         await computers.ImportAsync("pc-101");
         var result = await service.AdoptAsync([.. devices.Select(d => d.Id)]);
         Assert.Equal(["SRV-FILE01", "LAPTOP-GUEST7"], result.AddedNames);
-        Assert.Equal(1, result.Linked);
+        Assert.Equal(["10.0.0.101 → pc-101"], result.Linked);
+        Assert.Equal("SRV-FILE01, LAPTOP-GUEST7, 10.0.0.101 → pc-101", result.Details);
 
         var list = await computers.ListAsync();
         Assert.Equal(["LAPTOP-GUEST7", "pc-101", "SRV-FILE01"], list.Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase));

@@ -198,11 +198,10 @@
         try
         {
             var result = await DeviceService.AdoptAsync([_device!.Id]);
+            if (result.AddedIds.Count > 0 || result.Linked.Count > 0)
+                await Audit.LogAsync(L["Computers added from the device scan"], result.Details);
             if (result.AddedIds.Count > 0)
-            {
-                await Audit.LogAsync(L["Computers added from the device scan"], string.Join(", ", result.AddedNames));
                 await ComputerService.ProbeAsync(result.AddedIds);
-            }
             _device = await DeviceService.GetAsync(Id);
             Snackbar.Add(result.AddedIds.Count > 0
                 ? L["\"{0}\" added to the computer list.", result.AddedNames[0]]

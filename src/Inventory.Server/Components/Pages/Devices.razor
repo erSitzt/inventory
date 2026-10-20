@@ -212,15 +212,14 @@
         try
         {
             var result = await DeviceService.AdoptAsync([.. targets.Select(d => d.Id)]);
+            if (result.AddedIds.Count > 0 || result.Linked.Count > 0)
+                await Audit.LogAsync(L["Computers added from the device scan"], result.Details);
+            // Wie beim Hinzufügen von Hand: gleich prüfen, wer unter dem Namen antwortet.
             if (result.AddedIds.Count > 0)
-            {
-                await Audit.LogAsync(L["Computers added from the device scan"], string.Join(", ", result.AddedNames));
-                // Wie beim Hinzufügen von Hand: gleich prüfen, wer unter dem Namen antwortet.
                 await ComputerService.ProbeAsync(result.AddedIds);
-            }
-            Snackbar.Add(result.Linked == 0
+            Snackbar.Add(result.Linked.Count == 0
                     ? L["{0} computers added.", result.AddedIds.Count]
-                    : L["{0} computers added, {1} devices linked to computers already listed.", result.AddedIds.Count, result.Linked],
+                    : L["{0} computers added, {1} devices linked to computers already listed.", result.AddedIds.Count, result.Linked.Count],
                 Severity.Success);
             _selected.Clear();
             await LoadAsync();
