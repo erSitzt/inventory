@@ -38,9 +38,12 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
     }
 
     /// <summary>Legt alle noch unbekannten Rechner aus dem Text an und liefert die neu angelegten.</summary>
-    public async Task<List<Computer>> ImportAsync(string? text, CancellationToken ct = default)
+    public Task<List<Computer>> ImportAsync(string? text, CancellationToken ct = default) =>
+        ImportAsync(ComputerNames.Parse(text), ct);
+
+    /// <summary>Legt die Rechner an, die es noch nicht gibt; die Namen müssen <see cref="ComputerNames.IsValid"/> erfüllen.</summary>
+    public async Task<List<Computer>> ImportAsync(IReadOnlyCollection<string> names, CancellationToken ct = default)
     {
-        var names = ComputerNames.Parse(text);
         if (names.Count == 0)
             return [];
 

@@ -5501,6 +5501,9 @@
   <data name='{0} new in "{1}"' xml:space="preserve">
     <value>{0} neu in „{1}“</value>
   </data>
+  <data name="{0} not created (unsupported name: {1})" xml:space="preserve">
+    <value>{0} nicht angelegt (Name nicht unterstützt: {1})</value>
+  </data>
   <data name="{0} not in AD" xml:space="preserve">
     <value>{0} nicht im AD</value>
   </data>
