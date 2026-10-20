@@ -14,7 +14,7 @@ public sealed record DeviceScanProgress(string Range, int Done, int Total, int F
 public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactory, IDeviceProbe probe, ISecretProtector protector,
     TimeProvider? clock = null, IStringLocalizer<SharedResource>? localizer = null)
 {
-    /// <summary>So viele Adressen werden gleichzeitig geprüft; jede öffnet dabei bis zu 29 kurze Verbindungen.</summary>
+    /// <summary>So viele Adressen werden gleichzeitig geprüft; jede öffnet dabei bis zu 30 kurze Verbindungen.</summary>
     private const int MaxParallelAddresses = 32;
     private static readonly string[] DefaultCommunities = ["public"];
     private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
@@ -333,6 +333,41 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
     }
 
     /// <summary>Übernimmt die Beobachtungen; liefert die Zahl der neu angelegten Geräte.</summary>
+    /// <summary>
+    /// Übernimmt Windows-Geräte ohne Rechner in die Rechnerliste: unter dem Namen, den sie über SMB nennen, sonst dem DNS-Namen,
+    /// sonst der Adresse. Gibt es den Rechner schon, wird das Gerät nur verknüpft.
+    /// </summary>
+    public async Task<DeviceAdoption> AdoptAsync(IReadOnlyCollection<int> deviceIds, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var devices = (await db.NetworkDevices.Where(d => deviceIds.Contains(d.Id) && d.ComputerId == null).ToListAsync(ct)).Where(d => d.CanAdopt).ToList();
+        var computers = await db.Computers.ToListAsync(ct);
+        var added = new List<Computer>();
+        var linked = 0;
+        foreach (var device in devices.OrderBy(d => IpRanges.SortKey(d.IpAddress)))
+        {
+            var name = new[] { device.WindowsName, device.ReverseName, device.IpAddress }.FirstOrDefault(n => n is not null && ComputerNames.IsValid(n))!;
+            var computer = computers.FirstOrDefault(c => ShortName(c.Name).Equals(ShortName(name), StringComparison.OrdinalIgnoreCase));
+            if (computer is null)
+            {
+                // Der DNS-Name aus dem Reverse-Lookup macht einen kurzen SMB-Namen auch über Domänengrenzen und VPN erreichbar.
+                computer = new Computer { Name = name, IpAddress = device.IpAddress, DnsName = MachineNames.ValidDnsName(device.ReverseName, name) };
+                db.Computers.Add(computer);
+                computers.Add(computer);
+                added.Add(computer);
+            }
+            else if (!added.Contains(computer))
+            {
+                linked++;
+            }
+            device.Computer = computer;
+        }
+        await db.SaveChangesAsync(ct);
+        return new DeviceAdoption([.. added.Select(c => c.Id)], [.. added.Select(c => c.Name)], linked);
+    }
+
+    private static string ShortName(string name) => IPAddress.TryParse(name, out _) ? name : name.Split('.')[0];
+
     internal async Task<int> StoreAsync(int? rangeId, IReadOnlyList<DeviceObservation> observations, CancellationToken ct)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
@@ -389,6 +424,7 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
             device.MacVendor = MacVendors.Lookup(mac);
         }
         device.ReverseName = o.ReverseName ?? device.ReverseName;
+        device.WindowsName = o.WindowsName ?? device.WindowsName;
         device.SshBanner = o.SshBanner ?? device.SshBanner;
         device.Banner = o.Banner ?? device.Banner;
         device.HttpServer = o.HttpServer ?? device.HttpServer;
@@ -452,3 +488,7 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
     private static List<string> Lines(string text) =>
         [.. text.Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.Ordinal)];
 }
+
+/// <param name="AddedIds">Neu angelegte Rechner.</param>
+/// <param name="Linked">Geräte, die mit einem schon vorhandenen Rechner verknüpft wurden.</param>
+public sealed record DeviceAdoption(List<int> AddedIds, List<string> AddedNames, int Linked);

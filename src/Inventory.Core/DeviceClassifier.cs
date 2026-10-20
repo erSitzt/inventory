@@ -204,8 +204,8 @@ public static class DeviceClassifier
             return Result(DeviceKind.Camera, "Port 554");
         if (ports.Contains(5060) && !ports.Contains(445))
             return Result(DeviceKind.Phone, "Port 5060");
-        if (ports.Contains(3389) || (ports.Contains(135) && ports.Contains(445)) || ports.Contains(5985))
-            return Result(DeviceKind.Windows, ports.Contains(3389) ? "Port 3389" : ports.Contains(5985) ? "Port 5985" : "Ports 135/445", "Microsoft");
+        if (ports.Contains(3389) || (ports.Contains(135) && ports.Contains(445)) || ports.Contains(5985) || ports.Contains(5986))
+            return Result(DeviceKind.Windows, ports.Contains(3389) ? "Port 3389" : ports.Contains(5985) ? "Port 5985" : ports.Contains(5986) ? "Port 5986" : "Ports 135/445", "Microsoft");
         if (macKind == DeviceKind.Apple || ports.Contains(62078) || ports.Contains(548))
             return Result(DeviceKind.Apple, macKind == DeviceKind.Apple ? "MAC: Apple" : ports.Contains(62078) ? "Port 62078" : "Port 548", "Apple");
         if ((os is not null && os != "Windows") || enterprise is 8072 or 2021 || macKind == DeviceKind.Linux)

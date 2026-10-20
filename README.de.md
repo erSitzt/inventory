@@ -116,7 +116,7 @@ Drucker, Switches, Router, Firewalls, Access Points, Speicher, Linux-Server, Hyp
 USVs: Der Server durchsucht die eingetragenen Adressbereiche (CIDR, von–bis oder einzelne Adressen, höchstens 4096 je
 Bereich) und stellt fest, was antwortet – ohne Anmeldung an den Geräten und ohne Agent:
 
-- **Ping und gängige Ports** (29 TCP-Ports wie SSH, HTTP/HTTPS, SMB, RDP, IPP, JetDirect 9100, RTSP, SIP).
+- **Ping und gängige Ports** (30 TCP-Ports wie SSH, HTTP/HTTPS, SMB, RDP, IPP, JetDirect 9100, RTSP, SIP).
 - **SNMP v1/v2c** mit den hinterlegten Communities (verschlüsselt gespeichert; ohne Eintrag `public`): Name,
   Beschreibung, Standort, Kontakt, Laufzeit, Modell, Seriennummer und Firmware (ENTITY-MIB), Erkennung von Routern und
   Switches (IP-Forwarding, Bridge-MIB) und die ARP-Tabelle von Routern, aus der die MAC-Adressen von Geräten in anderen
@@ -126,7 +126,11 @@ Bereich) und stellt fest, was antwortet – ohne Anmeldung an den Geräten und o
 - **MAC-Hersteller** aus dem öffentlichen IEEE-Register, für Geräte im eigenen Subnetz des Servers oder hinter einem
   Router, der auf SNMP antwortet.
 - **Windows-Rechner** nennen ihren Namen über SMB und werden mit der Rechnerliste verknüpft; fehlen sie dort, sind sie
-  als *Nicht inventarisiert* markiert.
+  als *Nicht inventarisiert* markiert und lassen sich mit *In Rechnerliste übernehmen* übernehmen – einzeln auf der
+  Detailseite oder mehrere auf einmal in der Liste (auswählen, oder nach *Nicht inventarisiert* filtern, um alle zu
+  übernehmen). Der neue Rechner heißt so, wie er sich über SMB nennt (sonst nach DNS-Name oder Adresse), und ist sofort
+  mit dem Gerät verknüpft; gibt es schon einen Rechner dieses Namens, wird das Gerät nur verknüpft. Linux-Server werden
+  ebenfalls erkannt, die Rechnerliste inventarisiert aber nur Windows.
 
 ![Gerätedetails](docs/screenshots/de/device-detail.png)
 
@@ -137,7 +141,7 @@ Neuzugänge, und die Liste gibt es als CSV und über die API (`/api/devices`).
 
 ![Adressbereiche](docs/screenshots/de/device-ranges.png)
 
-Der Scan spricht jede Adresse eines Bereichs auf 29 Ports an; ein Intrusion-Detection-System kann das als Portscan
+Der Scan spricht jede Adresse eines Bereichs auf 30 Ports an; ein Intrusion-Detection-System kann das als Portscan
 melden – also vorher dem Netzwerkteam Bescheid geben. Geroutete Subnetze müssen vom Server aus erreichbar sein (ICMP, die
 genannten Ports, UDP 161 für SNMP).
 
@@ -557,6 +561,10 @@ Die Synchronisation (*Einstellungen → Active Directory*) legt Computerkonten a
   als „DNS-Name“.
 - **Deaktivierte Computerkonten ausschließen** (Standard: an): deaktivierte Konten werden nicht angelegt; ist ein
   vorhandener Rechner im Verzeichnis deaktiviert, gilt er als nicht mehr gefunden.
+- **Ausschlüsse**: eine Regel je Zeile – eine Organisationseinheit (`OU=Test,OU=Clients,DC=corp,DC=example`, samt allen
+  Einheiten darunter) oder ein Namensmuster mit `*` und `?` (`KIOSK-*`). Passende Konten werden wie deaktivierte
+  behandelt: Sie werden nicht angelegt, und Rechner, die schon in der Liste stehen, gelten als nicht mehr gefunden. Die
+  Vorschau zeigt, wie viele Konten die Regeln ausschließen.
 - **Angaben aus dem Verzeichnis**: jeder Lauf speichert auch die Organisationseinheit, die Gruppen, in denen das
   Computerkonto direkt Mitglied ist, seine Beschreibung und seine letzte Anmeldung an der Domäne (das Verzeichnis
   gleicht diesen Wert nur etwa alle zwei Wochen ab). Sie stehen auf der Rechnerseite und im CSV-Export und lassen sich

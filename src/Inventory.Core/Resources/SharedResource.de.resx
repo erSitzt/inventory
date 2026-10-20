@@ -32,8 +32,8 @@
   <data name='"Needs attention" leads to the computers behind each number.' xml:space="preserve">
     <value>„Handlungsbedarf“ führt zu den Rechnern hinter jeder Zahl.</value>
   </data>
-  <data name='"Not inventoried" marks Windows computers on the network that are missing from the computer list.' xml:space="preserve">
-    <value>„Nicht inventarisiert“ kennzeichnet Windows-Rechner im Netz, die in der Rechnerliste fehlen.</value>
+  <data name='"Not inventoried" marks Windows computers on the network that are missing from the computer list; "Add to computers" takes them over.' xml:space="preserve">
+    <value>„Nicht inventarisiert“ markiert Windows-Rechner im Netz, die in der Rechnerliste fehlen; „In Rechnerliste übernehmen“ übernimmt sie.</value>
   </data>
   <data name='"Run as: Logged-on user" only applies to HKCU. Other keys are changed by the system account.' xml:space="preserve">
     <value>„Ausführen als: Angemeldeter Benutzer“ gilt nur für HKCU. Andere Schlüssel ändert das Systemkonto.</value>
@@ -47,8 +47,14 @@
   <data name='"What the device reports" shows the raw clues (SNMP, banners, web page, certificate) the detection used.' xml:space="preserve">
     <value>„Was das Gerät meldet“ zeigt die Rohdaten (SNMP, Banner, Webseite, Zertifikat), auf die sich die Erkennung stützt.</value>
   </data>
+  <data name='"{0}" added to the computer list.' xml:space="preserve">
+    <value>„{0}“ in die Rechnerliste übernommen.</value>
+  </data>
   <data name='"{0}" contains no KB number.' xml:space="preserve">
     <value>„{0}“ enthält keine KB-Nummer.</value>
+  </data>
+  <data name='"{0}" has no DC= part and will hardly ever match.' xml:space="preserve">
+    <value>„{0}“ enthält kein DC= und passt deshalb kaum je.</value>
   </data>
   <data name='"{0}" is about to be installed on this computer.' xml:space="preserve">
     <value>„{0}“ soll jetzt auf diesem Rechner installiert werden.</value>
@@ -215,8 +221,8 @@
   <data name="A token has a role and acts with its rights; the secret is shown only once." xml:space="preserve">
     <value>Ein Token hat eine Rolle und handelt mit deren Rechten; das Geheimnis wird nur einmal angezeigt.</value>
   </data>
-  <data name="A Windows computer that is not in the inventory. Add it on the Computers page (or let the AD synchronization find it) to scan it and deploy software." xml:space="preserve">
-    <value>Ein Windows-Rechner, der nicht im Inventar steht. Lege ihn auf der Seite „Rechner“ an (oder lass ihn vom AD-Abgleich finden), um ihn zu scannen und Software zu verteilen.</value>
+  <data name="A Windows computer that is not in the inventory. Add it to the computer list to scan it and deploy software." xml:space="preserve">
+    <value>Ein Windows-Rechner, der nicht im Inventar steht. Übernimm ihn in die Rechnerliste, um ihn zu scannen und Software zu verteilen.</value>
   </data>
   <data name="Access denied – the account needs local administrator rights on the target computer (for local accounts additionally LocalAccountTokenFilterPolicy)" xml:space="preserve">
     <value>Zugriff verweigert – das Konto braucht lokale Administratorrechte auf dem Zielrechner (bei lokalen Konten zusätzlich LocalAccountTokenFilterPolicy)</value>
@@ -296,6 +302,9 @@
   <data name="Add address ranges on the second tab; the server scans them itself with ping, common ports, SNMP v1/v2c and the web interface of the devices." xml:space="preserve">
     <value>Adressbereiche auf dem zweiten Reiter anlegen; der Server scannt sie selbst mit Ping, gängigen Ports, SNMP v1/v2c und der Weboberfläche der Geräte.</value>
   </data>
+  <data name="Add all {0} Windows computers shown to the computer list?" xml:space="preserve">
+    <value>Alle {0} angezeigten Windows-Rechner in die Rechnerliste übernehmen?</value>
+  </data>
   <data name="Add channel" xml:space="preserve">
     <value>Kanal hinzufügen</value>
   </data>
@@ -328,6 +337,12 @@
   </data>
   <data name='Add to "{0}"' xml:space="preserve">
     <value>Zu „{0}“ hinzufügen</value>
+  </data>
+  <data name="Add to computers" xml:space="preserve">
+    <value>In Rechnerliste übernehmen</value>
+  </data>
+  <data name="Add to computers ({0})" xml:space="preserve">
+    <value>In Rechnerliste übernehmen ({0})</value>
   </data>
   <data name="Address for the new computer:" xml:space="preserve">
     <value>Adresse für den neuen Rechner:</value>
@@ -928,6 +943,9 @@
   </data>
   <data name="Computers added" xml:space="preserve">
     <value>Rechner hinzugefügt</value>
+  </data>
+  <data name="Computers added from the device scan" xml:space="preserve">
+    <value>Rechner aus dem Gerätescan übernommen</value>
   </data>
   <data name="Computers are scanned and grouped into collections. A package describes what to install or change; a deployment brings it to computers once, a schedule regularly." xml:space="preserve">
     <value>Rechner werden gescannt und in Sammlungen gruppiert. Ein Paket beschreibt, was installiert oder geändert wird; ein Deployment bringt es einmal auf Rechner, ein Zeitplan regelmäßig.</value>
@@ -1574,6 +1592,12 @@
   <data name="excluded" xml:space="preserve">
     <value>ausgeschlossen</value>
   </data>
+  <data name="Exclusions" xml:space="preserve">
+    <value>Ausschlüsse</value>
+  </data>
+  <data name="Exclusions keep organizational units or name patterns out of the Active Directory import." xml:space="preserve">
+    <value>Ausschlüsse halten Organisationseinheiten oder Namensmuster aus dem Active-Directory-Import heraus.</value>
+  </data>
   <data name="Executed with cmd.exe /c. The files of this package are in the working directory under p{0}\." xml:space="preserve">
     <value>Wird mit cmd.exe /c ausgeführt. Die Dateien dieses Pakets liegen im Arbeitsverzeichnis unter p{0}\.</value>
   </data>
@@ -2194,6 +2218,9 @@
   </data>
   <data name="Limits, a pilot group, Wake-on-LAN and maintenance windows are options of each deployment." xml:space="preserve">
     <value>Grenzen, Pilotgruppe, Wake-on-LAN und Wartungsfenster sind Optionen jedes Deployments.</value>
+  </data>
+  <data name='Linked to the computer "{0}" already listed.' xml:space="preserve">
+    <value>Mit dem bereits vorhandenen Rechner „{0}“ verknüpft.</value>
   </data>
   <data name="Linux/Unix" xml:space="preserve">
     <value>Linux/Unix</value>
@@ -2824,6 +2851,9 @@
   </data>
   <data name="One per line. Empty = the general communities on the Devices page." xml:space="preserve">
     <value>Eine je Zeile. Leer = die allgemeinen Communities der Geräteseite.</value>
+  </data>
+  <data name="One per line: an OU (including all OUs below it) or a name pattern with * and ?. Matching accounts are treated like disabled ones." xml:space="preserve">
+    <value>Eine je Zeile: eine OU (samt allen OUs darunter) oder ein Namensmuster mit * und ?. Passende Konten werden wie deaktivierte behandelt.</value>
   </data>
   <data name="One per line; empty = whole domain" xml:space="preserve">
     <value>Eine je Zeile; leer = gesamte Domäne</value>
@@ -5183,6 +5213,9 @@
   <data name="Windows computers on the network that are not in the inventory" xml:space="preserve">
     <value>Windows-Rechner im Netz, die nicht im Inventar stehen</value>
   </data>
+  <data name="Windows computers that are not inventoried yet; already listed ones are only linked" xml:space="preserve">
+    <value>Windows-Rechner, die noch nicht inventarisiert sind; bereits vorhandene werden nur verknüpft</value>
+  </data>
   <data name="Windows edition and feature update, the oldest first" xml:space="preserve">
     <value>Windows-Edition und Funktionsupdate, die ältesten zuerst</value>
   </data>
@@ -5297,6 +5330,9 @@
   <data name="{0} ({1}), allowed for {2}." xml:space="preserve">
     <value>{0} ({1}), erlaubt für {2}.</value>
   </data>
+  <data name="{0} accounts are excluded by the rules." xml:space="preserve">
+    <value>{0} Konten schließen die Regeln aus.</value>
+  </data>
   <data name="{0} active schedules" xml:space="preserve">
     <value>{0} aktive Zeitpläne</value>
   </data>
@@ -5321,8 +5357,14 @@
   <data name='{0} computers added to "{1}".' xml:space="preserve">
     <value>{0} Rechner zu „{1}“ hinzugefügt.</value>
   </data>
+  <data name="{0} computers added, {1} devices linked to computers already listed." xml:space="preserve">
+    <value>{0} Rechner übernommen, {1} Geräte mit bereits vorhandenen Rechnern verknüpft.</value>
+  </data>
   <data name="{0} computers added, {1} of them reachable." xml:space="preserve">
     <value>{0} Rechner hinzugefügt, {1} davon erreichbar.</value>
+  </data>
+  <data name="{0} computers added." xml:space="preserve">
+    <value>{0} Rechner übernommen.</value>
   </data>
   <data name="{0} computers are restarting; the remaining steps follow automatically" xml:space="preserve">
     <value>{0} Rechner starten neu; die restlichen Schritte folgen automatisch</value>
@@ -5395,6 +5437,9 @@
   </data>
   <data name="{0} disabled" xml:space="preserve">
     <value>{0} deaktiviert</value>
+  </data>
+  <data name="{0} excluded" xml:space="preserve">
+    <value>{0} ausgeschlossen</value>
   </data>
   <data name="{0} failed" xml:space="preserve">
     <value>{0} fehlgeschlagen</value>

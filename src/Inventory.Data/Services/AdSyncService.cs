@@ -18,15 +18,18 @@ public enum AdMissingAction
 
 /// <param name="ExcludeDisabled">Deaktivierte Computerkonten nicht anlegen und wie fehlende behandeln.</param>
 /// <param name="MissingDays">Frist in Tagen, nach der fehlende Rechner gelöscht werden (nur bei <see cref="AdMissingAction.Delete"/>).</param>
+/// <param name="Exclusions">Ausschlussregeln (<see cref="DirectoryExclusions"/>); ausgeschlossene Konten werden wie deaktivierte behandelt.</param>
 public sealed record AdSyncSettings(bool Enabled, string? Server, string? BaseDns, int? CredentialId, int IntervalHours, DateTime? LastRunUtc, string? LastResult,
-    bool ExcludeDisabled = true, AdMissingAction MissingAction = AdMissingAction.Keep, int MissingDays = 30);
+    bool ExcludeDisabled = true, AdMissingAction MissingAction = AdMissingAction.Keep, int MissingDays = 30, string? Exclusions = null);
 
 /// <param name="Total">Gefundene Computerkonten, deaktivierte eingeschlossen.</param>
 /// <param name="Disabled">Davon deaktiviert.</param>
 /// <param name="MissingNames">Rechner, die als „nicht im AD“ gekennzeichnet sind oder es mit diesem Lauf werden.</param>
 /// <param name="DeleteNames">Rechner, deren Frist abgelaufen ist und die dieser Lauf löscht.</param>
 /// <param name="DeleteBlocked">true, wenn auffällig viele Rechner auf einmal zu löschen wären; dann löscht der Lauf nichts.</param>
-public sealed record AdSyncPreview(int Total, List<string> NewNames, int Disabled = 0, List<string>? MissingNames = null, List<string>? DeleteNames = null, bool DeleteBlocked = false);
+/// <param name="Excluded">Konten, die eine Ausschlussregel trifft.</param>
+public sealed record AdSyncPreview(int Total, List<string> NewNames, int Disabled = 0, List<string>? MissingNames = null, List<string>? DeleteNames = null, bool DeleteBlocked = false,
+    int Excluded = 0);
 
 /// <summary>
 /// Gleicht die Rechnerliste mit dem Active Directory ab: legt fehlende Rechner an, kennzeichnet Rechner, deren Konto
@@ -52,10 +55,11 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         await settings.GetAsync(SettingKeys.AdSyncLastResult, ct),
         await settings.GetAsync(SettingKeys.AdSyncExcludeDisabled, ct) != bool.FalseString,
         Enum.TryParse<AdMissingAction>(await settings.GetAsync(SettingKeys.AdSyncMissingAction, ct), out var action) ? action : AdMissingAction.Keep,
-        int.TryParse(await settings.GetAsync(SettingKeys.AdSyncMissingDays, ct), out var days) && days > 0 ? days : 30);
+        int.TryParse(await settings.GetAsync(SettingKeys.AdSyncMissingDays, ct), out var days) && days > 0 ? days : 30,
+        await settings.GetAsync(SettingKeys.AdSyncExclusions, ct));
 
     public async Task SaveSettingsAsync(bool enabled, string? server, string? baseDns, int? credentialId, int intervalHours,
-        bool excludeDisabled = true, AdMissingAction missingAction = AdMissingAction.Keep, int missingDays = 30, CancellationToken ct = default)
+        bool excludeDisabled = true, AdMissingAction missingAction = AdMissingAction.Keep, int missingDays = 30, string? exclusions = null, CancellationToken ct = default)
     {
         await settings.SetAsync(SettingKeys.AdSyncEnabled, enabled.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncServer, string.IsNullOrWhiteSpace(server) ? null : server.Trim(), ct);
@@ -65,6 +69,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         await settings.SetAsync(SettingKeys.AdSyncExcludeDisabled, excludeDisabled.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncMissingAction, missingAction.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncMissingDays, Math.Clamp(missingDays, 1, 3650).ToString(), ct);
+        await settings.SetAsync(SettingKeys.AdSyncExclusions, string.IsNullOrWhiteSpace(exclusions) ? null : exclusions.Trim(), ct);
     }
 
     /// <summary>Fragt das Verzeichnis ab, ohne etwas zu ändern.</summary>
@@ -87,6 +92,8 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
             result = L["{0} computer accounts found, {1} newly created", preview.Total, added.Count].Value;
             if (preview.Disabled > 0)
                 result += ", " + L["{0} disabled", preview.Disabled];
+            if (preview.Excluded > 0)
+                result += ", " + L["{0} excluded", preview.Excluded];
             if (preview.MissingNames!.Count > 0)
                 result += ", " + L["{0} not in AD", preview.MissingNames.Count];
             if (preview.DeleteBlocked)
@@ -130,7 +137,10 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         var now = time.GetUtcNow().UtcDateTime;
         var found = (await QueryAsync(current, ct)).GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var disabled = found.Values.Count(c => !c.Enabled);
-        bool Counts(DirectoryComputer c) => c.Enabled || !current.ExcludeDisabled;
+        var exclusions = DirectoryExclusions.Parse(current.Exclusions);
+        var excluded = found.Values.Count(c => exclusions.Excludes(c.Name, c.DistinguishedName));
+        // Ausgeschlossene Konten zählen wie deaktivierte: nicht anlegen, vorhandene Rechner gelten als „nicht im AD“.
+        bool Counts(DirectoryComputer c) => (c.Enabled || !current.ExcludeDisabled) && !exclusions.Excludes(c.Name, c.DistinguishedName);
 
         var existing = await computers.ListAsync(ct);
         var known = existing.Select(c => ShortName(c.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -165,7 +175,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         foreach (var computer in blocked ? [] : delete)
             states.Remove(computer.Id);
 
-        var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked);
+        var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked, excluded);
         return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now, found);
     }
 

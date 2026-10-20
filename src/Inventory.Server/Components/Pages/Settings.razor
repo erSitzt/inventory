@@ -147,6 +147,8 @@
                       HelperText="@L["Empty = the domain this server belongs to"]" />
         <MudTextField @bind-Value="_adBaseDns" Label="@L["Search roots (OUs)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3" Sizing="InputSizing.Auto" MaxLines="12"
                       Placeholder="OU=Clients,DC=example,DC=local" HelperText="@L["One per line; empty = whole domain"]" />
+        <MudTextField @bind-Value="_adExclusions" Label="@L["Exclusions"]" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3" Sizing="InputSizing.Auto" MaxLines="12"
+                      Immediate="true" Placeholder="@("OU=Test,OU=Clients,DC=example,DC=local\nKIOSK-*")" HelperText="@ExclusionsHint" />
         <MudSelect T="int?" @bind-Value="_adCredentialId" Label="@L["Credentials"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
                    Placeholder="@L["Account of the server service"]">
             @foreach (var credential in _credentials)
@@ -505,6 +507,7 @@
     private bool _adEnabled;
     private string? _adServer;
     private string? _adBaseDns;
+    private string? _adExclusions;
     private int? _adCredentialId;
     private int _adIntervalHours = 24;
     private bool _adExcludeDisabled = true;
@@ -560,12 +563,17 @@
         var ad = await AdSync.GetSettingsAsync();
         (_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adLastRunUtc, _adLastResult) =
             (ad.Enabled, ad.Server, ad.BaseDns?.Replace(";", "\n"), ad.CredentialId, ad.IntervalHours, ad.LastRunUtc, ad.LastResult);
-        (_adExcludeDisabled, _adMissingAction, _adMissingDays) = (ad.ExcludeDisabled, ad.MissingAction, ad.MissingDays);
+        (_adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions) = (ad.ExcludeDisabled, ad.MissingAction, ad.MissingDays, ad.Exclusions);
     }
+
+    /// <summary>Hilfetext des Ausschlussfelds; nennt Container ohne DC=, weil die meist falsch abgeschrieben sind.</summary>
+    private string ExclusionsHint => DirectoryExclusions.Parse(_adExclusions).Suspicious.FirstOrDefault() is { } suspicious
+        ? L["\"{0}\" has no DC= part and will hardly ever match.", suspicious]
+        : L["One per line: an OU (including all OUs below it) or a name pattern with * and ?. Matching accounts are treated like disabled ones."];
 
     private async Task SaveAdAsync()
     {
-        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays);
+        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions);
         await Audit.LogAsync(L["Setting changed"], L["AD synchronization: {0}, server {1}, every {2} h, disabled accounts {3}, missing computers: {4}",
             Display.OnOff(_adEnabled), _adServer ?? L["(domain)"], _adIntervalHours, _adExcludeDisabled ? L["excluded"] : L["included"],
             _adMissingAction == AdMissingAction.Delete ? L["delete after {0} days", _adMissingDays] : L["keep"]]);
@@ -580,6 +588,8 @@
             static string Names(List<string> names) => names.Count == 0 ? "" : ": " + string.Join(", ", names.Take(15)) + (names.Count > 15 ? " …" : "");
             var text = L["{0} computer accounts found ({1} disabled). To be created: {2}{3}. Not in AD: {4}{5}.",
                 preview.Total, preview.Disabled, preview.NewNames.Count, Names(preview.NewNames), preview.MissingNames!.Count, Names(preview.MissingNames)].Value;
+            if (preview.Excluded > 0)
+                text += " " + L["{0} accounts are excluded by the rules.", preview.Excluded];
             if (preview.DeleteNames!.Count > 0)
                 text += " " + (preview.DeleteBlocked
                     ? L["{0} would be deleted – conspicuously many at once, so the run would delete nothing.", preview.DeleteNames.Count]
@@ -597,7 +607,7 @@
         _adMessage = null;
         try
         {
-            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays);
+            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions);
             _adMessage = await action();
             _adSeverity = _adMessage.StartsWith(L["Error"]) ? Severity.Error : Severity.Success;
         }

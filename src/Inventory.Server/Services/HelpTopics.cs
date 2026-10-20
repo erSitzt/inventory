@@ -43,7 +43,7 @@ public static class HelpTopics
             [
                 L["Add address ranges on the second tab; the server scans them itself with ping, common ports, SNMP v1/v2c and the web interface of the devices."],
                 L["Enter the SNMP communities of your network (\"SNMP communities\"); without them, only \"public\" is tried and many devices give less away."],
-                L["\"Not inventoried\" marks Windows computers on the network that are missing from the computer list."],
+                L["\"Not inventoried\" marks Windows computers on the network that are missing from the computer list; \"Add to computers\" takes them over."],
                 L["A schedule with the action \"Network device scan\" keeps the list current; an alert rule reports new devices."],
             ], L["network-devices"]),
             ("network", _) => new(L["Network map"], L["Subnets, routers, network devices and computers as an interactive diagram, derived from the inventory and the device scan."],
@@ -150,6 +150,7 @@ public static class HelpTopics
             ("settings", _) => new(L["Settings"], L["Server-wide options: transport, Active Directory, agents, maintenance window, updates and backup."],
             [
                 L["Active Directory imports computers regularly; agents connect computers the server cannot reach."],
+                L["Exclusions keep organizational units or name patterns out of the Active Directory import."],
                 L["Agentless access can be restricted to installing the agent, or switched off."],
             ], L["how-access-works"]),
             _ => new(L["Overview"], L["The state of all computers at a glance and what needs attention."],

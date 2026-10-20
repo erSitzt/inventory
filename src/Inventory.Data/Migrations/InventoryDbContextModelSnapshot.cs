@@ -1457,6 +1457,9 @@ namespace Inventory.Data.Migrations
                     b.Property<long?>("UptimeSeconds")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("WindowsName")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ComputerId");

@@ -221,9 +221,10 @@
     </Columns>
     <NoRecordsContent>
         <MudText Class="pa-4">
-            @(_activeCollection is null
-                ? L["No computers yet. Use \"Add\" to enter names one by one or as a list."]
-                : L["This collection contains no computers."])
+            @(_computers.Count > 0 ? L["No entries match the filter."]
+                : _activeCollection is not null ? L["This collection contains no computers."]
+                : _all.Count > 0 ? L["No entries match the filter."]
+                : L["No computers yet. Use \"Add\" to enter names one by one or as a list."])
         </MudText>
     </NoRecordsContent>
     <PagerContent>

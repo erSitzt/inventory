@@ -1,5 +1,7 @@
 @page "/devices/{Id:int}"
 @inject DeviceService DeviceService
+@inject ComputerService ComputerService
+@inject ISnackbar Snackbar
 @inject IDialogService Dialogs
 @inject NavigationManager Navigation
 @inject Auditor Audit
@@ -37,9 +39,16 @@
     </AdminOnly>
 </MudStack>
 
-@if (_device.Kind == DeviceKind.Windows && _device.ComputerId is null)
+@if (_device.CanAdopt)
 {
-    <MudAlert Severity="Severity.Warning" Class="mb-4">@L["A Windows computer that is not in the inventory. Add it on the Computers page (or let the AD synchronization find it) to scan it and deploy software."]</MudAlert>
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+            <span>@L["A Windows computer that is not in the inventory. Add it to the computer list to scan it and deploy software."]</span>
+            <AdminOnly>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.AddToQueue" Disabled="_adopting" OnClick="AdoptAsync">@L["Add to computers"]</MudButton>
+            </AdminOnly>
+        </MudStack>
+    </MudAlert>
 }
 
 <MudGrid>
@@ -178,6 +187,32 @@
 
     /// <summary>Drucker-MIB: -3 = vorhanden, Menge unbekannt; -2 = unbekannt; -1 = keine Angabe.</summary>
     private string SupplyState(DeviceSupply supply) => supply.Level == -3 ? L["present"] : L["unknown"];
+
+    private bool _adopting;
+
+    private async Task AdoptAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _adopting = true;
+        try
+        {
+            var result = await DeviceService.AdoptAsync([_device!.Id]);
+            if (result.AddedIds.Count > 0)
+            {
+                await Audit.LogAsync(L["Computers added from the device scan"], string.Join(", ", result.AddedNames));
+                await ComputerService.ProbeAsync(result.AddedIds);
+            }
+            _device = await DeviceService.GetAsync(Id);
+            Snackbar.Add(result.AddedIds.Count > 0
+                ? L["\"{0}\" added to the computer list.", result.AddedNames[0]]
+                : L["Linked to the computer \"{0}\" already listed.", _device?.Computer?.Name ?? ""], Severity.Success);
+        }
+        finally
+        {
+            _adopting = false;
+        }
+    }
 
     private async Task EditAsync()
     {

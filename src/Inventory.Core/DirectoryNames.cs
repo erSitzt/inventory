@@ -70,4 +70,16 @@ public static class DirectoryNames
         var names = Parts(containerDn).Where(p => !p.StartsWith("DC=", StringComparison.OrdinalIgnoreCase)).Select(Value).Reverse();
         return string.Join("/", names);
     }
+
+    /// <summary>True, wenn der DN der Container selbst ist oder darunter liegt; Groß-/Kleinschreibung und Leerzeichen um Komma und = zählen nicht.</summary>
+    public static bool IsWithin(string? dn, string containerDn)
+    {
+        if (string.IsNullOrWhiteSpace(dn) || string.IsNullOrWhiteSpace(containerDn))
+            return false;
+        var (inner, outer) = (Normalize(dn), Normalize(containerDn));
+        return inner.Equals(outer, StringComparison.OrdinalIgnoreCase) || inner.EndsWith("," + outer, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Normalize(string dn) =>
+        string.Join(",", Parts(dn).Select(p => p.IndexOf('=') is > 0 and var eq ? p[..eq].Trim() + "=" + p[(eq + 1)..].Trim() : p));
 }
