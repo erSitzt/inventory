@@ -245,7 +245,10 @@ A deployment targets computers or a collection and runs in parallel. Options:
 
 The deployment page shows the status per computer live, with the output of every step; it can be cancelled, and
 failed computers can be retried. Computers that wait – offline, outside their maintenance window, rebooting or
-postponed by the user – show why.
+postponed by the user – show why. A computer that no longer answers the cancellation (for example because it restarted in
+the middle of the job) is ended after a few seconds anyway and marked as cancelled, so a hanging deployment never blocks a
+server update. Agentless jobs over SMB also give up on their own once the step time limits plus ten minutes have passed
+without a result.
 
 ### Pilot group first
 

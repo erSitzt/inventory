@@ -112,7 +112,7 @@ public sealed class UpdateService(IReleaseSource source, SettingsService setting
             if (release.ChecksumsUrl is null)
                 return L["The release contains no checksums; nothing is installed without them."];
             if (deployments.AnyRunning)
-                return L["Deployments are still running. Please wait until they have finished."];
+                return L["Deployments are still running. Please wait until they have finished or cancel them under Deployments."];
 
             Installing = true;
             Changed?.Invoke();

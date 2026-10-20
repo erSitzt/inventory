@@ -27,8 +27,11 @@ public sealed class PackageTests : IDisposable
         Directory.Delete(_repoDir, recursive: true);
     }
 
-    private DeploymentService CreateDeployments(IRemoteTransport transport) =>
-        new(_db, _packages, new RemoteJobService([transport], _computers, new CredentialService(_db, new ReversingProtector()), new SettingsService(_db)), new InventoryStore(_db), _probe);
+    private DeploymentService CreateDeployments(IRemoteTransport transport, TimeSpan? cancelGrace = null) =>
+        new(_db, _packages, new RemoteJobService([transport], _computers, new CredentialService(_db, new ReversingProtector()), new SettingsService(_db)), new InventoryStore(_db), _probe)
+        {
+            CancelGrace = cancelGrace ?? TimeSpan.FromSeconds(15),
+        };
 
     private static JobStep Command(string name, string script = "echo ok") => new() { Name = name, Type = StepType.Command, Script = script };
 
@@ -155,6 +158,40 @@ public sealed class PackageTests : IDisposable
         var finished = await WaitAsync(deployments, started.Id);
 
         Assert.Equal(TargetStatus.Cancelled, Assert.Single(finished.Targets).Status);
+    }
+
+    [Fact]
+    public async Task Cancel_ends_a_target_whose_computer_no_longer_answers_so_updates_are_not_blocked()
+    {
+        var package = await _packages.SaveAsync(null, "Updates", null, null);
+        await _packages.SaveStepAsync(package.Id, null, Command("Installieren"), null);
+        var computer = (await _computers.ImportAsync("pc-01"))[0];
+        // Der Rechner ist mitten im Job neu gestartet: die Verbindung hängt und reagiert auch nicht auf den Abbruch.
+        var transport = new BlockingTransport { IgnoresCancel = true };
+        var deployments = CreateDeployments(transport, TimeSpan.FromMilliseconds(300));
+
+        var started = await deployments.StartAsync(package.Id, [computer.Id], false);
+        await transport.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(deployments.AnyRunning);
+        await deployments.CancelAsync(started.Id);
+
+        Assert.False(deployments.AnyRunning);
+        Assert.False(deployments.IsRunning(started.Id));
+        var cancelled = (await deployments.GetAsync(started.Id))!;
+        Assert.NotNull(cancelled.FinishedUtc);
+        var target = Assert.Single(cancelled.Targets);
+        Assert.Equal(TargetStatus.Cancelled, target.Status);
+        Assert.Contains("may still be running", target.Error);
+        Assert.NotNull(target.FinishedUtc);
+
+        // Meldet sich die Verbindung doch noch, räumt der alte Lauf nur auf und überschreibt den gespeicherten Stand nicht.
+        transport.Release.SetResult();
+        await Task.Delay(500);
+        Assert.False(deployments.AnyRunning);
+        var after = Assert.Single((await deployments.GetAsync(started.Id))!.Targets);
+        Assert.Equal(TargetStatus.Cancelled, after.Status);
+        Assert.Equal(target.Error, after.Error);
+        Assert.Equal(cancelled.FinishedUtc, (await deployments.GetAsync(started.Id))!.FinishedUtc);
     }
 
     [Fact]
@@ -660,12 +697,18 @@ public sealed class PackageTests : IDisposable
     {
         public TransportKind Kind => TransportKind.SmbService;
         public TaskCompletionSource Started { get; } = new();
+        /// <summary>Wie eine hängende Verbindung: der Abbruch kommt nicht an, nur <see cref="Release"/> beendet den Job.</summary>
+        public bool IgnoresCancel { get; init; }
+        public TaskCompletionSource Release { get; } = new();
 
         public async Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
         {
             progress?.Report(new ProgressEvent { Kind = ProgressKind.Output, Text = "zeile" });
             Started.SetResult();
-            await Task.Delay(Timeout.Infinite, ct);
+            if (IgnoresCancel)
+                await Release.Task;
+            else
+                await Task.Delay(Timeout.Infinite, ct);
             return new JobResult();
         }
     }

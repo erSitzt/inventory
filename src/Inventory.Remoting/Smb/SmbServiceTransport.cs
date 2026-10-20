@@ -34,6 +34,10 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
     private static readonly TimeSpan BusyTimeout = TimeSpan.FromHours(2);
     private static readonly TimeSpan BusyPollInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan OldRunnerAge = TimeSpan.FromDays(7);
+    /// <summary>Zuschlag auf die Zeitlimits der Schritte, bevor ein Job ohne Ergebnis aufgegeben wird.</summary>
+    private static readonly TimeSpan Slack = TimeSpan.FromMinutes(10);
+    /// <summary>So lange hat der Runner nach dem Abbruch Zeit, noch ein Ergebnis zu schreiben.</summary>
+    private static readonly TimeSpan CancelGrace = TimeSpan.FromMinutes(1);
 
     public TransportKind Kind => TransportKind.SmbService;
 
@@ -194,6 +198,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
             if (error is not (ERROR_SERVICE_ALREADY_RUNNING or ERROR_SERVICE_CANNOT_ACCEPT_CTRL))
                 throw new RemoteException(L["Service on {0} could not be started: {1}", host, L[Describe(error)]]);
             ct.ThrowIfCancellationRequested();
+            // Der Job lief schon: kein Ausweichen auf einen anderen Transport, der die Installation ein zweites Mal startete.
             if (DateTime.UtcNow > deadline)
                 throw new RemoteException(L["Another job has been running on {0} for more than {1} minutes; this job was not started.", host, (int)BusyTimeout.TotalMinutes]);
             Thread.Sleep(BusyPollInterval);
@@ -212,18 +217,29 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         var resultPath = Path.Combine(jobDir, JobFiles.Result);
         var progressPath = Path.Combine(jobDir, JobFiles.Progress);
         long progressOffset = 0;
+        var started = DateTime.UtcNow;
         DateTime? stoppedSince = null;
-        var cancelRequested = false;
+        DateTime? cancelledSince = null;
         uint exitCode = 0;
+        // Die Schritte haben eigene Zeitlimits; die Obergrenze fängt einen Rechner ab, der mitten im Job neu startet oder
+        // vom Netz geht – dann kommt weder ein Ergebnis noch eine Antwort des Dienstes, und der Job hinge für immer.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(job.Steps.Sum(s => (long)Math.Max(s.TimeoutSeconds, 60))) + Slack;
 
         while (true)
         {
-            if (ct.IsCancellationRequested && !cancelRequested && !released)
+            if (ct.IsCancellationRequested && cancelledSince is null)
             {
                 // Der Runner bricht den laufenden Schritt ab und schreibt trotzdem noch ein Ergebnis.
-                ControlService(service, SERVICE_CONTROL_STOP, out _);
-                cancelRequested = true;
+                if (!released)
+                    ControlService(service, SERVICE_CONTROL_STOP, out _);
+                cancelledSince = DateTime.UtcNow;
             }
+            // Antwortet der Rechner nicht mehr, wartet der Abbruch nicht endlos auf das Ergebnis des Runners.
+            if (cancelledSince is not null && DateTime.UtcNow - cancelledSince > CancelGrace)
+                ct.ThrowIfCancellationRequested();
+            // Der Job lief schon: kein Ausweichen auf einen anderen Transport, der die Installation ein zweites Mal startete.
+            if (DateTime.UtcNow > deadline)
+                throw new RemoteException(L["No result from {0} within {1} minutes – the computer probably restarted or lost the connection during the job.", host, (int)(deadline - started).TotalMinutes], resultMayFollow: true);
 
             progressOffset = PumpProgress(progressPath, progressOffset, progress);
 

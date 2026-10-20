@@ -253,7 +253,10 @@ Ein Deployment zielt auf Rechner oder eine Sammlung und läuft parallel. Optione
 
 Die Deployment-Seite zeigt den Stand je Rechner live, mit der Ausgabe jedes Schritts; sie lässt sich abbrechen, und
 fehlgeschlagene Rechner lassen sich wiederholen. Rechner, die warten – offline, außerhalb ihres Wartungsfensters, im
-Neustart oder vom Benutzer verschoben –, zeigen, warum.
+Neustart oder vom Benutzer verschoben –, zeigen, warum. Ein Rechner, der auf den Abbruch nicht mehr reagiert (etwa weil
+er mitten im Job neu gestartet ist), wird nach wenigen Sekunden trotzdem beendet und als abgebrochen geführt; so blockiert
+ein hängendes Deployment nie ein Update des Servers. Agentlose Jobs über SMB geben außerdem von selbst auf, wenn nach den
+Zeitlimits der Schritte plus zehn Minuten kein Ergebnis da ist.
 
 ### Pilotgruppe zuerst
 
