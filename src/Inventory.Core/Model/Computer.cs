@@ -84,8 +84,11 @@ public class Computer
     /// <summary>Vermutlich außer Betrieb: seit der eingestellten Frist weder an der Domäne angemeldet noch vom Inventory gesehen.</summary>
     public bool DirectoryInactive { get; set; }
 
-    /// <summary>Letztes Lebenszeichen: Anmeldung an der Domäne, Erreichbarkeit, Scan oder Agent-Meldung.</summary>
-    public DateTime? LastSignOfLifeUtc => new[] { DirectoryLastLogonUtc, LastSeenUtc, AgentLastSeenUtc }.Max();
+    /// <summary>Wann das Inventory den Rechner zuletzt selbst gesehen hat: Erreichbarkeit, Scan oder Agent-Meldung.</summary>
+    public DateTime? LastInventorySightingUtc => new[] { LastSeenUtc, AgentLastSeenUtc }.Max();
+
+    /// <summary>Letztes Lebenszeichen: Anmeldung an der Domäne oder Sichtung durch das Inventory.</summary>
+    public DateTime? LastSignOfLifeUtc => new[] { DirectoryLastLogonUtc, LastInventorySightingUtc }.Max();
 
     /// <summary>
     /// True, wenn das Konto eine Anmeldung kennt und weder sie noch eine eigene Sichtung jünger als <paramref name="days"/> Tage ist.

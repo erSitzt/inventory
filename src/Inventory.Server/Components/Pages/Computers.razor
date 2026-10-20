@@ -267,7 +267,7 @@
     private string _view = "all";
 
     private string InactiveText(Computer c) => L["Last AD logon {0}, last seen by the inventory {1}.",
-        Display.LocalTime(c.DirectoryLastLogonUtc), c.LastSeenUtc is null ? L["never"] : Display.LocalTime(c.LastSeenUtc)];
+        Display.LocalTime(c.DirectoryLastLogonUtc), c.LastInventorySightingUtc is null ? L["never"] : Display.LocalTime(c.LastInventorySightingUtc)];
 
     private static bool InView(string key, Computer c) => key switch
     {

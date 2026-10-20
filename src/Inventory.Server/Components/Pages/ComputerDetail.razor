@@ -70,7 +70,7 @@ else if (_computer.ReverseDnsMismatch)
 @if (_computer.DirectoryInactive)
 {
     <MudAlert Severity="Severity.Info" Icon="@Icons.Material.Filled.HourglassDisabled" Class="mb-4">
-        @L["Presumably decommissioned: last AD logon {0}, last seen by the inventory {1}.", Display.LocalTime(_computer.DirectoryLastLogonUtc), _computer.LastSeenUtc is null ? L["never"] : Display.LocalTime(_computer.LastSeenUtc)]
+        @L["Presumably decommissioned: last AD logon {0}, last seen by the inventory {1}.", Display.LocalTime(_computer.DirectoryLastLogonUtc), _computer.LastInventorySightingUtc is null ? L["never"] : Display.LocalTime(_computer.LastInventorySightingUtc)]
         @L["The period is set under \"Active Directory\" in the settings; nothing is deleted automatically."]
     </MudAlert>
 }
