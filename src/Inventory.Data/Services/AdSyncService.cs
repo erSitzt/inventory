@@ -98,7 +98,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
             var plan = await PlanAsync(ct);
             var preview = plan.Preview;
             var skipped = preview.NewNames.Where(n => !ComputerNames.IsValid(n)).ToList();
-            var added = await computers.ImportAsync(preview.NewNames.Except(skipped).ToList(), ct);
+            var added = await computers.ImportAsync(preview.NewNames, ct);
             foreach (var computer in added)
                 plan.States[computer.Id] = (true, false, plan.Found.GetValueOrDefault(ShortName(computer.Name)));
             await computers.SetDirectoryStateAsync(plan.States, plan.NowUtc, ct);
@@ -201,7 +201,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         {
             var logon = states.TryGetValue(c.Id, out var state) && state.Account is { } account ? account.LastLogonUtc : c.DirectoryLastLogonUtc;
             return Computer.IsInactive(new Computer { Name = c.Name, DirectoryLastLogonUtc = logon, LastSeenUtc = c.LastSeenUtc, AgentLastSeenUtc = c.AgentLastSeenUtc }, current.InactiveDays, now);
-        }) + newNames.Count(n => Computer.IsInactive(new Computer { Name = n, DirectoryLastLogonUtc = found[n].LastLogonUtc }, current.InactiveDays, now));
+        }) + newNames.Count(n => ComputerNames.IsValid(n) && Computer.IsInactive(new Computer { Name = n, DirectoryLastLogonUtc = found[n].LastLogonUtc }, current.InactiveDays, now));
         var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked, excluded, inactive);
         return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now, found);
     }
