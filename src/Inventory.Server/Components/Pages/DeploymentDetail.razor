@@ -26,7 +26,7 @@
     @if (Running || Waiting)
     {
         <OperatorOnly>
-            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="CancelAsync">@L["Cancel"]</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" Disabled="_cancelling" OnClick="CancelAsync">@(_cancelling ? L["Cancelling …"] : L["Cancel"])</MudButton>
         </OperatorOnly>
     }
     else if (FailedTargets.Count > 0 && _deployment.PackageId is not null)
@@ -160,6 +160,7 @@
 
     private Deployment? _deployment;
     private bool _loaded;
+    private bool _cancelling;
     private Timer? _liveRefresh;
 
     private bool Running => DeploymentService.IsRunning(Id);
@@ -197,7 +198,16 @@
         if (!await DemandDeploymentAsync(_deployment!.Targets))
             return;
         await Audit.LogAsync(L["Deployment cancelled"], $"#{Id} {_deployment!.PackageName}");
-        await DeploymentService.CancelAsync(Id);
+        _cancelling = true;
+        try
+        {
+            await DeploymentService.CancelAsync(Id);
+        }
+        finally
+        {
+            _cancelling = false;
+        }
+        _deployment = await DeploymentService.GetAsync(Id);
     }
 
     private async Task ReleaseAsync()

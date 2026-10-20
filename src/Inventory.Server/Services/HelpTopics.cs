@@ -91,6 +91,7 @@ public static class HelpTopics
                 L["Expand a computer to see the output of every step."],
                 L["Waiting computers say why: offline, outside their maintenance window, rebooting, postponed by the user or waiting for the pilot group."],
                 L["\"Cancel\" stops computers that have not started; failed ones can be retried."],
+                L["A running computer that does not answer the cancellation within a few seconds (for example because it restarted during the job) is ended anyway, so the deployment no longer blocks an update."],
             ], L["deploying-a-package"]),
             ("deployments", false) => new(L["Deployments"], L["Every run of a package on a set of computers, newest first."],
             [

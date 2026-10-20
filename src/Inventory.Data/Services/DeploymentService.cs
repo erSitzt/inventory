@@ -239,16 +239,45 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         _ = Task.Run(() => RunAsync(deployment, targets, built, checkOnline, cts));
     }
 
-    /// <summary>Bricht laufende Ziele ab; wartende (auch auf Offline-Rechner) werden nicht mehr gestartet.</summary>
+    /// <summary>So lange darf ein abgebrochenes Deployment noch selbst zu Ende kommen, bevor es hart beendet wird.</summary>
+    public TimeSpan CancelGrace { get; init; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// Bricht laufende Ziele ab; wartende (auch auf Offline-Rechner) werden nicht mehr gestartet. Kommt ein laufendes Ziel
+    /// nicht innerhalb von <see cref="CancelGrace"/> zum Ende – etwa weil sein Rechner mitten im Job neu gestartet ist und
+    /// nicht mehr antwortet –, wird es hart beendet: als abgebrochen gespeichert und nicht mehr abgewartet. Sonst hielte es
+    /// das Deployment und damit auch ein Update des Servers für immer fest.
+    /// </summary>
     public async Task CancelAsync(int deploymentId)
     {
         if (_running.TryGetValue(deploymentId, out var cts))
+        {
             cts.Cancel();
+            var until = DateTime.UtcNow + CancelGrace;
+            while (_running.TryGetValue(deploymentId, out var current) && current == cts && DateTime.UtcNow < until)
+                await Task.Delay(TimeSpan.FromMilliseconds(200));
+            if (_running.TryRemove(new KeyValuePair<int, CancellationTokenSource>(deploymentId, cts)))
+                await AbandonAsync(deploymentId);
+        }
         await UpdateAsync(db => db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId
                 && (t.Status == TargetStatus.WaitingOffline || t.Status == TargetStatus.WaitingReboot || t.Status == TargetStatus.WaitingWindow || t.Status == TargetStatus.WaitingPilot || t.Status == TargetStatus.WaitingUser))
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, "Abgebrochen")
                 .SetProperty(t => t.FinishedUtc, DateTime.UtcNow)));
         Changed?.Invoke(deploymentId);
+    }
+
+    private async Task AbandonAsync(int deploymentId)
+    {
+        var abandoned = L["Cancelled without an answer from the computer; the job may still be running there"].Value;
+        var now = DateTime.UtcNow;
+        await UpdateAsync(async db =>
+        {
+            await db.DeploymentTargets.Where(t => t.DeploymentId == deploymentId && (t.Status == TargetStatus.Running || t.Status == TargetStatus.Queued))
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, TargetStatus.Cancelled).SetProperty(t => t.Error, abandoned)
+                    .SetProperty(t => t.FinishedUtc, now));
+            await db.Deployments.Where(d => d.Id == deploymentId && d.FinishedUtc == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.FinishedUtc, now));
+        });
     }
 
     /// <summary>
@@ -610,7 +639,8 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
         {
             await UpdateAsync(db => db.Deployments.Where(d => d.Id == deployment.Id)
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.FinishedUtc, DateTime.UtcNow)));
-            _running.TryRemove(deployment.Id, out _);
+            // Wurde das Deployment hart beendet und inzwischen neu gestartet, gehört der Eintrag schon dem neuen Lauf.
+            _running.TryRemove(new KeyValuePair<int, CancellationTokenSource>(deployment.Id, cts));
             cts.Dispose();
             own?.Dispose();
             Changed?.Invoke(deployment.Id);

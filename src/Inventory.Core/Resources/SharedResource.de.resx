@@ -206,6 +206,9 @@
   <data name='A rule sends a message when something happens: a computer enters a collection, a deployment finishes with failures, a schedule or the directory synchronization fails. Dynamic collections are the rule language – "computers without antivirus" is a collection, and the rule reports who enters it. Only changes are reported; what already applies when a rule is created is the starting point.' xml:space="preserve">
     <value>Eine Regel schickt eine Nachricht, wenn etwas passiert: ein Rechner kommt in eine Sammlung, eine Verteilung endet mit Fehlern, ein Zeitplan oder der Verzeichnisabgleich schlägt fehl. Dynamische Sammlungen sind die Regelsprache – „Rechner ohne Virenschutz“ ist eine Sammlung, und die Regel meldet, wer hineinkommt. Gemeldet werden nur Veränderungen; was beim Anlegen einer Regel schon zutrifft, ist der Ausgangsstand.</value>
   </data>
+  <data name="A running computer that does not answer the cancellation within a few seconds (for example because it restarted during the job) is ended anyway, so the deployment no longer blocks an update." xml:space="preserve">
+    <value>Ein laufender Rechner, der auf den Abbruch nicht binnen weniger Sekunden reagiert (etwa weil er mitten im Job neu gestartet ist), wird trotzdem beendet – so blockiert das Deployment kein Update mehr.</value>
+  </data>
   <data name='A schedule "package to its outdated collection" keeps every computer current.' xml:space="preserve">
     <value>Ein Zeitplan „Paket auf seine Sammlung … veraltet“ hält jeden Rechner aktuell.</value>
   </data>
@@ -746,6 +749,12 @@
   <data name="cancelled" xml:space="preserve">
     <value>abgebrochen</value>
   </data>
+  <data name="Cancelled without an answer from the computer; the job may still be running there" xml:space="preserve">
+    <value>Abgebrochen, ohne dass der Rechner geantwortet hat; der Job läuft dort womöglich noch</value>
+  </data>
+  <data name="Cancelling …" xml:space="preserve">
+    <value>Wird abgebrochen …</value>
+  </data>
   <data name="Change" xml:space="preserve">
     <value>Änderung</value>
   </data>
@@ -1280,8 +1289,8 @@
   <data name='Deployments and schedules with the option "Only within the maintenance window" run on a computer only while its window is open; otherwise the computer waits (at most 8 days). Collections can have windows of their own. The default window below applies to all computers that are in no such collection. Remote commands and scans are never held back.' xml:space="preserve">
     <value>Deployments und Zeitpläne mit der Option „Nur im Wartungsfenster“ laufen auf einem Rechner nur, solange sein Fenster offen ist; sonst wartet der Rechner (höchstens 8 Tage). Sammlungen können eigene Fenster haben. Das Standardfenster unten gilt für alle Rechner, die in keiner solchen Sammlung sind. Fernbefehle und Scans werden nie zurückgehalten.</value>
   </data>
-  <data name="Deployments are still running. Please wait until they have finished." xml:space="preserve">
-    <value>Es laufen noch Deployments. Bitte warten, bis sie beendet sind.</value>
+  <data name="Deployments are still running. Please wait until they have finished or cancel them under Deployments." xml:space="preserve">
+    <value>Es laufen noch Deployments. Bitte warten, bis sie fertig sind, oder sie unter Deployments abbrechen.</value>
   </data>
   <data name="Deployments of the last 30 days" xml:space="preserve">
     <value>Verteilungen der letzten 30 Tage</value>
@@ -2656,6 +2665,9 @@
   </data>
   <data name="No reports saved yet." xml:space="preserve">
     <value>Noch keine Berichte gespeichert.</value>
+  </data>
+  <data name="No result from {0} within {1} minutes – the computer probably restarted or lost the connection during the job." xml:space="preserve">
+    <value>Kein Ergebnis von {0} innerhalb von {1} Minuten – der Rechner ist während des Jobs vermutlich neu gestartet oder hat die Verbindung verloren.</value>
   </data>
   <data name="No rules set up yet." xml:space="preserve">
     <value>Noch keine Regeln eingerichtet.</value>
