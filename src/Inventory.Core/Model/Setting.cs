@@ -53,6 +53,7 @@ public static class SettingKeys
     public const string AdSyncEnabled = "AdSync.Enabled";
     public const string AdSyncServer = "AdSync.Server";
     public const string AdSyncBaseDns = "AdSync.BaseDns";
+    public const string AdSyncExclusions = "AdSync.Exclusions";
     public const string AdSyncCredentialId = "AdSync.CredentialId";
     public const string AdSyncIntervalHours = "AdSync.IntervalHours";
     public const string AdSyncExcludeDisabled = "AdSync.ExcludeDisabled";

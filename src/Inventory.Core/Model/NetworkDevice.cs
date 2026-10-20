@@ -87,6 +87,11 @@ public class NetworkDevice
     public string? HttpTitle { get; set; }
     public string? TlsSubject { get; set; }
     public string? ReverseName { get; set; }
+    /// <summary>Name, den ein Windows-Rechner (oder Samba) über SMB nennt.</summary>
+    public string? WindowsName { get; set; }
+
+    /// <summary>Ein Windows-Rechner, der (noch) nicht in der Rechnerliste steht und sich übernehmen lässt.</summary>
+    public bool CanAdopt => Kind == DeviceKind.Windows && ComputerId is null;
 
     /// <summary>Der inventarisierte Rechner unter dieser Adresse, wenn es einer ist.</summary>
     public int? ComputerId { get; set; }

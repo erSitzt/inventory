@@ -1,6 +1,7 @@
 @page "/devices"
 @implements IDisposable
 @inject DeviceService DeviceService
+@inject ComputerService ComputerService
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject Auditor Audit
@@ -39,20 +40,31 @@
                 {
                     <MudChip T="DeviceKind?" Value="@group.Key" Icon="@Display.DeviceIcon(group.Key)" Size="Size.Small" Variant="Variant.Outlined">@Display.DeviceKind(group.Key): @group.Count()</MudChip>
                 }
-                @if (_devices.Any(UnmanagedWindows))
+                @if (_devices.Any(CanAdopt))
                 {
                     <MudTooltip Text="@L["Windows computers on the network that are not in the inventory"]">
-                        <MudChip T="DeviceKind?" Value="@((DeviceKind)(-1))" Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">@L["Not inventoried"]: @_devices.Count(UnmanagedWindows)</MudChip>
+                        <MudChip T="DeviceKind?" Value="@((DeviceKind)(-1))" Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">@L["Not inventoried"]: @_devices.Count(CanAdopt)</MudChip>
                     </MudTooltip>
                 }
             </MudChipSet>
         }
-        <MudDataGrid T="NetworkDevice" Items="@Filtered" Dense="true" Hover="true" SortMode="SortMode.Single" QuickFilter="QuickFilter" Filterable="false">
+        <MudDataGrid T="NetworkDevice" Items="@Filtered" Dense="true" Hover="true" SortMode="SortMode.Single" QuickFilter="QuickFilter" Filterable="false"
+                     MultiSelection="true" @bind-SelectedItems="_selected">
             <ToolBarContent>
                 <MudTextField @bind-Value="_search" Placeholder="@L["Search name, address, model, manufacturer …"]" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                               Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 420px" />
+                <MudSpacer />
+                <AdminOnly>
+                    @if (AdoptTargets().Count is > 0 and var count)
+                    {
+                        <MudTooltip Text="@L["Windows computers that are not inventoried yet; already listed ones are only linked"]">
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AddToQueue" Disabled="_adopting" OnClick="AdoptAsync">@L["Add to computers ({0})", count]</MudButton>
+                        </MudTooltip>
+                    }
+                </AdminOnly>
             </ToolBarContent>
             <Columns>
+                <SelectColumn T="NetworkDevice" />
                 <TemplateColumn Title="@L["Type"]" SortBy="d => Display.DeviceKind(d.Kind)">
                     <CellTemplate>
                         <MudTooltip Text="@(context.Item.KindReason is { } reason ? L["Detected by: {0}", reason] : null)" Disabled="@(context.Item.KindReason is null || context.Item.KindOverride is not null)">
@@ -81,7 +93,7 @@
                         {
                             <MudLink Href="@($"computers/{computer.Id}")"><MudIcon Icon="@Icons.Material.Filled.Computer" Size="Size.Small" Class="mr-1" Style="vertical-align: middle" />@computer.Name</MudLink>
                         }
-                        else if (UnmanagedWindows(context.Item))
+                        else if (CanAdopt(context.Item))
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@L["Not inventoried"]</MudChip>
                         }
@@ -161,13 +173,15 @@
     private bool _customCommunities;
     private DeviceScanProgress? _progress;
     private DeviceKind? _kind;
+    private HashSet<NetworkDevice> _selected = [];
+    private bool _adopting;
     private string? _search;
     private int _tab;
 
     private IEnumerable<NetworkDevice> Filtered => _kind switch
     {
         null => _devices,
-        (DeviceKind)(-1) => _devices.Where(UnmanagedWindows),
+        (DeviceKind)(-1) => _devices.Where(CanAdopt),
         { } kind => _devices.Where(d => d.Kind == kind),
     };
 
@@ -180,7 +194,41 @@
         return maker is null || d.Model.StartsWith(maker, StringComparison.OrdinalIgnoreCase) ? d.Model : $"{maker} {d.Model}";
     }
 
-    private static bool UnmanagedWindows(NetworkDevice d) => d.Kind == DeviceKind.Windows && d.ComputerId is null;
+    private static bool CanAdopt(NetworkDevice d) => d.CanAdopt;
+
+    /// <summary>Die ausgewählten übernehmbaren Geräte; ohne Auswahl alle angezeigten, wenn nach „Nicht inventarisiert“ gefiltert ist.</summary>
+    private List<NetworkDevice> AdoptTargets() =>
+        [.. (_selected.Count > 0 ? _selected : _kind == (DeviceKind)(-1) ? Filtered.Where(QuickFilter) : []).Where(CanAdopt)];
+
+    private async Task AdoptAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var targets = AdoptTargets();
+        if (_selected.Count == 0 && await Dialogs.ShowMessageBoxAsync(L["Add to computers"],
+                L["Add all {0} Windows computers shown to the computer list?", targets.Count], yesText: L["Add"], cancelText: L["Cancel"]) != true)
+            return;
+        _adopting = true;
+        try
+        {
+            var result = await DeviceService.AdoptAsync([.. targets.Select(d => d.Id)]);
+            if (result.AddedIds.Count > 0 || result.Linked.Count > 0)
+                await Audit.LogAsync(L["Computers added from the device scan"], result.Details);
+            // Wie beim Hinzufügen von Hand: gleich prüfen, wer unter dem Namen antwortet.
+            if (result.AddedIds.Count > 0)
+                await ComputerService.ProbeAsync(result.AddedIds);
+            Snackbar.Add(result.Linked.Count == 0
+                    ? L["{0} computers added.", result.AddedIds.Count]
+                    : L["{0} computers added, {1} devices linked to computers already listed.", result.AddedIds.Count, result.Linked.Count],
+                Severity.Success);
+            _selected.Clear();
+            await LoadAsync();
+        }
+        finally
+        {
+            _adopting = false;
+        }
+    }
 
     /// <summary>Beim letzten Scan seines Bereichs nicht mehr gesehen.</summary>
     private bool Stale(NetworkDevice d) => d.NetworkRange?.LastScanUtc is { } scanned && d.LastSeenUtc < scanned.AddMinutes(-30);

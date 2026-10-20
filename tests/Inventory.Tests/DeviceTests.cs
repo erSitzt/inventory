@@ -238,6 +238,42 @@ public class DeviceTests
     }
 
     [Fact]
+    public async Task Windows_devices_are_added_to_the_computer_list_or_linked_to_a_listed_one()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var service = new DeviceService(db, new SimulatedDeviceProbe(), new ReversingProtector());
+        var range = await service.SaveRangeAsync(null, "Office", "10.0.0.30-32, 10.0.0.101, 10.0.0.150", true, null, null);
+        await service.ScanAsync(range.Id);
+        var devices = await service.ListAsync();
+        Assert.Equal("SRV-FILE01", devices.Single(d => d.IpAddress == "10.0.0.32").WindowsName);
+        Assert.Equal([DeviceKind.Linux, DeviceKind.Linux], devices.Where(d => d.IpAddress is "10.0.0.30" or "10.0.0.31").Select(d => d.Kind));
+        Assert.Equal(["10.0.0.32", "10.0.0.101", "10.0.0.150"], devices.Where(d => d.CanAdopt).Select(d => d.IpAddress));
+
+        // Inzwischen von Hand eingetragen: das Gerät wird nur verknüpft. Linux-Geräte werden übergangen.
+        await computers.ImportAsync("pc-101");
+        var result = await service.AdoptAsync([.. devices.Select(d => d.Id)]);
+        Assert.Equal(["SRV-FILE01", "LAPTOP-GUEST7"], result.AddedNames);
+        Assert.Equal(["10.0.0.101 → pc-101"], result.Linked);
+        Assert.Equal("SRV-FILE01, LAPTOP-GUEST7, 10.0.0.101 → pc-101", result.Details);
+
+        var list = await computers.ListAsync();
+        Assert.Equal(["LAPTOP-GUEST7", "pc-101", "SRV-FILE01"], list.Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase));
+        var server = list.Single(c => c.Name == "SRV-FILE01");
+        Assert.Equal(("10.0.0.32", "srv-file01.corp.example"), (server.IpAddress, server.DnsName));
+        devices = await service.ListAsync();
+        Assert.Equal(server.Id, devices.Single(d => d.IpAddress == "10.0.0.32").ComputerId);
+        Assert.Empty(devices.Where(d => d.CanAdopt));
+
+        // Ein zweiter Aufruf ändert nichts.
+        Assert.Empty((await service.AdoptAsync([.. devices.Select(d => d.Id)])).AddedIds);
+    }
+
+    [Fact]
+    public void WinRm_over_https_alone_means_windows() =>
+        Assert.Equal(DeviceKind.Windows, DeviceClassifier.Classify(new DeviceObservation { IpAddress = "10.0.0.5", OpenPorts = [5986] }, null).Kind);
+
+    [Fact]
     public async Task A_device_with_a_known_mac_moves_to_its_new_address()
     {
         using var db = new TestDb();

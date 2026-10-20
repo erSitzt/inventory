@@ -92,6 +92,11 @@ public sealed class SimulatedDeviceProbe : IDeviceProbe
             case 31:
                 Set(o, [22, 5432], "db-01", "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3", null);
                 break;
+            case 32:
+                // Ein Windows-Server, den niemand in die Rechnerliste eingetragen hat.
+                Set(o, [135, 139, 445, 3389, 5985], "srv-file01", null, null);
+                o.WindowsName = "SRV-FILE01";
+                break;
             case 40:
                 Set(o, [80, 443], "ups-01", null, "Network Management Card");
                 o.MacAddress = "28:29:86:AA:BB:40";

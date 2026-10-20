@@ -195,6 +195,67 @@ public class ScheduleTests
     }
 
     [Fact]
+    public async Task Ad_sync_skips_excluded_units_and_name_patterns_and_treats_known_ones_like_disabled()
+    {
+        using var db = new TestDb();
+        var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        DirectoryComputer Account(string name, string ou) => new(name, null, null, null, DistinguishedName: $"CN={name},{ou},DC=corp,DC=example");
+        var directory = new FakeDirectory
+        {
+            Computers =
+            [
+                Account("PC-01", "OU=Desktops,OU=Clients"), Account("LAB-01", "OU=Lab,OU=Test,OU=Clients"), Account("PC-02", "OU=Test,OU=Clients"),
+                Account("PC-03", "OU=Tests,OU=Clients"), Account("kiosk-07", "OU=Desktops,OU=Clients"),
+            ],
+        };
+        var sync = new AdSyncService(directory, new SettingsService(db), new CredentialService(db, new ReversingProtector()), computers, clock, new AuditService(db));
+        await computers.ImportAsync("handarbeit");
+        await sync.SaveSettingsAsync(true, null, null, null, 24, missingAction: AdMissingAction.Delete, missingDays: 30);
+        await sync.SyncAsync();
+        Assert.Equal(6, (await computers.ListAsync()).Count);
+
+        // Eine OU samt Unter-OUs (Schreibweise und Leerzeichen egal) und ein Namensmuster; die ähnlich benannte OU=Tests bleibt.
+        await sync.SaveSettingsAsync(true, null, null, null, 24, missingAction: AdMissingAction.Delete, missingDays: 30,
+            exclusions: "ou=test, OU=Clients,dc=corp,DC=example\nKIOSK-*");
+        var preview = await sync.PreviewAsync();
+        Assert.Equal(3, preview.Excluded);
+        Assert.Equal(["kiosk-07", "LAB-01", "PC-02"], preview.MissingNames!.Order(StringComparer.OrdinalIgnoreCase));
+        Assert.Equal("5 computer accounts found, 0 newly created, 3 excluded, 3 not in AD", await sync.SyncAsync());
+
+        // Nach der Frist werden sie gelöscht; der von Hand angelegte Rechner bleibt.
+        clock.Advance(TimeSpan.FromDays(31));
+        await sync.SyncAsync();
+        Assert.Equal(["handarbeit", "PC-01", "PC-03"], (await computers.ListAsync()).Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase));
+
+        // Neue Konten in ausgeschlossenen Bereichen werden gar nicht erst angelegt.
+        directory.Computers.Add(Account("PC-04", "OU=Test,OU=Clients"));
+        Assert.Empty((await sync.PreviewAsync()).NewNames);
+    }
+
+    [Theory]
+    [InlineData("OU=Test,DC=corp,DC=example", "CN=PC,OU=Test,DC=corp,DC=example", true)]
+    [InlineData("OU=Test,DC=corp,DC=example", "OU=Test,DC=corp,DC=example", true)]
+    [InlineData("OU=Test,DC=corp,DC=example", "CN=PC,OU=Sub,OU=Test,DC=corp,DC=example", true)]
+    [InlineData("OU=Test,DC=corp,DC=example", "CN=PC,OU=MyTest,DC=corp,DC=example", false)]
+    [InlineData("OU=Test,DC=corp,DC=example", "CN=PC\\,OU=Test,OU=Other,DC=corp,DC=example", false)]
+    [InlineData("OU = Test , DC=corp,DC=example", "cn=pc,ou=test,dc=corp,dc=example", true)]
+    public void Excluded_units_match_themselves_and_everything_below(string rule, string dn, bool excluded) =>
+        Assert.Equal(excluded, DirectoryExclusions.Parse(rule).Excludes("PC", dn));
+
+    [Fact]
+    public void Exclusions_split_lines_and_semicolons_but_not_commas()
+    {
+        var rules = DirectoryExclusions.Parse("OU=A,DC=corp,DC=example; KIOSK-*\r\n\nPC-0?\nOU=B");
+        Assert.Equal(["OU=A,DC=corp,DC=example", "OU=B"], rules.Containers);
+        Assert.Equal(["KIOSK-*", "PC-0?"], rules.Patterns);
+        Assert.Equal(["OU=B"], rules.Suspicious);
+        Assert.True(rules.Excludes("pc-01.corp.example", null));
+        Assert.False(rules.Excludes("PC-010", null));
+        Assert.True(DirectoryExclusions.Parse(null).IsEmpty);
+    }
+
+    [Fact]
     public async Task Ad_sync_keeps_everything_when_the_directory_answers_empty_or_too_many_would_be_deleted()
     {
         using var db = new TestDb();

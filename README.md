@@ -113,7 +113,7 @@ Printers, switches, routers, firewalls, access points, storage, Linux servers, h
 units: the server scans the address ranges you enter (CIDR, from–to or single addresses, at most 4096 per range) and
 finds out what answers – without signing in to the devices and without an agent:
 
-- **Ping and common ports** (29 TCP ports such as SSH, HTTP/HTTPS, SMB, RDP, IPP, JetDirect 9100, RTSP, SIP).
+- **Ping and common ports** (30 TCP ports such as SSH, HTTP/HTTPS, SMB, RDP, IPP, JetDirect 9100, RTSP, SIP).
 - **SNMP v1/v2c** with the communities you store (encrypted; `public` if none): name, description, location, contact,
   uptime, model, serial number and firmware (ENTITY MIB), router and switch detection (IP forwarding, bridge MIB) and
   the ARP table of routers, which supplies MAC addresses for devices in other subnets. Printers report their **supplies
@@ -123,7 +123,11 @@ finds out what answers – without signing in to the devices and without an agen
 - **MAC vendor** from the public IEEE registry, for devices in the server's own subnet or behind a router that answers
   SNMP.
 - **Windows computers** name themselves over SMB and are linked to the computer list; those missing from it are marked
-  *Not inventoried*.
+  *Not inventoried* and can be taken over with *Add to computers* – one at a time on the detail page, or several at
+  once in the list (select them, or filter by *Not inventoried* to take all of them). The new computer is named as it
+  names itself over SMB (otherwise its DNS name or address) and is linked to the device right away; if a computer of
+  that name already exists, the device is only linked. Linux servers are recognized too, but the computer list only
+  inventories Windows.
 
 ![Device details](docs/screenshots/en/device-detail.png)
 
@@ -134,7 +138,7 @@ through the API (`/api/devices`).
 
 ![Address ranges](docs/screenshots/en/device-ranges.png)
 
-The scan contacts every address of a range on 29 ports; an intrusion detection system may report it as a port scan, so
+The scan contacts every address of a range on 30 ports; an intrusion detection system may report it as a port scan, so
 let the network team know. Routed subnets need to be reachable from the server (ICMP, the ports above, UDP 161 for
 SNMP).
 
@@ -533,6 +537,10 @@ The synchronization (*Settings → Active Directory*) creates computers from com
   ignored. The computer page shows the name in use as "DNS name".
 - **Exclude disabled computer accounts** (default: on): disabled accounts are not created; if an existing computer is
   disabled in the directory, it counts as no longer found.
+- **Exclusions**: one rule per line – an organizational unit (`OU=Test,OU=Clients,DC=corp,DC=example`, including all
+  units below it) or a name pattern with `*` and `?` (`KIOSK-*`). Matching accounts are treated like disabled ones:
+  they are not created, and computers already in the list count as no longer found. The preview shows how many accounts
+  the rules exclude.
 - **Directory facts**: every run also stores the organizational unit, the groups the computer account is a direct
   member of, its description and its last logon to the domain (the directory only replicates that value about every
   two weeks). They appear on the computer page and in the CSV export and can be used as collection rules, e.g.
