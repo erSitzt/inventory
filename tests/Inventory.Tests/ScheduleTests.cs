@@ -233,6 +233,57 @@ public class ScheduleTests
         Assert.Empty((await sync.PreviewAsync()).NewNames);
     }
 
+    [Fact]
+    public async Task Computers_without_ad_logon_or_own_sighting_for_the_period_are_marked_as_presumably_decommissioned()
+    {
+        using var db = new TestDb();
+        var now = new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero);
+        var clock = new FakeClock(now);
+        var online = new HashSet<string>();
+        var computers = new ComputerService(db, new FixedProbe(host => new ProbeResult(online.Contains(host), null, null)));
+        DirectoryComputer Account(string name, int daysAgo) => new(name, null, null, null, LastLogonUtc: now.UtcDateTime.AddDays(-daysAgo));
+        var directory = new FakeDirectory { Computers = [Account("OLD-01", 120), Account("SEEN-01", 120), Account("NEW-01", 40), new("NOLOGON-01", null, null, null)] };
+        var sync = new AdSyncService(directory, new SettingsService(db), new CredentialService(db, new ReversingProtector()), computers, clock, new AuditService(db));
+        await computers.ImportAsync("handarbeit");
+        await sync.SaveSettingsAsync(true, null, null, null, 24, missingAction: AdMissingAction.Delete, missingDays: 1);
+        Assert.Equal(90, (await sync.GetSettingsAsync()).InactiveDays);
+        await using (var context = db.CreateDbContext())
+        {
+            // Vom Inventory vor zehn Tagen gesehen (Erreichbarkeit, Scan oder Agent): lebt noch, auch ohne Anmeldung an der Domäne.
+            context.Computers.Add(new Computer { Name = "SEEN-01", LastSeenUtc = now.UtcDateTime.AddDays(-10) });
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, (await sync.PreviewAsync()).Inactive);
+        Assert.EndsWith("1 presumably decommissioned (no sign of life for 90 days)", await sync.SyncAsync());
+        Assert.Equal(["OLD-01"], await Inactive());
+        var rule = new CollectionRule { Field = RuleField.DirectoryInactive, Operator = RuleOperator.Equals, Value = "true" };
+        Assert.Equal(["OLD-01"], (await computers.ListAsync()).Where(c => CollectionEvaluator.Matches(rule, c)).Select(c => c.Name));
+
+        // Nur eine Kennzeichnung: nichts wird gelöscht oder als „nicht im AD“ geführt.
+        clock.Advance(TimeSpan.FromDays(3));
+        await sync.SyncAsync();
+        Assert.Equal(5, (await computers.ListAsync()).Count);
+        Assert.DoesNotContain(await computers.ListAsync(), c => c.MissingInDirectory);
+
+        // Eine kürzere Frist wirkt beim Speichern sofort; 0 schaltet ab, Werte unter dem Minimum werden angehoben.
+        await sync.SaveSettingsAsync(true, null, null, null, 24, inactiveDays: 10);
+        Assert.Equal(30, (await sync.GetSettingsAsync()).InactiveDays);
+        Assert.Equal(["NEW-01", "OLD-01"], await Inactive());
+        await sync.SaveSettingsAsync(true, null, null, null, 24, inactiveDays: 0);
+        Assert.Empty(await Inactive());
+
+        // Antwortet ein markierter Rechner wieder, verschwindet die Kennzeichnung sofort.
+        await sync.SaveSettingsAsync(true, null, null, null, 24);
+        Assert.Equal(["OLD-01"], await Inactive());
+        online.Add("OLD-01");
+        await computers.ProbeAsync();
+        Assert.Empty(await Inactive());
+
+        async Task<List<string>> Inactive() =>
+            [.. (await computers.ListAsync()).Where(c => c.DirectoryInactive).Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase)];
+    }
+
     [Theory]
     [InlineData("OU=Test,DC=corp,DC=example", "CN=PC,OU=Test,DC=corp,DC=example", true)]
     [InlineData("OU=Test,DC=corp,DC=example", "OU=Test,DC=corp,DC=example", true)]

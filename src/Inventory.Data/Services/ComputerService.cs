@@ -205,6 +205,17 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
 
     /// <summary>Hält fest, was die Verzeichnis-Synchronisation über die Rechner herausgefunden hat.</summary>
     /// <param name="states">Je Rechner: im Verzeichnis vorhanden (und nicht ausgeschlossen), Konto deaktiviert, dazu das Konto selbst, soweit das Verzeichnis es geliefert hat.</param>
+    /// <summary>Setzt die Kennzeichnung „vermutlich außer Betrieb“ für alle Rechner neu (<see cref="Computer.IsInactive"/>) und liefert die Anzahl.</summary>
+    public async Task<int> MarkInactiveAsync(int days, DateTime nowUtc, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var computers = await db.Computers.ToListAsync(ct);
+        foreach (var computer in computers)
+            computer.DirectoryInactive = Computer.IsInactive(computer, days, nowUtc);
+        await db.SaveChangesAsync(ct);
+        return computers.Count(c => c.DirectoryInactive);
+    }
+
     public async Task SetDirectoryStateAsync(IReadOnlyDictionary<int, (bool Present, bool Disabled, DirectoryComputer? Account)> states, DateTime nowUtc, CancellationToken ct = default)
     {
         var ids = states.Keys.ToList();
@@ -267,7 +278,10 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
                 if (result.Online)
                     computer.ReverseDnsName = result.ReverseName;
                 if (online)
+                {
                     computer.LastSeenUtc = now;
+                    computer.DirectoryInactive = false;
+                }
             });
 
         await db.SaveChangesAsync(ct);

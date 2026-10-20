@@ -315,6 +315,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("DirectoryGroups")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("DirectoryInactive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("DirectoryLastLogonUtc")
                         .HasColumnType("TEXT");
 

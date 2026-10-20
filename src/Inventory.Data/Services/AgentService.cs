@@ -156,6 +156,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         {
             computer.AgentLastSeenUtc = now;
             computer.LastSeenUtc = now;
+            computer.DirectoryInactive = false;
             computer.IsOnline = true;
             computer.AgentVersion = version ?? computer.AgentVersion;
             await db.SaveChangesAsync(ct);

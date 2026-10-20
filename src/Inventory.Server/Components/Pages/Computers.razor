@@ -117,6 +117,12 @@
                         <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">@L["is {0}", context.Item.ReportedName]</MudChip>
                     </MudTooltip>
                 }
+                @if (context.Item.DirectoryInactive)
+                {
+                    <MudTooltip Text="@InactiveText(context.Item)">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.HourglassDisabled">@L["decommissioned?"]</MudChip>
+                    </MudTooltip>
+                }
                 @if (context.Item.MissingInDirectory)
                 {
                     <MudTooltip Text="@(context.Item.DirectoryDisabled ? L["The computer account is disabled in Active Directory, since {0}.", Display.LocalTime(context.Item.DirectoryMissingSinceUtc)] : L["The computer account is missing in Active Directory, since {0}.", Display.LocalTime(context.Item.DirectoryMissingSinceUtc)])">
@@ -252,13 +258,16 @@
     private static readonly (string Key, string Label)[] BuiltInViews =
     [
         ("all", "All computers"), ("online", "Online"), ("offline", "Offline"), ("mismatch", "Wrong computer responds"),
-        ("nodirectory", "Not (anymore) in AD"), ("unscanned", "Not scanned yet"), ("scanerror", "Scan failed"), ("agent", "With agent"),
+        ("nodirectory", "Not (anymore) in AD"), ("inactive", "Presumably decommissioned"), ("unscanned", "Not scanned yet"), ("scanerror", "Scan failed"), ("agent", "With agent"),
         ("firewall", "Firewall off"), ("antivirus", "No real-time antivirus"), ("updates", "Updates pending"), ("reboot", "Reboot pending"),
         ("warranty", "Warranty ends within 90 days"),
     ];
 
     private List<Computer> _all = [];
     private string _view = "all";
+
+    private string InactiveText(Computer c) => L["Last AD logon {0}, last seen by the inventory {1}.",
+        Display.LocalTime(c.DirectoryLastLogonUtc), c.LastSeenUtc is null ? L["never"] : Display.LocalTime(c.LastSeenUtc)];
 
     private static bool InView(string key, Computer c) => key switch
     {
@@ -267,6 +276,7 @@
         "mismatch" => c.NameMismatch,
         "unscanned" => c.LastScanUtc is null,
         "nodirectory" => c.MissingInDirectory,
+        "inactive" => c.DirectoryInactive,
         "scanerror" => c.LastScanError is not null,
         "agent" => c.AgentKeyHash is not null,
         "firewall" => c.FirewallOff,

@@ -19,8 +19,9 @@ public enum AdMissingAction
 /// <param name="ExcludeDisabled">Deaktivierte Computerkonten nicht anlegen und wie fehlende behandeln.</param>
 /// <param name="MissingDays">Frist in Tagen, nach der fehlende Rechner gelöscht werden (nur bei <see cref="AdMissingAction.Delete"/>).</param>
 /// <param name="Exclusions">Ausschlussregeln (<see cref="DirectoryExclusions"/>); ausgeschlossene Konten werden wie deaktivierte behandelt.</param>
+/// <param name="InactiveDays">Ohne Lebenszeichen seit so vielen Tagen gilt ein Rechner als vermutlich außer Betrieb; 0 = aus.</param>
 public sealed record AdSyncSettings(bool Enabled, string? Server, string? BaseDns, int? CredentialId, int IntervalHours, DateTime? LastRunUtc, string? LastResult,
-    bool ExcludeDisabled = true, AdMissingAction MissingAction = AdMissingAction.Keep, int MissingDays = 30, string? Exclusions = null);
+    bool ExcludeDisabled = true, AdMissingAction MissingAction = AdMissingAction.Keep, int MissingDays = 30, string? Exclusions = null, int InactiveDays = AdSyncService.DefaultInactiveDays);
 
 /// <param name="Total">Gefundene Computerkonten, deaktivierte eingeschlossen.</param>
 /// <param name="Disabled">Davon deaktiviert.</param>
@@ -28,8 +29,9 @@ public sealed record AdSyncSettings(bool Enabled, string? Server, string? BaseDn
 /// <param name="DeleteNames">Rechner, deren Frist abgelaufen ist und die dieser Lauf löscht.</param>
 /// <param name="DeleteBlocked">true, wenn auffällig viele Rechner auf einmal zu löschen wären; dann löscht der Lauf nichts.</param>
 /// <param name="Excluded">Konten, die eine Ausschlussregel trifft.</param>
+/// <param name="Inactive">Rechner, die nach diesem Lauf als vermutlich außer Betrieb gelten.</param>
 public sealed record AdSyncPreview(int Total, List<string> NewNames, int Disabled = 0, List<string>? MissingNames = null, List<string>? DeleteNames = null, bool DeleteBlocked = false,
-    int Excluded = 0);
+    int Excluded = 0, int Inactive = 0);
 
 /// <summary>
 /// Gleicht die Rechnerliste mit dem Active Directory ab: legt fehlende Rechner an, kennzeichnet Rechner, deren Konto
@@ -45,6 +47,11 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
     private const int MassDeleteCount = 5;
     private const double MassDeleteShare = 0.25;
 
+    /// <summary>Übliche Frist für veraltete Computerkonten.</summary>
+    public const int DefaultInactiveDays = 90;
+    /// <summary>Das Verzeichnis gleicht die letzte Anmeldung nur etwa alle zwei Wochen ab; kürzere Fristen gäben Fehlalarme.</summary>
+    public const int MinInactiveDays = 30;
+
     public async Task<AdSyncSettings> GetSettingsAsync(CancellationToken ct = default) => new(
         await settings.GetAsync(SettingKeys.AdSyncEnabled, ct) == bool.TrueString,
         await settings.GetAsync(SettingKeys.AdSyncServer, ct),
@@ -56,10 +63,12 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         await settings.GetAsync(SettingKeys.AdSyncExcludeDisabled, ct) != bool.FalseString,
         Enum.TryParse<AdMissingAction>(await settings.GetAsync(SettingKeys.AdSyncMissingAction, ct), out var action) ? action : AdMissingAction.Keep,
         int.TryParse(await settings.GetAsync(SettingKeys.AdSyncMissingDays, ct), out var days) && days > 0 ? days : 30,
-        await settings.GetAsync(SettingKeys.AdSyncExclusions, ct));
+        await settings.GetAsync(SettingKeys.AdSyncExclusions, ct),
+        int.TryParse(await settings.GetAsync(SettingKeys.AdSyncInactiveDays, ct), out var inactive) && inactive >= 0 ? inactive : DefaultInactiveDays);
 
     public async Task SaveSettingsAsync(bool enabled, string? server, string? baseDns, int? credentialId, int intervalHours,
-        bool excludeDisabled = true, AdMissingAction missingAction = AdMissingAction.Keep, int missingDays = 30, string? exclusions = null, CancellationToken ct = default)
+        bool excludeDisabled = true, AdMissingAction missingAction = AdMissingAction.Keep, int missingDays = 30, string? exclusions = null,
+        int inactiveDays = DefaultInactiveDays, CancellationToken ct = default)
     {
         await settings.SetAsync(SettingKeys.AdSyncEnabled, enabled.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncServer, string.IsNullOrWhiteSpace(server) ? null : server.Trim(), ct);
@@ -70,6 +79,10 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         await settings.SetAsync(SettingKeys.AdSyncMissingAction, missingAction.ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncMissingDays, Math.Clamp(missingDays, 1, 3650).ToString(), ct);
         await settings.SetAsync(SettingKeys.AdSyncExclusions, string.IsNullOrWhiteSpace(exclusions) ? null : exclusions.Trim(), ct);
+        inactiveDays = inactiveDays <= 0 ? 0 : Math.Clamp(inactiveDays, MinInactiveDays, 3650);
+        await settings.SetAsync(SettingKeys.AdSyncInactiveDays, inactiveDays.ToString(CultureInfo.InvariantCulture), ct);
+        // Eine geänderte Frist gilt sofort, nicht erst nach dem nächsten Lauf.
+        await computers.MarkInactiveAsync(inactiveDays, time.GetUtcNow().UtcDateTime, ct);
     }
 
     /// <summary>Fragt das Verzeichnis ab, ohne etwas zu ändern.</summary>
@@ -88,6 +101,8 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
             foreach (var computer in added)
                 plan.States[computer.Id] = (true, false, plan.Found.GetValueOrDefault(ShortName(computer.Name)));
             await computers.SetDirectoryStateAsync(plan.States, plan.NowUtc, ct);
+            var current = await GetSettingsAsync(ct);
+            var inactive = await computers.MarkInactiveAsync(current.InactiveDays, plan.NowUtc, ct);
 
             result = L["{0} computer accounts found, {1} newly created", preview.Total, added.Count].Value;
             if (preview.Disabled > 0)
@@ -96,6 +111,8 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
                 result += ", " + L["{0} excluded", preview.Excluded];
             if (preview.MissingNames!.Count > 0)
                 result += ", " + L["{0} not in AD", preview.MissingNames.Count];
+            if (inactive > 0)
+                result += ", " + L["{0} presumably decommissioned (no sign of life for {1} days)", inactive, current.InactiveDays];
             if (preview.DeleteBlocked)
             {
                 result += " – " + L["{0} computers would be deleted; that is conspicuously many at once, so nothing was deleted (check the search roots or delete manually)", plan.DeleteIds.Count];
@@ -175,7 +192,14 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         foreach (var computer in blocked ? [] : delete)
             states.Remove(computer.Id);
 
-        var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked, excluded);
+        // Mit den Anmeldewerten, die dieser Lauf übernimmt; gelöschte Rechner zählen nicht mehr.
+        var deleting = blocked ? [] : delete.Select(c => c.Id).ToHashSet();
+        var inactive = existing.Where(c => !deleting.Contains(c.Id)).Count(c =>
+        {
+            var logon = states.TryGetValue(c.Id, out var state) && state.Account is { } account ? account.LastLogonUtc : c.DirectoryLastLogonUtc;
+            return Computer.IsInactive(new Computer { Name = c.Name, DirectoryLastLogonUtc = logon, LastSeenUtc = c.LastSeenUtc, AgentLastSeenUtc = c.AgentLastSeenUtc }, current.InactiveDays, now);
+        }) + newNames.Count(n => Computer.IsInactive(new Computer { Name = n, DirectoryLastLogonUtc = found[n].LastLogonUtc }, current.InactiveDays, now));
+        var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked, excluded, inactive);
         return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now, found);
     }
 

@@ -55,6 +55,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         if (!(computer.NameMismatch && await SettingsService.VerifyTargetNameAsync(db, ct)))
         {
             computer.LastSeenUtc = now;
+            computer.DirectoryInactive = false;
             computer.IsOnline = true;
         }
         else

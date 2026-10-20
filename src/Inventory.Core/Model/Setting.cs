@@ -59,6 +59,7 @@ public static class SettingKeys
     public const string AdSyncExcludeDisabled = "AdSync.ExcludeDisabled";
     public const string AdSyncMissingAction = "AdSync.MissingAction";
     public const string AdSyncMissingDays = "AdSync.MissingDays";
+    public const string AdSyncInactiveDays = "AdSync.InactiveDays";
     public const string AdSyncLastRunUtc = "AdSync.LastRunUtc";
     public const string AdSyncLastResult = "AdSync.LastResult";
 }

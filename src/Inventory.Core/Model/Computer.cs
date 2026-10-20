@@ -81,6 +81,18 @@ public class Computer
     public string? DirectoryDescription { get; set; }
     /// <summary>Letzte Anmeldung des Kontos an der Domäne; das Verzeichnis gleicht den Wert nur etwa alle zwei Wochen ab.</summary>
     public DateTime? DirectoryLastLogonUtc { get; set; }
+    /// <summary>Vermutlich außer Betrieb: seit der eingestellten Frist weder an der Domäne angemeldet noch vom Inventory gesehen.</summary>
+    public bool DirectoryInactive { get; set; }
+
+    /// <summary>Letztes Lebenszeichen: Anmeldung an der Domäne, Erreichbarkeit, Scan oder Agent-Meldung.</summary>
+    public DateTime? LastSignOfLifeUtc => new[] { DirectoryLastLogonUtc, LastSeenUtc, AgentLastSeenUtc }.Max();
+
+    /// <summary>
+    /// True, wenn das Konto eine Anmeldung kennt und weder sie noch eine eigene Sichtung jünger als <paramref name="days"/> Tage ist.
+    /// Rechner ohne Anmeldewert (von Hand angelegt, nie im Verzeichnis) gelten nie als inaktiv; 0 Tage schaltet die Prüfung ab.
+    /// </summary>
+    public static bool IsInactive(Computer c, int days, DateTime nowUtc) =>
+        days > 0 && c.DirectoryLastLogonUtc is not null && c.LastSignOfLifeUtc < nowUtc.AddDays(-days);
 
     // Aus dem letzten Inventar-Scan
     /// <summary>Name, den der Rechner selbst meldet; kann vom Eintrag abweichen (veralteter DNS-Eintrag, CNAME, IP-Adresse).</summary>

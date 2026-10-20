@@ -161,6 +161,8 @@
         <MudText Typo="Typo.caption">
             @L["Disabled accounts are not created; if an existing computer is disabled in the directory, it counts as no longer found."]
         </MudText>
+        <MudNumericField T="int" @bind-Value="_adInactiveDays" Label="@L["Mark as presumably decommissioned after (days)"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                         Min="0" Max="3650" HelperText="@L["No AD logon and no sign of life in the inventory for this long; 0 = off, at least {0}. Nothing is deleted.", AdSyncService.MinInactiveDays]" />
         <MudSelect T="AdMissingAction" @bind-Value="_adMissingAction" Label="@L["Computers no longer found in the directory"]" Variant="Variant.Outlined" Margin="Margin.Dense">
             <MudSelectItem Value="AdMissingAction.Keep">@L["Keep and mark as \"not in AD\""]</MudSelectItem>
             <MudSelectItem Value="AdMissingAction.Delete">@L["Mark and delete after a grace period"]</MudSelectItem>
@@ -513,6 +515,7 @@
     private bool _adExcludeDisabled = true;
     private AdMissingAction _adMissingAction;
     private int _adMissingDays = 30;
+    private int _adInactiveDays = AdSyncService.DefaultInactiveDays;
     private DateTime? _adLastRunUtc;
     private string? _adLastResult;
     private string? _adMessage;
@@ -563,7 +566,7 @@
         var ad = await AdSync.GetSettingsAsync();
         (_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adLastRunUtc, _adLastResult) =
             (ad.Enabled, ad.Server, ad.BaseDns?.Replace(";", "\n"), ad.CredentialId, ad.IntervalHours, ad.LastRunUtc, ad.LastResult);
-        (_adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions) = (ad.ExcludeDisabled, ad.MissingAction, ad.MissingDays, ad.Exclusions);
+        (_adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions, _adInactiveDays) = (ad.ExcludeDisabled, ad.MissingAction, ad.MissingDays, ad.Exclusions, ad.InactiveDays);
     }
 
     /// <summary>Hilfetext des Ausschlussfelds; nennt Container ohne DC=, weil die meist falsch abgeschrieben sind.</summary>
@@ -573,7 +576,7 @@
 
     private async Task SaveAdAsync()
     {
-        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions);
+        await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions, _adInactiveDays);
         await Audit.LogAsync(L["Setting changed"], L["AD synchronization: {0}, server {1}, every {2} h, disabled accounts {3}, missing computers: {4}",
             Display.OnOff(_adEnabled), _adServer ?? L["(domain)"], _adIntervalHours, _adExcludeDisabled ? L["excluded"] : L["included"],
             _adMissingAction == AdMissingAction.Delete ? L["delete after {0} days", _adMissingDays] : L["keep"]]);
@@ -590,6 +593,8 @@
                 preview.Total, preview.Disabled, preview.NewNames.Count, Names(preview.NewNames), preview.MissingNames!.Count, Names(preview.MissingNames)].Value;
             if (preview.Excluded > 0)
                 text += " " + L["{0} accounts are excluded by the rules.", preview.Excluded];
+            if (preview.Inactive > 0)
+                text += " " + L["{0} computers count as presumably decommissioned.", preview.Inactive];
             if (preview.DeleteNames!.Count > 0)
                 text += " " + (preview.DeleteBlocked
                     ? L["{0} would be deleted – conspicuously many at once, so the run would delete nothing.", preview.DeleteNames.Count]
@@ -607,7 +612,7 @@
         _adMessage = null;
         try
         {
-            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions);
+            await AdSync.SaveSettingsAsync(_adEnabled, _adServer, _adBaseDns, _adCredentialId, _adIntervalHours, _adExcludeDisabled, _adMissingAction, _adMissingDays, _adExclusions, _adInactiveDays);
             _adMessage = await action();
             _adSeverity = _adMessage.StartsWith(L["Error"]) ? Severity.Error : Severity.Success;
         }
