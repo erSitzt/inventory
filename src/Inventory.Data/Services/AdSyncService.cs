@@ -97,7 +97,8 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         {
             var plan = await PlanAsync(ct);
             var preview = plan.Preview;
-            var added = await computers.ImportAsync(string.Join('\n', preview.NewNames), ct);
+            var skipped = preview.NewNames.Where(n => !ComputerNames.IsValid(n)).ToList();
+            var added = await computers.ImportAsync(preview.NewNames, ct);
             foreach (var computer in added)
                 plan.States[computer.Id] = (true, false, plan.Found.GetValueOrDefault(ShortName(computer.Name)));
             await computers.SetDirectoryStateAsync(plan.States, plan.NowUtc, ct);
@@ -105,6 +106,8 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
             var inactive = await computers.MarkInactiveAsync(current.InactiveDays, plan.NowUtc, ct);
 
             result = L["{0} computer accounts found, {1} newly created", preview.Total, added.Count].Value;
+            if (skipped.Count > 0)
+                result += ", " + L["{0} not created (unsupported name: {1})", skipped.Count, string.Join(", ", skipped)];
             if (preview.Disabled > 0)
                 result += ", " + L["{0} disabled", preview.Disabled];
             if (preview.Excluded > 0)
@@ -198,7 +201,7 @@ public sealed class AdSyncService(IDirectorySource directory, SettingsService se
         {
             var logon = states.TryGetValue(c.Id, out var state) && state.Account is { } account ? account.LastLogonUtc : c.DirectoryLastLogonUtc;
             return Computer.IsInactive(new Computer { Name = c.Name, DirectoryLastLogonUtc = logon, LastSeenUtc = c.LastSeenUtc, AgentLastSeenUtc = c.AgentLastSeenUtc }, current.InactiveDays, now);
-        }) + newNames.Count(n => Computer.IsInactive(new Computer { Name = n, DirectoryLastLogonUtc = found[n].LastLogonUtc }, current.InactiveDays, now));
+        }) + newNames.Count(n => ComputerNames.IsValid(n) && Computer.IsInactive(new Computer { Name = n, DirectoryLastLogonUtc = found[n].LastLogonUtc }, current.InactiveDays, now));
         var preview = new AdSyncPreview(found.Count, newNames, disabled, missing.Select(c => c.Name).ToList(), delete.Select(c => c.Name).ToList(), blocked, excluded, inactive);
         return new Plan(preview, states, delete.Select(c => c.Id).ToList(), now, found);
     }

@@ -21,6 +21,7 @@ public static class ComputerNames
         return result;
     }
 
+    /// <summary>Buchstaben aller Schriften (Umlaute wie in „BÜRO-PC“), Ziffern, Bindestrich, Punkt und Unterstrich.</summary>
     public static bool IsValid(string name) =>
-        name.Length is > 0 and <= 253 && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '.' or '_');
+        name.Length is > 0 and <= 253 && name.All(c => char.IsLetterOrDigit(c) || c is '-' or '.' or '_');
 }

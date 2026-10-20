@@ -38,15 +38,19 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
     }
 
     /// <summary>Legt alle noch unbekannten Rechner aus dem Text an und liefert die neu angelegten.</summary>
-    public async Task<List<Computer>> ImportAsync(string? text, CancellationToken ct = default)
+    public Task<List<Computer>> ImportAsync(string? text, CancellationToken ct = default) =>
+        ImportAsync(ComputerNames.Parse(text), ct);
+
+    /// <summary>Legt die Rechner an, die es noch nicht gibt; Namen, die <see cref="ComputerNames.IsValid"/> nicht erfüllen, werden übergangen.</summary>
+    public async Task<List<Computer>> ImportAsync(IEnumerable<string> names, CancellationToken ct = default)
     {
-        var names = ComputerNames.Parse(text);
-        if (names.Count == 0)
+        var valid = names.Where(ComputerNames.IsValid).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (valid.Count == 0)
             return [];
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var existing = (await db.Computers.Select(c => c.Name).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var added = names.Where(n => !existing.Contains(n)).Select(n => new Computer { Name = n }).ToList();
+        var added = valid.Where(n => !existing.Contains(n)).Select(n => new Computer { Name = n }).ToList();
         db.Computers.AddRange(added);
         await db.SaveChangesAsync(ct);
         return added;

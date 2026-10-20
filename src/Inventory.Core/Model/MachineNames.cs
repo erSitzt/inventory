@@ -31,7 +31,7 @@ public static class MachineNames
         var name = dnsName?.Trim().TrimEnd('.');
         if (string.IsNullOrEmpty(name) || name.Length > 253 || !name.Contains('.') || System.Net.IPAddress.TryParse(name, out _) || Differs(name, machineName))
             return null;
-        return name.Split('.').All(l => l.Length is > 0 and <= 63 && l.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_') && l[0] != '-' && l[^1] != '-') ? name : null;
+        return name.Split('.').All(l => l.Length is > 0 and <= 63 && l.All(c => char.IsLetterOrDigit(c) || c is '-' or '_') && l[0] != '-' && l[^1] != '-') ? name : null;
     }
 
     private static string Label(string name)

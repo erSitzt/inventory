@@ -154,6 +154,24 @@ public class ScheduleTests
     }
 
     [Fact]
+    public async Task Ad_sync_creates_computers_with_umlauts_and_reports_names_it_cannot_create()
+    {
+        using var db = new TestDb();
+        var clock = new FakeClock(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero));
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var settings = new SettingsService(db);
+        var directory = new FakeDirectory { Computers = [new("BÜRO-PC", null, null, null), new("KASSE-SÜD", null, null, null), new("BAD NAME", null, null, null)] };
+        var sync = new AdSyncService(directory, settings, new CredentialService(db, new ReversingProtector()), computers, clock);
+        await sync.SaveSettingsAsync(true, "dc01", "OU=Clients,DC=corp,DC=local", null, 12);
+
+        Assert.Equal(["BAD NAME", "BÜRO-PC", "KASSE-SÜD"], (await sync.PreviewAsync()).NewNames);
+        await sync.SyncAsync();
+
+        Assert.Equal(["BÜRO-PC", "KASSE-SÜD"], (await computers.ListAsync()).Select(c => c.Name).Order());
+        Assert.Equal("3 computer accounts found, 2 newly created, 1 not created (unsupported name: BAD NAME)", (await sync.GetSettingsAsync()).LastResult);
+    }
+
+    [Fact]
     public async Task Ad_sync_marks_missing_and_disabled_computers_and_deletes_them_after_the_grace_period()
     {
         using var db = new TestDb();

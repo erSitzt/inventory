@@ -16,6 +16,13 @@ public class ComputerTests
     }
 
     [Fact]
+    public void Names_may_contain_umlauts_and_other_letters()
+    {
+        Assert.Equal(["BÜRO-PC", "kasse-süd", "ÆRØ-01"], ComputerNames.Parse("BÜRO-PC\nkasse-süd\nÆRØ-01"));
+        Assert.False(ComputerNames.IsValid("pc€01"));
+    }
+
+    [Fact]
     public async Task Import_skips_existing_names_case_insensitively()
     {
         using var db = new TestDb();
@@ -121,6 +128,7 @@ public class ComputerTests
     [InlineData("arbeitsplatz-buchhaltung.corp.example", "ARBEITSPLATZ-BU", "arbeitsplatz-buchhaltung.corp.example")]
     [InlineData("server.corp.example", "pc-01", null)]
     [InlineData("pc-01", "pc-01", null)]
+    [InlineData("büro-pc.corp.example", "BÜRO-PC", "büro-pc.corp.example")]
     [InlineData("pc-01.corp example", "pc-01", null)]
     [InlineData("pc-01.-corp.example", "pc-01", null)]
     [InlineData("10.1.2.3", "10", null)]
