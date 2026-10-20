@@ -184,10 +184,14 @@ public sealed class PackageTests : IDisposable
         Assert.Contains("may still be running", target.Error);
         Assert.NotNull(target.FinishedUtc);
 
-        // Meldet sich die Verbindung doch noch, räumt der alte Lauf auf, ohne einen neuen zu stören.
+        // Meldet sich die Verbindung doch noch, räumt der alte Lauf nur auf und überschreibt den gespeicherten Stand nicht.
         transport.Release.SetResult();
-        await Task.Delay(300);
+        await Task.Delay(500);
         Assert.False(deployments.AnyRunning);
+        var after = Assert.Single((await deployments.GetAsync(started.Id))!.Targets);
+        Assert.Equal(TargetStatus.Cancelled, after.Status);
+        Assert.Equal(target.Error, after.Error);
+        Assert.Equal(cancelled.FinishedUtc, (await deployments.GetAsync(started.Id))!.FinishedUtc);
     }
 
     [Fact]

@@ -198,6 +198,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
             if (error is not (ERROR_SERVICE_ALREADY_RUNNING or ERROR_SERVICE_CANNOT_ACCEPT_CTRL))
                 throw new RemoteException(L["Service on {0} could not be started: {1}", host, L[Describe(error)]]);
             ct.ThrowIfCancellationRequested();
+            // Der Job lief schon: kein Ausweichen auf einen anderen Transport, der die Installation ein zweites Mal startete.
             if (DateTime.UtcNow > deadline)
                 throw new RemoteException(L["Another job has been running on {0} for more than {1} minutes; this job was not started.", host, (int)BusyTimeout.TotalMinutes]);
             Thread.Sleep(BusyPollInterval);
@@ -236,8 +237,9 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
             // Antwortet der Rechner nicht mehr, wartet der Abbruch nicht endlos auf das Ergebnis des Runners.
             if (cancelledSince is not null && DateTime.UtcNow - cancelledSince > CancelGrace)
                 ct.ThrowIfCancellationRequested();
+            // Der Job lief schon: kein Ausweichen auf einen anderen Transport, der die Installation ein zweites Mal startete.
             if (DateTime.UtcNow > deadline)
-                throw new RemoteException(L["No result from {0} within {1} minutes – the computer probably restarted or lost the connection during the job.", host, (int)(deadline - started).TotalMinutes]);
+                throw new RemoteException(L["No result from {0} within {1} minutes – the computer probably restarted or lost the connection during the job.", host, (int)(deadline - started).TotalMinutes], resultMayFollow: true);
 
             progressOffset = PumpProgress(progressPath, progressOffset, progress);
 
