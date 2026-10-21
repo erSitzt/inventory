@@ -17,7 +17,11 @@ public static class ReportImage
 {
     /// <summary>Größere Dateien nimmt die Einstellung nicht an; jedes PDF trägt das Logo einmal.</summary>
     public const int MaxBytes = 512 * 1024;
-    private const int MaxPixels = 4096 * 4096;
+    /// <summary>
+    /// Gedruckt wird das Logo höchstens 140 × 30 pt groß; mehr Pixel bringen nichts. Die Grenze hält auch ein stark
+    /// komprimierbares PNG unter 512 KB davon ab, beim Entpacken hunderte Megabyte zu belegen.
+    /// </summary>
+    public const int MaxPixels = 1024 * 1024;
 
     /// <exception cref="InvalidDataException">Kein unterstütztes Bild (PNG mit 8 bit je Kanal oder JPEG).</exception>
     public static ReportLogo Parse(byte[] data)
@@ -43,6 +47,8 @@ public static class ReportImage
         {
             if (data[i] != 0xFF)
                 throw new InvalidDataException("Damaged JPEG.");
+            if (data[i + 1] is >= 0xD0 and <= 0xD9)
+                throw new InvalidDataException("JPEG without image size.");
             var marker = data[i + 1];
             // Füllbytes zwischen den Segmenten.
             if (marker == 0xFF)
@@ -59,6 +65,8 @@ public static class ReportImage
                 var components = data[i + 9];
                 if (width == 0 || height == 0)
                     throw new InvalidDataException("JPEG without size.");
+                if (width * height > MaxPixels)
+                    throw new InvalidDataException($"The image has more than {MaxPixels:N0} pixels.");
                 // CMYK-JPEGs speichern ihre Farben je nach Programm verschieden invertiert; lieber ablehnen als falsch drucken.
                 var space = components switch
                 {
@@ -89,6 +97,8 @@ public static class ReportImage
             switch (chunk)
             {
                 case "IHDR":
+                    if (length < 13)
+                        throw new InvalidDataException("Damaged PNG header.");
                     width = (int)BinaryPrimitives.ReadUInt32BigEndian(body);
                     height = (int)BinaryPrimitives.ReadUInt32BigEndian(body[4..]);
                     depth = body[8];
@@ -111,8 +121,10 @@ public static class ReportImage
             i += 12 + length;
         }
 
-        if (width <= 0 || height <= 0 || (long)width * height > MaxPixels)
+        if (width <= 0 || height <= 0)
             throw new InvalidDataException("PNG without a usable size.");
+        if ((long)width * height > MaxPixels)
+            throw new InvalidDataException($"The image has more than {MaxPixels:N0} pixels.");
         var channels = type switch
         {
             0 => 1,

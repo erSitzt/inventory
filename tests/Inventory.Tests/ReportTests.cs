@@ -254,6 +254,14 @@ public class ReportTests
         var sixteenBit = Png(2, 2, (_, _) => (0, 0, 0, 255));
         sixteenBit[8 + 8 + 8] = 16;
         Assert.Throws<InvalidDataException>(() => ReportImage.Parse(sixteenBit));
+        // Kaputter Kopf, zu viele Pixel: auch das ist eine klare Ablehnung, kein Absturz.
+        var shortHeader = Png(2, 2, (_, _) => (0, 0, 0, 255));
+        shortHeader[11] = 5;
+        Assert.Throws<InvalidDataException>(() => ReportImage.Parse(shortHeader));
+        var huge = Png(2, 2, (_, _) => (0, 0, 0, 255));
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(huge.AsSpan(16), 5000);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(huge.AsSpan(20), 5000);
+        Assert.Throws<InvalidDataException>(() => ReportImage.Parse(huge));
 
         var table = new ReportTable([new ReportColumn("n", "Name")], [["pc-01"]]);
         using var pdf = UglyToad.PdfPig.PdfDocument.Open(ReportPdf.Write(table, new ReportPdfOptions("Bestand", "Rechner", "Alle Geräte", "Muster GmbH", png)));

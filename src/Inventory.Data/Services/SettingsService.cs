@@ -102,19 +102,29 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
     public async Task<ReportBranding> GetReportBrandingAsync(CancellationToken ct = default)
     {
         var organization = await GetAsync(SettingKeys.ReportOrganization, ct);
-        ReportLogo? logo = null;
-        if (await GetReportLogoAsync(ct) is { } data)
+        var stored = await GetAsync(SettingKeys.ReportLogo, ct);
+        // Jeder Bericht braucht das Logo: einmal lesen, solange es sich nicht ändert.
+        var cached = _logo;
+        if (cached?.Stored != stored)
         {
-            try
+            ReportLogo? logo = null;
+            if (!string.IsNullOrEmpty(stored))
             {
-                logo = ReportImage.Parse(data);
+                try
+                {
+                    logo = ReportImage.Parse(Convert.FromBase64String(stored));
+                }
+                catch (Exception ex) when (ex is InvalidDataException or FormatException)
+                {
+                }
             }
-            catch (InvalidDataException)
-            {
-            }
+            _logo = cached = new CachedLogo(stored, logo);
         }
-        return new ReportBranding(string.IsNullOrWhiteSpace(organization) ? null : organization, logo);
+        return new ReportBranding(string.IsNullOrWhiteSpace(organization) ? null : organization, cached.Logo);
     }
+
+    private sealed record CachedLogo(string? Stored, ReportLogo? Logo);
+    private CachedLogo? _logo;
 
     public async Task<byte[]?> GetReportLogoAsync(CancellationToken ct = default)
     {

@@ -304,7 +304,7 @@
                 <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="RemoveLogoAsync">@L["Remove logo"]</MudButton>
             }
         </MudStack>
-        <MudText Typo="Typo.caption">@L["PNG or JPEG, at most {0} KB. A PNG with a transparent background looks best.", ReportImage.MaxBytes / 1024]</MudText>
+        <MudText Typo="Typo.caption">@L["PNG or JPEG, at most {0} KB and {1} pixels. A PNG with a transparent background looks best.", ReportImage.MaxBytes / 1024, ReportImage.MaxPixels.ToString("N0")]</MudText>
     </MudStack>
 </MudPaper>
 
@@ -394,6 +394,8 @@
 
     private async Task SaveReportOrganizationAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         await SettingsService.SetReportOrganizationAsync(_reportOrganization);
         await LoadReportBrandingAsync();
         await Audit.LogAsync(L["Setting changed"], $"{L["Organization name"]}: {_savedOrganization ?? "–"}");
@@ -402,6 +404,8 @@
 
     private async Task UploadLogoAsync(InputFileChangeEventArgs e)
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         if (e.File.Size > ReportImage.MaxBytes)
         {
             Snackbar.Add(L["The logo is larger than {0} KB.", ReportImage.MaxBytes / 1024], Severity.Error);
@@ -416,7 +420,7 @@
         }
         catch (InvalidDataException)
         {
-            Snackbar.Add(L["The image could not be read. Please use a PNG (8 bit per channel, not interlaced) or a JPEG."], Severity.Error);
+            Snackbar.Add(L["The image could not be read. Please use a PNG (8 bit per channel, not interlaced) or a JPEG with at most {0} pixels.", ReportImage.MaxPixels.ToString("N0")], Severity.Error);
             return;
         }
         await LoadReportBrandingAsync();
@@ -426,6 +430,8 @@
 
     private async Task RemoveLogoAsync()
     {
+        if (!await Access.DemandAdminAsync())
+            return;
         await SettingsService.SetReportLogoAsync(null);
         await LoadReportBrandingAsync();
         await Audit.LogAsync(L["Setting changed"], $"{L["Report logo"]}: {L["removed"]}");

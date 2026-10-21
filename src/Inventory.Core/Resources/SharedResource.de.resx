@@ -3275,8 +3275,8 @@
   <data name="Please save your work. The installation starts when you choose OK, at the latest in {0} minutes." xml:space="preserve">
     <value>Bitte speichern Sie Ihre Arbeit. Die Installation beginnt, sobald Sie OK wählen, spätestens in {0} Minuten.</value>
   </data>
-  <data name="PNG or JPEG, at most {0} KB. A PNG with a transparent background looks best." xml:space="preserve">
-    <value>PNG oder JPEG, höchstens {0} KB. Am besten wirkt ein PNG mit transparentem Hintergrund.</value>
+  <data name="PNG or JPEG, at most {0} KB and {1} pixels. A PNG with a transparent background looks best." xml:space="preserve">
+    <value>PNG oder JPEG, höchstens {0} KB und {1} Pixel. Am besten wirkt ein PNG mit transparentem Hintergrund.</value>
   </data>
   <data name="Port" xml:space="preserve">
     <value>Anschluss</value>
@@ -4553,8 +4553,8 @@
   <data name="The filters and the search narrow the list; the CSV export can be edited and imported again for asset data." xml:space="preserve">
     <value>Filter und Suche grenzen die Liste ein; der CSV-Export lässt sich für Bestandsdaten bearbeiten und wieder importieren.</value>
   </data>
-  <data name="The image could not be read. Please use a PNG (8 bit per channel, not interlaced) or a JPEG." xml:space="preserve">
-    <value>Das Bild ließ sich nicht lesen. Bitte ein PNG (8 Bit je Kanal, ohne Interlacing) oder ein JPEG verwenden.</value>
+  <data name="The image could not be read. Please use a PNG (8 bit per channel, not interlaced) or a JPEG with at most {0} pixels." xml:space="preserve">
+    <value>Das Bild ließ sich nicht lesen. Bitte ein PNG (8 Bit je Kanal, ohne Interlacing) oder ein JPEG mit höchstens {0} Pixeln verwenden.</value>
   </data>
   <data name="the installation step is then replaced with the new setup, own steps and files are kept." xml:space="preserve">
     <value>dabei wird der Installationsschritt mit dem Setup ersetzt, eigene Schritte und Dateien bleiben erhalten.</value>
