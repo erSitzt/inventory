@@ -105,7 +105,7 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
         var stored = await GetAsync(SettingKeys.ReportLogo, ct);
         // Jeder Bericht braucht das Logo: einmal lesen, solange es sich nicht ändert.
         var cached = _logo;
-        if (cached?.Stored != stored)
+        if (cached is null || cached.Stored != stored)
         {
             ReportLogo? logo = null;
             if (!string.IsNullOrEmpty(stored))

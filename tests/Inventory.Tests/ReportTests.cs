@@ -277,6 +277,8 @@ public class ReportTests
     {
         using var db = new TestDb();
         var settings = new SettingsService(db);
+        // Frisch, ohne Name und Logo: nichts, aber auch kein Fehler.
+        Assert.Equal(new ReportBranding(null, null), await settings.GetReportBrandingAsync());
         await Assert.ThrowsAsync<InvalidDataException>(() => settings.SetReportLogoAsync([1, 2, 3]));
         Assert.Null(await settings.GetReportLogoAsync());
 
