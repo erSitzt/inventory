@@ -95,8 +95,9 @@ public sealed class ExampleData(IDbContextFactory<InventoryDbContext> dbFactory,
         Name = L[Prefix] + L["Possibly decommissioned"],
         Description = L["Computers without AD logon or sign of life for a long time, or no longer in AD – the longest silent first"],
         Source = ReportSource.Computers,
-        Columns = "name,adInactive,adLastLogon,lastSighting,adMissingSince,adDisabled,adOu,os,primaryUser,location,description",
-        SortColumn = "adLastLogon",
+        Columns = "name,adInactive,lastSignOfLife,adLastLogon,lastSighting,adMissingSince,adDisabled,adOu,os,primaryUser,location,description",
+        // Das jüngere von AD-Anmeldung und eigener Sichtung: so ordnen sich auch Rechner ohne Anmeldewert ein.
+        SortColumn = "lastSignOfLife",
     };
 
     /// <summary>Häufig gefragte Listen als Ausgangspunkt: so wie sie sind verwendbar, oder dupliziert und angepasst.</summary>

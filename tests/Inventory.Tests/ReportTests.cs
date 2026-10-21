@@ -348,7 +348,9 @@ public class ReportTests
             var now = DateTime.UtcNow;
             var old = context.Computers.Single(c => c.Name == "pc-old");
             (old.DirectoryInactive, old.DirectoryLastLogonUtc) = (true, now.AddDays(-200));
-            context.Computers.Single(c => c.Name == "pc-gone").DirectoryMissingSinceUtc = now.AddDays(-3);
+            // Nicht mehr im AD und ohne Anmeldewert, aber vor 300 Tagen zuletzt gesehen: am längsten still, steht also vorn.
+            var gone = context.Computers.Single(c => c.Name == "pc-gone");
+            (gone.DirectoryMissingSinceUtc, gone.LastSeenUtc) = (now.AddDays(-3), now.AddDays(-300));
             context.Computers.Single(c => c.Name == "pc-fine").DirectoryLastLogonUtc = now.AddDays(-1);
             await context.SaveChangesAsync();
         }
@@ -363,8 +365,8 @@ public class ReportTests
         Assert.Equal(2, members);
 
         var table = await reports.TableAsync(new ReportQuery(report.Source, report.CollectionId, report.Days, report.ColumnKeys, report.SortColumn, report.SortDescending));
-        Assert.Equal(["pc-old", "pc-gone"], table.Rows.Select(r => r[0]));
-        Assert.Equal(["yes", "no"], table.Rows.Select(r => r[1]));
+        Assert.Equal(["pc-gone", "pc-old"], table.Rows.Select(r => r[0]));
+        Assert.Equal(["no", "yes"], table.Rows.Select(r => r[1]));
     }
 
     private sealed class RecordingMail : Inventory.Core.Abstractions.IMailSender

@@ -2174,6 +2174,9 @@
   <data name="Last sent {0}" xml:space="preserve">
     <value>Zuletzt gesendet {0}</value>
   </data>
+  <data name="Last sign of life" xml:space="preserve">
+    <value>Letztes Lebenszeichen</value>
+  </data>
   <data name="Last update installation" xml:space="preserve">
     <value>Letzte Update-Installation</value>
   </data>

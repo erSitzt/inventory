@@ -219,6 +219,7 @@ public sealed partial class ReportService
         new("adMissingSince", L["Not in AD since"], c => Stamp(c.DirectoryMissingSinceUtc, zone)),
         new("adDisabled", L["AD account disabled"], c => YesNo(c.DirectoryDisabled)),
         new("lastSighting", L["Last seen by the inventory"], c => Stamp(c.LastInventorySightingUtc, zone)),
+        new("lastSignOfLife", L["Last sign of life"], c => Stamp(c.LastSignOfLifeUtc, zone)),
         new("primaryUser", L["Primary user"], c => c.PrimaryUser),
         new("owner", L["Owner"], c => c.Owner),
         new("location", L["Location"], c => c.Location),
