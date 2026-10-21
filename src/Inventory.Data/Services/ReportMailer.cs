@@ -19,13 +19,14 @@ public sealed class ReportMailer(SavedReportService saved, NotificationService n
         var table = await saved.RunAsync(report, ct);
         var local = TimeZoneInfo.ConvertTime(time.GetUtcNow(), time.LocalTimeZone);
         var baseUrl = (await settings.GetAsync(SettingKeys.AgentServerUrl, ct))?.TrimEnd('/');
+        var branding = format == ReportFormat.Pdf ? await saved.BrandingAsync(ct) : null;
         var text = L["{0} rows, as of {1}.", table.Rows.Count, local.ToString("g")] + (report.Description is null ? "" : "\n" + report.Description);
 
         // Die Datei entsteht erst, wenn ein E-Mail-Kanal sie braucht: Webhooks bekommen nur Text und Link.
         // Das Datum im Namen: die Anhänge mehrerer Monate lassen sich nebeneinander ablegen.
         MailAttachment Attachment()
         {
-            var file = saved.Render(report, table, format, local);
+            var file = saved.Render(report, table, format, local, branding);
             return new MailAttachment($"{Path.GetFileNameWithoutExtension(file.FileName)} {local:yyyy-MM-dd}{Path.GetExtension(file.FileName)}", file.ContentType.Split(';')[0], file.Content);
         }
 

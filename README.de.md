@@ -940,7 +940,7 @@ Jeder Bericht lässt sich im Browser öffnen und in drei Formaten herunterladen,
 |---|---|
 | CSV | Semikolon-getrennt, UTF-8 mit BOM |
 | Excel | ein Blatt mit fixierter, filterbarer Kopfzeile; Zahlenspalten sind Zahlen, alles andere Text, sodass nie etwas als Formel ausgewertet wird |
-| PDF | A4 quer mit Titel, Stand und Seitenzahlen, die Kopfzeile auf jeder Seite. Eine Tabelle, die nicht auf eine Seite passt, läuft auf weiteren Seiten weiter, jeweils mit der ersten Spalte davor; lange Werte werden gekürzt. Höchstens 5.000 Zeilen – für längere Listen Excel nehmen. Zeichen außerhalb des westeuropäischen Zeichenvorrats erscheinen als `?`. |
+| PDF | A4 quer: Kopf mit Titel, Quelle, Stand und – falls unter *Einstellungen → Berichte* hinterlegt – Name und Logo der Organisation; die Beschreibung über der Tabelle; die farbige Kopfzeile auf jeder Seite; Seitenzahlen im Fuß. Lange Werte brechen auf bis zu drei Zeilen um, erst dann werden sie gekürzt. Eine Tabelle, die nicht auf eine Seite passt, macht zuerst ihre breitesten Spalten schmaler und läuft dann auf weiteren Seiten weiter, jeweils mit der ersten Spalte davor. Höchstens 5.000 Zeilen – für längere Listen Excel nehmen. Zeichen außerhalb des westeuropäischen Zeichenvorrats erscheinen als `?`. |
 
 **Beispiele:** beim ersten Start legt der Server zehn Berichte namens „Beispiel: …“ an: Hardware-Übersicht,
 Sicherheitsstatus, Patch-Stand, Bestandsliste, Betriebssysteme, Windows-11-Voraussetzungen, installierte Software,

@@ -46,6 +46,10 @@ public static class SettingKeys
     public const string ExampleSchedulesCreated = "Examples.SchedulesCreated";
     /// <summary>Gesetzt, sobald die Beispiel-Berichte einmal angelegt wurden.</summary>
     public const string ExampleReportsCreated = "Examples.ReportsAdded";
+    /// <summary>Name der Organisation im Kopf der PDF-Berichte.</summary>
+    public const string ReportOrganization = "Reports.Organization";
+    /// <summary>Logo im Kopf der PDF-Berichte: PNG oder JPEG, Base64.</summary>
+    public const string ReportLogo = "Reports.Logo";
     public const string HeartbeatEnabled = "Heartbeat.Enabled";
     public const string HeartbeatIntervalMinutes = "Heartbeat.IntervalMinutes";
     public const string HeartbeatLastRunUtc = "Heartbeat.LastRunUtc";

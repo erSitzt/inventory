@@ -907,7 +907,7 @@ Every report can be opened in the browser and downloaded in three formats, also 
 |---|---|
 | CSV | semicolon-separated, UTF-8 with BOM |
 | Excel | one sheet with a fixed, filterable header row; numeric columns are numbers, everything else is text, so nothing is ever evaluated as a formula |
-| PDF | A4 landscape with title, date and page numbers, the header row on every page. A table too wide for one page continues on further pages with the first column repeated; long values are shortened. At most 5,000 rows – for longer lists use Excel. Characters outside the Western European character set appear as `?`. |
+| PDF | A4 landscape: header with title, source, date and – if set under *Settings → Reports* – organization name and logo; the description above the table; the coloured header row on every page; page numbers in the footer. Long values wrap onto up to three lines, then they are shortened. A table too wide for one page first narrows its widest columns, then continues on further pages with the first column repeated. At most 5,000 rows – for longer lists use Excel. Characters outside the Western European character set appear as `?`. |
 
 **Examples:** on first start the server adds ten reports named "Example: …": hardware overview, security status,
 patch status, asset list, operating systems, Windows 11 requirements, installed software, pending updates,

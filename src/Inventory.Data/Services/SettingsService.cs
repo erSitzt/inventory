@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Inventory.Data.Services;
 
+/// <summary>Name und Logo der Organisation für den Kopf der PDF-Berichte.</summary>
+public sealed record ReportBranding(string? Organization, ReportLogo? Logo);
+
 public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFactory)
 {
     public async Task<TransportKind> GetDefaultTransportAsync(CancellationToken ct = default) =>
@@ -92,6 +95,56 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
 
     public Task SetRebootWaitMinutesAsync(int minutes, CancellationToken ct = default) =>
         SetAsync(SettingKeys.RebootWaitMinutes, Math.Clamp(minutes, 5, 24 * 60).ToString(), ct);
+
+    public const int MaxReportOrganizationLength = 120;
+
+    /// <summary>Name und Logo für den Kopf der PDF-Berichte; ein unlesbar gewordenes Logo fällt still weg.</summary>
+    public async Task<ReportBranding> GetReportBrandingAsync(CancellationToken ct = default)
+    {
+        var organization = await GetAsync(SettingKeys.ReportOrganization, ct);
+        ReportLogo? logo = null;
+        if (await GetReportLogoAsync(ct) is { } data)
+        {
+            try
+            {
+                logo = ReportImage.Parse(data);
+            }
+            catch (InvalidDataException)
+            {
+            }
+        }
+        return new ReportBranding(string.IsNullOrWhiteSpace(organization) ? null : organization, logo);
+    }
+
+    public async Task<byte[]?> GetReportLogoAsync(CancellationToken ct = default)
+    {
+        var value = await GetAsync(SettingKeys.ReportLogo, ct);
+        if (string.IsNullOrEmpty(value))
+            return null;
+        try
+        {
+            return Convert.FromBase64String(value);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    public Task SetReportOrganizationAsync(string? name, CancellationToken ct = default)
+    {
+        var value = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        return SetAsync(SettingKeys.ReportOrganization, value is { Length: > MaxReportOrganizationLength } ? value[..MaxReportOrganizationLength] : value, ct);
+    }
+
+    /// <param name="data">PNG oder JPEG; null entfernt das Logo.</param>
+    /// <exception cref="InvalidDataException">Zu groß oder kein lesbares PNG/JPEG; gespeichert wird dann nichts.</exception>
+    public Task SetReportLogoAsync(byte[]? data, CancellationToken ct = default)
+    {
+        if (data is not null)
+            ReportImage.Parse(data);
+        return SetAsync(SettingKeys.ReportLogo, data is null ? null : Convert.ToBase64String(data), ct);
+    }
 
     public async Task<string?> GetAsync(string key, CancellationToken ct = default)
     {

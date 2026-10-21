@@ -278,6 +278,9 @@
   <data name="Active: {0}" xml:space="preserve">
     <value>Aktiv: {0}</value>
   </data>
+  <data name="AD account disabled" xml:space="preserve">
+    <value>AD-Konto deaktiviert</value>
+  </data>
   <data name="AD description" xml:space="preserve">
     <value>AD-Beschreibung</value>
   </data>
@@ -884,6 +887,9 @@
   <data name="Columns" xml:space="preserve">
     <value>Spalten</value>
   </data>
+  <data name="Columns {0}/{1}" xml:space="preserve">
+    <value>Spalten {0}/{1}</value>
+  </data>
   <data name="Combination" xml:space="preserve">
     <value>Verknüpfung</value>
   </data>
@@ -989,6 +995,9 @@
   <data name="Computers with {0} older than the library version" xml:space="preserve">
     <value>Rechner mit {0} älter als die Bibliotheksversion</value>
   </data>
+  <data name="Computers without AD logon or sign of life for a long time, or no longer in AD – the longest silent first" xml:space="preserve">
+    <value>Rechner, die sich lange weder an der Domäne angemeldet noch sonst gemeldet haben oder nicht mehr im AD stehen – die am längsten stillen zuerst</value>
+  </data>
   <data name="Condition" xml:space="preserve">
     <value>Bedingung</value>
   </data>
@@ -1057,6 +1066,9 @@
   </data>
   <data name="Created by" xml:space="preserve">
     <value>Angelegt von</value>
+  </data>
+  <data name="Created with Inventory" xml:space="preserve">
+    <value>Erstellt mit Inventory</value>
   </data>
   <data name="Creates computers from the directory's computer accounts and marks computers whose account is no longer found there. Manually added computers the directory never knew remain untouched." xml:space="preserve">
     <value>Legt Computerkonten aus dem Verzeichnis als Rechner an und kennzeichnet Rechner, deren Konto dort nicht mehr gefunden wird. Von Hand angelegte Rechner, die das Verzeichnis nie gekannt hat, bleiben unberührt.</value>
@@ -2162,8 +2174,14 @@
   <data name="Last seen" xml:space="preserve">
     <value>Zuletzt gesehen</value>
   </data>
+  <data name="Last seen by the inventory" xml:space="preserve">
+    <value>Zuletzt vom Inventory gesehen</value>
+  </data>
   <data name="Last sent {0}" xml:space="preserve">
     <value>Zuletzt gesendet {0}</value>
+  </data>
+  <data name="Last sign of life" xml:space="preserve">
+    <value>Letztes Lebenszeichen</value>
   </data>
   <data name="Last update installation" xml:space="preserve">
     <value>Letzte Update-Installation</value>
@@ -2275,6 +2293,9 @@
   </data>
   <data name="logged-on user only" xml:space="preserve">
     <value>nur angemeldeter Benutzer</value>
+  </data>
+  <data name="Logo" xml:space="preserve">
+    <value>Logo</value>
   </data>
   <data name="Logon as {0} not possible: {1}" xml:space="preserve">
     <value>Anmeldung als {0} nicht möglich: {1}</value>
@@ -2422,6 +2443,9 @@
   </data>
   <data name="Name" xml:space="preserve">
     <value>Name</value>
+  </data>
+  <data name="Name and logo appear in the header of PDF reports, the name also in the footer." xml:space="preserve">
+    <value>Name und Logo stehen im Kopf der PDF-Berichte, der Name auch in der Fußzeile.</value>
   </data>
   <data name='Name as shown in "Programs and Features". Without * it must occur as whole words, with * it is a pattern for the whole name.' xml:space="preserve">
     <value>Name wie unter „Programme und Features“. Ohne * muss er als ganze Wörter vorkommen, mit * ist er ein Muster für den ganzen Namen.</value>
@@ -2600,6 +2624,9 @@
   <data name="No enabled notification channel to send the report to." xml:space="preserve">
     <value>Kein eingeschalteter Benachrichtigungskanal, an den der Bericht gehen könnte.</value>
   </data>
+  <data name="No entries" xml:space="preserve">
+    <value>Keine Einträge</value>
+  </data>
   <data name="No entries match the filter." xml:space="preserve">
     <value>Kein Eintrag passt zum Filter.</value>
   </data>
@@ -2740,6 +2767,9 @@
   </data>
   <data name="not in AD" xml:space="preserve">
     <value>nicht im AD</value>
+  </data>
+  <data name="Not in AD since" xml:space="preserve">
+    <value>Nicht im AD seit</value>
   </data>
   <data name="not installed" xml:space="preserve">
     <value>nicht installiert</value>
@@ -3002,6 +3032,9 @@
   <data name="order of the source" xml:space="preserve">
     <value>Reihenfolge der Quelle</value>
   </data>
+  <data name="Organization name" xml:space="preserve">
+    <value>Name der Organisation</value>
+  </data>
   <data name="Outlook will be closed in two minutes for an update. Please save your work." xml:space="preserve">
     <value>Outlook wird in zwei Minuten für ein Update geschlossen. Bitte Arbeit speichern.</value>
   </data>
@@ -3242,8 +3275,14 @@
   <data name="Please save your work. The installation starts when you choose OK, at the latest in {0} minutes." xml:space="preserve">
     <value>Bitte speichern Sie Ihre Arbeit. Die Installation beginnt, sobald Sie OK wählen, spätestens in {0} Minuten.</value>
   </data>
+  <data name="PNG or JPEG, at most {0} KB. A PNG with a transparent background looks best." xml:space="preserve">
+    <value>PNG oder JPEG, höchstens {0} KB. Am besten wirkt ein PNG mit transparentem Hintergrund.</value>
+  </data>
   <data name="Port" xml:space="preserve">
     <value>Anschluss</value>
+  </data>
+  <data name="Possibly decommissioned" xml:space="preserve">
+    <value>Möglicherweise außer Betrieb</value>
   </data>
   <data name="postponed by the user" xml:space="preserve">
     <value>vom Benutzer verschoben</value>
@@ -3277,6 +3316,9 @@
   </data>
   <data name="Presumably decommissioned" xml:space="preserve">
     <value>Vermutlich außer Betrieb</value>
+  </data>
+  <data name="Presumably decommissioned or not (anymore) in Active Directory" xml:space="preserve">
+    <value>Vermutlich außer Betrieb oder nicht (mehr) im Active Directory</value>
   </data>
   <data name="Presumably decommissioned: last AD logon {0}, last seen by the inventory {1}." xml:space="preserve">
     <value>Vermutlich außer Betrieb: letzte AD-Anmeldung {0}, zuletzt vom Inventory gesehen {1}.</value>
@@ -3545,6 +3587,9 @@
   <data name='Remove from "{0}"' xml:space="preserve">
     <value>Aus „{0}“ entfernen</value>
   </data>
+  <data name="Remove logo" xml:space="preserve">
+    <value>Logo entfernen</value>
+  </data>
   <data name="Remove rule" xml:space="preserve">
     <value>Regel entfernen</value>
   </data>
@@ -3569,6 +3614,9 @@
   <data name="Renew secret" xml:space="preserve">
     <value>Geheimnis erneuern</value>
   </data>
+  <data name="Replace logo" xml:space="preserve">
+    <value>Logo ersetzen</value>
+  </data>
   <data name="Report" xml:space="preserve">
     <value>Bericht</value>
   </data>
@@ -3583,6 +3631,9 @@
   </data>
   <data name="Report deleted" xml:space="preserve">
     <value>Bericht gelöscht</value>
+  </data>
+  <data name="Report logo" xml:space="preserve">
+    <value>Logo der Berichte</value>
   </data>
   <data name="Report with {0} rows sent via {1} channels" xml:space="preserve">
     <value>Bericht mit {0} Zeilen über {1} Kanäle verschickt</value>
@@ -4502,6 +4553,9 @@
   <data name="The filters and the search narrow the list; the CSV export can be edited and imported again for asset data." xml:space="preserve">
     <value>Filter und Suche grenzen die Liste ein; der CSV-Export lässt sich für Bestandsdaten bearbeiten und wieder importieren.</value>
   </data>
+  <data name="The image could not be read. Please use a PNG (8 bit per channel, not interlaced) or a JPEG." xml:space="preserve">
+    <value>Das Bild ließ sich nicht lesen. Bitte ein PNG (8 Bit je Kanal, ohne Interlacing) oder ein JPEG verwenden.</value>
+  </data>
   <data name="the installation step is then replaced with the new setup, own steps and files are kept." xml:space="preserve">
     <value>dabei wird der Installationsschritt mit dem Setup ersetzt, eigene Schritte und Dateien bleiben erhalten.</value>
   </data>
@@ -4528,6 +4582,9 @@
   </data>
   <data name="The list shows a base selection of common programs; the search additionally finds all other programs from winget." xml:space="preserve">
     <value>Die Liste zeigt eine Grundauswahl gängiger Programme; die Suche findet zusätzlich alle weiteren Programme aus winget.</value>
+  </data>
+  <data name="The logo is larger than {0} KB." xml:space="preserve">
+    <value>Das Logo ist größer als {0} KB.</value>
   </data>
   <data name="The mail server is missing." xml:space="preserve">
     <value>Der Mailserver fehlt.</value>
@@ -4841,6 +4898,9 @@
   <data name="unchecked" xml:space="preserve">
     <value>ungeprüft</value>
   </data>
+  <data name='Under "Reports" the organization name and logo for the header of PDF reports are set.' xml:space="preserve">
+    <value>Unter „Berichte“ werden Name und Logo der Organisation für den Kopf der PDF-Berichte festgelegt.</value>
+  </data>
   <data name='Under "{0}" the computer {1} responds – probably a stale DNS entry or alias.' xml:space="preserve">
     <value>Unter „{0}“ antwortet der Rechner {1} – vermutlich ein veralteter DNS-Eintrag oder Alias.</value>
   </data>
@@ -4972,6 +5032,9 @@
   </data>
   <data name="Upload failed: {0}" xml:space="preserve">
     <value>Upload fehlgeschlagen: {0}</value>
+  </data>
+  <data name="Upload logo" xml:space="preserve">
+    <value>Logo hochladen</value>
   </data>
   <data name='Upload the setup files under "Files"; installation steps pick them from there.' xml:space="preserve">
     <value>Die Setup-Dateien unter „Dateien“ hochladen; Installationsschritte nehmen sie von dort.</value>
