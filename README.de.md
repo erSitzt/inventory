@@ -292,7 +292,7 @@ Sitzung, Remotedesktop und TeamViewer/AnyDesk ([Details](#fernzugriff)).
 
 Gespeicherte Listen von Rechnern, Software, ausstehenden Updates, Verteilungen oder Änderungen – auf eine Sammlung
 beschränkt, mit gewählten Spalten und Sortierung; im Browser, als CSV, Excel oder PDF, oder per Zeitplan als E-Mail.
-Zehn fertige Beispiele (Hardware, Sicherheitsstatus, Patch-Stand, Bestandsliste …) dienen unverändert oder als Vorlage
+Elf fertige Beispiele (Hardware, Sicherheitsstatus, Patch-Stand, Bestandsliste …) dienen unverändert oder als Vorlage
 ([Details](#berichte)).
 
 ### Alarme und Benachrichtigungskanäle
@@ -942,9 +942,13 @@ Jeder Bericht lässt sich im Browser öffnen und in drei Formaten herunterladen,
 | Excel | ein Blatt mit fixierter, filterbarer Kopfzeile; Zahlenspalten sind Zahlen, alles andere Text, sodass nie etwas als Formel ausgewertet wird |
 | PDF | A4 quer mit Titel, Stand und Seitenzahlen, die Kopfzeile auf jeder Seite. Eine Tabelle, die nicht auf eine Seite passt, läuft auf weiteren Seiten weiter, jeweils mit der ersten Spalte davor; lange Werte werden gekürzt. Höchstens 5.000 Zeilen – für längere Listen Excel nehmen. Zeichen außerhalb des westeuropäischen Zeichenvorrats erscheinen als `?`. |
 
-**Beispiele:** beim ersten Start legt der Server zehn Berichte namens „Beispiel: …“ an: Hardware-Übersicht,
+**Beispiele:** beim ersten Start legt der Server elf Berichte namens „Beispiel: …“ an: Hardware-Übersicht,
 Sicherheitsstatus, Patch-Stand, Bestandsliste, Betriebssysteme, Windows-11-Voraussetzungen, installierte Software,
-ausstehende Updates, Verteilungen der letzten 30 Tage und Änderungen der letzten 7 Tage. Unverändert verwenden oder
+ausstehende Updates, Verteilungen der letzten 30 Tage, Änderungen der letzten 7 Tage und *möglicherweise außer Betrieb*.
+Letzterer listet die Rechner, die vermutlich außer Betrieb sind oder nicht mehr im AD stehen, die am längsten stillen
+zuerst, mit letzter AD-Anmeldung, letzter Sichtung durch das Inventory und OU; er filtert über die dynamische Sammlung
+„Beispiel: Möglicherweise außer Betrieb“, die mit ihm entsteht. Bestehende Installationen bekommen diesen Bericht mit dem
+Update einmalig dazu. Unverändert verwenden oder
 einen *Duplizieren* und die Kopie anpassen. Gelöschte Beispiele kommen nicht wieder. Ihre Namen folgen der Sprache
 des Servers (`Inventory:Language`).
 

@@ -46,6 +46,8 @@ public static class SettingKeys
     public const string ExampleSchedulesCreated = "Examples.SchedulesCreated";
     /// <summary>Gesetzt, sobald die Beispiel-Berichte einmal angelegt wurden.</summary>
     public const string ExampleReportsCreated = "Examples.ReportsAdded";
+    /// <summary>Gesetzt, sobald der später hinzugekommene Beispiel-Bericht „vermutlich außer Betrieb“ samt Sammlung angelegt wurde.</summary>
+    public const string ExampleDecommissionedReportCreated = "Examples.DecommissionedReportAdded";
     public const string HeartbeatEnabled = "Heartbeat.Enabled";
     public const string HeartbeatIntervalMinutes = "Heartbeat.IntervalMinutes";
     public const string HeartbeatLastRunUtc = "Heartbeat.LastRunUtc";
