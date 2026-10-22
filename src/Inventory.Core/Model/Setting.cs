@@ -50,6 +50,8 @@ public static class SettingKeys
     public const string ReportOrganization = "Reports.Organization";
     /// <summary>Logo im Kopf der PDF-Berichte: PNG oder JPEG, Base64.</summary>
     public const string ReportLogo = "Reports.Logo";
+    /// <summary>Gesetzt, sobald der später hinzugekommene Beispiel-Bericht „vermutlich außer Betrieb“ samt Sammlung angelegt wurde.</summary>
+    public const string ExampleDecommissionedReportCreated = "Examples.DecommissionedReportAdded";
     public const string HeartbeatEnabled = "Heartbeat.Enabled";
     public const string HeartbeatIntervalMinutes = "Heartbeat.IntervalMinutes";
     public const string HeartbeatLastRunUtc = "Heartbeat.LastRunUtc";

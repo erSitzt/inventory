@@ -32,7 +32,10 @@ public sealed class ExampleData(IDbContextFactory<InventoryDbContext> dbFactory,
     /// Beispiel-Berichte, einmalig; liefert die Zahl der angelegten. Anders als bei den Zeitplänen auch neben vorhandenen
     /// Berichten: sie laufen nicht von selbst, und wer schon einen eigenen angelegt hat, soll die Vorlagen trotzdem bekommen.
     /// </summary>
-    public async Task<int> SeedReportsAsync(CancellationToken ct = default)
+    public async Task<int> SeedReportsAsync(CancellationToken ct = default) =>
+        await SeedFirstReportsAsync(ct) + await SeedDecommissionedReportAsync(ct);
+
+    private async Task<int> SeedFirstReportsAsync(CancellationToken ct)
     {
         if (await settings.GetAsync(SettingKeys.ExampleReportsCreated, ct) == bool.TrueString)
             return 0;
@@ -47,6 +50,55 @@ public sealed class ExampleData(IDbContextFactory<InventoryDbContext> dbFactory,
         await settings.SetAsync(SettingKeys.ExampleReportsCreated, bool.TrueString, ct);
         return added.Count;
     }
+
+    /// <summary>
+    /// Später hinzugekommen und darum mit eigenem Vermerk, damit auch bestehende Installationen ihn einmal bekommen:
+    /// Rechner, die vermutlich außer Betrieb sind oder im AD fehlen. Berichte filtern nur über Sammlungen, darum entsteht
+    /// dazu eine dynamische Sammlung; eine gleichnamige vorhandene wird verwendet.
+    /// </summary>
+    private async Task<int> SeedDecommissionedReportAsync(CancellationToken ct)
+    {
+        if (await settings.GetAsync(SettingKeys.ExampleDecommissionedReportCreated, ct) == bool.TrueString)
+            return 0;
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var report = DecommissionedReport(L);
+        var added = 0;
+        if (!await db.Reports.AnyAsync(r => r.Name == report.Name, ct))
+        {
+            var collection = DecommissionedCollection(L);
+            report.Collection = await db.Collections.FirstOrDefaultAsync(c => c.Name == collection.Name, ct) ?? collection;
+            db.Reports.Add(report);
+            await db.SaveChangesAsync(ct);
+            added = 1;
+        }
+        await settings.SetAsync(SettingKeys.ExampleDecommissionedReportCreated, bool.TrueString, ct);
+        return added;
+    }
+
+    /// <summary>Vermutlich außer Betrieb (keine Anmeldung, keine Sichtung) oder nicht (mehr) im AD.</summary>
+    public static Collection DecommissionedCollection(IStringLocalizer<SharedResource> L) => new()
+    {
+        Name = L[Prefix] + L["Possibly decommissioned"],
+        Description = L["Presumably decommissioned or not (anymore) in Active Directory"],
+        IsDynamic = true,
+        MatchAll = false,
+        Rules =
+        [
+            new() { Field = RuleField.DirectoryInactive, Operator = RuleOperator.Equals, Value = "true" },
+            new() { Field = RuleField.MissingInDirectory, Operator = RuleOperator.Equals, Value = "true" },
+        ],
+    };
+
+    public static Report DecommissionedReport(IStringLocalizer<SharedResource> L) => new()
+    {
+        Name = L[Prefix] + L["Possibly decommissioned"],
+        Description = L["Computers without AD logon or sign of life for a long time, or no longer in AD – the longest silent first"],
+        Source = ReportSource.Computers,
+        Columns = "name,adInactive,lastSignOfLife,adLastLogon,lastSighting,adMissingSince,adDisabled,adOu,os,primaryUser,location,description",
+        // Das jüngere von AD-Anmeldung und eigener Sichtung: so ordnen sich auch Rechner ohne Anmeldewert ein.
+        SortColumn = "lastSignOfLife",
+    };
 
     /// <summary>Häufig gefragte Listen als Ausgangspunkt: so wie sie sind verwendbar, oder dupliziert und angepasst.</summary>
     public static List<Report> ExampleReports(IStringLocalizer<SharedResource> L) =>
