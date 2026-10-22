@@ -283,7 +283,7 @@ Desktop and TeamViewer/AnyDesk ([details](#remote-access)).
 ![Report](docs/screenshots/en/report.png)
 
 Saved lists of computers, software, pending updates, deployments or changes – limited to a collection, with chosen
-columns and order; shown in the browser, as CSV, Excel or PDF, or sent by e-mail on a schedule. Ten ready-made examples
+columns and order; shown in the browser, as CSV, Excel or PDF, or sent by e-mail on a schedule. Eleven ready-made examples
 (hardware, security status, patch status, asset list …) serve as they are or as templates ([details](#reports)).
 
 ### Alerts and notification channels
@@ -909,10 +909,13 @@ Every report can be opened in the browser and downloaded in three formats, also 
 | Excel | one sheet with a fixed, filterable header row; numeric columns are numbers, everything else is text, so nothing is ever evaluated as a formula |
 | PDF | A4 landscape with title, date and page numbers, the header row on every page. A table too wide for one page continues on further pages with the first column repeated; long values are shortened. At most 5,000 rows – for longer lists use Excel. Characters outside the Western European character set appear as `?`. |
 
-**Examples:** on first start the server adds ten reports named "Example: …": hardware overview, security status,
+**Examples:** on first start the server adds eleven reports named "Example: …": hardware overview, security status,
 patch status, asset list, operating systems, Windows 11 requirements, installed software, pending updates,
-deployments of the last 30 days and changes of the last 7 days. Use them as they are, or *Duplicate* one and adjust
-the copy. Deleted examples do not come back. Their names follow the server language (`Inventory:Language`).
+deployments of the last 30 days, changes of the last 7 days and *possibly decommissioned*. The last one lists the
+computers that are presumably decommissioned or no longer in AD, the longest silent first, with last AD logon, last
+sighting by the inventory and OU; it filters through the dynamic collection "Example: Possibly decommissioned" created
+with it. Existing installations get this report once with the update. Use them as they are, or *Duplicate* one and
+adjust the copy. Deleted examples do not come back. Their names follow the server language (`Inventory:Language`).
 
 **By e-mail on a schedule:** a schedule with the action *Send report* runs the report daily, weekly, monthly or at
 intervals and sends it through one notification channel or all enabled ones. E-mail channels get it as an

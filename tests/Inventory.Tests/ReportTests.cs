@@ -307,10 +307,10 @@ public class ReportTests
         // Ein eigener Bericht – auch einer, der wie ein Beispiel heißt – hindert die übrigen Beispiele nicht.
         await saved.SaveAsync(new Report { Name = "Eigener", Source = ReportSource.Software });
         await saved.SaveAsync(new Report { Name = ExampleData.Prefix + "Patch status", Source = ReportSource.Changes });
-        Assert.Equal(9, await examples.SeedReportsAsync());
+        Assert.Equal(10, await examples.SeedReportsAsync());
         Assert.Equal(0, await examples.SeedReportsAsync());
         var stored = await saved.ListAsync();
-        Assert.Equal(11, stored.Count);
+        Assert.Equal(12, stored.Count);
         Assert.Equal(ReportSource.Changes, stored.Single(r => r.Name == ExampleData.Prefix + "Patch status").Source);
         Assert.All(stored, report =>
         {
@@ -329,6 +329,44 @@ public class ReportTests
             await saved.DeleteAsync(report.Id);
         Assert.Equal(0, await new ExampleData(db, settings).SeedReportsAsync());
         Assert.Empty(await saved.ListAsync());
+    }
+
+    [Fact]
+    public async Task Existing_installations_get_the_decommissioned_report_once_with_its_collection()
+    {
+        using var db = new TestDb();
+        var settings = new SettingsService(db);
+        var reports = new ReportService(db);
+        var saved = new SavedReportService(db, reports);
+        var collections = new CollectionService(db);
+        // Stand vor diesem Bericht: die ersten Beispiele sind längst angelegt (und womöglich gelöscht).
+        await settings.SetAsync(SettingKeys.ExampleReportsCreated, bool.TrueString);
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var added = await computers.ImportAsync("pc-old pc-gone pc-fine");
+        await using (var context = db.CreateDbContext())
+        {
+            var now = DateTime.UtcNow;
+            var old = context.Computers.Single(c => c.Name == "pc-old");
+            (old.DirectoryInactive, old.DirectoryLastLogonUtc) = (true, now.AddDays(-200));
+            // Nicht mehr im AD und ohne Anmeldewert, aber vor 300 Tagen zuletzt gesehen: am längsten still, steht also vorn.
+            var gone = context.Computers.Single(c => c.Name == "pc-gone");
+            (gone.DirectoryMissingSinceUtc, gone.LastSeenUtc) = (now.AddDays(-3), now.AddDays(-300));
+            context.Computers.Single(c => c.Name == "pc-fine").DirectoryLastLogonUtc = now.AddDays(-1);
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, await new ExampleData(db, settings).SeedReportsAsync());
+        Assert.Equal(0, await new ExampleData(db, settings).SeedReportsAsync());
+        var report = Assert.Single(await saved.ListAsync());
+        Assert.Equal(ExampleData.Prefix + "Possibly decommissioned", report.Name);
+        var (collection, members) = Assert.Single(await collections.ListAsync());
+        Assert.Equal(collection.Id, report.CollectionId);
+        Assert.True(collection.IsDynamic);
+        Assert.Equal(2, members);
+
+        var table = await reports.TableAsync(new ReportQuery(report.Source, report.CollectionId, report.Days, report.ColumnKeys, report.SortColumn, report.SortDescending));
+        Assert.Equal(["pc-gone", "pc-old"], table.Rows.Select(r => r[0]));
+        Assert.Equal(["no", "yes"], table.Rows.Select(r => r[1]));
     }
 
     private sealed class RecordingMail : Inventory.Core.Abstractions.IMailSender

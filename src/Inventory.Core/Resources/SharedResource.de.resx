@@ -278,6 +278,9 @@
   <data name="Active: {0}" xml:space="preserve">
     <value>Aktiv: {0}</value>
   </data>
+  <data name="AD account disabled" xml:space="preserve">
+    <value>AD-Konto deaktiviert</value>
+  </data>
   <data name="AD description" xml:space="preserve">
     <value>AD-Beschreibung</value>
   </data>
@@ -988,6 +991,9 @@
   </data>
   <data name="Computers with {0} older than the library version" xml:space="preserve">
     <value>Rechner mit {0} älter als die Bibliotheksversion</value>
+  </data>
+  <data name="Computers without AD logon or sign of life for a long time, or no longer in AD – the longest silent first" xml:space="preserve">
+    <value>Rechner, die sich lange weder an der Domäne angemeldet noch sonst gemeldet haben oder nicht mehr im AD stehen – die am längsten stillen zuerst</value>
   </data>
   <data name="Condition" xml:space="preserve">
     <value>Bedingung</value>
@@ -2162,8 +2168,14 @@
   <data name="Last seen" xml:space="preserve">
     <value>Zuletzt gesehen</value>
   </data>
+  <data name="Last seen by the inventory" xml:space="preserve">
+    <value>Zuletzt vom Inventory gesehen</value>
+  </data>
   <data name="Last sent {0}" xml:space="preserve">
     <value>Zuletzt gesendet {0}</value>
+  </data>
+  <data name="Last sign of life" xml:space="preserve">
+    <value>Letztes Lebenszeichen</value>
   </data>
   <data name="Last update installation" xml:space="preserve">
     <value>Letzte Update-Installation</value>
@@ -2741,6 +2753,9 @@
   <data name="not in AD" xml:space="preserve">
     <value>nicht im AD</value>
   </data>
+  <data name="Not in AD since" xml:space="preserve">
+    <value>Nicht im AD seit</value>
+  </data>
   <data name="not installed" xml:space="preserve">
     <value>nicht installiert</value>
   </data>
@@ -3245,6 +3260,9 @@
   <data name="Port" xml:space="preserve">
     <value>Anschluss</value>
   </data>
+  <data name="Possibly decommissioned" xml:space="preserve">
+    <value>Möglicherweise außer Betrieb</value>
+  </data>
   <data name="postponed by the user" xml:space="preserve">
     <value>vom Benutzer verschoben</value>
   </data>
@@ -3277,6 +3295,9 @@
   </data>
   <data name="Presumably decommissioned" xml:space="preserve">
     <value>Vermutlich außer Betrieb</value>
+  </data>
+  <data name="Presumably decommissioned or not (anymore) in Active Directory" xml:space="preserve">
+    <value>Vermutlich außer Betrieb oder nicht (mehr) im Active Directory</value>
   </data>
   <data name="Presumably decommissioned: last AD logon {0}, last seen by the inventory {1}." xml:space="preserve">
     <value>Vermutlich außer Betrieb: letzte AD-Anmeldung {0}, zuletzt vom Inventory gesehen {1}.</value>
