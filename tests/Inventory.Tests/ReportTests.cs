@@ -197,9 +197,143 @@ public class ReportTests
 
         if (Environment.GetEnvironmentVariable("INVENTORY_PDF_OUT") is { Length: > 0 } directory)
         {
-            File.WriteAllBytes(Path.Combine(directory, "narrow.pdf"), bytes);
-            File.WriteAllBytes(Path.Combine(directory, "wide.pdf"), ReportPdf.Write(wide, "Alles", "Rechner · alle Spalten"));
+            var logo = ReportImage.Parse(Png(180, 48, (x, y) => x < 48 ? ((byte)79, (byte)70, (byte)229, (byte)255) : ((byte)17, (byte)24, (byte)39, (byte)(y % 12 < 8 && x % 16 < 12 ? 255 : 0))));
+            var branded = new ReportPdfOptions("Example: Hardware overview", "Computers  ·  3 rows  ·  as of 2026-10-21 10:15",
+                "Device type, model, serial number, processor and memory of every computer", "Contoso Ltd.", logo);
+            File.WriteAllBytes(Path.Combine(directory, "narrow.pdf"), ReportPdf.Write(narrow, branded));
+            File.WriteAllBytes(Path.Combine(directory, "wide.pdf"), ReportPdf.Write(wide, branded with { Title = "Alles", Logo = null }));
+            File.WriteAllBytes(Path.Combine(directory, "many.pdf"), ReportPdf.Write(many, branded with { Title = "Viele" }));
+            File.WriteAllBytes(Path.Combine(directory, "empty.pdf"), ReportPdf.Write(new ReportTable(narrow.Columns, []), branded with { Organization = null, Logo = null }));
         }
+    }
+
+    [Fact]
+    public void Long_cells_wrap_to_at_most_three_lines_and_rows_never_split_across_pages()
+    {
+        Assert.Equal(["eins zwei", "drei vier"], ReportPdf.Wrap("eins zwei drei vier", 45, 8, bold: false, 3));
+        // Ein Wort, das allein nicht passt, wird hart getrennt; nach drei Zeilen ist Schluss.
+        var lines = ReportPdf.Wrap(new string('x', 200), 40, 8, bold: false, 3);
+        Assert.Equal(3, lines.Count);
+        Assert.EndsWith("…", lines[^1]);
+        Assert.All(lines, l => Assert.True(ReportPdf.Width(l, 8, false) <= 40.5));
+
+        var text = string.Join(' ', Enumerable.Repeat("Ein recht langer Satz in einer Zelle", 3)) + " ENDE";
+        var table = new ReportTable([new ReportColumn("n", "Name"), new ReportColumn("t", "Text"), new ReportColumn("z", "Zahl", true)],
+            Enumerable.Range(1, 400).Select(i => new string?[] { $"pc-{i:000}", i % 2 == 0 ? text : "kurz", i.ToString() }).ToList());
+        var bytes = ReportPdf.Write(table, new ReportPdfOptions("Umbruch", Description: "Eine Beschreibung"));
+        using var pdf = UglyToad.PdfPig.PdfDocument.Open(bytes);
+        Assert.True(pdf.NumberOfPages > 1);
+        Assert.Contains("Eine Beschreibung", pdf.GetPage(1).Text);
+        Assert.DoesNotContain("Eine Beschreibung", pdf.GetPage(2).Text);
+        Assert.Contains($"Page {pdf.NumberOfPages} of {pdf.NumberOfPages}", pdf.GetPage(pdf.NumberOfPages).Text);
+        // Jede Zeile steht vollständig auf einer Seite: Name und Zahl derselben Zeile liegen auf derselben Seite.
+        var all = string.Concat(pdf.GetPages().Select(p => p.Text));
+        Assert.All(Enumerable.Range(1, 400), i => Assert.Contains($"pc-{i:000}", all));
+        foreach (var page in pdf.GetPages())
+        {
+            var words = page.GetWords().Select(w => w.Text).ToList();
+            foreach (var name in words.Where(w => w.StartsWith("pc-")))
+                Assert.Contains(int.Parse(name[3..]).ToString(), words);
+        }
+    }
+
+    [Fact]
+    public void Organization_and_logo_appear_in_the_pdf_and_unusable_images_are_rejected()
+    {
+        var png = ReportImage.Parse(Png(4, 2, (x, y) => ((byte)(x * 60), (byte)(y * 100), 200, (byte)(x == 0 ? 0 : 255))));
+        Assert.Equal((4, 2, "DeviceRGB", "FlateDecode"), (png.Width, png.Height, png.ColorSpace, png.Filter));
+        Assert.NotNull(png.Alpha);
+        Assert.Null(ReportImage.Parse(Png(2, 2, (_, _) => (1, 2, 3, 255))).Alpha);
+
+        byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0x00, 0x20, 0x00, 0x40, 0x03, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1, 0xFF, 0xD9];
+        var parsed = ReportImage.Parse(jpeg);
+        Assert.Equal((64, 32, "DeviceRGB", "DCTDecode"), (parsed.Width, parsed.Height, parsed.ColorSpace, parsed.Filter));
+
+        Assert.Throws<InvalidDataException>(() => ReportImage.Parse([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+        Assert.Throws<InvalidDataException>(() => ReportImage.Parse(new byte[ReportImage.MaxBytes + 1]));
+        var sixteenBit = Png(2, 2, (_, _) => (0, 0, 0, 255));
+        sixteenBit[8 + 8 + 8] = 16;
+        Assert.Throws<InvalidDataException>(() => ReportImage.Parse(sixteenBit));
+        // Kaputter Kopf, zu viele Pixel: auch das ist eine klare Ablehnung, kein Absturz.
+        var shortHeader = Png(2, 2, (_, _) => (0, 0, 0, 255));
+        shortHeader[11] = 5;
+        Assert.Throws<InvalidDataException>(() => ReportImage.Parse(shortHeader));
+        var huge = Png(2, 2, (_, _) => (0, 0, 0, 255));
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(huge.AsSpan(16), 5000);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(huge.AsSpan(20), 5000);
+        Assert.Throws<InvalidDataException>(() => ReportImage.Parse(huge));
+
+        var table = new ReportTable([new ReportColumn("n", "Name")], [["pc-01"]]);
+        using var pdf = UglyToad.PdfPig.PdfDocument.Open(ReportPdf.Write(table, new ReportPdfOptions("Bestand", "Rechner", "Alle Geräte", "Muster GmbH", png)));
+        var page = pdf.GetPage(1);
+        Assert.Single(page.GetImages());
+        Assert.Contains("Muster GmbH", page.Text);
+        Assert.Contains("Alle Geräte", page.Text);
+        Assert.Equal("Muster GmbH", pdf.Information.Author);
+    }
+
+    [Fact]
+    public async Task The_report_logo_setting_accepts_only_readable_images()
+    {
+        using var db = new TestDb();
+        var settings = new SettingsService(db);
+        // Frisch, ohne Name und Logo: nichts, aber auch kein Fehler.
+        Assert.Equal(new ReportBranding(null, null), await settings.GetReportBrandingAsync());
+        await Assert.ThrowsAsync<InvalidDataException>(() => settings.SetReportLogoAsync([1, 2, 3]));
+        Assert.Null(await settings.GetReportLogoAsync());
+
+        var png = Png(3, 3, (_, _) => (10, 20, 30, 255));
+        await settings.SetReportLogoAsync(png);
+        await settings.SetReportOrganizationAsync("  Muster GmbH  ");
+        var branding = await settings.GetReportBrandingAsync();
+        Assert.Equal("Muster GmbH", branding.Organization);
+        Assert.Equal(3, branding.Logo!.Width);
+
+        await settings.SetReportLogoAsync(null);
+        await settings.SetReportOrganizationAsync("");
+        Assert.Equal(new ReportBranding(null, null), await settings.GetReportBrandingAsync());
+    }
+
+    /// <summary>Ein PNG (RGBA, 8 bit) mit wechselnden Zeilenfiltern, damit der Decoder alle Fälle sieht.</summary>
+    private static byte[] Png(int width, int height, Func<int, int, (byte R, byte G, byte B, byte A)> pixel)
+    {
+        var raw = new MemoryStream();
+        var previous = new byte[width * 4];
+        for (var y = 0; y < height; y++)
+        {
+            var row = new byte[width * 4];
+            for (var x = 0; x < width; x++)
+                (row[4 * x], row[4 * x + 1], row[4 * x + 2], row[4 * x + 3]) = pixel(x, y);
+            var filter = (byte)(y % 3 == 0 ? 0 : y % 3 == 1 ? 1 : 2);
+            raw.WriteByte(filter);
+            for (var i = 0; i < row.Length; i++)
+                raw.WriteByte(filter switch { 1 => (byte)(row[i] - (i >= 4 ? row[i - 4] : 0)), 2 => (byte)(row[i] - previous[i]), _ => row[i] });
+            previous = row;
+        }
+        var compressed = new MemoryStream();
+        using (var zlib = new ZLibStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+            zlib.Write(raw.ToArray());
+
+        var png = new MemoryStream();
+        png.Write([0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A]);
+        void Chunk(string type, byte[] body)
+        {
+            var length = new byte[4];
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(length, (uint)body.Length);
+            png.Write(length);
+            png.Write(System.Text.Encoding.ASCII.GetBytes(type));
+            png.Write(body);
+            // Die Prüfsumme liest der Decoder nicht.
+            png.Write(new byte[4]);
+        }
+        var header = new byte[13];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(header, (uint)width);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(header.AsSpan(4), (uint)height);
+        (header[8], header[9]) = (8, 6);
+        Chunk("IHDR", header);
+        Chunk("IDAT", compressed.ToArray());
+        Chunk("IEND", []);
+        return png.ToArray();
     }
 
     [Fact]

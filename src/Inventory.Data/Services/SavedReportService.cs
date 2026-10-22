@@ -6,7 +6,7 @@ using Microsoft.Extensions.Localization;
 namespace Inventory.Data.Services;
 
 /// <summary>Verwaltet gespeicherte Berichte und führt sie über <see cref="ReportService"/> aus.</summary>
-public sealed class SavedReportService(IDbContextFactory<InventoryDbContext> dbFactory, ReportService reports, IStringLocalizer<SharedResource>? localizer = null)
+public sealed class SavedReportService(IDbContextFactory<InventoryDbContext> dbFactory, ReportService reports, IStringLocalizer<SharedResource>? localizer = null, SettingsService? settings = null)
 {
     private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
@@ -72,21 +72,27 @@ public sealed class SavedReportService(IDbContextFactory<InventoryDbContext> dbF
     /// <summary>Führt den Bericht aus und bringt ihn in das gewünschte Format.</summary>
     /// <param name="zone">Zeitzone der Zeitangaben; null = die des Servers. <paramref name="localNow"/> sollte in derselben Zone sein.</param>
     public async Task<ReportFile> ExportAsync(Report report, ReportFormat format, DateTimeOffset localNow, CancellationToken ct = default, TimeZoneInfo? zone = null) =>
-        Render(report, await RunAsync(report, ct, zone), format, localNow);
+        Render(report, await RunAsync(report, ct, zone), format, localNow, format == ReportFormat.Pdf ? await BrandingAsync(ct) : null);
+
+    /// <summary>Name und Logo für den Kopf der PDFs; ohne Einstellungsdienst keine.</summary>
+    public async Task<ReportBranding?> BrandingAsync(CancellationToken ct = default) =>
+        settings is null ? null : await settings.GetReportBrandingAsync(ct);
 
     /// <summary>Bringt die Zeilen eines Berichts in ein Dateiformat. Download und Versand gehen beide hier durch.</summary>
-    public ReportFile Render(Report report, ReportTable table, ReportFormat format, DateTimeOffset localNow)
+    public ReportFile Render(Report report, ReportTable table, ReportFormat format, DateTimeOffset localNow, ReportBranding? branding = null)
     {
         var name = FileName(report);
         return format switch
         {
-            ReportFormat.Pdf => new ReportFile(name + ".pdf", ReportPdf.ContentType, ReportPdf.Write(table, report.Name, Subtitle(report, table.Rows.Count, localNow), L["Page {0} of {1}"], L["First {0} of {1} rows."])),
+            ReportFormat.Pdf => new ReportFile(name + ".pdf", ReportPdf.ContentType, ReportPdf.Write(table, new ReportPdfOptions(
+                report.Name, Subtitle(report, table.Rows.Count, localNow), report.Description, branding?.Organization, branding?.Logo,
+                L["Page {0} of {1}"], L["First {0} of {1} rows."], L["No entries"], L["Columns {0}/{1}"], L["Created with Inventory"]))),
             ReportFormat.Csv => new ReportFile(name + ".csv", "text/csv; charset=utf-8", ReportExport.CsvBytes(table)),
             _ => new ReportFile(name + ".xlsx", ReportExport.XlsxContentType, ReportExport.Xlsx(table, report.Name)),
         };
     }
 
-    /// <summary>Die Zeile unter dem Titel eines gedruckten Berichts: Quelle, Sammlung, Zeitraum, Zeilenzahl und Stand.</summary>
+    /// <summary>Die Zeile unter dem Titel eines gedruckten Berichts: Quelle, Sammlung, Zeitraum, Zeilenzahl und Stand. Die Beschreibung steht darunter.</summary>
     public string Subtitle(Report report, int rows, DateTimeOffset localNow)
     {
         var parts = new List<string> { SourceName(report.Source) };
@@ -96,8 +102,6 @@ public sealed class SavedReportService(IDbContextFactory<InventoryDbContext> dbF
             parts.Add(L["last {0} days", report.Days ?? ReportService.DefaultDays]);
         parts.Add(L["{0} rows", rows]);
         parts.Add(L["as of {0}", localNow.ToString("g")]);
-        if (report.Description is not null)
-            parts.Add(report.Description);
         return string.Join("  ·  ", parts);
     }
 

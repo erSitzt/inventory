@@ -284,6 +284,30 @@
     </MudStack>
 </MudPaper>
 
+<MudPaper id="reports" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">@L["Reports"]</MudText>
+        <MudText Typo="Typo.body2">@L["Name and logo appear in the header of PDF reports, the name also in the footer."]</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudTextField @bind-Value="_reportOrganization" Label="@L["Organization name"]" Variant="Variant.Outlined" MaxLength="@SettingsService.MaxReportOrganizationLength" Immediate="true" />
+            <MudButton Variant="Variant.Outlined" Disabled="@(_reportOrganization?.Trim() == _savedOrganization)" OnClick="SaveReportOrganizationAsync">@L["Save"]</MudButton>
+        </MudStack>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+            @if (_logoPreview is not null)
+            {
+                <img src="@_logoPreview" alt="@L["Logo"]" style="max-height: 40px; max-width: 160px; border: 1px solid var(--mud-palette-lines-default); padding: 4px; border-radius: 4px" />
+            }
+            <MudButton HtmlTag="label" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" for="report-logo">@(_logoPreview is null ? L["Upload logo"] : L["Replace logo"])</MudButton>
+            <InputFile id="report-logo" OnChange="UploadLogoAsync" accept=".png,.jpg,.jpeg" hidden />
+            @if (_logoPreview is not null)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="RemoveLogoAsync">@L["Remove logo"]</MudButton>
+            }
+        </MudStack>
+        <MudText Typo="Typo.caption">@L["PNG or JPEG, at most {0} KB and {1} pixels. A PNG with a transparent background looks best.", ReportImage.MaxBytes / 1024, ReportImage.MaxPixels.ToString("N0")]</MudText>
+    </MudStack>
+</MudPaper>
+
 <MudPaper id="updates" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="3">
         <MudText Typo="Typo.h6">@L["Updates"]</MudText>
@@ -357,6 +381,63 @@
 </MudPaper>
 
 @code {
+    private string? _reportOrganization;
+    private string? _savedOrganization;
+    private string? _logoPreview;
+
+    private async Task LoadReportBrandingAsync()
+    {
+        _reportOrganization = _savedOrganization = await SettingsService.GetAsync(SettingKeys.ReportOrganization);
+        var logo = await SettingsService.GetReportLogoAsync();
+        _logoPreview = logo is null ? null : $"data:{ReportImage.ContentType(logo)};base64,{Convert.ToBase64String(logo)}";
+    }
+
+    private async Task SaveReportOrganizationAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await SettingsService.SetReportOrganizationAsync(_reportOrganization);
+        await LoadReportBrandingAsync();
+        await Audit.LogAsync(L["Setting changed"], $"{L["Organization name"]}: {_savedOrganization ?? "–"}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private async Task UploadLogoAsync(InputFileChangeEventArgs e)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (e.File.Size > ReportImage.MaxBytes)
+        {
+            Snackbar.Add(L["The logo is larger than {0} KB.", ReportImage.MaxBytes / 1024], Severity.Error);
+            return;
+        }
+        try
+        {
+            using var buffer = new MemoryStream();
+            await using (var stream = e.File.OpenReadStream(ReportImage.MaxBytes))
+                await stream.CopyToAsync(buffer);
+            await SettingsService.SetReportLogoAsync(buffer.ToArray());
+        }
+        catch (InvalidDataException)
+        {
+            Snackbar.Add(L["The image could not be read. Please use a PNG (8 bit per channel, not interlaced) or a JPEG with at most {0} pixels.", ReportImage.MaxPixels.ToString("N0")], Severity.Error);
+            return;
+        }
+        await LoadReportBrandingAsync();
+        await Audit.LogAsync(L["Setting changed"], $"{L["Report logo"]}: {e.File.Name} ({Display.FileSize(e.File.Size)})");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private async Task RemoveLogoAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await SettingsService.SetReportLogoAsync(null);
+        await LoadReportBrandingAsync();
+        await Audit.LogAsync(L["Setting changed"], $"{L["Report logo"]}: {L["removed"]}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
     private bool _updateBusy;
     private bool _updateAuto;
     private TimeSpan? _updateWindow = new TimeSpan(3, 0, 0);
@@ -725,6 +806,7 @@
         await LoadAdAsync();
         await LoadHeartbeatAsync();
         await LoadUpdateAsync();
+        await LoadReportBrandingAsync();
         _agentUrl = await Agents.GetServerUrlAsync();
         await LoadPublicDownloadAsync();
         _defenderTenant = await SettingsService.GetAsync(SettingKeys.DefenderTenant);

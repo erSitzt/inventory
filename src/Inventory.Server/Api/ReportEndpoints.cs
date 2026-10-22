@@ -94,7 +94,7 @@ public static class ReportEndpoints
             }).WithSummary(summary).WithDescription(format switch
             {
                 ReportFormat.Excel => "One sheet with a fixed, filterable header row; numeric columns are stored as numbers.",
-                ReportFormat.Pdf => $"A4 landscape with the header row on every page; tables too wide for one page continue on further pages with the first column repeated. At most {ReportPdf.MaxRows} rows.",
+                ReportFormat.Pdf => $"A4 landscape with organization name and logo from the settings, the header row on every page and wrapped long values; tables too wide for one page continue on further pages with the first column repeated. At most {ReportPdf.MaxRows} rows.",
                 _ => "Semicolon-separated, UTF-8 with BOM.",
             });
         }
