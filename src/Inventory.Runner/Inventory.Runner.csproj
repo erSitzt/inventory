@@ -2,8 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <!-- net48 ist auf jedem Win10/11/Server 2019+ vorhanden: keine Runtime-Verteilung auf die Zielrechner nötig -->
-    <TargetFramework>net48</TargetFramework>
+    <!--
+      net48 ist auf jedem Win10 ab 1903 und Server 2019+ vorhanden: keine Runtime-Verteilung nötig.
+      net10.0-windows wird eigenständig (self-contained) veröffentlicht, für Rechner ohne .NET Framework 4.8
+      (Server 2012 bis 2016, frühe Windows-10-Stände).
+    -->
+    <TargetFrameworks>net48;net10.0-windows</TargetFrameworks>
     <AssemblyName>InventoryRunner</AssemblyName>
     <ImplicitUsings>disable</ImplicitUsings>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -11,14 +15,29 @@
     <AssemblyTitle>Inventory Runner</AssemblyTitle>
     <Description>Inventory Runner: runs inventory scans and deployment jobs for the Inventory server</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Für das eigenständige Veröffentlichen der .NET-10-Variante (siehe IncludeRunner im Server). -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
-  <ItemGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' != 'net48'">
+    <!-- Eine einzige Datei: schneller über ADMIN$ kopiert als Hunderte kleiner, und leichter im Endpoint-Schutz freizugeben. -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Management" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net48'">
+    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>

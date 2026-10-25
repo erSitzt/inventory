@@ -43,6 +43,8 @@ public sealed class WinRmTransport(RunnerPackage runner, IStringLocalizer<Shared
             jobId = job.JobId,
             runnerHash = runner.Hash,
             runnerFiles = runner.Files,
+            selfContainedHash = runner.SelfContained?.Hash,
+            selfContainedFiles = runner.SelfContained?.Files ?? [],
             files = files.Select(f => new { local = f.LocalPath, relative = f.RelativePath }),
             manifest = JobJson.Serialize(job),
         });

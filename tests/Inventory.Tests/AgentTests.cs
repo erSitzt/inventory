@@ -153,22 +153,24 @@ public class AgentTests
     }
 
     [Fact]
-    public async Task Install_job_needs_a_server_url_and_carries_runner_files_and_config()
+    public async Task Install_job_needs_a_server_url_and_installs_the_running_runner_with_config()
     {
         using var db = new TestDb();
         var agents = new AgentService(db, new SettingsService(db), TimeProvider.System);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildInstallJobAsync(["/srv/runner/InventoryRunner.exe"], "abc123"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildInstallJobAsync());
 
         await agents.SetServerUrlAsync("https://inventory.corp.local:5100/");
-        var job = await agents.BuildInstallJobAsync(["/srv/runner/InventoryRunner.exe", "/srv/runner/System.Text.Json.dll"], "abc123");
+        var job = await agents.BuildInstallJobAsync();
 
-        Assert.Equal([@"agent\InventoryRunner.exe", @"agent\System.Text.Json.dll"], job.Files.Select(f => f.RelativePath));
+        // Kein eigenes Paket: der Agent wird der Runner, den der Transport für diesen Rechner gewählt hat.
+        Assert.Empty(job.Files);
         var script = Assert.Single(job.Manifest.Steps).Script;
         Assert.Contains("\"serverUrl\":\"https://inventory.corp.local:5100\"", script);
         Assert.Contains(await agents.GetEnrollmentTokenAsync(), script);
         Assert.Contains("--agent", script);
-        Assert.Contains("agent.version') -Value 'abc123'", script);
+        Assert.Contains("$source = $env:INVENTORY_RUNNER_DIR", script);
+        Assert.Contains("agent.version') -Value (Split-Path -Leaf $source)", script);
         Assert.Equal("0.1.0.0 (abc123)", AgentService.DescribeVersion("0.1.0.0", "abc123"));
         Assert.Equal("0.1.0.0", AgentService.DescribeVersion("0.1.0.0", ""));
         Assert.DoesNotContain("\n            $", script);

@@ -16,7 +16,6 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
-    private const string InstallFolder = "agent";
     /// <summary>So oft wird "zuletzt gesehen" höchstens gespeichert; der Agent fragt alle paar Sekunden an.</summary>
     private static readonly TimeSpan SeenInterval = TimeSpan.FromMinutes(1);
 
@@ -175,9 +174,11 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
     /// <summary>
     /// Job, der den Agenten über einen agentenlosen Transport installiert oder aktualisiert:
     /// Runner-Dateien nach %ProgramFiles%\Inventory Agent, Konfiguration schreiben, Dienst anlegen und starten.
+    /// Der Agent wird der Runner, der den Job ausführt (<see cref="RunnerRuntimes.DirectoryVariable"/>): auf einem Rechner
+    /// ohne .NET Framework 4.8 hat der Transport bereits die eigenständige .NET-10-Variante gewählt.
     /// </summary>
     /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
-    public async Task<BuiltJob> BuildInstallJobAsync(IReadOnlyList<string> runnerFiles, string runnerHash, CancellationToken ct = default)
+    public async Task<BuiltJob> BuildInstallJobAsync(CancellationToken ct = default)
     {
         var serverUrl = await GetServerUrlAsync(ct);
         if (string.IsNullOrWhiteSpace(serverUrl))
@@ -195,8 +196,11 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
                 # Im Ordner liegen Anmeldegeheimnis und Schlüssel, und der Dienst läuft als SYSTEM: nur SYSTEM und Administratoren.
                 & icacls.exe $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
             }
-            Copy-Item -Path (Join-Path (Get-Location) '{{InstallFolder}}\*') -Destination $dir -Force
-            Set-Content -Path (Join-Path $dir '{{AgentProtocol.VersionFile}}') -Value '{{runnerHash}}' -Encoding ASCII
+            # Der Runner liegt unter …\Runner\<Hash>; der Ordnername ist der Hash, den der Agent dem Server meldet.
+            $source = $env:{{RunnerRuntimes.DirectoryVariable}}
+            if (-not $source -or -not (Test-Path (Join-Path $source '{{JobFiles.RunnerExe}}'))) { throw 'Runner folder not found' }
+            Get-ChildItem -Path $source -File | Where-Object { $_.Name -ne '.complete' } | Copy-Item -Destination $dir -Force
+            Set-Content -Path (Join-Path $dir '{{AgentProtocol.VersionFile}}') -Value (Split-Path -Leaf $source) -Encoding ASCII
             Set-Content -Path (Join-Path $dir '{{AgentProtocol.ConfigFile}}') -Value '{{config.Replace("'", "''")}}' -Encoding UTF8
             if (-not $service) {
                 New-Service -Name $name -BinaryPathName ('"' + (Join-Path $dir '{{JobFiles.RunnerExe}}') + '" {{RunnerModes.Agent}}') -DisplayName 'Inventory Agent' -StartupType Automatic | Out-Null
@@ -212,8 +216,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         {
             Steps = [new JobStep { Name = "Agent installieren", Type = StepType.PowerShell, Script = script, TimeoutSeconds = 300 }],
         };
-        var files = runnerFiles.Select(f => new JobFile(f, $@"{InstallFolder}\{Path.GetFileName(f)}")).ToList();
-        return new BuiltJob(manifest, files) { InstallsAgent = true };
+        return new BuiltJob(manifest, []) { InstallsAgent = true };
     }
 
     public const string SetupFileName = "InventoryAgentSetup.zip";

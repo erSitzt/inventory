@@ -35,11 +35,18 @@
     <ProjectReference Include="..\Inventory.Launcher\Inventory.Launcher.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
   </ItemGroup>
 
-  <!-- Legt den Runner als Unterordner "runner" in Ausgabe und Publish; von dort verteilt ihn der Server auf die Zielrechner. -->
+  <!--
+    Legt den Runner als Unterordner "runner" in Ausgabe und Publish; von dort verteilt ihn der Server auf die Zielrechner.
+    Daneben "runner-net10": derselbe Runner eigenständig mit .NET 10 als eine Datei, für Rechner ohne .NET Framework 4.8.
+  -->
   <Target Name="IncludeRunner" AfterTargets="ResolveProjectReferences" BeforeTargets="AssignTargetPaths">
+    <MSBuild Projects="..\Inventory.Runner\Inventory.Runner.csproj" Targets="Publish"
+             Properties="Configuration=$(Configuration);TargetFramework=net10.0-windows;RuntimeIdentifier=win-x64;SelfContained=true;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Runner\bin\$(Configuration)\selfcontained\" />
     <ItemGroup>
       <RunnerFile Include="..\Inventory.Runner\bin\$(Configuration)\net48\*.exe;..\Inventory.Runner\bin\$(Configuration)\net48\*.dll;..\Inventory.Runner\bin\$(Configuration)\net48\*.config" />
       <Content Include="@(RunnerFile)" Link="runner\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+      <SelfContainedRunnerFile Include="..\Inventory.Runner\bin\$(Configuration)\selfcontained\InventoryRunner.exe" />
+      <Content Include="@(SelfContainedRunnerFile)" Link="runner-net10\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
       <!-- Der Starter für Admin-PCs wird über die Oberfläche zum Download angeboten. -->
       <LauncherFile Include="..\Inventory.Launcher\bin\$(Configuration)\net48\InventoryLauncher.exe;..\Inventory.Launcher\bin\$(Configuration)\net48\InventoryLauncher.exe.config" />
       <Content Include="@(LauncherFile)" Link="launcher\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

@@ -188,14 +188,59 @@ public class TransportTests
         var share = Path.Combine(Path.GetTempPath(), "netfx-" + Guid.NewGuid().ToString("N"));
         try
         {
-            // Ohne lesbaren Microsoft.NET-Ordner lässt sich nichts sagen: kein Fehler, der Start des Runners entscheidet.
-            Assert.Null(NetFramework.CheckOverAdminShare(share, Inventory.Core.PassthroughLocalizer.Instance));
+            // Ohne lesbaren Microsoft.NET-Ordner lässt sich nichts sagen: der Start des Runners entscheidet.
+            Assert.Null(NetFramework.Inspect(share));
             Directory.CreateDirectory(Path.Combine(share, "Microsoft.NET", "Framework64"));
-            Assert.Contains("no .NET Framework 4", NetFramework.CheckOverAdminShare(share, Inventory.Core.PassthroughLocalizer.Instance));
+            // 32 Bit (kein SysWOW64): auch die eigenständige Variante läuft dort nicht.
+            Assert.Equal(new FrameworkState(false, null, false), NetFramework.Inspect(share));
         }
         finally
         {
             Directory.Delete(share, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(6, 1, false)]
+    [InlineData(6, 2, true)]
+    [InlineData(6, 3, true)]
+    [InlineData(10, 0, true)]
+    public void Self_contained_runner_needs_windows_8_or_server_2012(int major, int minor, bool supported) =>
+        Assert.Equal(supported, NetFramework.SupportsSelfContained(major, minor));
+
+    [Fact]
+    public void The_large_runner_is_only_chosen_without_framework_4_8()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "runners-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            foreach (var (folder, content) in new[] { ("small", "net48"), ("large", "net10") })
+            {
+                Directory.CreateDirectory(Path.Combine(root, folder));
+                File.WriteAllText(Path.Combine(root, folder, Inventory.Contracts.JobFiles.RunnerExe), content);
+            }
+            var runner = new RunnerPackage(Path.Combine(root, "small"), Path.Combine(root, "large"));
+            var L = Inventory.Core.PassthroughLocalizer.Instance;
+
+            Assert.Same(runner, NetFramework.Choose(runner, null, L));
+            Assert.Same(runner, NetFramework.Choose(runner, new FrameworkState(true, "4.8", false), L));
+            Assert.Same(runner.SelfContained, NetFramework.Choose(runner, new FrameworkState(false, "4.5", true), L));
+            Assert.Equal(Inventory.Contracts.RunnerRuntimes.SelfContained, runner.SelfContained!.Runtime);
+            Assert.Equal([runner.ExeSha256, runner.SelfContained.ExeSha256], runner.AllExeSha256);
+            Assert.Same(runner.SelfContained, runner.For("net10"));
+            Assert.Same(runner, runner.For(null));
+
+            // Windows 7 / Server 2008 R2: nur .NET Framework 4.8 hilft, ein anderer Transport scheiterte genauso.
+            var old = Assert.Throws<RemoteException>(() => NetFramework.Choose(runner, new FrameworkState(false, "4.0", false), L));
+            Assert.True(old.NoFallback);
+            Assert.Contains("only has .NET Framework 4.0", old.Message);
+            // Ein Server ohne eigenständige Variante bleibt bei der Meldung.
+            var plain = new RunnerPackage(Path.Combine(root, "small"));
+            Assert.Throws<RemoteException>(() => NetFramework.Choose(plain, new FrameworkState(false, "4.5", true), L));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
         }
     }
 
@@ -264,7 +309,7 @@ public class TransportTests
         await settings.SetTransportFallbackAsync(true);
         JobManifest Job() => new() { Steps = [new JobStep { Type = StepType.InventoryScan }] };
         await settings.SetAsync(SettingKeys.AgentServerUrl, "https://inventory.example.local:5100");
-        var install = await new AgentService(db, settings, TimeProvider.System).BuildInstallJobAsync([], "abc");
+        var install = await new AgentService(db, settings, TimeProvider.System).BuildInstallJobAsync();
 
         // Nur die Installation des Agenten: sie darf agentenlos laufen, auch auf Rechnern, die schon einen Agenten haben.
         await settings.SetAgentlessPolicyAsync(AgentlessPolicy.AgentInstallOnly);

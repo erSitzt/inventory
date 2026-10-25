@@ -79,7 +79,7 @@ else
     }
 }
 // Der Agent verbindet sich von sich aus; das funktioniert unabhängig vom Betriebssystem des Servers und auch in der Simulation.
-builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner")));
+builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner"), Path.Combine(AppContext.BaseDirectory, "runner-net10")));
 builder.Services.AddSingleton<AgentHub>();
 builder.Services.AddSingleton<IRemoteTransport, AgentTransport>();
 builder.Services.AddSingleton<AgentService>();

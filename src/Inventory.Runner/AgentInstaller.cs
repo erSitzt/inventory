@@ -143,10 +143,12 @@ namespace Inventory.Runner
             const InheritanceFlags inherit = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
             foreach (var sid in new[] { WellKnownSidType.LocalSystemSid, WellKnownSidType.BuiltinAdministratorsSid })
                 security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(sid, null), FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
-            if (Directory.Exists(path))
-                Directory.SetAccessControl(path, security);
+            // DirectoryInfo bietet beides unter net48 und modernem .NET (dort als Erweiterungsmethoden).
+            var directory = new DirectoryInfo(path);
+            if (directory.Exists)
+                directory.SetAccessControl(security);
             else
-                Directory.CreateDirectory(path, security);
+                directory.Create(security);
         }
 
         private static bool ServiceExists()

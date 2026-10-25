@@ -2930,6 +2930,9 @@
   <data name="Only approved packages can be deployed by operators and schedules." xml:space="preserve">
     <value>Operatoren und Zeitpläne können nur freigegebene Pakete verteilen.</value>
   </data>
+  <data name="Only copied to computers without .NET Framework 4.8 (Windows Server 2012 to 2016, early Windows 10 releases)." xml:space="preserve">
+    <value>Wird nur auf Rechner ohne .NET Framework 4.8 kopiert (Windows Server 2012 bis 2016, frühe Windows-10-Stände).</value>
+  </data>
   <data name="only if a restart is pending" xml:space="preserve">
     <value>nur wenn ein Neustart aussteht</value>
   </data>
@@ -4126,6 +4129,9 @@
   </data>
   <data name="SHA-256 of InventoryRunner.exe" xml:space="preserve">
     <value>SHA-256 von InventoryRunner.exe</value>
+  </data>
+  <data name="SHA-256 of InventoryRunner.exe (self-contained .NET 10)" xml:space="preserve">
+    <value>SHA-256 von InventoryRunner.exe (eigenständig, .NET 10)</value>
   </data>
   <data name="SHA-256 {0}, {1} earlier indicators removed" xml:space="preserve">
     <value>SHA-256 {0}, {1} frühere Indikatoren entfernt</value>

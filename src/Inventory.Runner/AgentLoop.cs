@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using Inventory.Contracts;
@@ -19,9 +18,9 @@ namespace Inventory.Runner
     {
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
-        private readonly string _baseDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+        private readonly string _baseDir = RunnerInfo.Directory;
         private readonly CancellationTokenSource _stop = new CancellationTokenSource();
-        private readonly string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        private readonly string _version = RunnerInfo.Version;
         private HttpClient _http = null!;
         private JobExecutor? _running;
 
@@ -95,7 +94,7 @@ namespace Inventory.Runner
             {
                 ContinueAfterRestart();
                 DeliverPending();
-                using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash() }), _stop.Token).GetAwaiter().GetResult())
+                using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash(), Runtime = RunnerInfo.Runtime }), _stop.Token).GetAwaiter().GetResult())
                 {
                     if (response.StatusCode == HttpStatusCode.NoContent)
                         continue;
@@ -138,7 +137,7 @@ namespace Inventory.Runner
             for (var i = 0; i < update.Files.Count; i++)
             {
                 var name = Path.GetFileName(update.Files[i]);
-                using (var response = _http.GetAsync($"{AgentProtocol.UpdatePath}/{i}", HttpCompletionOption.ResponseHeadersRead, _stop.Token).GetAwaiter().GetResult())
+                using (var response = _http.GetAsync($"{AgentProtocol.UpdatePath}/{i}?{AgentProtocol.RuntimeQuery}={RunnerInfo.Runtime}", HttpCompletionOption.ResponseHeadersRead, _stop.Token).GetAwaiter().GetResult())
                 {
                     response.EnsureSuccessStatusCode();
                     using (var file = File.Create(Path.Combine(staging, name)))

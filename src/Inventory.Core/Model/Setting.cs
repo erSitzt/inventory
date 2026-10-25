@@ -28,7 +28,7 @@ public static class SettingKeys
     /// <summary>Mandant und Anwendung (öffentlicher Client) für die Freigabe des Runners in Microsoft Defender.</summary>
     public const string DefenderTenant = "Defender.Tenant";
     public const string DefenderClientId = "Defender.ClientId";
-    /// <summary>SHA-256 des Runners, der zuletzt in Defender freigegeben wurde.</summary>
+    /// <summary>SHA-256 der Runner, die zuletzt in Defender freigegeben wurden (durch Komma getrennt).</summary>
     public const string DefenderAllowedHash = "Defender.AllowedHash";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";

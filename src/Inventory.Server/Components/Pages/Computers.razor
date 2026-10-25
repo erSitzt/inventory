@@ -6,7 +6,6 @@
 @inject WakeService WakeService
 @inject AgentService AgentService
 @inject RemoteJobService Jobs
-@inject Inventory.Remoting.RunnerPackage Runner
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -515,7 +514,7 @@
         BuiltJob job;
         try
         {
-            job = await AgentService.BuildInstallJobAsync(Runner.Files, Runner.Hash);
+            job = await AgentService.BuildInstallJobAsync();
         }
         catch (InvalidOperationException ex)
         {

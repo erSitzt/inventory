@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reflection;
 using System.ServiceProcess;
 using Inventory.Contracts;
 
@@ -12,9 +11,16 @@ namespace Inventory.Runner
         {
             if (args.Length == 1 && args[0] == RunnerModes.Version)
             {
-                Console.WriteLine(Assembly.GetExecutingAssembly().GetName().Version);
+                Console.WriteLine(RunnerInfo.Version);
                 return 0;
             }
+
+#if !NETFRAMEWORK
+            // Ausgaben von Programmen kommen in der OEM-Codepage (850, 437 …); modernes .NET kennt sie erst mit diesem Anbieter.
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+#endif
+            // Erben alle Schritte: die Agent-Installation kopiert den Runner, der gerade läuft.
+            Environment.SetEnvironmentVariable(RunnerRuntimes.DirectoryVariable, RunnerInfo.Directory);
 
             if (args.Length == 1 && args[0] == RunnerModes.Service)
             {
@@ -50,7 +56,7 @@ namespace Inventory.Runner
             }
 
             if (args.Length >= 1 && args.Length <= 2 && args[0] == RunnerModes.InstallAgent && (args.Length == 1 || args[1] == RunnerModes.Force))
-                return AgentInstaller.Install(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, args.Length == 2);
+                return AgentInstaller.Install(RunnerInfo.Directory, args.Length == 2);
 
             if (args.Length == 1 && args[0] == RunnerModes.UninstallAgent)
                 return AgentInstaller.Uninstall();
@@ -68,8 +74,7 @@ namespace Inventory.Runner
         {
             if (Path.IsPathRooted(argument))
                 return argument;
-            var runnerDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            return Path.GetFullPath(Path.Combine(runnerDir, "..", "..", JobFiles.JobsFolder, argument));
+            return Path.GetFullPath(Path.Combine(RunnerInfo.Directory, "..", "..", JobFiles.JobsFolder, argument));
         }
     }
 }

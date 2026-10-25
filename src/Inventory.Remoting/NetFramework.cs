@@ -1,12 +1,18 @@
 using System.Diagnostics;
 using Inventory.Core;
+using Inventory.Core.Abstractions;
 using Microsoft.Extensions.Localization;
 
 namespace Inventory.Remoting;
 
+/// <param name="Installed">Die gefundene Version; null = kein .NET Framework 4.</param>
+/// <param name="SelfContainedRuns">Der eigenständige .NET-10-Runner liefe auf dem Rechner (64 Bit, ab Windows 8 / Server 2012).</param>
+public sealed record FrameworkState(bool Sufficient, string? Installed, bool SelfContainedRuns);
+
 /// <summary>
-/// Der Runner braucht .NET Framework 4.8. Ältere Systeme (Windows 7, Server 2008 R2 bis 2016, frühe Windows-10-Stände)
-/// bringen es nicht von Haus aus mit; ohne diese Prüfung startet der Runner dort einfach nicht und hinterlässt kein Ergebnis.
+/// Der kleine Runner braucht .NET Framework 4.8. Ältere Systeme (Windows 7, Server 2008 R2 bis 2016, frühe Windows-10-Stände)
+/// bringen es nicht von Haus aus mit; dort startet er nicht und hinterlässt kein Ergebnis. Ab Windows 8 / Server 2012
+/// übernimmt dann der eigenständige .NET-10-Runner, auf älteren Systemen bleibt nur, 4.8 zu installieren.
 /// </summary>
 public static class NetFramework
 {
@@ -48,10 +54,10 @@ public static class NetFramework
     }
 
     /// <summary>
-    /// Prüft über ADMIN$ des Zielrechners, ob .NET Framework 4.8 vorhanden ist. Liefert den Fehlertext, wenn es sicher
-    /// fehlt; null, wenn es vorhanden ist oder sich nicht feststellen lässt (dann entscheidet der Start des Runners).
+    /// Liest über ADMIN$ des Zielrechners, welches .NET Framework vorhanden ist und ob der eigenständige .NET-10-Runner
+    /// dort liefe. null, wenn sich das nicht feststellen lässt; dann entscheidet der Start des Runners.
     /// </summary>
-    public static string? CheckOverAdminShare(string adminShare, IStringLocalizer<SharedResource> L)
+    public static FrameworkState? Inspect(string adminShare)
     {
         try
         {
@@ -61,16 +67,47 @@ public static class NetFramework
             var clr = new[] { "Framework64", "Framework" }
                 .Select(folder => Path.Combine(root, folder, "v4.0.30319", "clr.dll"))
                 .FirstOrDefault(File.Exists);
-            if (clr is null)
-                return Missing(null, L);
-            var info = FileVersionInfo.GetVersionInfo(clr);
-            var (name, sufficient) = FromClrVersion(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart, info.FilePrivatePart);
-            return sufficient ? null : Missing(name, L);
+            string? installed = null;
+            if (clr is not null)
+            {
+                var info = FileVersionInfo.GetVersionInfo(clr);
+                var (name, sufficient) = FromClrVersion(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart, info.FilePrivatePart);
+                if (sufficient)
+                    return new FrameworkState(true, name, false);
+                installed = name;
+            }
+            return new FrameworkState(false, installed, SelfContainedRuns(adminShare));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// .NET 10 läuft auf 64-Bit-Windows ab Windows 8 / Server 2012 (Kernel 6.2); Windows 7 und Server 2008 R2 bleiben
+    /// beim .NET Framework 4.8. 64 Bit erkennt man am Ordner SysWOW64, die Version an kernel32.dll.
+    /// </summary>
+    private static bool SelfContainedRuns(string adminShare)
+    {
+        var kernel = Path.Combine(adminShare, "System32", "kernel32.dll");
+        if (!Directory.Exists(Path.Combine(adminShare, "SysWOW64")) || !File.Exists(kernel))
+            return false;
+        var info = FileVersionInfo.GetVersionInfo(kernel);
+        return SupportsSelfContained(info.FileMajorPart, info.FileMinorPart);
+    }
+
+    public static bool SupportsSelfContained(int major, int minor) => major > 6 || major == 6 && minor >= 2;
+
+    /// <summary>Wählt den Runner für den Rechner: den kleinen, wenn 4.8 da ist oder nichts bekannt ist, sonst den eigenständigen.</summary>
+    /// <exception cref="RemoteException">Weder 4.8 noch die eigenständige Variante kommen in Frage.</exception>
+    public static RunnerPackage Choose(RunnerPackage runner, FrameworkState? state, IStringLocalizer<SharedResource> L)
+    {
+        if (state is null or { Sufficient: true })
+            return runner;
+        if (state.SelfContainedRuns && runner.SelfContained is { } selfContained)
+            return selfContained;
+        throw new RemoteException(Missing(state.Installed, L), noFallback: true);
     }
 
     /// <summary>Übersetzt die Meldung des WinRM-Skripts; null, wenn sie nicht von der Framework-Prüfung stammt.</summary>
