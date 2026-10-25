@@ -373,7 +373,7 @@ Konten sind ohnehin ausgenommen).
 |---|---|
 | SMB + Dienst | Eingehend TCP 445 vom Server (Firewall-Gruppe *Datei- und Druckerfreigabe*), Dienst *Server* (`LanmanServer`) läuft, administrative Freigabe `ADMIN$` vorhanden (nicht per `AutoShareWks = 0` auf Clients oder `AutoShareServer = 0` auf Windows Server abgeschaltet). Den Dienststeuerungs-Manager erreicht der Server über RPC: zuerst direkt (TCP 135 und dynamische Ports, Firewall-Gruppe *Remotedienstverwaltung*), sonst über die Named Pipe auf Port 445 – 445 zu öffnen reicht, die RPC-Gruppe zu öffnen spart eine Verzögerung. |
 | WinRM | PowerShell-Remoting aktiviert (`Enable-PSRemoting` oder die Gruppenrichtlinie *Remoteserververwaltung über WinRM zulassen*), eingehend TCP 5985 vom Server. Der Server verbindet sich per Name mit Kerberos; für Adressen oder Rechner außerhalb der Domäne bräuchte der Server *TrustedHosts*, das nicht für dich eingerichtet wird. |
-| Beide | .NET Framework 4.8 (der Runner). Die Erreichbarkeitsprüfung versucht zuerst TCP 445 und nur wenn der nicht antwortet 5985; „erreichbar“ heißt also nicht, dass WinRM offen ist. |
+| Beide | .NET Framework 4.8 (der Runner); Windows 7, Server 2008 R2 bis 2016 und frühe Windows-10-Stände brauchen es nachinstalliert. Vor jedem Job prüft der Server die Version auf dem Rechner und meldet eine fehlende oder ältere, statt den Runner zu starten. Die Erreichbarkeitsprüfung versucht zuerst TCP 445 und nur wenn der nicht antwortet 5985; „erreichbar“ heißt also nicht, dass WinRM offen ist. |
 
 **Empfohlene Einrichtung**
 

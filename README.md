@@ -361,7 +361,7 @@ are excluded anyway).
 |---|---|
 | SMB + service | Inbound TCP 445 from the server (firewall group *File and Printer Sharing*), the service *Server* (`LanmanServer`) running, the administrative share `ADMIN$` present (not disabled with `AutoShareWks = 0` on clients or `AutoShareServer = 0` on Windows Server). The Service Control Manager is reached over RPC: first directly (TCP 135 and dynamic ports, firewall group *Remote Service Management*), otherwise over the named pipe on port 445 – opening 445 is enough, opening the RPC group avoids a delay. |
 | WinRM | PowerShell remoting enabled (`Enable-PSRemoting` or the group policy *Allow remote server management through WinRM*), inbound TCP 5985 from the server. The server connects by name with Kerberos; for addresses or computers outside the domain the server's *TrustedHosts* would be needed, which is not set up for you. |
-| Both | .NET Framework 4.8 (the runner). The reachability check tries TCP 445 first and 5985 only if 445 does not answer, so "reachable" does not prove that WinRM is open. |
+| Both | .NET Framework 4.8 (the runner); Windows 7, Server 2008 R2 to 2016 and early Windows 10 releases need it installed. Before every job the server checks the version on the computer and reports a missing or older one instead of starting the runner. The reachability check tries TCP 445 first and 5985 only if 445 does not answer, so "reachable" does not prove that WinRM is open. |
 
 **Recommended setup**
 

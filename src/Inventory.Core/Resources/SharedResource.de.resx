@@ -4652,6 +4652,12 @@
   <data name="The runner is allowed in Defender; {0} earlier indicators removed." xml:space="preserve">
     <value>Der Runner ist in Defender freigegeben; {0} frühere Indikatoren entfernt.</value>
   </data>
+  <data name="The runner needs .NET Framework 4.8, but the computer has no .NET Framework 4 at all. Install .NET Framework 4.8 there (Windows Update, WSUS or the offline installer) and try again." xml:space="preserve">
+    <value>Der Runner braucht .NET Framework 4.8, auf dem Rechner ist aber gar kein .NET Framework 4 installiert. Bitte dort .NET Framework 4.8 installieren (Windows Update, WSUS oder Offline-Installer) und erneut versuchen.</value>
+  </data>
+  <data name="The runner needs .NET Framework 4.8, but the computer only has .NET Framework {0}. Install .NET Framework 4.8 there (Windows Update, WSUS or the offline installer) and try again." xml:space="preserve">
+    <value>Der Runner braucht .NET Framework 4.8, auf dem Rechner ist aber nur .NET Framework {0} installiert. Bitte dort .NET Framework 4.8 installieren (Windows Update, WSUS oder Offline-Installer) und erneut versuchen.</value>
+  </data>
   <data name="The runner on {0} exited without delivering a result (exit code {1}). Possible causes: .NET Framework 4.8 is missing, or antivirus or AppLocker blocks execution." xml:space="preserve">
     <value>Der Runner auf {0} wurde beendet, ohne ein Ergebnis zu liefern (Exitcode {1}). Mögliche Ursachen: .NET Framework 4.8 fehlt, Virenscanner oder AppLocker blockiert die Ausführung.</value>
   </data>

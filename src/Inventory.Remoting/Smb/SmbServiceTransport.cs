@@ -78,6 +78,10 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         var root = $@"\\{host}\ADMIN$\{JobFiles.RemoteRoot}";
         var jobDir = Path.Combine(root, JobFiles.JobsFolder, job.JobId);
 
+        // Vor dem Kopieren: ohne .NET Framework 4.8 startet der Runner nicht und der Job endet ohne Ergebnis.
+        if (NetFramework.CheckOverAdminShare($@"\\{host}\ADMIN$", L) is { } missing)
+            throw new RemoteException(missing, noFallback: true);
+
         try
         {
             EnsureRoot(root);

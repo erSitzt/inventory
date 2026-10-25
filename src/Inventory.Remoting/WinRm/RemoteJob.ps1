@@ -22,6 +22,10 @@ try {
     $remote = Invoke-Command -Session $session -ArgumentList $cfg.runnerHash, $cfg.jobId, @($cfg.files | ForEach-Object { $_.relative }) -ScriptBlock {
         param($hash, $jobId, $relativeFiles)
         if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') { throw 'CONSTRAINED_REMOTE' }
+        # Der Runner braucht .NET Framework 4.8 (Release 528040); sonst startet er nicht und liefert kein Ergebnis.
+        $ndp = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -ErrorAction SilentlyContinue
+        $release = if ($null -eq $ndp) { -1 } elseif ($ndp.Release) { [int]$ndp.Release } else { 0 }
+        if ($release -lt 528040) { throw "NETFX_MISSING:$release" }
         $root = Join-Path $env:SystemRoot 'Inventory'
         if (-not (Test-Path $root)) {
             New-Item -ItemType Directory -Path $root | Out-Null

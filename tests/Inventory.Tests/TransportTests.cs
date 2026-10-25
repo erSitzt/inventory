@@ -146,6 +146,68 @@ public class TransportTests
     }
 
     [Fact]
+    public async Task JobService_does_not_fall_back_when_the_computer_lacks_the_framework()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var settings = new SettingsService(db);
+        await settings.SetTransportFallbackAsync(true);
+        var smb = new RecordingTransport(TransportKind.SmbService) { Fail = "needs .NET Framework 4.8", NoFallback = true };
+        var winRm = new RecordingTransport(TransportKind.WinRm);
+        var jobs = new RemoteJobService([smb, winRm], computers, new CredentialService(db, new ReversingProtector()), settings);
+        var computer = (await computers.ImportAsync("pc-01"))[0];
+
+        var failed = await jobs.RunAsync(computer.Id, new JobManifest { Steps = [new JobStep { Type = StepType.InventoryScan }] });
+
+        Assert.Null(winRm.Last);
+        Assert.Equal("needs .NET Framework 4.8", failed.Error);
+    }
+
+    [Theory]
+    [InlineData(-1, null)]
+    [InlineData(0, "4.0")]
+    [InlineData(379893, "4.5.2")]
+    [InlineData(394802, "4.6.2")]
+    [InlineData(461814, "4.7.2")]
+    [InlineData(528372, "4.8")]
+    [InlineData(533325, "4.8.1")]
+    public void Framework_release_values_are_named(int release, string? name) => Assert.Equal(name, NetFramework.NameForRelease(release));
+
+    [Theory]
+    [InlineData(4, 0, 30319, 1, "4.0", false)]
+    [InlineData(4, 0, 30319, 34209, "4.5", false)]
+    [InlineData(4, 7, 3062, 0, "4.7", false)]
+    [InlineData(4, 8, 4645, 0, "4.8", true)]
+    [InlineData(4, 8, 9032, 0, "4.8", true)]
+    public void Framework_is_judged_by_the_clr_file_version(int major, int minor, int build, int revision, string name, bool sufficient) =>
+        Assert.Equal((name, sufficient), NetFramework.FromClrVersion(major, minor, build, revision));
+
+    [Fact]
+    public void Framework_check_over_admin_share_reads_clr_dll()
+    {
+        var share = Path.Combine(Path.GetTempPath(), "netfx-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            // Ohne lesbaren Microsoft.NET-Ordner lässt sich nichts sagen: kein Fehler, der Start des Runners entscheidet.
+            Assert.Null(NetFramework.CheckOverAdminShare(share, Inventory.Core.PassthroughLocalizer.Instance));
+            Directory.CreateDirectory(Path.Combine(share, "Microsoft.NET", "Framework64"));
+            Assert.Contains("no .NET Framework 4", NetFramework.CheckOverAdminShare(share, Inventory.Core.PassthroughLocalizer.Instance));
+        }
+        finally
+        {
+            Directory.Delete(share, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void WinRm_reports_a_missing_framework_with_the_installed_version()
+    {
+        Assert.Contains("only has .NET Framework 4.5.2", WinRmTransport.Explain("NETFX_MISSING:379893"));
+        Assert.Contains("only has .NET Framework 4.0", WinRmTransport.Explain("Fehler: NETFX_MISSING:0"));
+        Assert.Contains("no .NET Framework 4", WinRmTransport.Explain("NETFX_MISSING:-1"));
+    }
+
+    [Fact]
     public async Task Connections_use_the_dns_name_while_the_agent_keeps_the_name_of_the_entry()
     {
         using var db = new TestDb();
@@ -265,12 +327,14 @@ public class TransportTests
         public string? Fail { get; set; }
         /// <summary>Der Fehler sagt, dass der Job womöglich schon lief (Agent mitten im Job verschwunden).</summary>
         public bool ResultMayFollow { get; set; }
+        /// <summary>Der Fehler liegt am Rechner selbst (zu altes .NET Framework), nicht am Weg dorthin.</summary>
+        public bool NoFallback { get; set; }
 
         public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<Inventory.Core.Abstractions.JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
         {
             Last = target;
             if (Fail is not null)
-                throw new RemoteException(Fail, resultMayFollow: ResultMayFollow);
+                throw new RemoteException(Fail, resultMayFollow: ResultMayFollow, noFallback: NoFallback);
             return Task.FromResult(new JobResult { JobId = job.JobId, Success = true });
         }
     }
