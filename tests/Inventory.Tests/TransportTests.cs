@@ -175,7 +175,9 @@ public class TransportTests
 
     [Theory]
     [InlineData(4, 0, 30319, 1, "4.0", false)]
-    [InlineData(4, 0, 30319, 34209, "4.5", false)]
+    [InlineData(4, 0, 30319, 17929, "4.5", false)]
+    [InlineData(4, 0, 30319, 18408, "4.5.1", false)]
+    [InlineData(4, 0, 30319, 34209, "4.5.2", false)]
     [InlineData(4, 7, 3062, 0, "4.7", false)]
     [InlineData(4, 8, 4645, 0, "4.8", true)]
     [InlineData(4, 8, 9032, 0, "4.8", true)]
@@ -193,6 +195,9 @@ public class TransportTests
             Directory.CreateDirectory(Path.Combine(share, "Microsoft.NET", "Framework64"));
             // 32 Bit (kein SysWOW64): auch die eigenständige Variante läuft dort nicht.
             Assert.Equal(new FrameworkState(false, null, false), NetFramework.Inspect(share));
+            // Der Ordner von .NET 4 ist da, clr.dll aber nicht lesbar: lieber nichts behaupten.
+            Directory.CreateDirectory(Path.Combine(share, "Microsoft.NET", "Framework64", "v4.0.30319"));
+            Assert.Null(NetFramework.Inspect(share));
         }
         finally
         {

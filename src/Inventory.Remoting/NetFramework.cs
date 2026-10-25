@@ -42,14 +42,14 @@ public static class NetFramework
 
     /// <summary>
     /// Die Version aus der Dateiversion von clr.dll: ab 4.6 trägt sie die Framework-Version (4.8.4645.0), davor heißt
-    /// sie 4.0.30319.x – unter 17000 ist das 4.0, darüber 4.5 bis 4.5.2.
+    /// sie 4.0.30319.x – ab 34209 ist das 4.5.2, ab 18408 4.5.1, ab 17000 4.5, darunter 4.0.
     /// </summary>
     public static (string Name, bool Sufficient) FromClrVersion(int major, int minor, int build, int revision)
     {
         if (major > 4 || major == 4 && minor >= 8)
             return ($"{major}.{minor}", true);
         if (major == 4 && minor == 0)
-            return (build == 30319 && revision >= 17000 ? "4.5" : "4.0", false);
+            return (build != 30319 ? "4.0" : revision >= 34209 ? "4.5.2" : revision >= 18408 ? "4.5.1" : revision >= 17000 ? "4.5" : "4.0", false);
         return ($"{major}.{minor}", false);
     }
 
@@ -64,9 +64,11 @@ public static class NetFramework
             var root = Path.Combine(adminShare, "Microsoft.NET");
             if (!Directory.Exists(root))
                 return null;
-            var clr = new[] { "Framework64", "Framework" }
-                .Select(folder => Path.Combine(root, folder, "v4.0.30319", "clr.dll"))
-                .FirstOrDefault(File.Exists);
+            var folders = new[] { "Framework64", "Framework" }.Select(folder => Path.Combine(root, folder, "v4.0.30319")).ToList();
+            var clr = folders.Select(folder => Path.Combine(folder, "clr.dll")).FirstOrDefault(File.Exists);
+            // File.Exists sagt auch bei fehlenden Leserechten false: nur ohne den Ordner von .NET 4 fehlt es sicher.
+            if (clr is null && folders.Any(Directory.Exists))
+                return null;
             string? installed = null;
             if (clr is not null)
             {
