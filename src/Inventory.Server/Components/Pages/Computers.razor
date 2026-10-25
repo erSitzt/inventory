@@ -6,6 +6,7 @@
 @inject WakeService WakeService
 @inject AgentService AgentService
 @inject RemoteJobService Jobs
+@inject FrameworkInstallService Framework
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -64,6 +65,10 @@
                 <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => Updates.OpenAsync(_selected.Select(c => c.Id).ToList(), securityOnly: false, restart: false))">@L["Install pending updates without restart"]</MudMenuItem>
                 <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => Updates.OpenAsync(_selected.Select(c => c.Id).ToList(), securityOnly: true, restart: false))">@L["Install pending security updates without restart"]</MudMenuItem>
                 <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MudMenuItem>
+                @if (Framework.Available)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.Extension" Disabled="@(_selected.Count == 0)" OnClick="InstallFrameworkAsync">@L["Install .NET Framework 4.8"]</MudMenuItem>
+                }
                 <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">@L["Install remote access launcher"]</MudMenuItem>
             </AdminOnly>
             <AdminOnly>
@@ -541,6 +546,48 @@
             else
                 Snackbar.Add(L["{0} of {1} failed – {2}", failures.Count, targets.Count, string.Join("; ", failures.Take(3))], Severity.Error);
             await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _progressText = null;
+        }
+    }
+
+    /// <summary>
+    /// Installiert .NET Framework 4.8 ohne Runner (über ADMIN$ und den Dienststeuer-Manager); für Rechner, auf denen der
+    /// Runner mangels Framework nicht startet. Rechner, die es schon haben, bleiben unberührt.
+    /// </summary>
+    private async Task InstallFrameworkAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var targets = _selected.ToList();
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Install .NET Framework 4.8"],
+            L["Installs .NET Framework 4.8 from the offline installer of Microsoft on {0} computers. It takes 5 to 30 minutes per computer and usually needs a restart, which Inventory does not trigger. Computers that already have it are left alone.", targets.Count],
+            yesText: L["Install"], cancelText: L["Cancel"]);
+        if (confirmed != true)
+            return;
+
+        _busy = true;
+        _progressText = L["Installing .NET Framework 4.8 on {0} computers …", targets.Count];
+        StateHasChanged();
+        await Audit.LogAsync(L[".NET Framework installation started"], string.Join(", ", targets.Select(c => c.Name)));
+        try
+        {
+            var results = new System.Collections.Concurrent.ConcurrentBag<(string Computer, Inventory.Core.Abstractions.FrameworkInstallResult Result)>();
+            await Parallel.ForEachAsync(targets, new ParallelOptions { MaxDegreeOfParallelism = 8 }, async (computer, ct) =>
+                results.Add((computer.Name, await Framework.InstallAsync(computer.Id, ct))));
+            foreach (var (computer, result) in results.OrderBy(r => r.Computer))
+                await Audit.LogAsync(result.Success ? L[".NET Framework installed"] : L[".NET Framework installation failed"], $"{computer}: {result.Message}");
+            var failures = results.Where(r => !r.Result.Success).Select(r => $"{r.Computer}: {r.Result.Message}").ToList();
+            var reboot = results.Where(r => r.Result is { Success: true, RebootRequired: true }).Select(r => r.Computer).ToList();
+            if (failures.Count == 0)
+                Snackbar.Add(reboot.Count == 0
+                    ? L[".NET Framework 4.8 is installed on {0} computers.", targets.Count]
+                    : L[".NET Framework 4.8 is installed on {0} computers; {1} need a restart: {2}", targets.Count, reboot.Count, string.Join(", ", reboot.Take(5))], Severity.Success);
+            else
+                Snackbar.Add(L["{0} of {1} failed – {2}", failures.Count, targets.Count, string.Join("; ", failures.Take(3))], Severity.Error);
         }
         finally
         {

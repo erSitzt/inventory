@@ -324,6 +324,12 @@ tägliche Datensicherung und eine REST-API mit interaktiver Dokumentation ([API]
 ## So funktioniert der Zugriff
 
 Auf dem Zielrechner führt immer derselbe kleine **Runner** (`InventoryRunner.exe`, .NET Framework 4.8) einen Job aus.
+Rechner ohne .NET Framework 4.8 (Windows Server 2012 bis 2016, frühe Windows-10-Stände) bekommen stattdessen denselben
+Runner als eine eigenständige .NET-10-Datei (rund 40 MB, einmal je Runner-Version kopiert); das wählt der Server selbst.
+Windows 7 und Server 2008 R2 führen nur den kleinen Runner aus: **Rechner → .NET Framework 4.8 installieren** installiert es
+dort mit dem Offline-Installer von Microsoft – ohne Runner, über ADMIN$ und den Dienststeuer-Manager. Den Installer lädt
+der Server einmal (Signatur geprüft) in den Ordner `netfx` seines Datenverzeichnisses; ohne Internetzugang
+`ndp48-x86-x64-allos-enu.exe` selbst dorthin kopieren. Meist ist ein Neustart nötig, den Inventory nicht auslöst.
 Wie er dorthin kommt, bestimmt der Transport – einstellbar global und je Rechner:
 
 | Transport | Voraussetzung auf dem Ziel | Job läuft als |
@@ -373,7 +379,7 @@ Konten sind ohnehin ausgenommen).
 |---|---|
 | SMB + Dienst | Eingehend TCP 445 vom Server (Firewall-Gruppe *Datei- und Druckerfreigabe*), Dienst *Server* (`LanmanServer`) läuft, administrative Freigabe `ADMIN$` vorhanden (nicht per `AutoShareWks = 0` auf Clients oder `AutoShareServer = 0` auf Windows Server abgeschaltet). Den Dienststeuerungs-Manager erreicht der Server über RPC: zuerst direkt (TCP 135 und dynamische Ports, Firewall-Gruppe *Remotedienstverwaltung*), sonst über die Named Pipe auf Port 445 – 445 zu öffnen reicht, die RPC-Gruppe zu öffnen spart eine Verzögerung. |
 | WinRM | PowerShell-Remoting aktiviert (`Enable-PSRemoting` oder die Gruppenrichtlinie *Remoteserververwaltung über WinRM zulassen*), eingehend TCP 5985 vom Server. Der Server verbindet sich per Name mit Kerberos; für Adressen oder Rechner außerhalb der Domäne bräuchte der Server *TrustedHosts*, das nicht für dich eingerichtet wird. |
-| Beide | .NET Framework 4.8 (der Runner); Windows 7, Server 2008 R2 bis 2016 und frühe Windows-10-Stände brauchen es nachinstalliert. Vor jedem Job prüft der Server die Version auf dem Rechner und meldet eine fehlende oder ältere, statt den Runner zu starten. Die Erreichbarkeitsprüfung versucht zuerst TCP 445 und nur wenn der nicht antwortet 5985; „erreichbar“ heißt also nicht, dass WinRM offen ist. |
+| Beide | .NET Framework 4.8 für den kleinen Runner. Vor jedem Job prüft der Server die Version auf dem Rechner; ohne 4.8 nimmt er den eigenständigen .NET-10-Runner (64 Bit, ab Windows 8 / Server 2012), sonst meldet er das fehlende Framework, statt den Runner zu starten. Die Erreichbarkeitsprüfung versucht zuerst TCP 445 und nur wenn der nicht antwortet 5985; „erreichbar“ heißt also nicht, dass WinRM offen ist. |
 
 **Empfohlene Einrichtung**
 
@@ -460,7 +466,7 @@ nicht rückgängig; ihr Ergebnis wird verworfen.
 | | |
 |---|---|
 | Dienst | `InventoryAgent` („Inventory Agent“), läuft als **Lokales System**, Starttyp Automatisch, Wiederherstellung: Neustart nach 5 s / 60 s / 5 min |
-| Dateien | `%ProgramFiles%\Inventory Agent` – der Runner (`InventoryRunner.exe`, .NET Framework 4.8), `agent.json` (Server-Adresse + Anmeldegeheimnis), `agent.key` (eigener Schlüssel des Agenten), `agent.version` (Hash der installierten Runner-Dateien), `agent.log`; der Ordner ist nur für SYSTEM und Administratoren lesbar |
+| Dateien | `%ProgramFiles%\Inventory Agent` – der Runner (`InventoryRunner.exe`, .NET Framework 4.8 oder die eigenständige .NET-10-Datei, je nachdem, welcher ihn installiert hat), `agent.json` (Server-Adresse + Anmeldegeheimnis), `agent.key` (eigener Schlüssel des Agenten), `agent.version` (Hash der installierten Runner-Dateien), `agent.log`; der Ordner ist nur für SYSTEM und Administratoren lesbar |
 | Anmeldung | Beim ersten Start schickt der Agent Anmeldegeheimnis und Rechnernamen an `POST /api/agent/enroll`. Der Server prüft das Geheimnis, legt den Rechner an, falls unbekannt (Abgleich über den Kurznamen, ein unter FQDN eingetragener Rechner wird wiederverwendet), erzeugt einen zufälligen 256-Bit-Schlüssel, speichert nur dessen SHA-256-Hash und gibt den Schlüssel einmalig zurück. Der Agent legt ihn in `agent.key` ab und schickt das Geheimnis nie wieder. |
 | Authentifizierung | Jede weitere Anfrage trägt den Kopf `X-Agent-Key: <Schlüssel>`. Der Server sucht den Hash; ein unbekannter Schlüssel (Rechner gelöscht, Agent entfernt) ergibt 401, der Agent löscht `agent.key` und meldet sich mit dem Geheimnis neu an. |
 | Abfrage | `POST /api/agent/poll` ist ein Long-Poll: Der Server hält die Anfrage bis zu 50 s offen und antwortet `204`, wenn kein Job kam; der Agent fragt sofort erneut. Ein Job wird so innerhalb einer Sekunde abgeholt, mit einer offenen HTTP-Anfrage je Rechner statt Dauerfeuer. Jede Abfrage aktualisiert „letzter Kontakt“; die Oberfläche zeigt den Agenten als verbunden, solange der letzte Kontakt keine 5 Minuten zurückliegt. |

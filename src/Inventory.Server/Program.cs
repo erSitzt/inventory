@@ -14,6 +14,7 @@ using System.Globalization;
 using Inventory.Core;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using Scalar.AspNetCore;
@@ -65,6 +66,9 @@ if (options.ResolveSimulate())
     builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.WinRm));
     builder.Services.AddSingleton<IDirectorySource, SimulatedDirectorySource>();
     builder.Services.AddSingleton<IDeviceProbe, SimulatedDeviceProbe>();
+    var framework = new SimulatedFrameworkInstaller();
+    builder.Services.AddSingleton<IFrameworkInstaller>(framework);
+    builder.Services.AddSingleton<IFrameworkSource>(framework);
 }
 else
 {
@@ -74,9 +78,14 @@ else
     builder.Services.AddSingleton<IDeviceProbe, Inventory.Remoting.Devices.DeviceProbe>();
     if (OperatingSystem.IsWindows())
     {
-        builder.Services.AddSingleton<IRemoteTransport, SmbServiceTransport>();
+        builder.Services.AddSingleton<SmbServiceTransport>();
+        builder.Services.AddSingleton<IRemoteTransport>(sp => sp.GetRequiredService<SmbServiceTransport>());
+        // .NET Framework 4.8 kommt ohne Runner auf den Rechner: über ADMIN$ und den Dienststeuer-Manager.
+        builder.Services.AddSingleton<IFrameworkInstaller>(sp => sp.GetRequiredService<SmbServiceTransport>());
         builder.Services.AddSingleton<IRemoteTransport, WinRmTransport>();
     }
+    builder.Services.AddSingleton<IFrameworkSource>(sp => new FrameworkDownload(Path.Combine(dataDirectory, "netfx"),
+        new HttpClient { Timeout = TimeSpan.FromMinutes(30) }, sp.GetRequiredService<IStringLocalizer<SharedResource>>()));
 }
 // Der Agent verbindet sich von sich aus; das funktioniert unabhängig vom Betriebssystem des Servers und auch in der Simulation.
 builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner"), Path.Combine(AppContext.BaseDirectory, "runner-net10")));
@@ -84,6 +93,7 @@ builder.Services.AddSingleton<AgentHub>();
 builder.Services.AddSingleton<IRemoteTransport, AgentTransport>();
 builder.Services.AddSingleton<AgentService>();
 builder.Services.AddSingleton<RemoteJobService>();
+builder.Services.AddSingleton<FrameworkInstallService>();
 builder.Services.AddSingleton<InventoryStore>();
 builder.Services.AddSingleton<ScanService>();
 builder.Services.AddSingleton<CollectionService>();

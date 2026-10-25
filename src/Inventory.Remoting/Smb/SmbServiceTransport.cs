@@ -23,8 +23,9 @@ namespace Inventory.Remoting.Smb;
 /// im Endpunktschutz gezielt freigeben, und es entsteht nicht bei jedem Job ein neuer Dienst.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<SharedResource>? localizer = null) : IRemoteTransport
-{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+public sealed partial class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<SharedResource>? localizer = null) : IRemoteTransport, IFrameworkInstaller
+{
+    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
@@ -46,7 +47,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         Task.Factory.StartNew(() => RunImpersonated(target, () => RunCore(target.Host, job, files, progress, ct)),
             ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-    private JobResult RunImpersonated(RemoteTarget target, Func<JobResult> action)
+    private T RunImpersonated<T>(RemoteTarget target, Func<T> action)
     {
         if (target.Credential is null)
             return action();

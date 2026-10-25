@@ -104,6 +104,30 @@
   <data name="(stored address)" xml:space="preserve">
     <value>(gespeicherte Adresse)</value>
   </data>
+  <data name=".NET Framework 4.8 installed; it takes effect after a restart of the computer." xml:space="preserve">
+    <value>.NET Framework 4.8 installiert; es wirkt nach einem Neustart des Rechners.</value>
+  </data>
+  <data name=".NET Framework 4.8 is installed on {0} computers." xml:space="preserve">
+    <value>.NET Framework 4.8 ist auf {0} Rechnern installiert.</value>
+  </data>
+  <data name=".NET Framework 4.8 is installed on {0} computers; {1} need a restart: {2}" xml:space="preserve">
+    <value>.NET Framework 4.8 ist auf {0} Rechnern installiert; {1} brauchen einen Neustart: {2}</value>
+  </data>
+  <data name=".NET Framework installation failed" xml:space="preserve">
+    <value>.NET-Framework-Installation fehlgeschlagen</value>
+  </data>
+  <data name=".NET Framework installation started" xml:space="preserve">
+    <value>.NET-Framework-Installation gestartet</value>
+  </data>
+  <data name=".NET Framework installed" xml:space="preserve">
+    <value>.NET Framework installiert</value>
+  </data>
+  <data name=".NET Framework {0} installed." xml:space="preserve">
+    <value>.NET Framework {0} installiert.</value>
+  </data>
+  <data name=".NET Framework {0} is already installed." xml:space="preserve">
+    <value>.NET Framework {0} ist bereits installiert.</value>
+  </data>
   <data name="0 = all" xml:space="preserve">
     <value>0 = alle</value>
   </data>
@@ -1967,6 +1991,12 @@
   <data name="included" xml:space="preserve">
     <value>einbezogen</value>
   </data>
+  <data name="Install" xml:space="preserve">
+    <value>Installieren</value>
+  </data>
+  <data name="Install .NET Framework 4.8" xml:space="preserve">
+    <value>.NET Framework 4.8 installieren</value>
+  </data>
   <data name="Install agent" xml:space="preserve">
     <value>Agent installieren</value>
   </data>
@@ -2024,6 +2054,12 @@
   <data name="Installer file" xml:space="preserve">
     <value>Installationsdatei</value>
   </data>
+  <data name="Installing .NET Framework 4.8 on {0} computers …" xml:space="preserve">
+    <value>Installiere .NET Framework 4.8 auf {0} Rechnern …</value>
+  </data>
+  <data name="Installing .NET Framework needs agentless access (SMB), which this server does not have." xml:space="preserve">
+    <value>Die Installation von .NET Framework braucht agentenlosen Zugriff (SMB), den dieser Server nicht hat.</value>
+  </data>
   <data name="Installing agent on {0} computers …" xml:space="preserve">
     <value>Installiere Agent auf {0} Rechnern …</value>
   </data>
@@ -2032,6 +2068,9 @@
   </data>
   <data name="Installing …" xml:space="preserve">
     <value>Wird installiert …</value>
+  </data>
+  <data name="Installs .NET Framework 4.8 from the offline installer of Microsoft on {0} computers. It takes 5 to 30 minutes per computer and usually needs a restart, which Inventory does not trigger. Computers that already have it are left alone." xml:space="preserve">
+    <value>Installiert .NET Framework 4.8 mit dem Offline-Installer von Microsoft auf {0} Rechnern. Das dauert je Rechner 5 bis 30 Minuten und braucht meist einen Neustart, den Inventory nicht auslöst. Rechner, die es schon haben, bleiben unberührt.</value>
   </data>
   <data name="Interval (hours)" xml:space="preserve">
     <value>Intervall (Stunden)</value>
@@ -2287,6 +2326,9 @@
   </data>
   <data name="Location" xml:space="preserve">
     <value>Standort</value>
+  </data>
+  <data name="Log: {0}" xml:space="preserve">
+    <value>Protokoll: {0}</value>
   </data>
   <data name="Logged-on user" xml:space="preserve">
     <value>Angemeldeter Benutzer</value>
@@ -4469,6 +4511,24 @@
   <data name="That is who had an interactive session (console or Remote Desktop) on the most days during scans of the last {0} days. Accounts stored as credentials never count; services and scheduled tasks do not either." xml:space="preserve">
     <value>Das ist, wer bei Scans der letzten {0} Tage an den meisten Tagen eine interaktive Sitzung hatte (Konsole oder Remotedesktop). Als Zugangsdaten hinterlegte Konten zählen nie, Dienste und geplante Aufgaben ebenso wenig.</value>
   </data>
+  <data name="The .NET Framework installation failed with exit code {0}." xml:space="preserve">
+    <value>Die Installation von .NET Framework ist mit Exitcode {0} fehlgeschlagen.</value>
+  </data>
+  <data name="The .NET Framework installation was cancelled (exit code {0})." xml:space="preserve">
+    <value>Die Installation von .NET Framework wurde abgebrochen (Exitcode {0}).</value>
+  </data>
+  <data name="The .NET Framework installer could not be downloaded ({0}). Without internet access, copy {1} from Microsoft to {2}." xml:space="preserve">
+    <value>Der .NET-Framework-Installer ließ sich nicht herunterladen ({0}). Ohne Internetzugang {1} von Microsoft nach {2} kopieren.</value>
+  </data>
+  <data name="The .NET Framework installer on {0} did not finish within {1} minutes." xml:space="preserve">
+    <value>Der .NET-Framework-Installer auf {0} ist nicht innerhalb von {1} Minuten fertig geworden.</value>
+  </data>
+  <data name="The .NET Framework installer {0} is not usable: {1}" xml:space="preserve">
+    <value>Der .NET-Framework-Installer {0} ist nicht verwendbar: {1}</value>
+  </data>
+  <data name="The .NET Framework on {0} could not be checked over ADMIN$." xml:space="preserve">
+    <value>Das .NET Framework auf {0} ließ sich über ADMIN$ nicht prüfen.</value>
+  </data>
   <data name="The account needs local administrator rights on the computers – usually a domain account added by group policy." xml:space="preserve">
     <value>Das Konto braucht lokale Adminrechte auf den Rechnern – meist ein Domänenkonto, das per Gruppenrichtlinie eingetragen wird.</value>
   </data>
@@ -4520,6 +4580,9 @@
   <data name="The computer did not come back within {0} minutes after the restart" xml:space="preserve">
     <value>Der Rechner war {0} Minuten nach dem Neustart nicht wieder erreichbar</value>
   </data>
+  <data name="The computer does not meet the requirements of .NET Framework 4.8 (exit code 5100), e.g. Windows 7 or Server 2008 R2 without Service Pack 1." xml:space="preserve">
+    <value>Der Rechner erfüllt die Voraussetzungen von .NET Framework 4.8 nicht (Exitcode 5100), z. B. Windows 7 oder Server 2008 R2 ohne Service Pack 1.</value>
+  </data>
   <data name="The computer has not reported a name yet." xml:space="preserve">
     <value>Der Rechner hat noch keinen Namen gemeldet.</value>
   </data>
@@ -4549,6 +4612,9 @@
   </data>
   <data name="The device scan tries these communities one after another (SNMP v2c, then v1). They are stored encrypted and never shown again. Ranges can have their own." xml:space="preserve">
     <value>Der Gerätescan probiert diese Communities nacheinander (SNMP v2c, dann v1). Sie werden verschlüsselt gespeichert und nie wieder angezeigt. Bereiche können eigene haben.</value>
+  </data>
+  <data name="The downloaded .NET Framework installer was rejected: {0}" xml:space="preserve">
+    <value>Der heruntergeladene .NET-Framework-Installer wurde abgelehnt: {0}</value>
   </data>
   <data name='The examples are disabled; use "Edit" to adjust and enable them, or simply delete them.' xml:space="preserve">
     <value>Die Beispiele sind deaktiviert; über „Bearbeiten“ lassen sie sich anpassen und einschalten oder einfach löschen.</value>
