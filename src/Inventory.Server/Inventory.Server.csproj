@@ -31,7 +31,7 @@
     <ProjectReference Include="..\Inventory.Remoting\Inventory.Remoting.csproj" />
     <!-- Nur Build-Reihenfolge: der net48-Runner wird nicht referenziert, sondern als Dateien mitgeliefert (siehe IncludeRunner). -->
     <!-- Ohne eigene Eigenschaften, damit dieser Build derselbe ist wie der aus der Solution; sonst bauen beide gleichzeitig ins selbe obj. -->
-    <ProjectReference Include="..\Inventory.Runner\Inventory.Runner.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
+    <ProjectReference Include="..\Inventory.Runner\Inventory.Runner.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
     <ProjectReference Include="..\Inventory.Launcher\Inventory.Launcher.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
   </ItemGroup>
 
