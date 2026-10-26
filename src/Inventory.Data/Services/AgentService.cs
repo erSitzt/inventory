@@ -82,11 +82,14 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
                 Remove-Item -Path $folder, $zip -Recurse -Force -ErrorAction SilentlyContinue
                 Invoke-WebRequest -Uri '{{serverUrl.Replace("'", "''")}}/{{PublicSetupPath}}' -OutFile $zip -UseBasicParsing
                 Expand-Archive -Path $zip -DestinationPath $folder -Force
-                # Ohne .NET Framework 4.8 (Release 528040) auf 64-Bit-Windows startet der eigenständige Runner, sofern dabei.
+                # Ohne .NET Framework 4.8 (Release 528040) startet der eigenständige Runner, wenn das Setup ihn enthält und
+                # .NET 10 auf dem Rechner läuft: 64 Bit und Build 9200 (Server 2012) bis 10239 oder ab 14393 (Windows 10 1607).
                 $runner = Join-Path $folder '{{JobFiles.RunnerExe}}'
                 $large = Join-Path $folder '{{SelfContainedFolder}}\{{JobFiles.RunnerExe}}'
                 $ndp = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release -ErrorAction SilentlyContinue
-                if ((Test-Path $large) -and ${env:ProgramFiles(x86)} -and -not ($ndp -and $ndp.Release -ge 528040)) { $runner = $large }
+                $build = [int](Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name CurrentBuildNumber -ErrorAction SilentlyContinue).CurrentBuildNumber
+                $supported = ($build -ge 9200 -and $build -lt 10240) -or $build -ge 14393
+                if ((Test-Path $large) -and ${env:ProgramFiles(x86)} -and $supported -and -not ($ndp -and $ndp.Release -ge 528040)) { $runner = $large }
                 & $runner {{RunnerModes.InstallAgent}}
                 $code = $LASTEXITCODE
             }
@@ -268,13 +271,17 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             if (withSelfContained)
                 AddRunner(SelfContainedFolder + "/", selfContainedFiles!, selfContainedHash!);
             // Läuft als Startskript unter Local System; bei vorhandenem Agenten kehrt der Runner sofort zurück. Ohne .NET
-            // Framework 4.8 (Release 528040) auf 64-Bit-Windows startet der eigenständige Runner.
+            // Framework 4.8 (Release 528040) startet der eigenständige Runner, wenn .NET 10 auf dem Rechner läuft:
+            // 64 Bit und Build 9200 (Server 2012) bis 10239 oder ab 14393 (Windows 10 1607), wie beim Transport.
             var script = withSelfContained
-                ? "@echo off\r\nsetlocal\r\nset release=0\r\n"
+                ? "@echo off\r\nsetlocal\r\nset release=0\r\nset build=0\r\nset large=0\r\n"
                   + "for /f \"tokens=3\" %%v in ('reg query \"HKLM\\SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\" /v Release 2^>nul') do set /a release=%%v\r\n"
+                  + "for /f \"tokens=3\" %%v in ('reg query \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\" /v CurrentBuildNumber 2^>nul') do set /a build=%%v\r\n"
+                  + "if %build% geq 9200 if %build% lss 10240 set large=1\r\n"
+                  + "if %build% geq 14393 set large=1\r\n"
                   // Zuweisung in Anführungszeichen: ein & im Pfad des Setup-Ordners trennte sonst Befehle.
                   + $"set \"runner=%~dp0{JobFiles.RunnerExe}\"\r\n"
-                  + $"if %release% lss 528040 if defined ProgramFiles(x86) set \"runner=%~dp0{SelfContainedFolder}\\{JobFiles.RunnerExe}\"\r\n"
+                  + $"if %release% lss 528040 if %large%==1 if defined ProgramFiles(x86) set \"runner=%~dp0{SelfContainedFolder}\\{JobFiles.RunnerExe}\"\r\n"
                   + $"\"%runner%\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n"
                 : $"@echo off\r\n\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n";
             Add(SetupScript, script, Encoding.ASCII);
