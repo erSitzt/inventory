@@ -60,7 +60,7 @@ public static class ComputerEndpoints
         {
             try
             {
-                var setup = await agents.BuildSetupAsync(runner.Files, runner.Hash, ct);
+                var setup = await agents.BuildSetupAsync(runner.Files, runner.Hash, ct, runner.SelfContained?.Files, runner.SelfContained?.Hash);
                 await audit.LogAsync(http.Actor(), "Agent setup downloaded", null, ct);
                 return Results.File(setup, "application/zip", AgentService.SetupFileName);
             }

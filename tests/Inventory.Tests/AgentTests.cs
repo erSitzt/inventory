@@ -37,6 +37,25 @@ public class AgentTests
             Assert.Equal(("https://inventory.example.local:5100", await agents.GetEnrollmentTokenAsync()), (config.ServerUrl, config.EnrollmentToken));
             Assert.Equal("abc123", Read(AgentProtocol.VersionFile));
             Assert.Contains($"\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*", Read(AgentService.SetupScript));
+
+            // Mit eigenständigem Runner: eigener Ordner mit Konfiguration und Version, Auswahl nach der .NET-Version.
+            var large = Path.Combine(dir, "large");
+            Directory.CreateDirectory(large);
+            File.WriteAllText(Path.Combine(large, JobFiles.RunnerExe), "net10");
+            using var both = new System.IO.Compression.ZipArchive(new MemoryStream(
+                await agents.BuildSetupAsync([runner], "abc123", default, [Path.Combine(large, JobFiles.RunnerExe)], "def456")));
+            string ReadBoth(string name)
+            {
+                using var reader = new StreamReader(both.GetEntry(name)!.Open());
+                return reader.ReadToEnd();
+            }
+            Assert.Equal("def456", ReadBoth($"{AgentService.SelfContainedFolder}/{AgentProtocol.VersionFile}"));
+            Assert.Equal(Read(AgentProtocol.ConfigFile), ReadBoth($"{AgentService.SelfContainedFolder}/{AgentProtocol.ConfigFile}"));
+            Assert.Equal("net10", ReadBoth($"{AgentService.SelfContainedFolder}/{JobFiles.RunnerExe}"));
+            var script = ReadBoth(AgentService.SetupScript);
+            Assert.Contains("/v Release", script);
+            Assert.Contains($@"if %release% lss 528040 if defined ProgramFiles(x86) set runner=%~dp0{AgentService.SelfContainedFolder}\{JobFiles.RunnerExe}", script);
+            Assert.Contains($"\"%runner%\" {RunnerModes.InstallAgent} %*", script);
         }
         finally
         {

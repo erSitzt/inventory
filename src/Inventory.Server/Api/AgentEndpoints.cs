@@ -45,8 +45,9 @@ public static class AgentEndpoints
                 return Results.Unauthorized();
             // Veraltete Agenten aktualisieren sich zuerst; Jobs bleiben so lange in der Warteschlange. Jeder bleibt bei seiner
             // Laufzeit: ein Agent mit eigenständigem .NET 10 läuft auf einem Rechner ohne .NET Framework 4.8.
+            // Fehlt dem Server die Variante des Agenten, bleibt der Agent bei seinen Dateien, statt die andere zu bekommen.
             var current = runner.For(request?.Runtime);
-            if (request?.RunnerHash != current.Hash)
+            if (current is not null && request?.RunnerHash != current.Hash)
                 return Json(new AgentJobOffer { Update = new AgentUpdateOffer { Hash = current.Hash, Files = current.Files.Select(f => Path.GetFileName(f)!).ToList() } });
             var job = await hub.DequeueAsync(computer.Name, PollWait, ct);
             return job is null
@@ -55,7 +56,7 @@ public static class AgentEndpoints
         });
 
         group.MapGet("update/files/{index:int}", async (int index, string? runtime, HttpContext http, AgentService agents, RunnerPackage runner, CancellationToken ct) =>
-            await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], null, ct) is not null && runner.For(runtime) is var files && index >= 0 && index < files.Files.Count
+            await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], null, ct) is not null && runner.For(runtime) is { } files && index >= 0 && index < files.Files.Count
                 ? Results.File(files.Files[index], "application/octet-stream")
                 : Results.NotFound());
 
@@ -149,7 +150,7 @@ public static class AgentEndpoints
                 return Results.NotFound();
             try
             {
-                var setup = await agents.BuildSetupAsync(runner.Files, runner.Hash, ct);
+                var setup = await agents.BuildSetupAsync(runner.Files, runner.Hash, ct, runner.SelfContained?.Files, runner.SelfContained?.Hash);
                 // Das Paket enthält das Anmeldegeheimnis: wer es geholt hat, soll nachvollziehbar sein.
                 await audit.LogAsync(new AuditActor("(anonymous)", null, AuditSource.Agent), "Agent setup downloaded from the public page", $"from {http.Connection.RemoteIpAddress}", ct);
                 return Results.File(setup, "application/zip", AgentService.SetupFileName);

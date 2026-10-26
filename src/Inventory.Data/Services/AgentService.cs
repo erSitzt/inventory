@@ -221,13 +221,20 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
 
     public const string SetupFileName = "InventoryAgentSetup.zip";
     public const string SetupScript = "Install-Agent.cmd";
+    /// <summary>Unterordner des Setup-Pakets mit dem eigenständigen .NET-10-Runner.</summary>
+    public const string SelfContainedFolder = "net10";
 
     /// <summary>
     /// Agent-Setup zum Verteilen ohne agentenlosen Zugriff (Startskript einer Gruppenrichtlinie, vorhandene Softwareverteilung):
     /// Runner-Dateien, Konfiguration mit Server-Adresse und Anmeldegeheimnis, ein Startskript. Der Runner richtet sich daraus selbst ein.
     /// </summary>
+    /// <param name="selfContainedFiles">
+    /// Der eigenständige .NET-10-Runner mit seinem Hash; landet im Unterordner net10 und wird nur auf Rechnern ohne
+    /// .NET Framework 4.8 gestartet. null, wenn der Server ihn nicht mitbringt.
+    /// </param>
     /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
-    public async Task<byte[]> BuildSetupAsync(IReadOnlyList<string> runnerFiles, string runnerHash, CancellationToken ct = default)
+    public async Task<byte[]> BuildSetupAsync(IReadOnlyList<string> runnerFiles, string runnerHash, CancellationToken ct = default,
+        IReadOnlyList<string>? selfContainedFiles = null, string? selfContainedHash = null)
     {
         var serverUrl = await GetServerUrlAsync(ct);
         if (string.IsNullOrWhiteSpace(serverUrl))
@@ -237,18 +244,34 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         using var buffer = new MemoryStream();
         using (var zip = new System.IO.Compression.ZipArchive(buffer, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
         {
-            foreach (var file in runnerFiles)
-                zip.CreateEntryFromFile(file, Path.GetFileName(file));
             void Add(string name, string content, Encoding encoding)
             {
                 using var writer = new StreamWriter(zip.CreateEntry(name).Open(), encoding);
                 writer.Write(content);
             }
             var utf8 = new UTF8Encoding(false);
-            Add(AgentProtocol.ConfigFile, config, utf8);
-            Add(AgentProtocol.VersionFile, runnerHash, Encoding.ASCII);
-            // Läuft als Startskript unter Local System; bei vorhandenem Agenten kehrt der Runner sofort zurück.
-            Add(SetupScript, $"@echo off\r\n\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n", Encoding.ASCII);
+            // Der Runner richtet sich aus seinem eigenen Ordner ein: jede Variante bekommt Konfiguration und Version daneben.
+            void AddRunner(string folder, IReadOnlyList<string> files, string hash)
+            {
+                foreach (var file in files)
+                    zip.CreateEntryFromFile(file, folder + Path.GetFileName(file));
+                Add(folder + AgentProtocol.ConfigFile, config, utf8);
+                Add(folder + AgentProtocol.VersionFile, hash, Encoding.ASCII);
+            }
+            AddRunner("", runnerFiles, runnerHash);
+            var withSelfContained = selfContainedFiles is { Count: > 0 } && selfContainedHash is not null;
+            if (withSelfContained)
+                AddRunner(SelfContainedFolder + "/", selfContainedFiles!, selfContainedHash!);
+            // Läuft als Startskript unter Local System; bei vorhandenem Agenten kehrt der Runner sofort zurück. Ohne .NET
+            // Framework 4.8 (Release 528040) auf 64-Bit-Windows startet der eigenständige Runner.
+            var script = withSelfContained
+                ? "@echo off\r\nsetlocal\r\nset release=0\r\n"
+                  + "for /f \"tokens=3\" %%v in ('reg query \"HKLM\\SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\" /v Release 2^>nul') do set /a release=%%v\r\n"
+                  + $"set runner=%~dp0{JobFiles.RunnerExe}\r\n"
+                  + $"if %release% lss 528040 if defined ProgramFiles(x86) set runner=%~dp0{SelfContainedFolder}\\{JobFiles.RunnerExe}\r\n"
+                  + $"\"%runner%\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n"
+                : $"@echo off\r\n\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n";
+            Add(SetupScript, script, Encoding.ASCII);
             Add("README.txt", string.Join("\r\n",
                 "Inventory agent setup",
                 "",
@@ -258,6 +281,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
                 "",
                 "The setup copies the agent to %ProgramFiles%\\Inventory Agent and registers the service InventoryAgent.",
                 "On a computer that already has the agent it does nothing: the agent updates itself from the server.",
+                $"Without .NET Framework 4.8 the setup uses the self-contained runner in the folder {SelfContainedFolder} (64-bit Windows only).",
                 "",
                 $"{AgentProtocol.ConfigFile} contains the enrollment secret of the server. Whoever can read it can enroll a computer.",
                 "Keep this folder readable only for the computer accounts and administrators that need it.",

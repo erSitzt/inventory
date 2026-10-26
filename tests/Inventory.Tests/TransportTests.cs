@@ -245,6 +245,8 @@ public class TransportTests
             // Ein Server ohne eigenständige Variante bleibt bei der Meldung.
             var plain = new RunnerPackage(Path.Combine(root, "small"));
             Assert.Throws<RemoteException>(() => NetFramework.Choose(plain, new FrameworkState(false, "4.5", true), L));
+            // Ein .NET-10-Agent bekommt dann kein Update auf den kleinen Runner, der bei ihm nicht startete.
+            Assert.Null(plain.For("net10"));
         }
         finally
         {

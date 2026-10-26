@@ -35,8 +35,11 @@ public sealed class RunnerPackage
     /// <summary>Die SHA-256-Werte aller Runner-Dateien, die der Server verteilt: zuerst der kleine Runner.</summary>
     public IReadOnlyList<string> AllExeSha256 => SelfContained is null ? [ExeSha256] : [ExeSha256, SelfContained.ExeSha256];
 
-    /// <summary>Die Variante für die angegebene Laufzeit; unbekannt oder leer heißt .NET Framework 4.8 (ältere Agenten).</summary>
-    public RunnerPackage For(string? runtime) => runtime == RunnerRuntimes.SelfContained && SelfContained is not null ? SelfContained : this;
+    /// <summary>
+    /// Die Variante für die angegebene Laufzeit; unbekannt oder leer heißt .NET Framework 4.8 (ältere Agenten). null, wenn
+    /// die eigenständige Variante verlangt ist, der Server sie aber nicht hat: der kleine Runner liefe dort nicht.
+    /// </summary>
+    public RunnerPackage? For(string? runtime) => runtime == RunnerRuntimes.SelfContained ? SelfContained : this;
 
     public string Directory { get; }
     public IReadOnlyList<string> Files { get; }
