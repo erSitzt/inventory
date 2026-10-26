@@ -6,7 +6,7 @@ using Microsoft.Extensions.Localization;
 namespace Inventory.Remoting;
 
 /// <param name="Installed">Die gefundene Version; null = kein .NET Framework 4.</param>
-/// <param name="SelfContainedRuns">Der eigenständige .NET-10-Runner liefe auf dem Rechner (64 Bit, ab Windows 8 / Server 2012).</param>
+/// <param name="SelfContainedRuns">Der eigenständige .NET-10-Runner liefe auf dem Rechner (64 Bit, ab Server 2012, Windows 10 ab 1607).</param>
 public sealed record FrameworkState(bool Sufficient, string? Installed, bool SelfContainedRuns);
 
 /// <summary>
@@ -87,8 +87,8 @@ public static class NetFramework
     }
 
     /// <summary>
-    /// .NET 10 läuft auf 64-Bit-Windows ab Windows 8 / Server 2012 (Kernel 6.2); Windows 7 und Server 2008 R2 bleiben
-    /// beim .NET Framework 4.8. 64 Bit erkennt man am Ordner SysWOW64, die Version an kernel32.dll.
+    /// .NET 10 läuft auf 64-Bit-Windows ab Server 2012 (Kernel 6.2) und Windows 10 ab 1607 (Build 14393); Windows 7 und
+    /// Server 2008 R2 bleiben beim .NET Framework 4.8. 64 Bit erkennt man am Ordner SysWOW64, die Version an kernel32.dll.
     /// </summary>
     private static bool SelfContainedRuns(string adminShare)
     {
@@ -96,10 +96,16 @@ public static class NetFramework
         if (!Directory.Exists(Path.Combine(adminShare, "SysWOW64")) || !File.Exists(kernel))
             return false;
         var info = FileVersionInfo.GetVersionInfo(kernel);
-        return SupportsSelfContained(info.FileMajorPart, info.FileMinorPart);
+        return SupportsSelfContained(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart);
     }
 
-    public static bool SupportsSelfContained(int major, int minor) => major > 6 || major == 6 && minor >= 2;
+    /// <remarks>
+    /// Windows 8 und 8.1 teilen sich den Kernel mit Server 2012 und 2012 R2 und sind über die Dateiversion nicht zu
+    /// unterscheiden; dort startet .NET 10 in der Regel, auch wenn Microsoft es nicht mehr unterstützt. Windows 10 vor 1607
+    /// (Builds 10240 und 10586) bleibt außen vor: dort fehlt .NET 10 die Unterstützung, und 4.8 lässt sich nicht installieren.
+    /// </remarks>
+    public static bool SupportsSelfContained(int major, int minor, int build) =>
+        major == 6 ? minor >= 2 : major > 6 && (major > 10 || build >= 14393);
 
     /// <summary>Wählt den Runner für den Rechner: den kleinen, wenn 4.8 da ist oder nichts bekannt ist, sonst den eigenständigen.</summary>
     /// <exception cref="RemoteException">Weder 4.8 noch die eigenständige Variante kommen in Frage.</exception>

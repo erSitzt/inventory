@@ -24,12 +24,22 @@ try {
         param($hash, $selfContainedHash, $jobId, $relativeFiles)
         if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') { throw 'CONSTRAINED_REMOTE' }
         # Der kleine Runner braucht .NET Framework 4.8 (Release 528040). Fehlt es, kommt der eigenständige .NET-10-Runner,
-        # sofern der Rechner ihn ausführen kann (64 Bit, ab Windows 8 / Server 2012); sonst startete keiner von beiden.
-        $ndp = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -ErrorAction SilentlyContinue
-        $release = if ($null -eq $ndp) { -1 } elseif ($ndp.Release) { [int]$ndp.Release } else { 0 }
+        # sofern der Rechner ihn ausführen kann (64 Bit, ab Server 2012, Windows 10 ab 1607); sonst startete keiner von beiden.
+        # Nur ein sicher fehlender Schlüssel zählt; lässt er sich nicht lesen, bleibt es beim kleinen Runner.
+        $key = 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full'
+        $release = 528040
+        try {
+            if (-not (Test-Path -Path $key)) { $release = -1 }
+            else {
+                $ndp = Get-ItemProperty -Path $key
+                $release = if ($ndp.Release) { [int]$ndp.Release } else { 0 }
+            }
+        }
+        catch { $release = 528040 }
+        $os = [Environment]::OSVersion.Version
         $selfContained = $false
         if ($release -lt 528040) {
-            if ($selfContainedHash -and [Environment]::Is64BitOperatingSystem -and [Environment]::OSVersion.Version -ge [version]'6.2') {
+            if ($selfContainedHash -and [Environment]::Is64BitOperatingSystem -and ($(if ($os.Major -eq 6) { $os.Minor -ge 2 } else { $os.Major -gt 10 -or $os.Build -ge 14393 }))) {
                 $hash = $selfContainedHash
                 $selfContained = $true
             }

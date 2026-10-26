@@ -206,12 +206,15 @@ public class TransportTests
     }
 
     [Theory]
-    [InlineData(6, 1, false)]
-    [InlineData(6, 2, true)]
-    [InlineData(6, 3, true)]
-    [InlineData(10, 0, true)]
-    public void Self_contained_runner_needs_windows_8_or_server_2012(int major, int minor, bool supported) =>
-        Assert.Equal(supported, NetFramework.SupportsSelfContained(major, minor));
+    [InlineData(6, 1, 7601, false)]
+    [InlineData(6, 2, 9200, true)]
+    [InlineData(6, 3, 9600, true)]
+    [InlineData(10, 0, 10240, false)]
+    [InlineData(10, 0, 10586, false)]
+    [InlineData(10, 0, 14393, true)]
+    [InlineData(10, 0, 26100, true)]
+    public void Self_contained_runner_needs_server_2012_or_windows_10_1607(int major, int minor, int build, bool supported) =>
+        Assert.Equal(supported, NetFramework.SupportsSelfContained(major, minor, build));
 
     [Fact]
     public void The_large_runner_is_only_chosen_without_framework_4_8()
