@@ -314,6 +314,12 @@ backup and a REST API with interactive documentation ([API](#api)).
 ## How access works
 
 On the target computer the same small **runner** (`InventoryRunner.exe`, .NET Framework 4.8) always executes a job.
+Computers without .NET Framework 4.8 (Windows Server 2012 to 2016, early Windows 10 releases) get the same runner as one
+self-contained .NET 10 file instead (about 40 MB, copied once per runner version); the server picks it by itself.
+Windows 7 and Server 2008 R2 only run the small runner: **Computers → Install .NET Framework 4.8** installs it there
+with Microsoft's offline installer – without a runner, over ADMIN$ and the Service Control Manager. The server downloads
+the installer once (signature checked) into the `netfx` folder of its data directory; without internet access, copy
+`ndp48-x86-x64-allos-enu.exe` there yourself. A restart is usually needed and is not triggered by Inventory.
 How it gets there is decided by the transport – configurable globally and per computer:
 
 | Transport | Prerequisite on the target | Job runs as |
@@ -361,7 +367,7 @@ are excluded anyway).
 |---|---|
 | SMB + service | Inbound TCP 445 from the server (firewall group *File and Printer Sharing*), the service *Server* (`LanmanServer`) running, the administrative share `ADMIN$` present (not disabled with `AutoShareWks = 0` on clients or `AutoShareServer = 0` on Windows Server). The Service Control Manager is reached over RPC: first directly (TCP 135 and dynamic ports, firewall group *Remote Service Management*), otherwise over the named pipe on port 445 – opening 445 is enough, opening the RPC group avoids a delay. |
 | WinRM | PowerShell remoting enabled (`Enable-PSRemoting` or the group policy *Allow remote server management through WinRM*), inbound TCP 5985 from the server. The server connects by name with Kerberos; for addresses or computers outside the domain the server's *TrustedHosts* would be needed, which is not set up for you. |
-| Both | .NET Framework 4.8 (the runner). The reachability check tries TCP 445 first and 5985 only if 445 does not answer, so "reachable" does not prove that WinRM is open. |
+| Both | .NET Framework 4.8 for the small runner. Before every job the server checks the version on the computer; without 4.8 it uses the self-contained .NET 10 runner (64-bit, Windows Server 2012 or Windows 10 1607 and later), otherwise it reports the missing framework instead of starting the runner. The reachability check tries TCP 445 first and 5985 only if 445 does not answer, so "reachable" does not prove that WinRM is open. |
 
 **Recommended setup**
 
@@ -441,7 +447,7 @@ deployment is cancelled in the meantime, a continuation that already ran is not 
 | | |
 |---|---|
 | Service | `InventoryAgent` ("Inventory Agent"), runs as **Local System**, start type Automatic, recovery: restart after 5 s / 60 s / 5 min |
-| Files | `%ProgramFiles%\Inventory Agent` – the runner (`InventoryRunner.exe`, .NET Framework 4.8), `agent.json` (server URL + enrollment secret), `agent.key` (the agent's own key), `agent.version` (hash of the installed runner files), `agent.log`; the folder is readable by SYSTEM and administrators only |
+| Files | `%ProgramFiles%\Inventory Agent` – the runner (`InventoryRunner.exe`, .NET Framework 4.8 or the self-contained .NET 10 file, whichever installed it), `agent.json` (server URL + enrollment secret), `agent.key` (the agent's own key), `agent.version` (hash of the installed runner files), `agent.log`; the folder is readable by SYSTEM and administrators only |
 | Enrollment | On first start the agent sends the enrollment secret and its host name to `POST /api/agent/enroll`. The server checks the secret, creates the computer if unknown (matching by short name, so an entry under its FQDN is reused), generates a random 256-bit key, stores only its SHA-256 hash and returns the key once. The agent keeps it in `agent.key` and never sends the secret again. |
 | Authentication | Every further request carries the header `X-Agent-Key: <key>`. The server looks the hash up; a key it does not know (computer deleted, "Agent" removed) returns 401, the agent deletes `agent.key` and enrolls again with the secret. |
 | Polling | `POST /api/agent/poll` is a long poll: the server holds the request for up to 50 s and answers `204` if no job came in; the agent asks again immediately. A job is therefore picked up within a second, with one open HTTP request per computer instead of a steady stream. Every poll updates "last contact"; the UI shows the agent as connected while the last contact is less than 5 minutes old. |

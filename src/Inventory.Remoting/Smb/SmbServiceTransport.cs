@@ -23,8 +23,9 @@ namespace Inventory.Remoting.Smb;
 /// im Endpunktschutz gezielt freigeben, und es entsteht nicht bei jedem Job ein neuer Dienst.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<SharedResource>? localizer = null) : IRemoteTransport
-{    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+public sealed partial class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<SharedResource>? localizer = null) : IRemoteTransport, IFrameworkInstaller
+{
+    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
@@ -46,7 +47,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         Task.Factory.StartNew(() => RunImpersonated(target, () => RunCore(target.Host, job, files, progress, ct)),
             ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-    private JobResult RunImpersonated(RemoteTarget target, Func<JobResult> action)
+    private T RunImpersonated<T>(RemoteTarget target, Func<T> action)
     {
         if (target.Credential is null)
             return action();
@@ -78,10 +79,14 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         var root = $@"\\{host}\ADMIN$\{JobFiles.RemoteRoot}";
         var jobDir = Path.Combine(root, JobFiles.JobsFolder, job.JobId);
 
+        // Vor dem Kopieren: ohne .NET Framework 4.8 startet der kleine Runner nicht. Dann kommt die eigenständige
+        // .NET-10-Variante, sofern der Rechner sie ausführen kann; sie ist groß und wird deshalb nur dann kopiert.
+        var package = NetFramework.Choose(runner, NetFramework.Inspect($@"\\{host}\ADMIN$"), L);
+
         try
         {
             EnsureRoot(root);
-            EnsureRunner(Path.Combine(root, JobFiles.RunnerFolder), runner.Hash);
+            EnsureRunner(Path.Combine(root, JobFiles.RunnerFolder), package);
             Directory.CreateDirectory(jobDir);
             foreach (var file in files)
             {
@@ -118,7 +123,7 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
                     : L["Service control on {0} unreachable: {1}", host, L[Describe(error)]]);
             }
 
-            service = OpenRunnerService(scm, host);
+            service = OpenRunnerService(scm, host, package);
             StartRunner(service, host, job.JobId, ct);
             released = false;
             return WaitForResult(host, jobDir, service, job, progress, ct, ref released);
@@ -134,10 +139,10 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
     }
 
     /// <summary>Öffnet den Runner-Dienst; legt ihn beim ersten Mal an und stellt ihn nach einem Runner-Update auf die neue Ablage um.</summary>
-    private ServiceHandle OpenRunnerService(ServiceHandle scm, string host)
+    private ServiceHandle OpenRunnerService(ServiceHandle scm, string host, RunnerPackage package)
     {
         // %SystemRoot% wird vom Zielrechner aufgelöst; der Runner findet das Job-Verzeichnis über die ID selbst.
-        var binPath = $"\"%SystemRoot%\\{JobFiles.RemoteRoot}\\{JobFiles.RunnerFolder}\\{runner.Hash}\\{JobFiles.RunnerExe}\" {RunnerModes.Service}";
+        var binPath = $"\"%SystemRoot%\\{JobFiles.RemoteRoot}\\{JobFiles.RunnerFolder}\\{package.Hash}\\{JobFiles.RunnerExe}\" {RunnerModes.Service}";
         var service = OpenServiceW(scm, JobFiles.RunnerServiceName, SERVICE_ALL_ACCESS);
         if (service.IsInvalid)
         {
@@ -316,17 +321,18 @@ public sealed class SmbServiceTransport(RunnerPackage runner, IStringLocalizer<S
         new DirectoryInfo(root).Create(security);
     }
 
-    private void EnsureRunner(string runnersDir, string hash)
+    private static void EnsureRunner(string runnersDir, RunnerPackage package)
     {
+        var hash = package.Hash;
         var runnerDir = Path.Combine(runnersDir, hash);
         // Die Markerdatei entsteht zuletzt: ein abgebrochener Kopiervorgang wird beim nächsten Mal wiederholt.
         var marker = Path.Combine(runnerDir, ".complete");
         if (File.Exists(marker))
             return;
         Directory.CreateDirectory(runnerDir);
-        foreach (var file in runner.Files)
+        foreach (var file in package.Files)
             File.Copy(file, Path.Combine(runnerDir, Path.GetFileName(file)), overwrite: true);
-        File.WriteAllText(marker, runner.Hash);
+        File.WriteAllText(marker, hash);
         RemoveOldRunners(runnersDir, hash);
     }
 

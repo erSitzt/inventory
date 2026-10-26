@@ -48,7 +48,7 @@ jobs:
       - name: Programmdateien signieren
         if: env.SIGNING_CERT_PFX != ''
         shell: pwsh
-        run: ./installer/sign.ps1 -Files publish/Inventory.Server.exe, publish/runner/InventoryRunner.exe, publish/launcher/InventoryLauncher.exe, publish/runner/Inventory.Contracts.dll
+        run: ./installer/sign.ps1 -Files publish/Inventory.Server.exe, publish/runner/InventoryRunner.exe, publish/runner-net10/InventoryRunner.exe, publish/launcher/InventoryLauncher.exe, publish/runner/Inventory.Contracts.dll
 
       - name: Setup bauen
         shell: pwsh

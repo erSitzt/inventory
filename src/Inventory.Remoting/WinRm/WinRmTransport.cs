@@ -43,6 +43,8 @@ public sealed class WinRmTransport(RunnerPackage runner, IStringLocalizer<Shared
             jobId = job.JobId,
             runnerHash = runner.Hash,
             runnerFiles = runner.Files,
+            selfContainedHash = runner.SelfContained?.Hash,
+            selfContainedFiles = runner.SelfContained?.Files ?? [],
             files = files.Select(f => new { local = f.LocalPath, relative = f.RelativePath }),
             manifest = JobJson.Serialize(job),
         });
@@ -96,7 +98,8 @@ public sealed class WinRmTransport(RunnerPackage runner, IStringLocalizer<Shared
         if (result is not null)
             return result;
         var details = Explain(error, L) ?? ErrorText(await stderr);
-        throw new RemoteException(L["WinRM access to {0} failed: {1}", target.Host, details.Length > 0 ? details : L["PowerShell exited with code {0}", process.ExitCode].Value]);
+        throw new RemoteException(L["WinRM access to {0} failed: {1}", target.Host, details.Length > 0 ? details : L["PowerShell exited with code {0}", process.ExitCode].Value],
+            noFallback: error?.Contains(NetFramework.MissingMarker, StringComparison.Ordinal) == true);
     }
 
     internal static string? Explain(string? error, IStringLocalizer<SharedResource>? localizer = null)
@@ -105,6 +108,7 @@ public sealed class WinRmTransport(RunnerPackage runner, IStringLocalizer<Shared
         return error switch
         {
             null => null,
+            _ when NetFramework.ExplainMarker(error, L) is { } framework => framework,
             _ when error.Contains("CONSTRAINED_LOCAL") =>
                 L["PowerShell on the server runs in constrained language mode (AppLocker/WDAC policy). The WinRM transport needs full language mode for the server service's account."],
             _ when error.Contains("CONSTRAINED_REMOTE") =>

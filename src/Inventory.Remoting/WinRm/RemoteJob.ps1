@@ -1,5 +1,6 @@
 # Führt einen Job per PowerShell-Remoting aus. Wird vom Server mit Windows PowerShell 5.1 gestartet.
-# Eingabe (stdin): Base64 eines UTF-8-JSON mit host, user, password, jobId, runnerHash, runnerFiles[], files[{local,relative}], manifest.
+# Eingabe (stdin): Base64 eines UTF-8-JSON mit host, user, password, jobId, runnerHash, runnerFiles[], selfContainedHash,
+# selfContainedFiles[] (leer, wenn der Server keine eigenständige Variante hat), files[{local,relative}], manifest.
 # Ausgabe (stdout), eine Meldung je Zeile:  P:<Fortschritt als JSON>   R:<result.json als Base64>   E:<Fehlertext>
 # Das Skript braucht .NET-Typen. Erzwingt eine Richtlinie (AppLocker/WDAC) den eingeschränkten Sprachmodus,
 # lieber gleich mit einem eindeutigen Code abbrechen; der Server übersetzt ihn in eine verständliche Meldung.
@@ -19,9 +20,31 @@ try {
     $session = New-PSSession @connect
 
     # Gleiche Ablage wie beim SMB-Transport: %SystemRoot%\Inventory, nur für SYSTEM und Administratoren zugänglich.
-    $remote = Invoke-Command -Session $session -ArgumentList $cfg.runnerHash, $cfg.jobId, @($cfg.files | ForEach-Object { $_.relative }) -ScriptBlock {
-        param($hash, $jobId, $relativeFiles)
+    $remote = Invoke-Command -Session $session -ArgumentList $cfg.runnerHash, $cfg.selfContainedHash, $cfg.jobId, @($cfg.files | ForEach-Object { $_.relative }) -ScriptBlock {
+        param($hash, $selfContainedHash, $jobId, $relativeFiles)
         if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') { throw 'CONSTRAINED_REMOTE' }
+        # Der kleine Runner braucht .NET Framework 4.8 (Release 528040). Fehlt es, kommt der eigenständige .NET-10-Runner,
+        # sofern der Rechner ihn ausführen kann (64 Bit, ab Server 2012, Windows 10 ab 1607); sonst startete keiner von beiden.
+        # Nur ein sicher fehlender Schlüssel zählt; lässt er sich nicht lesen, bleibt es beim kleinen Runner.
+        $key = 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full'
+        $release = 528040
+        try {
+            if (-not (Test-Path -Path $key)) { $release = -1 }
+            else {
+                $ndp = Get-ItemProperty -Path $key
+                $release = if ($ndp.Release) { [int]$ndp.Release } else { 0 }
+            }
+        }
+        catch { $release = 528040 }
+        $os = [Environment]::OSVersion.Version
+        $selfContained = $false
+        if ($release -lt 528040) {
+            if ($selfContainedHash -and [Environment]::Is64BitOperatingSystem -and ($(if ($os.Major -eq 6) { $os.Minor -ge 2 } else { $os.Major -gt 10 -or $os.Build -ge 14393 }))) {
+                $hash = $selfContainedHash
+                $selfContained = $true
+            }
+            else { throw "NETFX_MISSING:$release" }
+        }
         $root = Join-Path $env:SystemRoot 'Inventory'
         if (-not (Test-Path $root)) {
             New-Item -ItemType Directory -Path $root | Out-Null
@@ -33,15 +56,15 @@ try {
         foreach ($relative in $relativeFiles) {
             New-Item -ItemType Directory -Force -Path (Split-Path (Join-Path $job "files\$relative") -Parent) | Out-Null
         }
-        [pscustomobject]@{ Runner = $runner; Job = $job; HasRunner = (Test-Path (Join-Path $runner '.complete')) }
+        [pscustomobject]@{ Runner = $runner; Hash = $hash; SelfContained = $selfContained; Job = $job; HasRunner = (Test-Path (Join-Path $runner '.complete')) }
     }
     $jobDir = $remote.Job
 
     if (-not $remote.HasRunner) {
-        foreach ($file in $cfg.runnerFiles) {
+        foreach ($file in $(if ($remote.SelfContained) { $cfg.selfContainedFiles } else { $cfg.runnerFiles })) {
             Copy-Item -ToSession $session -Path $file -Destination (Join-Path $remote.Runner (Split-Path $file -Leaf)) -Force
         }
-        Invoke-Command -Session $session -ArgumentList $remote.Runner, $cfg.runnerHash -ScriptBlock {
+        Invoke-Command -Session $session -ArgumentList $remote.Runner, $remote.Hash -ScriptBlock {
             param($runner, $hash) Set-Content -Path (Join-Path $runner '.complete') -Value $hash
         }
     }

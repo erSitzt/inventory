@@ -16,7 +16,6 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
-    private const string InstallFolder = "agent";
     /// <summary>So oft wird "zuletzt gesehen" höchstens gespeichert; der Agent fragt alle paar Sekunden an.</summary>
     private static readonly TimeSpan SeenInterval = TimeSpan.FromMinutes(1);
 
@@ -175,9 +174,11 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
     /// <summary>
     /// Job, der den Agenten über einen agentenlosen Transport installiert oder aktualisiert:
     /// Runner-Dateien nach %ProgramFiles%\Inventory Agent, Konfiguration schreiben, Dienst anlegen und starten.
+    /// Der Agent wird der Runner, der den Job ausführt (<see cref="RunnerRuntimes.DirectoryVariable"/>): auf einem Rechner
+    /// ohne .NET Framework 4.8 hat der Transport bereits die eigenständige .NET-10-Variante gewählt.
     /// </summary>
     /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
-    public async Task<BuiltJob> BuildInstallJobAsync(IReadOnlyList<string> runnerFiles, string runnerHash, CancellationToken ct = default)
+    public async Task<BuiltJob> BuildInstallJobAsync(CancellationToken ct = default)
     {
         var serverUrl = await GetServerUrlAsync(ct);
         if (string.IsNullOrWhiteSpace(serverUrl))
@@ -195,8 +196,11 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
                 # Im Ordner liegen Anmeldegeheimnis und Schlüssel, und der Dienst läuft als SYSTEM: nur SYSTEM und Administratoren.
                 & icacls.exe $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
             }
-            Copy-Item -Path (Join-Path (Get-Location) '{{InstallFolder}}\*') -Destination $dir -Force
-            Set-Content -Path (Join-Path $dir '{{AgentProtocol.VersionFile}}') -Value '{{runnerHash}}' -Encoding ASCII
+            # Der Runner liegt unter …\Runner\<Hash>; der Ordnername ist der Hash, den der Agent dem Server meldet.
+            $source = $env:{{RunnerRuntimes.DirectoryVariable}}
+            if (-not $source -or -not (Test-Path (Join-Path $source '{{JobFiles.RunnerExe}}'))) { throw 'Runner folder not found' }
+            Get-ChildItem -Path $source -File | Where-Object { $_.Name -ne '.complete' } | Copy-Item -Destination $dir -Force
+            Set-Content -Path (Join-Path $dir '{{AgentProtocol.VersionFile}}') -Value (Split-Path -Leaf $source) -Encoding ASCII
             Set-Content -Path (Join-Path $dir '{{AgentProtocol.ConfigFile}}') -Value '{{config.Replace("'", "''")}}' -Encoding UTF8
             if (-not $service) {
                 New-Service -Name $name -BinaryPathName ('"' + (Join-Path $dir '{{JobFiles.RunnerExe}}') + '" {{RunnerModes.Agent}}') -DisplayName 'Inventory Agent' -StartupType Automatic | Out-Null
@@ -212,19 +216,25 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         {
             Steps = [new JobStep { Name = "Agent installieren", Type = StepType.PowerShell, Script = script, TimeoutSeconds = 300 }],
         };
-        var files = runnerFiles.Select(f => new JobFile(f, $@"{InstallFolder}\{Path.GetFileName(f)}")).ToList();
-        return new BuiltJob(manifest, files) { InstallsAgent = true };
+        return new BuiltJob(manifest, []) { InstallsAgent = true };
     }
 
     public const string SetupFileName = "InventoryAgentSetup.zip";
     public const string SetupScript = "Install-Agent.cmd";
+    /// <summary>Unterordner des Setup-Pakets mit dem eigenständigen .NET-10-Runner.</summary>
+    public const string SelfContainedFolder = "net10";
 
     /// <summary>
     /// Agent-Setup zum Verteilen ohne agentenlosen Zugriff (Startskript einer Gruppenrichtlinie, vorhandene Softwareverteilung):
     /// Runner-Dateien, Konfiguration mit Server-Adresse und Anmeldegeheimnis, ein Startskript. Der Runner richtet sich daraus selbst ein.
     /// </summary>
+    /// <param name="selfContainedFiles">
+    /// Der eigenständige .NET-10-Runner mit seinem Hash; landet im Unterordner net10 und wird nur auf Rechnern ohne
+    /// .NET Framework 4.8 gestartet. null, wenn der Server ihn nicht mitbringt.
+    /// </param>
     /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
-    public async Task<byte[]> BuildSetupAsync(IReadOnlyList<string> runnerFiles, string runnerHash, CancellationToken ct = default)
+    public async Task<byte[]> BuildSetupAsync(IReadOnlyList<string> runnerFiles, string runnerHash, CancellationToken ct = default,
+        IReadOnlyList<string>? selfContainedFiles = null, string? selfContainedHash = null)
     {
         var serverUrl = await GetServerUrlAsync(ct);
         if (string.IsNullOrWhiteSpace(serverUrl))
@@ -234,18 +244,34 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         using var buffer = new MemoryStream();
         using (var zip = new System.IO.Compression.ZipArchive(buffer, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
         {
-            foreach (var file in runnerFiles)
-                zip.CreateEntryFromFile(file, Path.GetFileName(file));
             void Add(string name, string content, Encoding encoding)
             {
                 using var writer = new StreamWriter(zip.CreateEntry(name).Open(), encoding);
                 writer.Write(content);
             }
             var utf8 = new UTF8Encoding(false);
-            Add(AgentProtocol.ConfigFile, config, utf8);
-            Add(AgentProtocol.VersionFile, runnerHash, Encoding.ASCII);
-            // Läuft als Startskript unter Local System; bei vorhandenem Agenten kehrt der Runner sofort zurück.
-            Add(SetupScript, $"@echo off\r\n\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n", Encoding.ASCII);
+            // Der Runner richtet sich aus seinem eigenen Ordner ein: jede Variante bekommt Konfiguration und Version daneben.
+            void AddRunner(string folder, IReadOnlyList<string> files, string hash)
+            {
+                foreach (var file in files)
+                    zip.CreateEntryFromFile(file, folder + Path.GetFileName(file));
+                Add(folder + AgentProtocol.ConfigFile, config, utf8);
+                Add(folder + AgentProtocol.VersionFile, hash, Encoding.ASCII);
+            }
+            AddRunner("", runnerFiles, runnerHash);
+            var withSelfContained = selfContainedFiles is { Count: > 0 } && selfContainedHash is not null;
+            if (withSelfContained)
+                AddRunner(SelfContainedFolder + "/", selfContainedFiles!, selfContainedHash!);
+            // Läuft als Startskript unter Local System; bei vorhandenem Agenten kehrt der Runner sofort zurück. Ohne .NET
+            // Framework 4.8 (Release 528040) auf 64-Bit-Windows startet der eigenständige Runner.
+            var script = withSelfContained
+                ? "@echo off\r\nsetlocal\r\nset release=0\r\n"
+                  + "for /f \"tokens=3\" %%v in ('reg query \"HKLM\\SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\" /v Release 2^>nul') do set /a release=%%v\r\n"
+                  + $"set runner=%~dp0{JobFiles.RunnerExe}\r\n"
+                  + $"if %release% lss 528040 if defined ProgramFiles(x86) set runner=%~dp0{SelfContainedFolder}\\{JobFiles.RunnerExe}\r\n"
+                  + $"\"%runner%\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n"
+                : $"@echo off\r\n\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n";
+            Add(SetupScript, script, Encoding.ASCII);
             Add("README.txt", string.Join("\r\n",
                 "Inventory agent setup",
                 "",
@@ -255,6 +281,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
                 "",
                 "The setup copies the agent to %ProgramFiles%\\Inventory Agent and registers the service InventoryAgent.",
                 "On a computer that already has the agent it does nothing: the agent updates itself from the server.",
+                $"Without .NET Framework 4.8 the setup uses the self-contained runner in the folder {SelfContainedFolder} (64-bit Windows only).",
                 "",
                 $"{AgentProtocol.ConfigFile} contains the enrollment secret of the server. Whoever can read it can enroll a computer.",
                 "Keep this folder readable only for the computer accounts and administrators that need it.",

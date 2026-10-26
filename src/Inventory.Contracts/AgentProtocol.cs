@@ -15,6 +15,23 @@ namespace Inventory.Contracts
         public const string UpdatePath = "api/agent/update/files";
         /// <summary>Enthält den Hash der installierten Runner-Dateien; daran erkennt der Server veraltete Agenten.</summary>
         public const string VersionFile = "agent.version";
+        /// <summary>Anfrageparameter von <see cref="UpdatePath"/>: die Laufzeit, für die der Agent Dateien holt (<see cref="RunnerRuntimes"/>).</summary>
+        public const string RuntimeQuery = "runtime";
+    }
+
+    /// <summary>
+    /// Der Runner gibt es zweimal: für .NET Framework 4.8 (klein, auf aktuellen Windows-Versionen vorhanden) und eigenständig
+    /// mit .NET 10 (groß, für Rechner ohne .NET Framework 4.8).
+    /// </summary>
+    public static class RunnerRuntimes
+    {
+        public const string Framework = "net48";
+        public const string SelfContained = "net10";
+        /// <summary>
+        /// Umgebungsvariable, die der Runner für seine Schritte setzt: sein eigener Ordner. Die Agent-Installation übernimmt
+        /// daraus genau den Runner, der den Job ausführt.
+        /// </summary>
+        public const string DirectoryVariable = "INVENTORY_RUNNER_DIR";
     }
 
     /// <summary>Liegt als <see cref="AgentProtocol.ConfigFile"/> neben dem Agenten.</summary>
@@ -44,6 +61,8 @@ namespace Inventory.Contracts
         public string? Version { get; set; }
         /// <summary>Inhalt von <see cref="AgentProtocol.VersionFile"/>; leer bei Agenten ohne diese Datei.</summary>
         public string? RunnerHash { get; set; }
+        /// <summary><see cref="RunnerRuntimes"/>; leer bei älteren Agenten, die alle mit .NET Framework 4.8 laufen.</summary>
+        public string? Runtime { get; set; }
     }
 
     /// <summary>Der Server hat neuere Runner-Dateien: herunterladen, austauschen, neu starten.</summary>

@@ -82,7 +82,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             {
                 // Zustellfehler heißt: auf dem Ziel ist noch nichts gelaufen, ein zweiter Versuch auf anderem Weg ist gefahrlos.
                 var fallback = Fallback(kind);
-                if (fallback is null || !await settings.GetTransportFallbackAsync(ct))
+                if (fallback is null || ex.NoFallback || !await settings.GetTransportFallbackAsync(ct))
                     return JobResult.Failed(job.JobId, ex.Message);
                 try
                 {

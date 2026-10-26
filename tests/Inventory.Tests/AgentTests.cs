@@ -37,6 +37,25 @@ public class AgentTests
             Assert.Equal(("https://inventory.example.local:5100", await agents.GetEnrollmentTokenAsync()), (config.ServerUrl, config.EnrollmentToken));
             Assert.Equal("abc123", Read(AgentProtocol.VersionFile));
             Assert.Contains($"\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*", Read(AgentService.SetupScript));
+
+            // Mit eigenständigem Runner: eigener Ordner mit Konfiguration und Version, Auswahl nach der .NET-Version.
+            var large = Path.Combine(dir, "large");
+            Directory.CreateDirectory(large);
+            File.WriteAllText(Path.Combine(large, JobFiles.RunnerExe), "net10");
+            using var both = new System.IO.Compression.ZipArchive(new MemoryStream(
+                await agents.BuildSetupAsync([runner], "abc123", default, [Path.Combine(large, JobFiles.RunnerExe)], "def456")));
+            string ReadBoth(string name)
+            {
+                using var reader = new StreamReader(both.GetEntry(name)!.Open());
+                return reader.ReadToEnd();
+            }
+            Assert.Equal("def456", ReadBoth($"{AgentService.SelfContainedFolder}/{AgentProtocol.VersionFile}"));
+            Assert.Equal(Read(AgentProtocol.ConfigFile), ReadBoth($"{AgentService.SelfContainedFolder}/{AgentProtocol.ConfigFile}"));
+            Assert.Equal("net10", ReadBoth($"{AgentService.SelfContainedFolder}/{JobFiles.RunnerExe}"));
+            var script = ReadBoth(AgentService.SetupScript);
+            Assert.Contains("/v Release", script);
+            Assert.Contains($@"if %release% lss 528040 if defined ProgramFiles(x86) set runner=%~dp0{AgentService.SelfContainedFolder}\{JobFiles.RunnerExe}", script);
+            Assert.Contains($"\"%runner%\" {RunnerModes.InstallAgent} %*", script);
         }
         finally
         {
@@ -153,22 +172,24 @@ public class AgentTests
     }
 
     [Fact]
-    public async Task Install_job_needs_a_server_url_and_carries_runner_files_and_config()
+    public async Task Install_job_needs_a_server_url_and_installs_the_running_runner_with_config()
     {
         using var db = new TestDb();
         var agents = new AgentService(db, new SettingsService(db), TimeProvider.System);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildInstallJobAsync(["/srv/runner/InventoryRunner.exe"], "abc123"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildInstallJobAsync());
 
         await agents.SetServerUrlAsync("https://inventory.corp.local:5100/");
-        var job = await agents.BuildInstallJobAsync(["/srv/runner/InventoryRunner.exe", "/srv/runner/System.Text.Json.dll"], "abc123");
+        var job = await agents.BuildInstallJobAsync();
 
-        Assert.Equal([@"agent\InventoryRunner.exe", @"agent\System.Text.Json.dll"], job.Files.Select(f => f.RelativePath));
+        // Kein eigenes Paket: der Agent wird der Runner, den der Transport für diesen Rechner gewählt hat.
+        Assert.Empty(job.Files);
         var script = Assert.Single(job.Manifest.Steps).Script;
         Assert.Contains("\"serverUrl\":\"https://inventory.corp.local:5100\"", script);
         Assert.Contains(await agents.GetEnrollmentTokenAsync(), script);
         Assert.Contains("--agent", script);
-        Assert.Contains("agent.version') -Value 'abc123'", script);
+        Assert.Contains("$source = $env:INVENTORY_RUNNER_DIR", script);
+        Assert.Contains("agent.version') -Value (Split-Path -Leaf $source)", script);
         Assert.Equal("0.1.0.0 (abc123)", AgentService.DescribeVersion("0.1.0.0", "abc123"));
         Assert.Equal("0.1.0.0", AgentService.DescribeVersion("0.1.0.0", ""));
         Assert.DoesNotContain("\n            $", script);

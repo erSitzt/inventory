@@ -86,12 +86,17 @@ public sealed partial class DefenderClient(HttpClient http)
     }
 
     /// <summary>Legt den Indikator für diesen Runner an (oder aktualisiert ihn) und entfernt auf Wunsch die der früheren Runner.</summary>
-    public async Task<AllowResult> AllowRunnerAsync(string token, string sha256, string description, bool removeOutdated, CancellationToken ct = default)
+    public Task<AllowResult> AllowRunnerAsync(string token, string sha256, string description, bool removeOutdated, CancellationToken ct = default) =>
+        AllowRunnerAsync(token, [sha256], description, removeOutdated, ct);
+
+    /// <param name="sha256s">Alle Runner-Dateien des Servers: der kleine Runner und die eigenständige .NET-10-Variante.</param>
+    public async Task<AllowResult> AllowRunnerAsync(string token, IReadOnlyCollection<string> sha256s, string description, bool removeOutdated, CancellationToken ct = default)
     {
         try
         {
-            using (var request = Authorized(HttpMethod.Post, Api, token))
+            foreach (var sha256 in sha256s)
             {
+                using var request = Authorized(HttpMethod.Post, Api, token);
                 request.Content = JsonContent.Create(new
                 {
                     indicatorValue = sha256,
@@ -121,7 +126,7 @@ public sealed partial class DefenderClient(HttpClient http)
                     {
                         // Der Filter ist nur eine Vorauswahl: gelöscht wird ausschließlich, was eindeutig von hier stammt.
                         if (Text(item, "title") == IndicatorTitle && Text(item, "indicatorType") == "FileSha256" && Text(item, "action") == "Allowed"
-                            && !string.Equals(Text(item, "indicatorValue"), sha256, StringComparison.OrdinalIgnoreCase))
+                            && !sha256s.Contains(Text(item, "indicatorValue") ?? "", StringComparer.OrdinalIgnoreCase))
                             outdated.Add(item.GetProperty("id").ToString());
                     }
                     // Das Token geht nur an die Schnittstelle selbst, nie an eine Adresse aus der Antwort mit anderem Ziel.

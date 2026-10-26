@@ -16,9 +16,11 @@ public sealed record JobFile(string LocalPath, string RelativePath);
 /// Der Job lief womöglich weiter (Agent während des Jobs nicht mehr erreichbar): ein nachgeliefertes Ergebnis darf den
 /// Fehlschlag noch ersetzen.
 /// </param>
-public sealed class RemoteException(string message, Exception? inner = null, bool resultMayFollow = false) : Exception(message, inner)
+/// <param name="noFallback">Der Rechner selbst ist ungeeignet (etwa ein zu altes .NET Framework): ein anderer Transport scheitert genauso.</param>
+public sealed class RemoteException(string message, Exception? inner = null, bool resultMayFollow = false, bool noFallback = false) : Exception(message, inner)
 {
     public bool ResultMayFollow { get; } = resultMayFollow;
+    public bool NoFallback { get; } = noFallback;
 }
 
 /// <summary>Bringt einen Job auf den Zielrechner, lässt ihn dort vom Runner ausführen und holt das Ergebnis.</summary>

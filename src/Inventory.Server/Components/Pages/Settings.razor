@@ -41,6 +41,11 @@
         </MudSelect>
         <MudTextField T="string" Value="@Runner.ExeSha256" ReadOnly="true" Label="@L["SHA-256 of InventoryRunner.exe"]" Variant="Variant.Outlined" Margin="Margin.Dense"
                       HelperText="@L["The value for an allow rule by file hash in your endpoint protection. It changes with every server update."]" />
+        @if (Runner.SelfContained is { } selfContained)
+        {
+            <MudTextField T="string" Value="@selfContained.ExeSha256" ReadOnly="true" Label="@L["SHA-256 of InventoryRunner.exe (self-contained .NET 10)"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          HelperText="@L["Only copied to computers without .NET Framework 4.8 (Windows Server 2012 to 2016, early Windows 10 releases)."]" />
+        }
         <MudSwitch T="bool" Value="_fallback" ValueChanged="SetFallbackAsync" Color="Color.Primary"
                    Label="@L["Try the other transport on delivery errors"]" />
         <MudSwitch T="bool" Value="_verifyName" ValueChanged="SetVerifyNameAsync" Color="Color.Primary"
@@ -205,7 +210,7 @@
         <MudSwitch T="bool" @bind-Value="_defenderRemoveOld" Color="Color.Primary" Label="@L["Remove the indicators of earlier runners"]" />
         @if (_defenderAllowed is not null)
         {
-            @if (string.Equals(_defenderAllowed, Runner.ExeSha256, StringComparison.OrdinalIgnoreCase))
+            @if (string.Equals(_defenderAllowed, string.Join(",", Runner.AllExeSha256), StringComparison.OrdinalIgnoreCase))
             {
                 <MudAlert Severity="Severity.Success" Dense="true">@L["The current runner has been allowed in Defender."]</MudAlert>
             }
@@ -511,11 +516,12 @@
             var token = await Defender.WaitForTokenAsync(tenant, client, _defenderCode, ct);
             _defenderCode = null;
             StateHasChanged();
-            var result = await Defender.AllowRunnerAsync(token, Runner.ExeSha256,
+            var result = await Defender.AllowRunnerAsync(token, Runner.AllExeSha256,
                 $"InventoryRunner.exe of the Inventory server, version {Updates.CurrentVersion} (scans and software deployment)", _defenderRemoveOld, ct);
-            await SettingsService.SetAsync(SettingKeys.DefenderAllowedHash, Runner.ExeSha256, ct);
-            _defenderAllowed = Runner.ExeSha256;
-            await Audit.LogAsync(L["Runner allowed in Microsoft Defender"], L["SHA-256 {0}, {1} earlier indicators removed", Runner.ExeSha256, result.Removed]);
+            var hashes = string.Join(",", Runner.AllExeSha256);
+            await SettingsService.SetAsync(SettingKeys.DefenderAllowedHash, hashes, ct);
+            _defenderAllowed = hashes;
+            await Audit.LogAsync(L["Runner allowed in Microsoft Defender"], L["SHA-256 {0}, {1} earlier indicators removed", string.Join(", ", Runner.AllExeSha256), result.Removed]);
             Snackbar.Add(L["The runner is allowed in Defender; {0} earlier indicators removed.", result.Removed], Severity.Success);
         }
         catch (Inventory.Core.Abstractions.RemoteException ex)
