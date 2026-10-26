@@ -82,7 +82,12 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
                 Remove-Item -Path $folder, $zip -Recurse -Force -ErrorAction SilentlyContinue
                 Invoke-WebRequest -Uri '{{serverUrl.Replace("'", "''")}}/{{PublicSetupPath}}' -OutFile $zip -UseBasicParsing
                 Expand-Archive -Path $zip -DestinationPath $folder -Force
-                & (Join-Path $folder '{{JobFiles.RunnerExe}}') {{RunnerModes.InstallAgent}}
+                # Ohne .NET Framework 4.8 (Release 528040) auf 64-Bit-Windows startet der eigenständige Runner, sofern dabei.
+                $runner = Join-Path $folder '{{JobFiles.RunnerExe}}'
+                $large = Join-Path $folder '{{SelfContainedFolder}}\{{JobFiles.RunnerExe}}'
+                $ndp = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release -ErrorAction SilentlyContinue
+                if ((Test-Path $large) -and ${env:ProgramFiles(x86)} -and -not ($ndp -and $ndp.Release -ge 528040)) { $runner = $large }
+                & $runner {{RunnerModes.InstallAgent}}
                 $code = $LASTEXITCODE
             }
             finally {
@@ -267,8 +272,9 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             var script = withSelfContained
                 ? "@echo off\r\nsetlocal\r\nset release=0\r\n"
                   + "for /f \"tokens=3\" %%v in ('reg query \"HKLM\\SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\" /v Release 2^>nul') do set /a release=%%v\r\n"
-                  + $"set runner=%~dp0{JobFiles.RunnerExe}\r\n"
-                  + $"if %release% lss 528040 if defined ProgramFiles(x86) set runner=%~dp0{SelfContainedFolder}\\{JobFiles.RunnerExe}\r\n"
+                  // Zuweisung in Anführungszeichen: ein & im Pfad des Setup-Ordners trennte sonst Befehle.
+                  + $"set \"runner=%~dp0{JobFiles.RunnerExe}\"\r\n"
+                  + $"if %release% lss 528040 if defined ProgramFiles(x86) set \"runner=%~dp0{SelfContainedFolder}\\{JobFiles.RunnerExe}\"\r\n"
                   + $"\"%runner%\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n"
                 : $"@echo off\r\n\"%~dp0{JobFiles.RunnerExe}\" {RunnerModes.InstallAgent} %*\r\nexit /b %errorlevel%\r\n";
             Add(SetupScript, script, Encoding.ASCII);

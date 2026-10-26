@@ -54,7 +54,8 @@ public class AgentTests
             Assert.Equal("net10", ReadBoth($"{AgentService.SelfContainedFolder}/{JobFiles.RunnerExe}"));
             var script = ReadBoth(AgentService.SetupScript);
             Assert.Contains("/v Release", script);
-            Assert.Contains($@"if %release% lss 528040 if defined ProgramFiles(x86) set runner=%~dp0{AgentService.SelfContainedFolder}\{JobFiles.RunnerExe}", script);
+            Assert.Contains($@"if %release% lss 528040 if defined ProgramFiles(x86) set ""runner=%~dp0{AgentService.SelfContainedFolder}\{JobFiles.RunnerExe}""", script);
+            Assert.Contains($@"set ""runner=%~dp0{JobFiles.RunnerExe}""", script);
             Assert.Contains($"\"%runner%\" {RunnerModes.InstallAgent} %*", script);
         }
         finally
@@ -92,7 +93,8 @@ public class AgentTests
         await agents.SetServerUrlAsync("https://inventory.example.local:5100/");
         var script = await agents.BuildInstallScriptAsync();
         Assert.Contains("Invoke-WebRequest -Uri 'https://inventory.example.local:5100/agent/setup.zip'", script);
-        Assert.Contains($"'{JobFiles.RunnerExe}') {RunnerModes.InstallAgent}", script);
+        Assert.Contains($"& $runner {RunnerModes.InstallAgent}", script);
+        Assert.Contains($@"'{AgentService.SelfContainedFolder}\{JobFiles.RunnerExe}'", script);
         Assert.DoesNotContain("::", script);
         Assert.DoesNotContain("New-Object", script);
         // Aufgeräumt wird auch nach einem Fehler.
