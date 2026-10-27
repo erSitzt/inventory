@@ -1724,6 +1724,9 @@
   <data name="Filled in – check the values and save." xml:space="preserve">
     <value>Übernommen – Werte prüfen und speichern.</value>
   </data>
+  <data name="Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
   <data name="Filter by user, action, period and text; the CSV export takes the filter along." xml:space="preserve">
     <value>Nach Benutzer, Aktion, Zeitraum und Text filtern; der CSV-Export übernimmt den Filter.</value>
   </data>
