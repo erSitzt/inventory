@@ -21,21 +21,31 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
     <MudText Typo="Typo.h5">@L["Computers"]</MudText>
     <MudSpacer />
-    <MudSelect T="string" Value="_view" ValueChanged="SetView" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 260px" aria-label="@L["View"]">
+    @if (_collections.Count > 0)
+    {
+        <MudSelect T="int?" Value="_activeCollection?.Id" ValueChanged="SetCollection" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 240px"
+                   Label="@L["Collection"]" Clearable="true" aria-label="@L["Collection"]">
+            @foreach (var summary in _collections)
+            {
+                <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    @* Mehrere Filter gelten zusammen (und); die Zahl je Eintrag sagt, wie viele Rechner mit ihm übrig blieben. *@
+    <MudSelect T="string" MultiSelection="true" SelectedValues="_filters" SelectedValuesChanged="SetFilters" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Style="max-width: 300px" Label="@L["Filter"]" Placeholder="@L["All computers"]" Clearable="true" aria-label="@L["Filter"]"
+               MultiSelectionTextFunc="@(_ => string.Join(", ", BuiltInViews.Where(v => _filters.Contains(v.Key)).Select(v => L[v.Label].Value)))">
         @foreach (var (key, label) in BuiltInViews)
         {
-            <MudSelectItem T="string" Value="@key">@L[label] (@_all.Count(c => InView(key, c)))</MudSelectItem>
-        }
-        @foreach (var summary in _collections)
-        {
-            <MudSelectItem T="string" Value="@($"c:{summary.Collection.Id}")">@L["Collection"]: @summary.Collection.Name (@summary.Count)</MudSelectItem>
+            <MudSelectItem T="string" Value="@key">@L[label] (@_scope.Count(c => InFilters(c) && InView(key, c) && InTypes(c)))</MudSelectItem>
         }
     </MudSelect>
-    <MudSelect T="ChassisKind?" Value="_type" ValueChanged="SetType" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 200px"
-               Label="@L["Device type"]" Clearable="true" aria-label="@L["Device type"]">
-        @foreach (var kind in Enum.GetValues<ChassisKind>().Where(k => _computers.Any(c => RoleOf(c) == k)))
+    <MudSelect T="ChassisKind" MultiSelection="true" SelectedValues="_types" SelectedValuesChanged="SetTypes" Variant="Variant.Outlined" Margin="Margin.Dense"
+               Style="max-width: 220px" Label="@L["Device type"]" Clearable="true" aria-label="@L["Device type"]"
+               MultiSelectionTextFunc="@(_ => string.Join(", ", _types.Order().Select(k => L[Chassis.Label(k)].Value)))">
+        @foreach (var kind in Enum.GetValues<ChassisKind>().Where(k => _types.Contains(k) || _computers.Any(c => RoleOf(c) == k)))
         {
-            <MudSelectItem T="ChassisKind?" Value="@kind">@L[Chassis.Label(kind)] (@_computers.Count(c => RoleOf(c) == kind))</MudSelectItem>
+            <MudSelectItem T="ChassisKind" Value="@kind">@L[Chassis.Label(kind)] (@_computers.Count(c => RoleOf(c) == kind))</MudSelectItem>
         }
     </MudSelect>
     <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" Immediate="true"
@@ -231,7 +241,7 @@
     </Columns>
     <NoRecordsContent>
         <MudText Class="pa-4">
-            @(_computers.Count > 0 ? L["No entries match the filter."]
+            @(_computers.Count > 0 || _filters.Count > 0 && _scope.Count > 0 ? L["No entries match the filter."]
                 : _activeCollection is not null ? L["This collection contains no computers."]
                 : _all.Count > 0 ? L["No entries match the filter."]
                 : L["No computers yet. Use \"Add\" to enter names one by one or as a list."])
@@ -244,31 +254,45 @@
 
 @code {
     [SupplyParameterFromQuery(Name = "collection")] public int? CollectionId { get; set; }
+    /// <summary>Filter, durch Komma getrennt (online,updates …); ein Rechner muss alle erfüllen.</summary>
     [SupplyParameterFromQuery(Name = "filter")] public string? Filter { get; set; }
-    /// <summary>Geräteklasse (server, desktop, laptop …); kombiniert mit Ansicht oder Sammlung.</summary>
+    /// <summary>Geräteklassen (server, desktop, laptop …), durch Komma getrennt; eine davon genügt.</summary>
     [SupplyParameterFromQuery(Name = "type")] public string? Type { get; set; }
 
-    private ChassisKind? _type;
+    private HashSet<string> _filters = [];
+    private HashSet<ChassisKind> _types = [];
 
     /// <summary>Die Klasse, wie die Liste sie mit dem Symbol zeigt: ein Server-Betriebssystem macht einen Server.</summary>
     private static ChassisKind RoleOf(Computer c) => Chassis.Role(c.ChassisType, c.Model, c.OsName);
 
-    private void SetType(ChassisKind? type)
+    private void SetCollection(int? id) => Navigate(id, _filters, _types);
+    private void SetFilters(IEnumerable<string> filters) => Navigate(_activeCollection?.Id, filters, _types);
+    private void SetTypes(IEnumerable<ChassisKind> types) => Navigate(_activeCollection?.Id, _filters, types);
+
+    /// <summary>Sammlung, Filter und Geräteklassen stehen in der Adresse: die Ansicht lässt sich verlinken und überlebt ein Neuladen.</summary>
+    private void Navigate(int? collection, IEnumerable<string> filters, IEnumerable<ChassisKind> types)
     {
-        var uri = Navigation.GetUriWithQueryParameter("type", type?.ToString().ToLowerInvariant());
-        Navigation.NavigateTo(uri);
+        var keys = BuiltInViews.Select(v => v.Key).Where(filters.Contains).ToList();
+        var kinds = types.Order().Select(k => k.ToString().ToLowerInvariant()).ToList();
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["collection"] = collection,
+            ["filter"] = keys.Count > 0 ? string.Join(",", keys) : null,
+            ["type"] = kinds.Count > 0 ? string.Join(",", kinds) : null,
+        }));
     }
 
     private static readonly (string Key, string Label)[] BuiltInViews =
     [
-        ("all", "All computers"), ("online", "Online"), ("offline", "Offline"), ("mismatch", "Wrong computer responds"),
+        ("online", "Online"), ("offline", "Offline"), ("mismatch", "Wrong computer responds"),
         ("nodirectory", "Not (anymore) in AD"), ("inactive", "Presumably decommissioned"), ("unscanned", "Not scanned yet"), ("scanerror", "Scan failed"), ("agent", "With agent"),
         ("firewall", "Firewall off"), ("antivirus", "No real-time antivirus"), ("updates", "Updates pending"), ("reboot", "Reboot pending"),
         ("warranty", "Warranty ends within 90 days"),
     ];
 
     private List<Computer> _all = [];
-    private string _view = "all";
+    /// <summary>Alle Rechner oder die der gewählten Sammlung, noch ohne Filter.</summary>
+    private List<Computer> _scope = [];
 
     private string InactiveText(Computer c) => L["Last AD logon {0}, last seen by the inventory {1}.",
         Display.LocalTime(c.DirectoryLastLogonUtc), c.LastInventorySightingUtc is null ? L["never"] : Display.LocalTime(c.LastInventorySightingUtc)];
@@ -291,6 +315,8 @@
         _ => true,
     };
 
+    private bool InFilters(Computer c) => _filters.All(key => InView(key, c));
+
     private List<Computer> _computers = [];
     private List<CollectionSummary> _collections = [];
     private Collection? _activeCollection;
@@ -303,37 +329,28 @@
 
     private async Task ReloadAsync()
     {
-        _type = Enum.TryParse<ChassisKind>(Type, true, out var type) && Enum.IsDefined(type) ? type : null;
+        var requested = (Filter ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        _filters = BuiltInViews.Select(v => v.Key).Where(requested.Contains).ToHashSet();
+        _types = (Type ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => Enum.TryParse<ChassisKind>(t, true, out var kind) && Enum.IsDefined(kind) ? kind : (ChassisKind?)null)
+            .OfType<ChassisKind>().ToHashSet();
         _collections = await CollectionService.ListAsync();
         _activeCollection = _collections.FirstOrDefault(c => c.Collection.Id == CollectionId)?.Collection;
         _all = await ComputerService.ListAsync();
         if (_activeCollection is not null)
         {
             var members = await CollectionService.GetMemberIdsAsync(_activeCollection.Id);
-            _computers = _all.Where(c => members.Contains(c.Id)).ToList();
-            _view = $"c:{_activeCollection.Id}";
+            _scope = _all.Where(c => members.Contains(c.Id)).ToList();
         }
         else
-        {
-            _view = BuiltInViews.Any(v => v.Key == Filter) ? Filter! : "all";
-            _computers = _all.Where(c => InView(_view, c)).ToList();
-        }
+            _scope = _all;
+        _computers = _scope.Where(InFilters).ToList();
         _selected = [];
     }
 
-    private void SetView(string view)
-    {
-        var target = view switch
-        {
-            "all" or null or "" => "computers",
-            ['c', ':', .. var id] => $"computers?collection={id}",
-            _ => $"computers?filter={view}",
-        };
-        // Der Typ-Filter bleibt beim Wechsel der Ansicht erhalten.
-        Navigation.NavigateTo(_type is { } type ? $"{target}{(target.Contains('?') ? '&' : '?')}type={type.ToString().ToLowerInvariant()}" : target);
-    }
+    private bool InTypes(Computer c) => _types.Count == 0 || _types.Contains(RoleOf(c));
 
-    private bool Matches(Computer c) => (_type is null || RoleOf(c) == _type) && MatchesSearch(c);
+    private bool Matches(Computer c) => InTypes(c) && MatchesSearch(c);
 
     private bool MatchesSearch(Computer c) =>
         string.IsNullOrWhiteSpace(_search)

@@ -38,9 +38,13 @@ trends, deployments per week and the age of the last scans.
 ![Computer list](docs/screenshots/en/computers.png)
 
 Computers are added by hand, imported from Active Directory or enrol themselves through the [agent](#agent). The list
-shows reachability, the last scan and security indicators, filters by name, status and directory state, and offers
+shows reachability, the last scan and security indicators, and offers
 actions for the selection: scan, deploy, run a command, wake, install the agent. Reachability can be checked on a
 regular heartbeat (computers with name anomalies are skipped).
+
+Filters combine: pick a collection, any number of conditions (online, updates pending, firewall off, with agent …) that a
+computer must all meet, one or more device types, and add a search term on top. The choice is part of the address
+(`computers?collection=3&filter=online,updates&type=laptop`), so a view can be bookmarked or shared.
 
 ### Inventory per computer
 

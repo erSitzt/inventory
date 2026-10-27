@@ -38,10 +38,14 @@ zeigt die Übersicht auch 30-Tage-Verläufe, Verteilungen je Woche und das Alter
 ![Rechnerliste](docs/screenshots/de/computers.png)
 
 Rechner werden von Hand angelegt, aus dem Active Directory importiert oder melden sich über den [Agent](#agent) selbst
-an. Die Liste zeigt Erreichbarkeit, letzten Scan und Sicherheitsampel, filtert nach Name, Status und
-Verzeichnisstand und bietet Aktionen für die Auswahl: scannen, bereitstellen, Befehl ausführen, wecken, Agent
+an. Die Liste zeigt Erreichbarkeit, letzten Scan und Sicherheitsampel und bietet Aktionen für die Auswahl: scannen, bereitstellen, Befehl ausführen, wecken, Agent
 installieren. Die Erreichbarkeit lässt sich regelmäßig per Heartbeat prüfen (Rechner mit Namensauffälligkeiten
 ausgenommen).
+
+Filter lassen sich kombinieren: eine Sammlung, beliebig viele Bedingungen (online, Updates ausstehend, Firewall aus …),
+die ein Rechner alle erfüllen muss, ein oder mehrere Gerätetypen und dazu ein Suchbegriff. Die Auswahl steht in der
+Adresse (`computers?collection=3&filter=online,updates&type=laptop`); eine Ansicht lässt sich so als Lesezeichen
+speichern oder weitergeben.
 
 ### Inventar je Rechner
 
