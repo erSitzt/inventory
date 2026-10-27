@@ -37,7 +37,7 @@
                MultiSelectionTextFunc="@(_ => string.Join(", ", BuiltInViews.Where(v => _filters.Contains(v.Key)).Select(v => L[v.Label].Value)))">
         @foreach (var (key, label) in BuiltInViews)
         {
-            <MudSelectItem T="string" Value="@key">@L[label] (@_scope.Count(c => InFilters(c) && InView(key, c)))</MudSelectItem>
+            <MudSelectItem T="string" Value="@key">@L[label] (@_scope.Count(c => InFilters(c) && InView(key, c) && InTypes(c)))</MudSelectItem>
         }
     </MudSelect>
     <MudSelect T="ChassisKind" MultiSelection="true" SelectedValues="_types" SelectedValuesChanged="SetTypes" Variant="Variant.Outlined" Margin="Margin.Dense"
@@ -348,7 +348,9 @@
         _selected = [];
     }
 
-    private bool Matches(Computer c) => (_types.Count == 0 || _types.Contains(RoleOf(c))) && MatchesSearch(c);
+    private bool InTypes(Computer c) => _types.Count == 0 || _types.Contains(RoleOf(c));
+
+    private bool Matches(Computer c) => InTypes(c) && MatchesSearch(c);
 
     private bool MatchesSearch(Computer c) =>
         string.IsNullOrWhiteSpace(_search)
