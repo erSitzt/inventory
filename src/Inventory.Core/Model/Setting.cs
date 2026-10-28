@@ -73,4 +73,6 @@ public static class SettingKeys
     public const string LicensingPrices = "Licensing.Prices";
     /// <summary>"False" = jeder Host nur für seine eigenen VMs; sonst für alle Windows-VMs seines Clusters.</summary>
     public const string LicensingClusterWide = "Licensing.ClusterWide";
+    /// <summary>Je Cluster (Schlüssel wie LicensingHost.ClusterKey), ob seine VMs zwischen den Hosts wandern; JSON-Objekt Schlüssel → true/false.</summary>
+    public const string LicensingClusterMobility = "Licensing.ClusterMobility";
 }

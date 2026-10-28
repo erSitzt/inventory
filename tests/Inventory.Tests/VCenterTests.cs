@@ -15,13 +15,17 @@ public class VCenterTests
     private static readonly XNamespace Vim = "urn:vim25";
 
     /// <summary>Beantwortet die vim25-Aufrufe aus festen Daten und merkt sich, welche Methoden aufgerufen wurden.</summary>
-    private sealed class FakeVCenter(bool rejectLogin = false) : HttpMessageHandler
+    /// <param name="failAutomation">Die Abfrage von DRS/HA scheitert am Netz (wie ein abgerissener Transport).</param>
+    private sealed class FakeVCenter(bool rejectLogin = false, bool failAutomation = false) : HttpMessageHandler
     {
         public List<string> Calls { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            var body = XDocument.Parse(await request.Content!.ReadAsStringAsync(ct)).Descendants().First(e => e.Name.LocalName == "Body").Elements().First();
+            var text = await request.Content!.ReadAsStringAsync(ct);
+            if (failAutomation && text.Contains("drsConfig", StringComparison.Ordinal))
+                throw new HttpRequestException("connection reset");
+            var body = XDocument.Parse(text).Descendants().First(e => e.Name.LocalName == "Body").Elements().First();
             var method = body.Name.LocalName;
             Calls.Add(method);
             string Return(string inner) => $"<{method}Response xmlns=\"urn:vim25\"><returnval>{inner}</returnval></{method}Response>";
@@ -52,7 +56,8 @@ public class VCenterTests
 
         private static string Page(string type, bool first) => type switch
         {
-            "ClusterComputeResource" => Object(type, "domain-c7", ("name", Val("xsd:string", "PROD"))),
+            "ClusterComputeResource" => Object(type, "domain-c7", ("name", Val("xsd:string", "PROD")),
+                ("configuration.drsConfig.enabled", Val("xsd:boolean", "true")), ("configuration.dasConfig.enabled", Val("xsd:boolean", "false"))),
             "HostSystem" => Object(type, "host-11", ("name", Val("xsd:string", "esx01.corp.example")), ("parent", "<val type=\"ClusterComputeResource\" xsi:type=\"ManagedObjectReference\">domain-c7</val>"),
                     ("summary.hardware.numCpuPkgs", Val("xsd:short", "2")), ("summary.hardware.numCpuCores", Val("xsd:short", "32")),
                     ("summary.hardware.model", Val("xsd:string", "PowerEdge R750")), ("runtime.connectionState", Val("HostSystemConnectionState", "connected")))
@@ -81,7 +86,8 @@ public class VCenterTests
 
         Assert.Equal("VMware vCenter Server 8.0.3 build-1", inventory.Version);
         Assert.Equal(
-            [new HypervisorHostInfo("host-11", "esx01.corp.example", "PROD", 2, 32, "PowerEdge R750", true), new HypervisorHostInfo("host-21", "esx-solo", null, 1, 12, null, false)],
+            // DRS und HA des Clusters: für die Lizenzierung (wandern die VMs?).
+            [new HypervisorHostInfo("host-11", "esx01.corp.example", "PROD", 2, 32, "PowerEdge R750", true, true, false), new HypervisorHostInfo("host-21", "esx-solo", null, 1, 12, null, false)],
             inventory.Hosts);
         // Vorlagen zählen nicht; die zweite Seite wird nachgeladen.
         Assert.Equal(["VM-SQL01", "VM-OFF"], inventory.VirtualMachines.Select(v => v.Name));
@@ -92,6 +98,15 @@ public class VCenterTests
         Assert.Equal("Logout", fake.Calls[^1]);
         // Nur lesende Aufrufe.
         Assert.All(fake.Calls, c => Assert.Contains(c, new[] { "RetrieveServiceContent", "Login", "CreateContainerView", "RetrievePropertiesEx", "ContinueRetrievePropertiesEx", "Logout" }));
+    }
+
+    [Fact]
+    public async Task A_failing_drs_and_ha_query_leaves_them_unknown_and_the_sync_goes_on()
+    {
+        var inventory = await new VCenterSource(_ => new FakeVCenter(failAutomation: true)).ReadAsync(Connection());
+        var host = inventory.Hosts.Single(h => h.Id == "host-11");
+        Assert.Equal(("PROD", (bool?)null, (bool?)null), (host.Cluster, host.ClusterDrs, host.ClusterHa));
+        Assert.Equal(2, inventory.VirtualMachines.Count);
     }
 
     [Fact]
@@ -261,7 +276,7 @@ public class VCenterTests
                 "session.login_with_password" when rejectLogin => Error("SESSION_AUTHENTICATION_FAILED", "root", "Authentication failure"),
                 "session.login_with_password" => Result("\"OpaqueRef:session\""),
                 "session.logout" => Result("\"\""),
-                "pool.get_all_records" => Result("""{"OpaqueRef:pool":{"name_label":"XCP-POOL","master":"OpaqueRef:h1"}}"""),
+                "pool.get_all_records" => Result("""{"OpaqueRef:pool":{"name_label":"XCP-POOL","master":"OpaqueRef:h1","ha_enabled":true}}"""),
                 "host.get_all_records" => Result("""
                     {"OpaqueRef:h1":{"uuid":"aaaa-1","name_label":"xcp01","hostname":"xcp01.corp.example","enabled":true,
                        "cpu_info":{"cpu_count":"48","socket_count":"2","threads_per_core":"2"},"bios_strings":{"system-product-name":"ProLiant DL360"},
@@ -290,7 +305,8 @@ public class VCenterTests
 
         Assert.Equal("XCP-ng 8.3.0", inventory.Version);
         // Kerne = logische CPUs / Threads je Kern; ohne diese Angabe bleiben sie unbekannt.
-        Assert.Equal([new HypervisorHostInfo("aaaa-1", "xcp01.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360", true), new HypervisorHostInfo("aaaa-2", "xcp02", "XCP-POOL", 1, null, null, false)],
+        Assert.Equal([new HypervisorHostInfo("aaaa-1", "xcp01.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360", true, null, true),
+                new HypervisorHostInfo("aaaa-2", "xcp02", "XCP-POOL", 1, null, null, false, null, true)],
             inventory.Hosts);
         Assert.Equal(["XEN-APP01", "XEN-OFF"], inventory.VirtualMachines.Select(v => v.Name));
         var app = inventory.VirtualMachines[0];
@@ -388,7 +404,7 @@ public class VCenterTests
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
             var json = request.RequestUri.AbsolutePath switch
             {
-                "/rest/v0/pools" => """[{"id":"pool-1","name_label":"XCP-POOL"}]""",
+                "/rest/v0/pools" => """[{"id":"pool-1","name_label":"XCP-POOL","HA_enabled":false}]""",
                 "/rest/v0/hosts" => """
                     [{"id":"aaaa-1","name_label":"xcp01","hostname":"xcp01.corp.example","enabled":true,"$pool":"pool-1",
                       "CPUs":{"cpu_count":"48","socket_count":"2","cores_per_socket":"12"},"bios_strings":{"system-product-name":"ProLiant DL360"},
@@ -413,7 +429,7 @@ public class VCenterTests
         var inventory = await new XenOrchestraSource(_ => fake).ReadAsync(token);
 
         Assert.Equal("Xen Orchestra · XCP-ng 8.3.0", inventory.Version);
-        Assert.Equal([new HypervisorHostInfo("aaaa-1", "xcp01.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360", true)], inventory.Hosts);
+        Assert.Equal([new HypervisorHostInfo("aaaa-1", "xcp01.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360", true, null, false)], inventory.Hosts);
         var app = inventory.VirtualMachines[0];
         Assert.Equal(("XEN-APP01", "4c4c4544-0042-3510-8052-b4c04f4e3732", 4, "aaaa-1", true, "Microsoft Windows Server 2022 Standard"),
             (app.Name, app.BiosUuid, app.VirtualCpus!.Value, app.HostId, app.PoweredOn, app.GuestOs));

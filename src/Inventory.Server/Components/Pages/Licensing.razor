@@ -80,6 +80,7 @@ else
         </MudTabPanel>
 
         <MudTabPanel Text="@($"Windows Server ({_overview.WindowsServer.Hosts.Count(h => h.Chosen is not null)})")">
+            <LicensingClusters Overview="_overview" Changed="LoadAsync" />
             <LicensingHostGrid Items="_overview.WindowsServer.Hosts" HostTitle="@L["Host"]" VmTitle="@L["Windows Server VMs"]" EmptyLabel="@L["no Windows Server"]"
                                EmptyText="@L["No servers found. Scan the servers with the current runner and set up the vCenter if you use VMware."]" />
         </MudTabPanel>
@@ -167,8 +168,8 @@ else
                         <MudNumericField T="decimal?" Value="_prices.GetValueOrDefault(key)" ValueChanged="@(v => _prices[key] = v)" Label="@ProductName(key)" Variant="Variant.Outlined" Margin="Margin.Dense"
                                          Min="0" HideSpinButtons="true" Clearable="true" Placeholder="@Service.Rules.Price(key, new Dictionary<string, decimal>()).ToString("N0")" />
                     }
-                    <MudSwitch T="bool" @bind-Value="_clusterWide" Color="Color.Primary" Label="@L["License every cluster host for all Windows Server VMs of its cluster"]" />
-                    <MudText Typo="Typo.caption">@L["Windows Server licences may move to another host only every 90 days; VMs that migrate freely within a cluster therefore need licences on every host. Switch off only if VMs are bound to their host."]</MudText>
+                    <MudSwitch T="bool" @bind-Value="_clusterWide" Color="Color.Primary" Label="@L["By default, VMs move between the hosts of their cluster"]" />
+                    <MudText Typo="Typo.caption">@L["Applies to clusters without their own setting, unless DRS or HA is on (then the VMs move anyway). Set single clusters on the Windows Server tab."]</MudText>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="width: fit-content" OnClick="SaveSettingsAsync">@L["Save"]</MudButton>
                     <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["Rules: {0}", _overview.Rules.Source]</MudText>
                 </MudStack>
@@ -200,7 +201,7 @@ else
 
     private string ProductName(string key) => L[Service.Rules.Product(key)?.Name ?? key];
 
-    private string Note(LicensingNote note) => L[note.Text, note.Args];
+    private string Note(LicensingNote note) => Service.Format(note);
 
     private async Task EditAsync(LicenseEntitlement? entitlement)
     {

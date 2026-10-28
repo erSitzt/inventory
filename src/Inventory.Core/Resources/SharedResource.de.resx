@@ -518,6 +518,18 @@
   <data name="All good – no open items." xml:space="preserve">
     <value>Alles in Ordnung – keine offenen Punkte.</value>
   </data>
+  <data name="All hosts of cluster {0} are licensed by their cores, since every VM may run on every host." xml:space="preserve">
+    <value>Alle Hosts von Cluster {0} werden nach ihren Kernen lizenziert, da jede VM auf jedem Host laufen kann.</value>
+  </data>
+  <data name="All hosts of cluster {0} are licensed by their cores, since every VM may run on every host: for the whole cluster {1:N0} remain to buy instead of {2:N0} when licensing every VM per VM." xml:space="preserve">
+    <value>Alle Hosts von Cluster {0} werden nach ihren Kernen lizenziert, da jede VM auf jedem Host laufen kann: Für den ganzen Cluster bleiben {1:N0} zu kaufen statt {2:N0}, wenn jede VM einzeln lizenziert würde.</value>
+  </data>
+  <data name="All hosts of cluster {0} are licensed per VM, so that the licences move with the VMs." xml:space="preserve">
+    <value>Alle Hosts von Cluster {0} werden je VM lizenziert, damit die Lizenzen mit den VMs wandern.</value>
+  </data>
+  <data name="All hosts of cluster {0} are licensed per VM, so that the licences move with the VMs: for the whole cluster {1:N0} remain to buy instead of {2:N0} when licensing the cores of every host." xml:space="preserve">
+    <value>Alle Hosts von Cluster {0} werden je VM lizenziert, damit die Lizenzen mit den VMs wandern: Für den ganzen Cluster bleiben {1:N0} zu kaufen statt {2:N0}, wenn jeder Host nach Kernen lizenziert würde.</value>
+  </data>
   <data name="All installations (CSV)" xml:space="preserve">
     <value>Alle Installationen (CSV)</value>
   </data>
@@ -538,6 +550,12 @@
   </data>
   <data name="all users" xml:space="preserve">
     <value>alle Benutzer</value>
+  </data>
+  <data name="all {0} cores of the host, covers up to {0} SQL VMs" xml:space="preserve">
+    <value>alle {0} Kerne des Hosts, deckt bis zu {0} SQL-VMs</value>
+  </data>
+  <data name="all {0} cores of the host, with SA any number of SQL VMs" xml:space="preserve">
+    <value>alle {0} Kerne des Hosts, mit SA beliebig viele SQL-VMs</value>
   </data>
   <data name="allowed for all jobs" xml:space="preserve">
     <value>für alle Jobs erlaubt</value>
@@ -650,6 +668,9 @@
   <data name="Applies to all computers without a transport of their own." xml:space="preserve">
     <value>Gilt für alle Rechner, bei denen kein eigener Transport eingestellt ist.</value>
   </data>
+  <data name="Applies to clusters without their own setting, unless DRS or HA is on (then the VMs move anyway). Set single clusters on the Windows Server tab." xml:space="preserve">
+    <value>Gilt für Cluster ohne eigene Einstellung, außer DRS oder HA ist eingeschaltet (dann wandern die VMs ohnehin). Einzelne Cluster stellen Sie im Reiter Windows Server ein.</value>
+  </data>
   <data name="applies." xml:space="preserve">
     <value>zutrifft.</value>
   </data>
@@ -752,6 +773,9 @@
   <data name="Automatic update: {0}" xml:space="preserve">
     <value>Automatische Aktualisierung: {0}</value>
   </data>
+  <data name="Automatic: {0}" xml:space="preserve">
+    <value>Automatisch: {0}</value>
+  </data>
   <data name="Back" xml:space="preserve">
     <value>Zurück</value>
   </data>
@@ -806,6 +830,12 @@
   <data name="By computer" xml:space="preserve">
     <value>Nach Rechner</value>
   </data>
+  <data name="By default, VMs move between the hosts of their cluster" xml:space="preserve">
+    <value>Voreinstellung: VMs wandern zwischen den Hosts ihres Clusters</value>
+  </data>
+  <data name="by host cores" xml:space="preserve">
+    <value>nach Kernen der Hosts</value>
+  </data>
   <data name="By update" xml:space="preserve">
     <value>Nach Update</value>
   </data>
@@ -814,6 +844,9 @@
   </data>
   <data name="Calculated so far: Windows Server and SQL Server per core. CALs and Windows clients follow; their stock is already shown." xml:space="preserve">
     <value>Bisher berechnet: Windows Server und SQL Server je Kern. CALs und Windows-Clients folgen; ihr Bestand wird schon angezeigt.</value>
+  </data>
+  <data name="Calculation step by step" xml:space="preserve">
+    <value>Rechenweg Schritt für Schritt</value>
   </data>
   <data name="Camera" xml:space="preserve">
     <value>Kamera</value>
@@ -938,8 +971,17 @@
   <data name="Cluster {0}" xml:space="preserve">
     <value>Cluster {0}</value>
   </data>
+  <data name="Cluster {0} is set to: VMs move between the hosts." xml:space="preserve">
+    <value>Für Cluster {0} ist eingestellt: VMs wandern zwischen den Hosts.</value>
+  </data>
+  <data name="Cluster {0} is set to: VMs stay on their host and are moved only by hand." xml:space="preserve">
+    <value>Für Cluster {0} ist eingestellt: VMs bleiben auf ihrem Host und ziehen nur von Hand um.</value>
+  </data>
   <data name="Clusters" xml:space="preserve">
     <value>Cluster</value>
+  </data>
+  <data name="Clusters: do the VMs move between the hosts?" xml:space="preserve">
+    <value>Cluster: Wandern die VMs zwischen den Hosts?</value>
   </data>
   <data name="Collapse everything" xml:space="preserve">
     <value>Alles zuklappen</value>
@@ -1126,6 +1168,12 @@
   </data>
   <data name="Copying to \\{0}\ADMIN$ failed: {1}" xml:space="preserve">
     <value>Kopieren nach \\{0}\ADMIN$ fehlgeschlagen: {1}</value>
+  </data>
+  <data name="Core licences may move to another host only every {0} days, VMs at any time. If the VMs of a cluster move (live migration, vMotion, DRS, HA), every host is licensed for all Windows Server VMs of the cluster – or every VM per VM with SA, whose licence moves with it. The whole cluster is licensed one way; mixed, a moved VM would not be covered on the new host." xml:space="preserve">
+    <value>Kernlizenzen dürfen nur alle {0} Tage auf einen anderen Host umziehen, VMs jederzeit. Wandern die VMs eines Clusters (Live-Migration, vMotion, DRS, HA), wird jeder Host für alle Windows-Server-VMs des Clusters lizenziert – oder mit SA jede VM einzeln, deren Lizenz mit ihr wandert. Der ganze Cluster wird auf eine Art lizenziert; gemischt wäre eine umgezogene VM auf dem neuen Host nicht gedeckt.</value>
+  </data>
+  <data name="Core licences may move to another host only every {0} days, VMs at any time: every host is licensed for all {1} Windows Server VMs of the cluster – or every VM per VM, whose licence moves with it." xml:space="preserve">
+    <value>Kernlizenzen dürfen nur alle {0} Tage auf einen anderen Host umziehen, VMs jederzeit: Jeder Host wird für alle {1} Windows-Server-VMs des Clusters lizenziert – oder jede VM einzeln, deren Lizenz mit ihr wandert.</value>
   </data>
   <data name="Cores" xml:space="preserve">
     <value>Kerne</value>
@@ -1745,6 +1793,9 @@
   <data name="Every run of a package on computers, live per computer and step." xml:space="preserve">
     <value>Jeder Lauf eines Pakets auf Rechnern, live je Rechner und Schritt.</value>
   </data>
+  <data name="Every variant is calculated: Standard, Datacenter, per VM; for SQL Server per VM and the whole host. Variants that are not allowed (e.g. Standard where Datacenter is installed, per VM without SA) stay visible with the reason." xml:space="preserve">
+    <value>Jede Variante wird gerechnet: Standard, Datacenter, je VM; bei SQL Server je VM und der ganze Host. Nicht zulässige Varianten (z. B. Standard, wo Datacenter installiert ist, je VM ohne SA) bleiben mit Begründung sichtbar.</value>
+  </data>
   <data name="every {0} hours" xml:space="preserve">
     <value>alle {0} Stunden</value>
   </data>
@@ -1795,6 +1846,9 @@
   </data>
   <data name="Expand a computer to see the output of every step." xml:space="preserve">
     <value>Einen Rechner aufklappen, um die Ausgabe jedes Schritts zu sehen.</value>
+  </data>
+  <data name="Expand a host on the Windows Server or SQL Server tab to see the decision, the variants compared and the VMs counted." xml:space="preserve">
+    <value>Klappen Sie einen Host im Reiter Windows Server oder SQL Server auf: Dort stehen die Entscheidung, die verglichenen Varianten und die gezählten VMs.</value>
   </data>
   <data name="Expand all subnets" xml:space="preserve">
     <value>Alle Subnetze aufklappen</value>
@@ -1934,6 +1988,9 @@
   <data name="For anything you need more than once, build a package instead – it can be scheduled and repeated." xml:space="preserve">
     <value>Für alles, was öfter gebraucht wird, besser ein Paket bauen – es lässt sich planen und wiederholen.</value>
   </data>
+  <data name="For every host the cores to license are counted (physical cores with the minimums) and the VMs it must cover: its own, or all of its cluster if the VMs move." xml:space="preserve">
+    <value>Für jeden Host werden die zu lizenzierenden Kerne gezählt (physische Kerne mit den Mindestmengen) und die VMs, die er abdecken muss: seine eigenen oder, wenn die VMs wandern, alle seines Clusters.</value>
+  </data>
   <data name="For scripts and other programs that use the REST API without a browser login. A token has full access to the API – like a signed-in user. Example call:" xml:space="preserve">
     <value>Für Skripte und andere Programme, die die REST-API ohne Browser-Anmeldung nutzen. Ein Token hat vollen Zugriff auf die API – wie ein angemeldeter Benutzer. Aufruf z. B.:</value>
   </data>
@@ -2033,6 +2090,9 @@
   <data name="Guest operating system" xml:space="preserve">
     <value>Gastbetriebssystem</value>
   </data>
+  <data name="HA is on in cluster {0}: after a host failure its VMs start on another host." xml:space="preserve">
+    <value>In Cluster {0} ist HA eingeschaltet: Nach einem Hostausfall starten dessen VMs auf einem anderen Host.</value>
+  </data>
   <data name="Hardware" xml:space="preserve">
     <value>Hardware</value>
   </data>
@@ -2093,6 +2153,12 @@
   <data name="How long a computer may take to come back after a restart step. After that the deployment counts as failed for this computer." xml:space="preserve">
     <value>So lange darf ein Rechner nach einem Neustart-Schritt brauchen, bis er wieder erreichbar ist. Danach gilt das Deployment für diesen Rechner als fehlgeschlagen.</value>
   </data>
+  <data name="How the cores come about" xml:space="preserve">
+    <value>So kommen die Kerne zustande</value>
+  </data>
+  <data name="How the licence is chosen" xml:space="preserve">
+    <value>So wird die Lizenz gewählt</value>
+  </data>
   <data name="how-access-works" xml:space="preserve">
     <value>so-funktioniert-der-zugriff</value>
   </data>
@@ -2114,11 +2180,20 @@
   <data name="If another installation is running (exit code 1618), the step is retried up to three times anyway." xml:space="preserve">
     <value>Läuft gerade eine andere Installation (Exitcode 1618), wird der Schritt ohnehin bis zu dreimal wiederholt.</value>
   </data>
+  <data name="If live migration is switched off or not licensed and VMs are moved only rarely by hand, each host counts only its own VMs. Set this per cluster on the Windows Server tab; DRS or HA switched on means the VMs move." xml:space="preserve">
+    <value>Ist die Live-Migration abgeschaltet oder nicht lizenziert und werden VMs nur selten von Hand umgezogen, zählt jeder Host nur seine eigenen VMs. Das stellen Sie je Cluster im Reiter Windows Server ein; eingeschaltetes DRS oder HA heißt, die VMs wandern.</value>
+  </data>
   <data name="If the program is not installed, the step counts as done. If the name matches more than three programs, nothing is uninstalled and the step fails." xml:space="preserve">
     <value>Ist das Programm nicht installiert, gilt der Schritt als erledigt. Trifft der Name mehr als drei Programme, wird nichts deinstalliert und der Schritt schlägt fehl.</value>
   </data>
   <data name="If the server was off at the scheduled time: catch up when it is less than a day late" xml:space="preserve">
     <value>War der Server zum geplanten Zeitpunkt aus: nachholen, wenn es weniger als einen Tag her ist</value>
+  </data>
+  <data name="If VMs move (live migration, vMotion, DRS, HA), every host must be licensed for all VMs that may run on it: core licences may move to another host only every {0} days, the VMs at any time. If VMs stay on their host and are moved only rarely by hand, each host counts only its own VMs." xml:space="preserve">
+    <value>Wandern die VMs (Live-Migration, vMotion, DRS, HA), muss jeder Host für alle VMs lizenziert sein, die auf ihm laufen können: Kernlizenzen dürfen nur alle {0} Tage auf einen anderen Host umziehen, die VMs jederzeit. Bleiben die VMs auf ihrem Host und ziehen nur selten von Hand um, zählt jeder Host nur seine eigenen VMs.</value>
+  </data>
+  <data name="If VMs move between the hosts, every host is licensed for all VMs of its cluster (core licences may move only every {0} days); otherwise each host counts only its own VMs." xml:space="preserve">
+    <value>Wandern die VMs zwischen den Hosts, wird jeder Host für alle VMs seines Clusters lizenziert (Kernlizenzen dürfen nur alle {0} Tage umziehen); sonst zählt jeder Host nur seine eigenen VMs.</value>
   </data>
   <data name="If you can read this, the channel works. Inventory uses it to report events you choose." xml:space="preserve">
     <value>Wenn Sie das lesen können, funktioniert der Kanal. Inventory meldet darüber die Ereignisse, die Sie auswählen.</value>
@@ -2161,6 +2236,12 @@
   </data>
   <data name="imported, up to date" xml:space="preserve">
     <value>importiert, aktuell</value>
+  </data>
+  <data name="In a cluster whose VMs move, both ways (all hosts by cores, all VMs per VM) are calculated for the whole cluster and the cheaper one applies to every host." xml:space="preserve">
+    <value>Im Cluster, dessen VMs wandern, werden beide Wege (alle Hosts nach Kernen, alle VMs je VM) für den ganzen Cluster gerechnet, und der günstigere gilt für jeden Host.</value>
+  </data>
+  <data name="In a cluster whose VMs move: with SA the licences move with the VMs within the server farm (License Mobility), each VM is licensed once. Without SA they stay on their host for {0} days, so every host needs licences for all SQL VMs of the cluster." xml:space="preserve">
+    <value>Im Cluster, dessen VMs wandern: Mit SA ziehen die Lizenzen innerhalb der Serverfarm mit den VMs um (License Mobility), jede VM wird einmal lizenziert. Ohne SA bleiben sie {0} Tage auf ihrem Host, also braucht jeder Host Lizenzen für alle SQL-VMs des Clusters.</value>
   </data>
   <data name='In a cluster, a licence may move to another host only every {0} days. Every host is therefore licensed for all Windows Server VMs of its cluster (can be switched off under "Prices and rules").' xml:space="preserve">
     <value>Im Cluster darf eine Lizenz nur alle {0} Tage auf einen anderen Host umziehen. Jeder Host wird deshalb für alle Windows-Server-VMs seines Clusters lizenziert (abschaltbar unter „Preise und Regeln“).</value>
@@ -2498,6 +2579,9 @@
   <data name="License: {0}" xml:space="preserve">
     <value>Lizenz: {0}</value>
   </data>
+  <data name="Licensed" xml:space="preserve">
+    <value>Lizenziert</value>
+  </data>
   <data name="Licensed cores" xml:space="preserve">
     <value>Lizenzierte Kerne</value>
   </data>
@@ -2507,11 +2591,17 @@
   <data name="Licensed with" xml:space="preserve">
     <value>Lizenziert mit</value>
   </data>
+  <data name="Licensed with {0}: {1} cores, {2:N0}; still to buy {3:N0}." xml:space="preserve">
+    <value>Lizenziert mit {0}: {1} Kerne, {2:N0}; noch zu kaufen {3:N0}.</value>
+  </data>
   <data name="Licensing" xml:space="preserve">
     <value>Lizenzierung</value>
   </data>
   <data name="Licensing: prices {0}, cluster-wide {1}" xml:space="preserve">
     <value>Lizenzierung: Preise {0}, clusterweit {1}</value>
+  </data>
+  <data name="Licensing: VMs of cluster {0} move between the hosts: {1}" xml:space="preserve">
+    <value>Lizenzierung: VMs von Cluster {0} wandern zwischen den Hosts: {1}</value>
   </data>
   <data name="Light" xml:space="preserve">
     <value>Hell</value>
@@ -2674,6 +2764,9 @@
   </data>
   <data name="Message for logged-on users" xml:space="preserve">
     <value>Hinweis für angemeldete Benutzer</value>
+  </data>
+  <data name="Microsoft documents" xml:space="preserve">
+    <value>Dokumente von Microsoft</value>
   </data>
   <data name="Microsoft licensing" xml:space="preserve">
     <value>Microsoft-Lizenzierung</value>
@@ -2855,6 +2948,12 @@
   <data name="no" xml:space="preserve">
     <value>nein</value>
   </data>
+  <data name="no (default)" xml:space="preserve">
+    <value>nein (Voreinstellung)</value>
+  </data>
+  <data name="no (set)" xml:space="preserve">
+    <value>nein (eingestellt)</value>
+  </data>
   <data name="No access" xml:space="preserve">
     <value>Kein Zugriff</value>
   </data>
@@ -3029,6 +3128,9 @@
   <data name="No SQL Server Standard or Enterprise found. Instances appear after a scan with the current runner." xml:space="preserve">
     <value>Kein SQL Server Standard oder Enterprise gefunden. Instanzen erscheinen nach einem Scan mit dem aktuellen Runner.</value>
   </data>
+  <data name="no SQL Server VM on this host right now" xml:space="preserve">
+    <value>derzeit keine SQL-Server-VM auf diesem Host</value>
+  </data>
   <data name="No step was executed." xml:space="preserve">
     <value>Es wurde kein Schritt ausgeführt.</value>
   </data>
@@ -3041,11 +3143,20 @@
   <data name="No tokens yet." xml:space="preserve">
     <value>Noch keine Tokens vorhanden.</value>
   </data>
+  <data name="No variant is allowed; the reasons are in the table." xml:space="preserve">
+    <value>Keine Variante ist zulässig; die Gründe stehen in der Tabelle.</value>
+  </data>
   <data name="no Windows Server" xml:space="preserve">
     <value>kein Windows Server</value>
   </data>
+  <data name="no Windows Server VM on this host right now" xml:space="preserve">
+    <value>derzeit keine Windows-Server-VM auf diesem Host</value>
+  </data>
   <data name="No – ask again in {0} minutes (possible {1} more time(s))" xml:space="preserve">
     <value>Nein – in {0} Minuten erneut fragen (noch {1}-mal möglich)</value>
+  </data>
+  <data name="No, VMs stay on their host" xml:space="preserve">
+    <value>Nein, VMs bleiben auf ihrem Host</value>
   </data>
   <data name="none" xml:space="preserve">
     <value>keine</value>
@@ -3070,6 +3181,9 @@
   </data>
   <data name="not activated" xml:space="preserve">
     <value>nicht aktiviert</value>
+  </data>
+  <data name="not allowed" xml:space="preserve">
+    <value>nicht zulässig</value>
   </data>
   <data name="not approved" xml:space="preserve">
     <value>nicht freigegeben</value>
@@ -3097,6 +3211,9 @@
   </data>
   <data name="Not captured yet. Profiles are read with the next scan." xml:space="preserve">
     <value>Noch nicht erfasst. Die Profile werden mit dem nächsten Scan gelesen.</value>
+  </data>
+  <data name="Not counted ({0}): switched off or not Windows Server" xml:space="preserve">
+    <value>Nicht gezählt ({0}): ausgeschaltet oder kein Windows Server</value>
   </data>
   <data name="Not found" xml:space="preserve">
     <value>Nicht gefunden</value>
@@ -3148,6 +3265,9 @@
   </data>
   <data name="Nothing to draw yet. Scan computers (their network adapters give the subnets) or run the device scan on the Devices page." xml:space="preserve">
     <value>Noch nichts zu zeichnen. Rechner scannen (ihre Netzwerkadapter liefern die Subnetze) oder auf der Geräteseite den Gerätescan starten.</value>
+  </data>
+  <data name="Nothing to license on this host right now: the licences of the VMs move with them." xml:space="preserve">
+    <value>Auf diesem Host ist derzeit nichts zu lizenzieren: Die Lizenzen der VMs wandern mit ihnen.</value>
   </data>
   <data name="Nothing was started: computers of this deployment are still running." xml:space="preserve">
     <value>Es wurde nichts gestartet: Rechner dieses Deployments laufen noch.</value>
@@ -3356,6 +3476,9 @@
   <data name="Operating system" xml:space="preserve">
     <value>Betriebssystem</value>
   </data>
+  <data name="operating system unknown – counted to be safe" xml:space="preserve">
+    <value>Betriebssystem unbekannt – vorsichtshalber gezählt</value>
+  </data>
   <data name="Operating system version" xml:space="preserve">
     <value>Betriebssystem-Version</value>
   </data>
@@ -3394,6 +3517,9 @@
   </data>
   <data name="Organization name" xml:space="preserve">
     <value>Name der Organisation</value>
+  </data>
+  <data name="other way of licensing than the rest of the cluster" xml:space="preserve">
+    <value>andere Art der Lizenzierung als der übrige Cluster</value>
   </data>
   <data name="Outlook will be closed in two minutes for an update. Please save your work." xml:space="preserve">
     <value>Outlook wird in zwei Minuten für ein Update geschlossen. Bitte Arbeit speichern.</value>
@@ -3587,14 +3713,23 @@
   <data name="Pending updates per computer, the ones with the most security updates first" xml:space="preserve">
     <value>Ausstehende Updates je Rechner, die mit den meisten Sicherheitsupdates zuerst</value>
   </data>
+  <data name="per host" xml:space="preserve">
+    <value>je Host</value>
+  </data>
   <data name="Per physical host: the cheapest allowed variant after using the existing stock." xml:space="preserve">
     <value>Je physischem Host: die günstigste zulässige Variante, nachdem der vorhandene Bestand verbraucht ist.</value>
   </data>
   <data name="per user" xml:space="preserve">
     <value>pro Benutzer</value>
   </data>
+  <data name="per VM" xml:space="preserve">
+    <value>je VM</value>
+  </data>
   <data name="Per VM (only with SA or subscription): each VM its vCPUs, at least {0}: {1} = {2} cores, {3:N0}." xml:space="preserve">
     <value>Je VM (nur mit SA oder Abonnement): jede VM ihre vCPUs, mindestens {0}: {1} = {2} Kerne, {3:N0}.</value>
+  </data>
+  <data name="Per VM (only with SA or subscription): no Windows Server VM runs on this host right now; the licences of the cluster's VMs move with them: 0 cores." xml:space="preserve">
+    <value>Je VM (nur mit SA oder Abonnement): Auf diesem Host läuft gerade keine Windows-Server-VM; die Lizenzen der VMs des Clusters wandern mit ihnen: 0 Kerne.</value>
   </data>
   <data name="Per VM (only with Software Assurance or a subscription): every VM is licensed with its virtual cores, at least {0} per VM; the licence moves with the VM." xml:space="preserve">
     <value>Je VM (nur mit Software Assurance oder Abonnement): jede VM wird mit ihren virtuellen Kernen lizenziert, mindestens {0} je VM; die Lizenz wandert mit der VM.</value>
@@ -3610,6 +3745,9 @@
   </data>
   <data name="Per VM: each VM its vCPUs, at least {0}: {1}; together {2:N0}." xml:space="preserve">
     <value>Je VM: jede VM ihre vCPUs, mindestens {0}: {1}; zusammen {2:N0}.</value>
+  </data>
+  <data name="Per VM: no SQL Server VM runs on this host right now; with SA the licences move with the VMs: 0 cores." xml:space="preserve">
+    <value>Je VM: Auf diesem Host läuft gerade keine SQL-Server-VM; mit SA wandern die Lizenzen mit den VMs: 0 Kerne.</value>
   </data>
   <data name="Period" xml:space="preserve">
     <value>Zeitraum</value>
@@ -3694,6 +3832,9 @@
   </data>
   <data name="Please save your work. The installation starts when you choose OK, at the latest in {0} minutes." xml:space="preserve">
     <value>Bitte speichern Sie Ihre Arbeit. Die Installation beginnt, sobald Sie OK wählen, spätestens in {0} Minuten.</value>
+  </data>
+  <data name="Plus {0} VMs on other hosts of cluster {1}, which may move here." xml:space="preserve">
+    <value>Dazu {0} VMs auf anderen Hosts von Cluster {1}, die hierher wandern können.</value>
   </data>
   <data name="PNG or JPEG, at most {0} KB and {1} pixels. A PNG with a transparent background looks best." xml:space="preserve">
     <value>PNG oder JPEG, höchstens {0} KB und {1} Pixel. Am besten wirkt ein PNG mit transparentem Hintergrund.</value>
@@ -4991,6 +5132,9 @@
   <data name="Switch" xml:space="preserve">
     <value>Switch</value>
   </data>
+  <data name="switched off" xml:space="preserve">
+    <value>ausgeschaltet</value>
+  </data>
   <data name="Synchronize now" xml:space="preserve">
     <value>Jetzt synchronisieren</value>
   </data>
@@ -5093,6 +5237,9 @@
   <data name="The agent on {0} returned no result (connection lost during the job?)." xml:space="preserve">
     <value>Der Agent auf {0} hat kein Ergebnis geliefert (Verbindung während des Jobs verloren?).</value>
   </data>
+  <data name="The allowed variant with the least still to buy wins; with the same amount, the cheaper one and then the one with fewer cores." xml:space="preserve">
+    <value>Gewählt wird die zulässige Variante, bei der am wenigsten zu kaufen bleibt; bei gleichem Betrag die günstigere, dann die mit weniger Kernen.</value>
+  </data>
   <data name="The check is lightweight (port 445, a few packets per computer); 5 minutes is a good value" xml:space="preserve">
     <value>Die Prüfung ist leichtgewichtig (Port 445, wenige Pakete je Rechner); 5 Minuten sind ein guter Wert</value>
   </data>
@@ -5174,11 +5321,17 @@
   <data name="The examples can be used as they are or as templates; a schedule can mail a report regularly." xml:space="preserve">
     <value>Die Beispiele dienen unverändert oder als Vorlage; ein Zeitplan kann einen Bericht regelmäßig per Mail schicken.</value>
   </data>
+  <data name="The existing stock is deducted: what it covers costs nothing more. Hosts with the fewest choices get the stock first, then the largest." xml:space="preserve">
+    <value>Der vorhandene Bestand wird abgezogen: Was er deckt, kostet nichts mehr. Den Bestand bekommen zuerst die Hosts mit der geringsten Auswahl, dann die größten.</value>
+  </data>
   <data name="The filters and the search narrow the list; the CSV export can be edited and imported again for asset data." xml:space="preserve">
     <value>Filter und Suche grenzen die Liste ein; der CSV-Export lässt sich für Bestandsdaten bearbeiten und wieder importieren.</value>
   </data>
   <data name="The highest edition of a server or VM counts: one Enterprise instance makes the whole OS Enterprise." xml:space="preserve">
     <value>Es zählt die höchste Edition eines Servers bzw. einer VM: eine Enterprise-Instanz macht das ganze Betriebssystem zu Enterprise.</value>
+  </data>
+  <data name="The host is licensed for {0} VMs of its cluster, since they may move to it." xml:space="preserve">
+    <value>Der Host wird für {0} VMs seines Clusters lizenziert, da sie auf ihn wandern können.</value>
   </data>
   <data name="The image could not be read. Please use a PNG (8 bit per channel, not interlaced) or a JPEG with at most {0} pixels." xml:space="preserve">
     <value>Das Bild ließ sich nicht lesen. Bitte ein PNG (8 Bit je Kanal, ohne Interlacing) oder ein JPEG mit höchstens {0} Pixeln verwenden.</value>
@@ -5285,6 +5438,9 @@
   <data name="The report has no rows." xml:space="preserve">
     <value>Der Bericht hat keine Zeilen.</value>
   </data>
+  <data name="The rules follow these documents. They are binding, this page is an estimate; check the current version before buying." xml:space="preserve">
+    <value>Die Regeln folgen diesen Dokumenten. Verbindlich sind die Dokumente, diese Seite ist eine Schätzung; vor dem Kauf die aktuelle Fassung prüfen.</value>
+  </data>
   <data name="The runner has changed since the last allowance (server update). Allow it again." xml:space="preserve">
     <value>Der Runner hat sich seit der letzten Freigabe geändert (Server-Update). Bitte erneut freigeben.</value>
   </data>
@@ -5390,6 +5546,12 @@
   <data name="The webhook address must start with https:// or http://." xml:space="preserve">
     <value>Die Webhook-Adresse muss mit https:// oder http:// beginnen.</value>
   </data>
+  <data name="The whole cluster is licensed by the cores of every host, since every VM may run on every host." xml:space="preserve">
+    <value>Der ganze Cluster wird nach den Kernen jedes Hosts lizenziert, da jede VM auf jedem Host laufen kann.</value>
+  </data>
+  <data name="The whole cluster is licensed per VM, so that the licences move with the VMs." xml:space="preserve">
+    <value>Der ganze Cluster wird je VM lizenziert, damit die Lizenzen mit den VMs wandern.</value>
+  </data>
   <data name="The whole day on the selected weekdays." xml:space="preserve">
     <value>An den gewählten Wochentagen ganztägig.</value>
   </data>
@@ -5443,6 +5605,9 @@
   </data>
   <data name="This entry is not (anymore) in the library." xml:space="preserve">
     <value>Dieser Eintrag ist nicht (mehr) in der Bibliothek.</value>
+  </data>
+  <data name="This host is licensed only for its own {0} Windows Server VMs. A VM moved by hand needs licences on the new host; core licences may move only every {1} days." xml:space="preserve">
+    <value>Dieser Host wird nur für seine eigenen {0} Windows-Server-VMs lizenziert. Eine von Hand umgezogene VM braucht Lizenzen auf dem neuen Host; Kernlizenzen dürfen nur alle {1} Tage umziehen.</value>
   </data>
   <data name="This instance was not installed with the setup and therefore cannot update itself." xml:space="preserve">
     <value>Diese Instanz wurde nicht mit dem Setup installiert und kann sich deshalb nicht selbst aktualisieren.</value>
@@ -5774,6 +5939,9 @@
   <data name="Variant" xml:space="preserve">
     <value>Variante</value>
   </data>
+  <data name="Variants compared" xml:space="preserve">
+    <value>Verglichene Varianten</value>
+  </data>
   <data name="vCenter address" xml:space="preserve">
     <value>Adresse des vCenters</value>
   </data>
@@ -5828,6 +5996,9 @@
   <data name="Virtual machines" xml:space="preserve">
     <value>Virtuelle Maschinen</value>
   </data>
+  <data name="Virtual machines counted on this host ({0})" xml:space="preserve">
+    <value>Auf diesem Host gezählte virtuelle Maschinen ({0})</value>
+  </data>
   <data name="Virtual machines on this host" xml:space="preserve">
     <value>Virtuelle Maschinen auf diesem Host</value>
   </data>
@@ -5846,11 +6017,29 @@
   <data name="VM without known host" xml:space="preserve">
     <value>VM ohne bekannten Host</value>
   </data>
+  <data name="VMs covered" xml:space="preserve">
+    <value>Abgedeckte VMs</value>
+  </data>
+  <data name="VMs move" xml:space="preserve">
+    <value>VMs wandern</value>
+  </data>
+  <data name='VMs of cluster {0} are assumed to move between the hosts (default under "Prices and rules").' xml:space="preserve">
+    <value>Für die VMs von Cluster {0} wird angenommen, dass sie zwischen den Hosts wandern (Voreinstellung unter „Preise und Regeln“).</value>
+  </data>
+  <data name='VMs of cluster {0} are assumed to stay on their host (default under "Prices and rules").' xml:space="preserve">
+    <value>Für die VMs von Cluster {0} wird angenommen, dass sie auf ihrem Host bleiben (Voreinstellung unter „Preise und Regeln“).</value>
+  </data>
+  <data name="VMs on the host" xml:space="preserve">
+    <value>VMs auf dem Host</value>
+  </data>
   <data name="Volume licence (KMS / Active Directory)" xml:space="preserve">
     <value>Volumenlizenz (KMS / Active Directory)</value>
   </data>
   <data name="Volume licence (MAK)" xml:space="preserve">
     <value>Volumenlizenz (MAK)</value>
+  </data>
+  <data name="vSphere DRS is on in cluster {0}: VMs move between the hosts on their own." xml:space="preserve">
+    <value>In Cluster {0} ist vSphere DRS eingeschaltet: VMs wandern selbsttätig zwischen den Hosts.</value>
   </data>
   <data name="Wait" xml:space="preserve">
     <value>Warten</value>
@@ -6023,6 +6212,9 @@
   <data name="Whole host: the number of processors or cores of the host is unknown." xml:space="preserve">
     <value>Ganzer Host: die Zahl der Prozessoren oder Kerne des Hosts ist unbekannt.</value>
   </data>
+  <data name="Why not counted" xml:space="preserve">
+    <value>Warum nicht gezählt</value>
+  </data>
   <data name="Windows" xml:space="preserve">
     <value>Windows</value>
   </data>
@@ -6110,6 +6302,9 @@
   <data name="Windows Server: physical cores only, at least {0} per processor and {1} per server, packs of {2}. Standard covers {3} VMs per full licensing, Datacenter any number; per VM (at least {4} cores) only with SA. Cluster hosts are licensed for all Windows Server VMs of their cluster." xml:space="preserve">
     <value>Windows Server: nur physische Kerne, mindestens {0} je Prozessor und {1} je Server, Pakete zu {2}. Standard deckt {3} VMs je volle Lizenzierung, Datacenter beliebig viele; je VM (mindestens {4} Kerne) nur mit SA. Cluster-Hosts werden für alle Windows-Server-VMs ihres Clusters lizenziert.</value>
   </data>
+  <data name="Windows Server: physical cores only, at least {0} per processor and {1} per server, packs of {2}. Standard covers {3} VMs per full licensing, Datacenter any number; per VM (at least {4} cores) only with SA. Where VMs move within a cluster, every host is licensed for all Windows Server VMs of the cluster, or all of them per VM." xml:space="preserve">
+    <value>Windows Server: nur physische Kerne, mindestens {0} je Prozessor und {1} je Server, in Paketen zu {2}. Standard deckt {3} VMs je vollständiger Lizenzierung, Datacenter beliebig viele; je VM (mindestens {4} Kerne) nur mit SA. Wo VMs innerhalb eines Clusters wandern, wird jeder Host für alle Windows-Server-VMs des Clusters lizenziert oder alle VMs je VM.</value>
+  </data>
   <data name="Windows Server: {0} hosts, {1} cores to license. SQL Server: {2} servers or hosts, {3} cores to license." xml:space="preserve">
     <value>Windows Server: {0} Hosts, {1} zu lizenzierende Kerne. SQL Server: {2} Server oder Hosts, {3} zu lizenzierende Kerne.</value>
   </data>
@@ -6152,6 +6347,9 @@
   <data name="With Enterprise and SA any number of SQL VMs may run on the fully licensed host." xml:space="preserve">
     <value>Mit Enterprise und SA dürfen beliebig viele SQL-VMs auf dem voll lizenzierten Host laufen.</value>
   </data>
+  <data name="With SA the licences move with the VMs within the server farm (License Mobility); each VM is licensed once." xml:space="preserve">
+    <value>Mit SA wandern die Lizenzen innerhalb der Serverfarm mit den VMs (License Mobility); jede VM wird einmal lizenziert.</value>
+  </data>
   <data name="With verification the detection must also apply after the last step; otherwise the deployment fails for this computer even if every step reported success." xml:space="preserve">
     <value>Mit Prüfung muss die Erkennung auch nach dem letzten Schritt zutreffen; sonst schlägt das Deployment für diesen Rechner fehl, selbst wenn jeder Schritt Erfolg gemeldet hat.</value>
   </data>
@@ -6166,6 +6364,9 @@
   </data>
   <data name="Without launcher: commands to copy" xml:space="preserve">
     <value>Ohne Starter: Befehle zum Kopieren</value>
+  </data>
+  <data name="Without SA licences stay on their host for {0} days: per VM, this host needs licences for all {1} SQL VMs of the cluster." xml:space="preserve">
+    <value>Ohne SA bleiben Lizenzen {0} Tage auf ihrem Host: Je VM braucht dieser Host Lizenzen für alle {1} SQL-VMs des Clusters.</value>
   </data>
   <data name="Without SA the full licensing covers only as many VMs as core licences." xml:space="preserve">
     <value>Ohne SA deckt die volle Lizenzierung nur so viele VMs wie Kernlizenzen.</value>
@@ -6185,8 +6386,23 @@
   <data name="yes" xml:space="preserve">
     <value>ja</value>
   </data>
+  <data name="yes (default)" xml:space="preserve">
+    <value>ja (Voreinstellung)</value>
+  </data>
+  <data name="yes (DRS is on)" xml:space="preserve">
+    <value>ja (DRS eingeschaltet)</value>
+  </data>
+  <data name="yes (HA is on)" xml:space="preserve">
+    <value>ja (HA eingeschaltet)</value>
+  </data>
+  <data name="yes (set)" xml:space="preserve">
+    <value>ja (eingestellt)</value>
+  </data>
   <data name="Yes – start now" xml:space="preserve">
     <value>Ja – jetzt starten</value>
+  </data>
+  <data name="Yes, VMs move between the hosts" xml:space="preserve">
+    <value>Ja, VMs wandern zwischen den Hosts</value>
   </data>
   <data name="You are signed out." xml:space="preserve">
     <value>Du bist abgemeldet.</value>
@@ -6199,6 +6415,9 @@
   </data>
   <data name="Your role does not allow this page." xml:space="preserve">
     <value>Deine Rolle erlaubt diese Seite nicht.</value>
+  </data>
+  <data name="{0:N0} more" xml:space="preserve">
+    <value>{0:N0} mehr</value>
   </data>
   <data name="{0} % encrypted" xml:space="preserve">
     <value>{0} % verschlüsselt</value>
@@ -6229,6 +6448,9 @@
   </data>
   <data name="{0} already installed" xml:space="preserve">
     <value>{0} bereits installiert</value>
+  </data>
+  <data name="{0} and {1} cost the same ({2:N0}); {0} needs fewer cores." xml:space="preserve">
+    <value>{0} und {1} kosten gleich viel ({2:N0}); {0} braucht weniger Kerne.</value>
   </data>
   <data name="{0} at {1}" xml:space="preserve">
     <value>{0} um {1}</value>
@@ -6311,6 +6533,12 @@
   <data name="{0} cores" xml:space="preserve">
     <value>{0} Kerne</value>
   </data>
+  <data name="{0} cores once, any number of VMs" xml:space="preserve">
+    <value>{0} Kerne einmal, beliebig viele VMs</value>
+  </data>
+  <data name="{0} cores × {1} (for {2} VMs, {3} VMs per full licensing)" xml:space="preserve">
+    <value>{0} Kerne × {1} (für {2} VMs, {3} VMs je vollständiger Lizenzierung)</value>
+  </data>
   <data name="{0} could not be read as an MSI file." xml:space="preserve">
     <value>{0} ließ sich nicht als MSI-Datei lesen.</value>
   </data>
@@ -6364,6 +6592,15 @@
   </data>
   <data name="{0} is already listed as a computer of its own. This entry is a duplicate and can be deleted." xml:space="preserve">
     <value>{0} ist bereits als eigener Rechner eingetragen. Dieser Eintrag ist ein Duplikat und kann gelöscht werden.</value>
+  </data>
+  <data name="{0} is covered completely by the existing stock ({1} cores), so nothing remains to buy. Next best: {2} with {3:N0} to buy." xml:space="preserve">
+    <value>{0} ist vollständig durch den vorhandenen Bestand gedeckt ({1} Kerne), es bleibt nichts zu kaufen. Nächstbeste: {2} mit {3:N0} zu kaufen.</value>
+  </data>
+  <data name="{0} is the cheapest allowed variant: {1:N0} instead of {2:N0} for {3}." xml:space="preserve">
+    <value>{0} ist die günstigste zulässige Variante: {1:N0} statt {2:N0} für {3}.</value>
+  </data>
+  <data name="{0} is the only allowed variant." xml:space="preserve">
+    <value>{0} ist die einzige zulässige Variante.</value>
   </data>
   <data name="{0} is too large for the browser upload – please place it directly in the repository folder." xml:space="preserve">
     <value>{0} ist zu groß für den Upload im Browser – bitte direkt im Repository-Ordner ablegen.</value>
@@ -6431,6 +6668,9 @@
   <data name="{0} presumably decommissioned (no sign of life for {1} days)" xml:space="preserve">
     <value>{0} vermutlich außer Betrieb (seit {1} Tagen kein Lebenszeichen)</value>
   </data>
+  <data name="{0} processors × {1} cores, at least {2} per processor" xml:space="preserve">
+    <value>{0} Prozessoren × {1} Kerne, je Prozessor mindestens {2}</value>
+  </data>
   <data name="{0} processors × {1} physical cores (at least {2} per processor): {3} cores." xml:space="preserve">
     <value>{0} Prozessoren × {1} physische Kerne (mindestens {2} je Prozessor): {3} Kerne.</value>
   </data>
@@ -6464,6 +6704,9 @@
   <data name="{0} SQL Server VMs on this host." xml:space="preserve">
     <value>{0} SQL-Server-VMs auf diesem Host.</value>
   </data>
+  <data name="{0} SQL Server VMs on this host; {1} in cluster {2}, which may move here." xml:space="preserve">
+    <value>{0} SQL-Server-VMs auf diesem Host; {1} in Cluster {2}, die hierher wandern können.</value>
+  </data>
   <data name="{0} subnets, {1} routers, {2} devices, {3} computers. Dashed outline: subnet assumed as /24 because no mask is known." xml:space="preserve">
     <value>{0} Subnetze, {1} Router, {2} Geräte, {3} Rechner. Gestrichelter Rand: Subnetz als /24 angenommen, weil keine Maske bekannt ist.</value>
   </data>
@@ -6479,11 +6722,23 @@
   <data name="{0} updates pending" xml:space="preserve">
     <value>{0} Updates ausstehend</value>
   </data>
+  <data name="{0} uses {1} of its {2} cores from the existing stock; {3:N0} remain to buy – less than {4:N0} for {5}." xml:space="preserve">
+    <value>{0} nimmt {1} seiner {2} Kerne aus dem vorhandenen Bestand; {3:N0} bleiben zu kaufen – weniger als {4:N0} für {5}.</value>
+  </data>
+  <data name="{0} vCPUs, at least {1}" xml:space="preserve">
+    <value>{0} vCPUs, mindestens {1}</value>
+  </data>
   <data name="{0} vCPUs, at least {1}: {2} cores {3}, {4:N0}." xml:space="preserve">
     <value>{0} vCPUs, mindestens {1}: {2} Kerne {3}, {4:N0}.</value>
   </data>
   <data name="{0} versions" xml:space="preserve">
     <value>{0} Versionen</value>
+  </data>
+  <data name="{0} VMs of the cluster × their vCPUs, at least {1} each (without SA on every host)" xml:space="preserve">
+    <value>{0} VMs des Clusters × ihre vCPUs, je mindestens {1} (ohne SA auf jedem Host)</value>
+  </data>
+  <data name="{0} VMs × their vCPUs, at least {1} each" xml:space="preserve">
+    <value>{0} VMs × ihre vCPUs, je mindestens {1}</value>
   </data>
   <data name="{0} waiting for computers" xml:space="preserve">
     <value>{0} warten auf Rechner</value>

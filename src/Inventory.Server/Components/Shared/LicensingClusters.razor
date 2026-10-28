@@ -1,0 +1,80 @@
+@using Inventory.Core.Licensing
+@inject IStringLocalizer<SharedResource> L
+@inject LicensingService Service
+@inject Auditor Audit
+@inject Access Access
+@inject ISnackbar Snackbar
+
+@* Je Cluster: wandern die VMs zwischen den Hosts? Davon hängt ab, ob jeder Host für alle VMs des Clusters lizenziert wird. *@
+@if (Overview.Clusters.Count > 0)
+{
+    <MudPaper Outlined="true" Class="pa-3 mb-3">
+        <MudText Typo="Typo.subtitle2">@L["Clusters: do the VMs move between the hosts?"]</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2" Style="color: var(--mud-palette-text-secondary)">
+            @L["If VMs move (live migration, vMotion, DRS, HA), every host must be licensed for all VMs that may run on it: core licences may move to another host only every {0} days, the VMs at any time. If VMs stay on their host and are moved only rarely by hand, each host counts only its own VMs.", Overview.Rules.WindowsServer.LicenceReassignmentDays]
+        </MudText>
+        <MudSimpleTable Dense="true" Elevation="0">
+            <thead>
+                <tr>
+                    <th>@L["Cluster"]</th><th>@L["Source"]</th><th style="text-align: right">@L["Hosts"]</th><th style="text-align: right">@L["Windows Server VMs"]</th>
+                    <th>@L["VMs move"]</th><th>@L["Licensed"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var cluster in Overview.Clusters)
+                {
+                    <tr>
+                        <td>@cluster.Name</td>
+                        <td>@cluster.Source</td>
+                        <td style="text-align: right">@cluster.Hosts</td>
+                        <td style="text-align: right">@cluster.WindowsVms</td>
+                        <td>
+                            <AdminOnly>
+                                <ChildContent>
+                                    <MudSelect T="string" Value="@SettingValue(cluster)" ValueChanged="@(v => SaveAsync(cluster, v))" Dense="true" Margin="Margin.Dense"
+                                               Variant="Variant.Outlined" Disabled="_busy" Style="min-width: 260px">
+                                        <MudSelectItem Value="@("auto")">@L["Automatic: {0}", Reason(cluster)]</MudSelectItem>
+                                        <MudSelectItem Value="@("yes")">@L["Yes, VMs move between the hosts"]</MudSelectItem>
+                                        <MudSelectItem Value="@("no")">@L["No, VMs stay on their host"]</MudSelectItem>
+                                    </MudSelect>
+                                </ChildContent>
+                                <Otherwise>@Reason(cluster)</Otherwise>
+                            </AdminOnly>
+                        </td>
+                        <td>@(cluster.Licensing switch { LicenseVariant.PlanVm => L["per VM"], LicenseVariant.PlanHost => L["by host cores"], _ => L["per host"] })</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    [Parameter, EditorRequired] public LicensingOverview Overview { get; set; } = default!;
+    [Parameter] public EventCallback Changed { get; set; }
+
+    private bool _busy;
+
+    private static string SettingValue(LicensingCluster cluster) => cluster.Setting switch { true => "yes", false => "no", _ => "auto" };
+
+    private string Reason(LicensingCluster cluster) => Service.MobilityText(cluster);
+
+    private async Task SaveAsync(LicensingCluster cluster, string value)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _busy = true;
+        try
+        {
+            bool? mobile = value switch { "yes" => true, "no" => false, _ => null };
+            await Service.SaveClusterMobilityAsync(cluster.Key, mobile);
+            await Audit.LogAsync(L["Setting changed"], L["Licensing: VMs of cluster {0} move between the hosts: {1}", cluster.Name, value]);
+            Snackbar.Add(L["Saved."], Severity.Success);
+            await Changed.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

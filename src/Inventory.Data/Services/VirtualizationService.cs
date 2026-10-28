@@ -22,8 +22,10 @@ public sealed record VirtualMachineView(string Name, int? VirtualCpus, bool? Run
 /// <param name="ComputerId">Bei Hyper-V der inventarisierte Host.</param>
 /// <param name="CpuCores">Physische Kerne insgesamt.</param>
 /// <param name="ManagerId">Die Verwaltung (vCenter, Pool-Master, Xen Orchestra), aus der der Host stammt; null bei Hyper-V.</param>
+/// <param name="ClusterDrs">vSphere DRS eingeschaltet (null = unbekannt).</param>
+/// <param name="ClusterHa">HA des Clusters bzw. Pools eingeschaltet (null = unbekannt).</param>
 public sealed record VirtualHostView(VirtualHostSource Source, int Id, string Name, string? Cluster, int? CpuSockets, int? CpuCores, string? Model, int? ComputerId,
-    IReadOnlyList<VirtualMachineView> VirtualMachines, int? ManagerId = null, string? ManagerName = null);
+    IReadOnlyList<VirtualMachineView> VirtualMachines, int? ManagerId = null, string? ManagerName = null, bool? ClusterDrs = null, bool? ClusterHa = null);
 
 /// <summary>Hosts und ihre virtuellen Maschinen aus allen Quellen (Hyper-V-Hosts im Inventar, vCenter) in einer Sicht.</summary>
 public sealed class VirtualizationService(IDbContextFactory<InventoryDbContext> dbFactory)
@@ -45,7 +47,7 @@ public sealed class VirtualizationService(IDbContextFactory<InventoryDbContext> 
             }, host.Id, host.Name, host.Cluster, host.CpuSockets, host.CpuCores, host.Model, null,
                 host.VirtualMachines.OrderBy(v => v.Name)
                     .Select(v => new VirtualMachineView(v.Name, v.VirtualCpus, v.PoweredOn, v.GuestOs, v.GuestComputerId, Name(v.GuestComputerId))).ToList(),
-                host.ManagerId, managers.GetValueOrDefault(host.ManagerId)));
+                host.ManagerId, managers.GetValueOrDefault(host.ManagerId), host.ClusterDrs, host.ClusterHa));
 
         // Hyper-V: Rechner, die VMs melden oder denen sich Gäste über die Gastdienste zuordnen.
         var guests = await db.Computers.AsNoTracking().Where(c => c.HostComputerId != null).ToListAsync(ct);

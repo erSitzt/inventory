@@ -17,9 +17,9 @@ public sealed class SimulatedHypervisorSource : IHypervisorSource
     {
         var hosts = new List<HypervisorHostInfo>
         {
-            new("host-11", "esx01.corp.example", "PROD-CLUSTER", 2, 32, "PowerEdge R750", true),
-            new("host-12", "esx02.corp.example", "PROD-CLUSTER", 2, 32, "PowerEdge R750", true),
-            new("host-13", "esx03.corp.example", "PROD-CLUSTER", 2, 32, "PowerEdge R750", true),
+            new("host-11", "esx01.corp.example", "PROD-CLUSTER", 2, 32, "PowerEdge R750", true, true, true),
+            new("host-12", "esx02.corp.example", "PROD-CLUSTER", 2, 32, "PowerEdge R750", true, true, true),
+            new("host-13", "esx03.corp.example", "PROD-CLUSTER", 2, 32, "PowerEdge R750", true, true, true),
             new("host-21", "esx-dmz01.corp.example", null, 1, 12, "PowerEdge R650", true),
         };
         var vms = Guests.Select((name, i) => new HypervisorVmInfo($"vm-{100 + i}", name, SimulatedInventory.VmwareUuid(name),

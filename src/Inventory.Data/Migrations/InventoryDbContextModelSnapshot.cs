@@ -1467,6 +1467,12 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("Cluster")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("ClusterDrs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ClusterHa")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("Connected")
                         .HasColumnType("INTEGER");
 

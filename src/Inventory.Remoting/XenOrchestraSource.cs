@@ -31,7 +31,9 @@ public sealed class XenOrchestraSource(Func<HttpMessageHandler, HttpMessageHandl
         client.DefaultRequestHeaders.Add("Cookie", "authenticationToken=" + connection.Credential.Password.Trim());
         try
         {
-            var pools = (await GetAsync(client, "pools?fields=id,name_label", ct)).ToDictionary(p => Text(p, "id") ?? "", p => Text(p, "name_label"));
+            var poolRecords = await GetAsync(client, "pools?fields=id,name_label,HA_enabled", ct);
+            var pools = poolRecords.ToDictionary(p => Text(p, "id") ?? "", p => Text(p, "name_label"));
+            var poolHa = poolRecords.ToDictionary(p => Text(p, "id") ?? "", p => p?["HA_enabled"] is JsonValue ha && ha.TryGetValue<bool>(out var on) ? on : (bool?)null);
             var hosts = new List<HypervisorHostInfo>();
             string? version = null;
             foreach (var host in await GetAsync(client, "hosts?fields=" + HostFields, ct))
@@ -45,7 +47,8 @@ public sealed class XenOrchestraSource(Func<HttpMessageHandler, HttpMessageHandl
                     : threads is { } t && Int(cpu, "threads_per_core") is { } perCore && perCore > 0 ? t / perCore : null;
                 var pool = Text(host, "$pool") is { } poolId && pools.TryGetValue(poolId, out var poolName) && !string.IsNullOrWhiteSpace(poolName) ? poolName : null;
                 hosts.Add(new HypervisorHostInfo(id, Text(host, "hostname") ?? Text(host, "name_label") ?? id, pool, sockets, cores,
-                    Text(host?["bios_strings"], "system-product-name"), host?["enabled"] is JsonValue enabled && enabled.TryGetValue<bool>(out var on) ? on : true));
+                    Text(host?["bios_strings"], "system-product-name"), host?["enabled"] is JsonValue enabled && enabled.TryGetValue<bool>(out var on) ? on : true,
+                    null, Text(host, "$pool") is { } haPool ? poolHa.GetValueOrDefault(haPool) : null));
                 version ??= string.Join(" ", new[] { Text(host, "productBrand"), Text(host, "version") }.Where(v => v is not null)) is { Length: > 0 } v ? v : null;
             }
             var hostIds = hosts.Select(h => h.Id).ToHashSet();

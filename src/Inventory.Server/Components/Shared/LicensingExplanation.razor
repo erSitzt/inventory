@@ -8,13 +8,26 @@
     </MudText>
 
     <MudPaper Outlined="true" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-2">@L["How the licence is chosen"]</MudText>
+        <ol style="padding-left: 1.4em">
+            <li><MudText Typo="Typo.body2">@L["For every host the cores to license are counted (physical cores with the minimums) and the VMs it must cover: its own, or all of its cluster if the VMs move."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Every variant is calculated: Standard, Datacenter, per VM; for SQL Server per VM and the whole host. Variants that are not allowed (e.g. Standard where Datacenter is installed, per VM without SA) stay visible with the reason."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["The existing stock is deducted: what it covers costs nothing more. Hosts with the fewest choices get the stock first, then the largest."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["The allowed variant with the least still to buy wins; with the same amount, the cheaper one and then the one with fewer cores."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["In a cluster whose VMs move, both ways (all hosts by cores, all VMs per VM) are calculated for the whole cluster and the cheaper one applies to every host."]</MudText></li>
+        </ol>
+        <MudText Typo="Typo.body2" Class="mt-1" Style="color: var(--mud-palette-text-secondary)">@L["Expand a host on the Windows Server or SQL Server tab to see the decision, the variants compared and the VMs counted."]</MudText>
+    </MudPaper>
+
+    <MudPaper Outlined="true" Class="pa-4">
         <MudText Typo="Typo.h6" Class="mb-2">Windows Server</MudText>
         <ol style="padding-left: 1.4em">
             <li><MudText Typo="Typo.body2">@L["Only physical cores of the host count, hyperthreading does not. Every processor counts at least {0} cores, every server at least {1}; licences come in packs of {2} cores.", Ws.MinCoresPerProcessor, Ws.MinCoresPerServer, Rules.PackSize]</MudText></li>
             <li><MudText Typo="Typo.body2">@L["Standard: licensing all cores of the host allows {0} Windows Server VMs. For every further {0} VMs all cores are licensed again (stacking).", Ws.StandardVmsPerLicense]</MudText></li>
             <li><MudText Typo="Typo.body2">@L["Datacenter: licensing all cores once allows any number of Windows Server VMs on the host."]</MudText></li>
             <li><MudText Typo="Typo.body2">@L["Per VM (only with Software Assurance or a subscription): every VM is licensed with its virtual cores, at least {0} per VM; the licence moves with the VM.", Ws.PerVmMinCores]</MudText></li>
-            <li><MudText Typo="Typo.body2">@L["In a cluster, a licence may move to another host only every {0} days. Every host is therefore licensed for all Windows Server VMs of its cluster (can be switched off under \"Prices and rules\").", Ws.LicenceReassignmentDays]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Core licences may move to another host only every {0} days, VMs at any time. If the VMs of a cluster move (live migration, vMotion, DRS, HA), every host is licensed for all Windows Server VMs of the cluster – or every VM per VM with SA, whose licence moves with it. The whole cluster is licensed one way; mixed, a moved VM would not be covered on the new host.", Ws.LicenceReassignmentDays]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["If live migration is switched off or not licensed and VMs are moved only rarely by hand, each host counts only its own VMs. Set this per cluster on the Windows Server tab; DRS or HA switched on means the VMs move."]</MudText></li>
         </ol>
         @if (_wsBreakEven is { } breakEven)
         {
@@ -63,6 +76,7 @@
             <li><MudText Typo="Typo.body2">@L["Standard server + CAL: one server licence per server or VM plus one CAL per user or device that uses SQL Server; worth it only with few users. Shown as a hint, not chosen automatically."]</MudText></li>
             <li><MudText Typo="Typo.body2">@L["Developer, Express and Evaluation cost nothing; Developer and Evaluation must not run in production."]</MudText></li>
             <li><MudText Typo="Typo.body2">@L["The highest edition of a server or VM counts: one Enterprise instance makes the whole OS Enterprise."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["In a cluster whose VMs move: with SA the licences move with the VMs within the server farm (License Mobility), each VM is licensed once. Without SA they stay on their host for {0} days, so every host needs licences for all SQL VMs of the cluster.", Ws.LicenceReassignmentDays]</MudText></li>
         </ol>
         <MudSimpleTable Dense="true" Outlined="true" Elevation="0" Class="mt-2">
             <thead><tr><th>@L["When does which licence pay off?"]</th><th style="text-align: right">@L["Threshold"]</th></tr></thead>
@@ -85,6 +99,21 @@
             @L["Example host with {0} processors × {1} cores. Prices per 2-core pack: Enterprise {2:N0}, Standard {3:N0}; Standard server {4:N0}, CAL {5:N0}.", ExampleSockets, ExampleCoresPerSocket,
                 Price(MicrosoftRules.SqlEnterprise), Price(MicrosoftRules.SqlStandard), Price(MicrosoftRules.SqlStandardServer), Price(MicrosoftRules.SqlCal)]
         </MudText>
+    </MudPaper>
+
+    <MudPaper Outlined="true" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-2">@L["Microsoft documents"]</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">@L["The rules follow these documents. They are binding, this page is an estimate; check the current version before buying."]</MudText>
+        @foreach (var (heading, documents) in new[] { ("Windows Server", Rules.Documents), ("SQL Server", Sql.Documents) })
+        {
+            <MudText Typo="Typo.subtitle2" Class="mt-2">@heading</MudText>
+            <ul style="padding-left: 1.4em">
+                @foreach (var document in documents)
+                {
+                    <li><MudLink Href="@document.Url" Target="_blank" rel="noopener noreferrer" Typo="Typo.body2">@document.Title</MudLink></li>
+                }
+            </ul>
+        }
     </MudPaper>
 
     <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">

@@ -12,12 +12,19 @@ public sealed record LicenseProduct(string Key, string Name, string Unit, decima
     public bool PerCore => Unit == "core";
 }
 
+/// <summary>Ein Dokument von Microsoft, auf dem die Regeln beruhen (Lizenzleitfaden, Product Terms).</summary>
+public sealed record RuleDocument(string Title, string Url);
+
 /// <summary>Regeln für SQL Server aus rules/microsoft/sql-server.json.</summary>
 /// <param name="PerVmRequiresSoftwareAssuranceFromMajorVersion">Ab dieser Hauptversion (16 = SQL Server 2022) ist die Lizenzierung je VM nur mit SA oder Abonnement erlaubt.</param>
 /// <param name="ListPrices">Listenpreise je 2-Kern-Paket bzw. je Lizenz (Server, CAL) als Vergleichswert.</param>
 public sealed record SqlServerRules(string Version, DateOnly ValidFrom, string Source, int MinCoresPerProcessor, int MinCoresPerVm,
     int PerVmRequiresSoftwareAssuranceFromMajorVersion, IReadOnlyList<string> FreeEditions, IReadOnlyList<string> NonProductionEditions,
-    IReadOnlyDictionary<string, decimal> ListPrices);
+    IReadOnlyDictionary<string, decimal> ListPrices)
+{
+    /// <summary>Die Dokumente von Microsoft zu SQL Server, zum Nachlesen.</summary>
+    public IReadOnlyList<RuleDocument> Documents { get; init; } = [];
+}
 
 public sealed record WindowsServerRules(int MinCoresPerProcessor, int MinCoresPerServer, int StandardVmsPerLicense, int PerVmMinCores,
     bool PerVmRequiresSoftwareAssurance, int LicenceReassignmentDays);
@@ -38,6 +45,9 @@ public sealed record MicrosoftRules(string Version, DateOnly ValidFrom, string S
     public const string SqlCal = "SqlServerCal";
 
     private static readonly Lazy<MicrosoftRules> Loaded = new(() => Parse(Read("windows-server.json")) with { SqlServer = ParseSql(Read("sql-server.json")) });
+
+    /// <summary>Die Dokumente von Microsoft zu Windows Server, zum Nachlesen.</summary>
+    public IReadOnlyList<RuleDocument> Documents { get; init; } = [];
 
     /// <summary>Die SQL-Server-Regeln; Teil des Regelwerks, aber eine eigene Datei mit eigener Version.</summary>
     public SqlServerRules SqlServer { get; init; } = null!;

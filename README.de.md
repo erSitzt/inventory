@@ -358,8 +358,16 @@ ein Audit.
   (8 je Prozessor, 16 je Server, 2-Kern-Pakete), dann *Standard* (alle Kerne erneut je zwei Windows-Server-VMs),
   *Datacenter* (beliebig viele VMs) und mit aktiver Software Assurance oder Abonnement *je VM* (mindestens 8 Kerne je
   VM). Gewählt wird die günstigste zulässige Variante, mit Ihren Preisen je Paket oder dem Listenpreis der Regeldatei;
-  die übrigen bleiben je Host sichtbar. Im Cluster wird jeder Host für alle Windows-Server-VMs des Clusters lizenziert,
-  weil Lizenzen nur alle 90 Tage umziehen dürfen (abschaltbar).
+  die übrigen bleiben je Host sichtbar.
+- **Cluster**: Kernlizenzen dürfen nur alle 90 Tage auf einen anderen Host umziehen, VMs jederzeit. Wandern die VMs
+  eines Clusters (Live-Migration, vMotion, DRS, HA), wird jeder Host für alle VMs des Clusters lizenziert oder – mit
+  SA – jede VM einzeln, deren Lizenz mit ihr wandert; der ganze Cluster wird auf eine Art lizenziert, denn gemischt wäre
+  eine umgezogene VM nicht gedeckt. Ist die Live-Migration abgeschaltet oder nicht lizenziert und werden VMs nur selten
+  von Hand umgezogen, zählt jeder Host nur seine eigenen VMs. Eingeschaltetes vSphere DRS oder HA (aus dem vCenter, dem
+  XCP-ng-Pool bzw. Xen Orchestra gelesen) heißt, die VMs wandern; sonst gilt die Voreinstellung, und jeder Cluster lässt
+  sich im Reiter Windows Server einstellen. SQL Server folgt demselben Gedanken: mit SA wandern die Lizenzen mit den VMs
+  (License Mobility), ohne SA braucht jeder Host sie für alle SQL-VMs des Clusters. Die Seite verlinkt die
+  Lizenzleitfäden und Product Terms von Microsoft, auf denen die Regeln beruhen.
 - Der **Bestand** wird von Hand erfasst oder als CSV importiert (`Product;Quantity;Version;SA until;Contract;Notes`);
   Produkte sind die Schlüssel aus der Regeldatei. Bedarf, Bestand und Differenz je Produkt stehen auf einen Blick; CSV,
   PDF und `GET /api/licensing` exportieren sie.

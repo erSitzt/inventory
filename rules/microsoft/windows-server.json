@@ -24,5 +24,12 @@
     { "key": "SqlServerStandardServer", "name": "SQL Server Standard (server)", "unit": "licence" },
     { "key": "SqlServerCal", "name": "SQL Server CAL", "unit": "licence" },
     { "key": "WindowsEnterpriseUpgrade", "name": "Windows Enterprise (upgrade, E3/E5)", "unit": "licence" }
+  ],
+  "documents": [
+    { "title": "Windows Server licensing guide", "url": "https://aka.ms/WindowsServerLicensingGuide" },
+    { "title": "Licensing Windows Server for use with virtualization technologies", "url": "https://www.microsoft.com/licensing/guidance/Windows-Server-Virtualization-Technologies" },
+    { "title": "Licensing server products in virtual environments", "url": "https://www.microsoft.com/licensing/guidance/Server_Virtualization" },
+    { "title": "Introduction to core-based licensing", "url": "https://www.microsoft.com/licensing/guidance/Core-based-licensing-models" },
+    { "title": "Product Terms: Windows Server", "url": "https://www.microsoft.com/licensing/terms/productoffering/WindowsServerStandardDatacenterEssentials/EAEAS" }
   ]
 }

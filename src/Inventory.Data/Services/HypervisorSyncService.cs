@@ -201,6 +201,8 @@ public sealed class HypervisorSyncService(IDbContextFactory<InventoryDbContext> 
             host.CpuCores = info.CpuCores;
             host.Model = info.Model;
             host.Connected = info.Connected;
+            host.ClusterDrs = info.ClusterDrs;
+            host.ClusterHa = info.ClusterHa;
             host.SeenUtc = now;
         }
         var seenHosts = inventory.Hosts.Select(h => h.Id).ToHashSet();
