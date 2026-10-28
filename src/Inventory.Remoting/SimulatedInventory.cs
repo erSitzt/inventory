@@ -204,7 +204,7 @@ internal static class SimulatedInventory
                 CpuSockets = 2, CpuCoresPerSocket = 16, BiosUuid = Uuid(name), HypervisorPresent = true, HyperVGuest = false,
                 OsSku = 8, OsProductType = 3, OsEdition = "ServerDatacenter", LicenseChannel = LicenseChannels.VolumeMak,
                 ServerFeatures = [new ServerFeatureItem { Id = 20, Name = "Hyper-V" }, new ServerFeatureItem { Id = 33, Name = "Failover Clustering" }],
-                SqlInstances = [], ClusterName = "HVCLUSTER01",
+                SqlInstances = [], ClusterName = "HVCLUSTER01", HyperVHost = true,
                 VirtualMachines = ServerVms.Where(vm => HostOf(vm) == name).Select(vm => new HostedVmItem
                 {
                     Name = vm, BiosUuid = "{" + Uuid(vm) + "}", VirtualCpus = vm.StartsWith("SRV-SQL", StringComparison.Ordinal) ? 8 : 4, Running = true,
@@ -228,7 +228,7 @@ internal static class SimulatedInventory
             return new LicensingInfo
             {
                 CpuSockets = 1, CpuCoresPerSocket = cores, BiosUuid = Uuid(name), HypervisorPresent = true, HyperVGuest = true,
-                ReportedHostName = HostOf(name).ToLowerInvariant() + ".corp.example",
+                ReportedHostName = HostOf(name).ToLowerInvariant() + ".corp.example", ClusterName = "", HyperVHost = false,
                 OsSku = 7, OsProductType = name == "SRV-DC01" ? 2 : 3, OsEdition = "ServerStandard", LicenseChannel = LicenseChannels.VolumeGvlk,
                 ServerFeatures = features,
                 SqlInstances = name switch
@@ -249,7 +249,7 @@ internal static class SimulatedInventory
             CpuSockets = 1, CpuCoresPerSocket = data.CpuCores, BiosUuid = Uuid(name), HypervisorPresent = false, HyperVGuest = false,
             OsSku = pro ? 48 : 4, OsProductType = 1, OsEdition = pro ? "Professional" : "Enterprise",
             LicenseChannel = pro ? (random.Next(4) == 0 ? LicenseChannels.Retail : LicenseChannels.OemDm) : random.Next(6) == 0 ? LicenseChannels.VolumeGvlk : LicenseChannels.VolumeMak,
-            SqlInstances = [],
+            SqlInstances = [], ClusterName = "", HyperVHost = false,
         };
     }
 

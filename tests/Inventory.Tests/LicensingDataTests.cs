@@ -87,6 +87,12 @@ public class LicensingDataTests
         Assert.Equal((ids["hv-01"], HostSources.GuestReport), (app.HostComputerId, app.HostSource));
         Assert.True(app.IsVirtual);
 
+        // Ein Gast, dessen Hostname sich diesmal nicht lesen ließ, behält den bisherigen.
+        var nameless = Guest("SRV-APP01", Guid.NewGuid().ToString(), "HV-01.corp.example");
+        nameless.Licensing!.ReportedHostName = null;
+        await store.SaveAsync(ids["srv-app01"], nameless);
+        Assert.Equal("HV-01.corp.example", (await computers.GetAsync(ids["srv-app01"]))!.ReportedHostName);
+
         // Wird der Host gelöscht, ist die VM nur nicht mehr zugeordnet.
         await computers.DeleteAsync([ids["hv-02"]]);
         Assert.Null((await computers.GetAsync(ids["srv-sql01"]))!.HostComputerId);
@@ -119,20 +125,29 @@ public class LicensingDataTests
     }
 
     [Fact]
-    public async Task Hyper_v_hosts_keep_their_machines_when_the_list_could_not_be_read()
+    public async Task Hyper_v_hosts_keep_their_machines_and_cluster_when_they_could_not_be_read()
     {
         using var db = new TestDb();
         var computers = new ComputerService(db, new SimulatedHostProbe());
         var store = new InventoryStore(db);
         var id = (await computers.ImportAsync("hv-01"))[0].Id;
-        await store.SaveAsync(id, Host("HV-01", new HostedVmItem { Name = "SRV-A", BiosUuid = GuestUuid }));
+        var first = Host("HV-01", new HostedVmItem { Name = "SRV-A", BiosUuid = GuestUuid });
+        first.Licensing!.ClusterName = "HVCLUSTER01";
+        await store.SaveAsync(id, first);
         var unreadable = Host("HV-01");
         unreadable.Licensing!.VirtualMachines = null;
+        unreadable.Licensing.HyperVHost = null;
+        unreadable.Licensing.ClusterName = null;
         await store.SaveAsync(id, unreadable);
-        Assert.Single((await computers.GetDetailAsync(id))!.VirtualMachines);
+        var kept = (await computers.GetDetailAsync(id))!;
+        Assert.Single(kept.VirtualMachines);
+        Assert.Equal("HVCLUSTER01", kept.ClusterName);
+        unreadable.Licensing.ClusterName = "";
+        await store.SaveAsync(id, unreadable);
+        Assert.Null((await computers.GetAsync(id))!.ClusterName);
 
-        // Ohne Hyper-V-Rolle ist der Rechner kein Host mehr.
-        unreadable.Licensing.ServerFeatures = [];
+        // Erst wenn es Hyper-V auf dem Rechner sicher nicht (mehr) gibt, ist er kein Host mehr.
+        unreadable.Licensing.HyperVHost = false;
         await store.SaveAsync(id, unreadable);
         Assert.Empty((await computers.GetDetailAsync(id))!.VirtualMachines);
     }

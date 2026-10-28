@@ -44,12 +44,25 @@ namespace Inventory.Runner
                 Step(warnings, "Lizenz: Serverrollen", () => info.ServerFeatures = Query(@"root\cimv2", "SELECT ID, Name FROM Win32_ServerFeature")
                     .Select(o => new ServerFeatureItem { Id = (int)Number(o, "ID"), Name = Text(o, "Name") ?? "" }).ToList());
             Step(warnings, "Lizenz: SQL Server", () => info.SqlInstances = ReadSqlInstances());
-            Optional(() =>
+            // Fehlt der Namensraum, ist der Rechner sicher in keinem Cluster bzw. kein Host; andere Fehler lassen es offen.
+            Step(warnings, "Lizenz: Failover-Cluster", () =>
             {
-                foreach (var o in Query(@"root\MSCluster", "SELECT Name FROM MSCluster_Cluster"))
-                    info.ClusterName = Text(o, "Name");
+                if (!Absent(() =>
+                    {
+                        info.ClusterName = "";
+                        foreach (var o in Query(@"root\MSCluster", "SELECT Name FROM MSCluster_Cluster"))
+                            info.ClusterName = Text(o, "Name") ?? "";
+                    }))
+                    return;
+                info.ClusterName = "";
             });
-            Optional(() => info.VirtualMachines = ReadHyperVMachines());
+            Step(warnings, "Lizenz: Hyper-V", () =>
+            {
+                if (Absent(() => info.VirtualMachines = ReadHyperVMachines()))
+                    info.HyperVHost = false;
+                else
+                    info.HyperVHost = true;
+            });
             return info;
         }
 
@@ -189,7 +202,24 @@ namespace Inventory.Runner
             }
         }
 
-        /// <summary>Für Namensräume und Eigenschaften, die nicht jedes System hat: ein Fehler heißt "nicht vorhanden".</summary>
+        /// <summary>
+        /// Führt eine Abfrage aus und meldet true, wenn es den Namensraum oder die Klasse auf dem Rechner nicht gibt.
+        /// Andere Fehler (fehlende Rechte, WMI defekt) gehen weiter an den Aufrufer und werden zur Warnung.
+        /// </summary>
+        private static bool Absent(Action read)
+        {
+            try
+            {
+                read();
+                return false;
+            }
+            catch (ManagementException ex) when (ex.ErrorCode is ManagementStatus.InvalidNamespace or ManagementStatus.InvalidClass or ManagementStatus.NotFound)
+            {
+                return true;
+            }
+        }
+
+        /// <summary>Für Eigenschaften, die nicht jedes System hat: ein Fehler heißt "nicht vorhanden".</summary>
         private static void Optional(Action read)
         {
             try

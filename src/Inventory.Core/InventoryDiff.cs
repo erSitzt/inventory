@@ -158,7 +158,8 @@ public static partial class InventoryDiff
             Known("Windows edition", previous.OsEdition, licensing.OsEdition);
             Known("Licence channel", previous.LicenseChannel, licensing.LicenseChannel);
             Known("Processor sockets", previous.CpuSockets?.ToString(), licensing.CpuSockets?.ToString());
-            Known("Cluster", previous.ClusterName, licensing.ClusterName);
+            if (licensing.ClusterName is { } cluster && !string.Equals(previous.ClusterName ?? "", cluster, StringComparison.OrdinalIgnoreCase))
+                Add("System", ChangeKind.Changed, "Cluster", previous.ClusterName, cluster.Length == 0 ? null : cluster);
             if (licensing.ServerFeatures is { } features)
                 Set("Server role", previous.ServerFeatures.Select(f => (f.Name, (string?)null)), features.Select(f => (f.Name, (string?)null)));
             if (licensing.SqlInstances is { } instances)

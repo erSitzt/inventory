@@ -398,9 +398,11 @@ namespace Inventory.Contracts
         public List<ServerFeatureItem>? ServerFeatures { get; set; }
         /// <summary>SQL-Server-Instanzen laut Registry.</summary>
         public List<SqlInstanceItem>? SqlInstances { get; set; }
-        /// <summary>Name des Failover-Clusters, dem der Rechner angehört.</summary>
+        /// <summary>Name des Failover-Clusters, dem der Rechner angehört; leer = keinem, null = nicht lesbar.</summary>
         public string? ClusterName { get; set; }
-        /// <summary>Virtuelle Maschinen, wenn der Rechner ein Hyper-V-Host ist; null, wenn nicht oder nicht lesbar.</summary>
+        /// <summary>false, wenn der Rechner sicher kein Hyper-V-Host ist (kein Namensraum root\virtualization\v2); null = unbekannt.</summary>
+        public bool? HyperVHost { get; set; }
+        /// <summary>Virtuelle Maschinen eines Hyper-V-Hosts; null, wenn er keiner ist oder die Liste nicht lesbar war.</summary>
         public List<HostedVmItem>? VirtualMachines { get; set; }
     }
 

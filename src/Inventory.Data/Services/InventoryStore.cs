@@ -261,13 +261,15 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         computer.BiosUuid = BiosUuids.Normalize(licensing.BiosUuid) ?? computer.BiosUuid;
         computer.HypervisorPresent = licensing.HypervisorPresent ?? computer.HypervisorPresent;
         computer.HyperVGuest = licensing.HyperVGuest ?? computer.HyperVGuest;
-        // Ohne Gastdienste gibt es keinen gemeldeten Host mehr (z. B. nach einer Migration zu einem anderen Hypervisor).
-        computer.ReportedHostName = licensing.HyperVGuest is null ? computer.ReportedHostName : licensing.ReportedHostName;
+        // Ohne Gastdienste gibt es keinen gemeldeten Host mehr (z. B. nach einer Migration zu einem anderen Hypervisor);
+        // ließ sich der Name nur diesmal nicht lesen, bleibt der bisherige.
+        computer.ReportedHostName = licensing.HyperVGuest == false ? null : licensing.ReportedHostName ?? computer.ReportedHostName;
         computer.OsSku = licensing.OsSku ?? computer.OsSku;
         computer.OsProductType = licensing.OsProductType ?? computer.OsProductType;
         computer.OsEdition = licensing.OsEdition ?? computer.OsEdition;
         computer.LicenseChannel = licensing.LicenseChannel ?? computer.LicenseChannel;
-        computer.ClusterName = licensing.ClusterName;
+        // Leer = in keinem Cluster, null = nicht lesbar.
+        computer.ClusterName = licensing.ClusterName is null ? computer.ClusterName : licensing.ClusterName.Length == 0 ? null : licensing.ClusterName;
 
         if (licensing.ServerFeatures is { } features)
         {
@@ -287,10 +289,9 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
                 ComputerId = computerId, Name = i.Name, InstanceId = i.InstanceId, Edition = i.Edition, Version = i.Version, PatchLevel = i.PatchLevel, Clustered = i.Clustered,
             }));
         }
-        // null heißt: kein Hyper-V-Host (mehr), dann verschwinden seine VMs. Nur wenn die Hyper-V-Rolle installiert ist, war
-        // es eher ein Lesefehler, und der bisherige Stand bleibt.
-        var hyperVRole = licensing.ServerFeatures?.Any(f => f.Id == ServerFeatures.HyperV) == true;
-        if (licensing.VirtualMachines is not null || !hyperVRole)
+        // Die VM-Liste wird ersetzt, wenn sie gelesen wurde, und geleert, wenn der Rechner sicher kein Host (mehr) ist.
+        // Ließ sie sich nur nicht lesen, bleibt der bisherige Stand.
+        if (licensing.VirtualMachines is not null || licensing.HyperVHost == false)
             await db.HostedVirtualMachines.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
         if (licensing.VirtualMachines is { } machines)
             db.HostedVirtualMachines.AddRange(machines.Select(v => new HostedVirtualMachine
