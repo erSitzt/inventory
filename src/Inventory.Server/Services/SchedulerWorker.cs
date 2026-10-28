@@ -2,8 +2,8 @@ using Inventory.Data.Services;
 
 namespace Inventory.Server.Services;
 
-/// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, Heartbeat, AD- und vCenter-Abgleich, Datensicherung.</summary>
-public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, VCenterSyncService vcenter, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, AuditService audit, SettingsService settings, UpdateService updates, CatalogService catalog, TrendService trends, AgentService agents, Inventory.Core.Abstractions.IAlertSink alertSink, ILogger<SchedulerWorker> logger) : BackgroundService
+/// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, Heartbeat, AD-, vCenter- und XCP-ng-Abgleich, Datensicherung.</summary>
+public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, HypervisorSyncService hypervisors, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, AuditService audit, SettingsService settings, UpdateService updates, CatalogService catalog, TrendService trends, AgentService agents, Inventory.Core.Abstractions.IAlertSink alertSink, ILogger<SchedulerWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(5);
@@ -30,9 +30,10 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                 }
                 await heartbeat.RunIfDueAsync(stoppingToken);
                 await adSync.SyncIfDueAsync(stoppingToken);
-                if (await vcenter.SyncIfDueAsync(stoppingToken) is { } synced)
-                    await audit.LogAsync(Inventory.Core.Model.AuditActor.System("(automatic)"), "vCenter synchronized",
-                        $"{synced.Hosts} hosts, {synced.VirtualMachines} virtual machines, {synced.Matched} matched", stoppingToken);
+                foreach (var kind in hypervisors.Kinds)
+                    if (await hypervisors.SyncIfDueAsync(kind, stoppingToken) is { } synced)
+                        await audit.LogAsync(Inventory.Core.Model.AuditActor.System("(automatic)"), $"{HypervisorSyncService.Name(kind)} synchronized",
+                            $"{synced.Hosts} hosts, {synced.VirtualMachines} virtual machines, {synced.Matched} matched", stoppingToken);
                 await updates.CheckAsync(force: false, stoppingToken);
                 await updates.ReportPreviousAsync(startup: false, stoppingToken);
                 await updates.ApplyIfDueAsync(stoppingToken);

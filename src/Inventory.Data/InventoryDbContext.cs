@@ -101,13 +101,13 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
 
         modelBuilder.Entity<HypervisorHost>(e =>
         {
-            e.HasIndex(h => h.ExternalId).IsUnique();
+            e.HasIndex(h => new { h.Kind, h.ExternalId }).IsUnique();
             // Verschwindet ein Host, bleiben seine VMs bis zum nächsten Abgleich ohne Host.
             e.HasMany(h => h.VirtualMachines).WithOne().HasForeignKey(v => v.HostId).OnDelete(DeleteBehavior.SetNull);
         });
         modelBuilder.Entity<HypervisorVm>(e =>
         {
-            e.HasIndex(v => v.ExternalId).IsUnique();
+            e.HasIndex(v => new { v.Kind, v.ExternalId }).IsUnique();
             e.HasIndex(v => v.BiosUuid);
             e.HasOne<Computer>().WithMany().HasForeignKey(v => v.GuestComputerId).OnDelete(DeleteBehavior.SetNull);
         });

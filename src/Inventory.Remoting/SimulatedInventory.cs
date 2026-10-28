@@ -184,6 +184,9 @@ internal static class SimulatedInventory
     /// </summary>
     public static string VmwareUuid(string name) => Core.Model.BiosUuids.Swapped(Uuid(name)).ToLowerInvariant();
 
+    /// <summary>UUID einer Xen-VM; der Gast meldet sie unverändert als SMBIOS-UUID.</summary>
+    public static string XenUuid(string name) => Uuid(name).ToLowerInvariant();
+
     /// <summary>Gleichbleibende SMBIOS-UUID je Name: Host und Gast melden so dieselbe.</summary>
     private static string Uuid(string name) =>
         new Guid(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(name.ToUpperInvariant()))).ToString("D").ToUpperInvariant();
@@ -247,6 +250,23 @@ internal static class SimulatedInventory
                     ],
                     _ => [],
                 },
+            };
+        }
+        if (SimulatedXcpNgSource.Guests.Contains(name))
+        {
+            data.Manufacturer = "Xen";
+            data.Model = "HVM domU";
+            data.OsName = "Microsoft Windows Server 2022 Standard";
+            data.OsVersion = "10.0.20348.2700";
+            data.OsRelease = "21H2";
+            var xenCpus = name.Contains("SQL", StringComparison.Ordinal) ? 8 : 4;
+            data.CpuCores = xenCpus;
+            data.CpuLogicalProcessors = xenCpus;
+            return new LicensingInfo
+            {
+                CpuSockets = 1, CpuCoresPerSocket = xenCpus, BiosUuid = Uuid(name), HypervisorPresent = true, HyperVGuest = false,
+                OsSku = 7, OsProductType = 3, OsEdition = "ServerStandard", LicenseChannel = LicenseChannels.VolumeGvlk,
+                ServerFeatures = [], SqlInstances = [], ClusterName = "", HyperVHost = false,
             };
         }
         if (SimulatedHypervisorSource.Guests.Contains(name))

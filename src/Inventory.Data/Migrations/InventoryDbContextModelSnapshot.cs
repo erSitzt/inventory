@@ -1480,6 +1480,9 @@ namespace Inventory.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Model")
                         .HasColumnType("TEXT");
 
@@ -1492,7 +1495,7 @@ namespace Inventory.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ExternalId")
+                    b.HasIndex("Kind", "ExternalId")
                         .IsUnique();
 
                     b.ToTable("HypervisorHosts");
@@ -1523,6 +1526,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int?>("HostId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1540,12 +1546,12 @@ namespace Inventory.Data.Migrations
 
                     b.HasIndex("BiosUuid");
 
-                    b.HasIndex("ExternalId")
-                        .IsUnique();
-
                     b.HasIndex("GuestComputerId");
 
                     b.HasIndex("HostId");
+
+                    b.HasIndex("Kind", "ExternalId")
+                        .IsUnique();
 
                     b.ToTable("HypervisorVms");
                 });

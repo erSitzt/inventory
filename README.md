@@ -187,6 +187,16 @@ self-signed certificate is accepted only by its SHA-256 thumbprint, which a fail
 matched to its inventoried computer by the BIOS UUID, otherwise by its name; inventoried virtual machines that no host
 lists are shown separately, because the licence calculation cannot place them.
 
+**XCP-ng** (and Citrix Hypervisor) works the same way: enter the address of the pool master and an account – the
+read-only role is enough – under *Settings*; the server reads the hosts (sockets, physical cores where the XAPI reports
+them, model), the pool and the virtual machines (UUID, vCPUs, host, power state, guest name and OS from the guest
+agent) through the XAPI (JSON-RPC), read-only. A Xen guest reports the VM's UUID as its BIOS UUID, so matching works as
+with VMware.
+
+With **Xen Orchestra** the same pools can be read through its REST API instead, with an authentication token in place
+of a password (store the token as the password of a credential; the user name is not used). Set up either the direct
+XCP-ng connection or Xen Orchestra for the same pools, not both.
+
 ### Collections and maintenance windows
 
 ![Collections](docs/screenshots/en/collections.png)

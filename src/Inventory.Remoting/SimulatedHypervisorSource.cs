@@ -9,6 +9,8 @@ namespace Inventory.Remoting;
 /// </summary>
 public sealed class SimulatedHypervisorSource : IHypervisorSource
 {
+    public HypervisorKind Kind => HypervisorKind.VCenter;
+
     public static readonly string[] Guests = ["VM-SQL01", "VM-SQL02", "VM-APP01", "VM-APP02", "VM-APP03", "VM-FILE01", "VM-WEB01", "VM-RDS01"];
 
     public Task<HypervisorInventory> ReadAsync(HypervisorConnection connection, CancellationToken ct = default)

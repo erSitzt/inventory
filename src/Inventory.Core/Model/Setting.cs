@@ -68,15 +68,7 @@ public static class SettingKeys
     public const string AdSyncInactiveDays = "AdSync.InactiveDays";
     public const string AdSyncLastRunUtc = "AdSync.LastRunUtc";
     public const string AdSyncLastResult = "AdSync.LastResult";
-    public const string VCenterEnabled = "VCenter.Enabled";
-    /// <summary>Adresse des vCenters, z. B. https://vcenter.corp.example.</summary>
-    public const string VCenterUrl = "VCenter.Url";
-    public const string VCenterCredentialId = "VCenter.CredentialId";
-    /// <summary>SHA-256-Fingerabdruck eines selbst signierten Zertifikats, dem vertraut wird.</summary>
-    public const string VCenterThumbprint = "VCenter.Thumbprint";
-    public const string VCenterIntervalHours = "VCenter.IntervalHours";
-    public const string VCenterLastRunUtc = "VCenter.LastRunUtc";
-    public const string VCenterLastResult = "VCenter.LastResult";
+    // vCenter und XCP-ng: Schlüssel "VCenter.*" bzw. "XcpNg.*", siehe HypervisorSyncService.
     /// <summary>Eigene Preise je 2-Kern-Paket als JSON {Produktschlüssel: Preis}; fehlende Produkte rechnen mit dem Listenpreis der Regeldatei.</summary>
     public const string LicensingPrices = "Licensing.Prices";
     /// <summary>"False" = jeder Host nur für seine eigenen VMs; sonst für alle Windows-VMs seines Clusters.</summary>

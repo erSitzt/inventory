@@ -191,6 +191,17 @@ SHA-256-Fingerabdruck angenommen, den ein fehlgeschlagener Lauf anzeigt. Jede vi
 ihrem inventarisierten Rechner zugeordnet, sonst über den Namen; inventarisierte VMs, die kein Host führt, stehen
 gesondert, weil die Lizenzberechnung sie keinem Host zuordnen kann.
 
+**XCP-ng** (und Citrix Hypervisor) funktioniert genauso: unter *Einstellungen* die Adresse des Pool-Masters und ein
+Konto eintragen – die Rolle read-only genügt; der Server liest Hosts (Sockel, physische Kerne, soweit die XAPI sie
+meldet, Modell), den Pool und die virtuellen Maschinen (UUID, vCPUs, Host, Betriebszustand, Gastname und Betriebssystem
+vom Gastagenten) über die XAPI (JSON-RPC), nur lesend. Ein Xen-Gast meldet die UUID der VM als BIOS-UUID; die Zuordnung
+klappt also wie bei VMware.
+
+Mit **Xen Orchestra** lassen sich dieselben Pools stattdessen über dessen REST-Schnittstelle lesen, mit einem
+Authentication Token statt eines Kennworts (das Token als Kennwort einer Zugangsdaten-Eintragung speichern; der
+Benutzername wird nicht verwendet). Für dieselben Pools entweder die direkte XCP-ng-Verbindung oder Xen Orchestra
+einrichten, nicht beides.
+
 ### Sammlungen und Wartungsfenster
 
 ![Sammlungen](docs/screenshots/de/collections.png)
