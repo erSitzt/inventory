@@ -66,7 +66,11 @@ public class LicensingServiceTests
         Assert.Equal((64, 48, -16, true), (balance.Need!.Value, balance.Stock, balance.Delta!.Value, overview.SoftwareAssurance));
         Assert.Equal("shortfall", service.Status(balance));
         Assert.Equal(["product", "need", "stock", "delta", "status"], service.BalanceTable(overview).Columns.Select(c => c.Key));
-        Assert.Equal(2, service.HostTable(overview).Rows.Count);
+        // SQL Server: SRV-SQL01 (Standard 2022) auf dem Hyper-V-Host ohne SA → ganzer Host in Standard; die VMware-VM ohne Host ist eine Lücke.
+        var sql = Assert.Single(overview.SqlServer.Entries, e => e.Chosen is not null);
+        Assert.Equal((MicrosoftRules.SqlStandard, 32), (sql.Chosen!.Product, sql.Chosen.Cores));
+        Assert.Contains(overview.Gaps, g => g.Text.Contains("SQL Server 2022 or later on a VM without a known host"));
+        Assert.Equal(3, service.HostTable(overview).Rows.Count);
     }
 
     [Fact]

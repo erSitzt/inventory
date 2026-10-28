@@ -1,0 +1,116 @@
+@using Inventory.Core.Licensing
+@inject IStringLocalizer<SharedResource> L
+
+@* Wie gerechnet wird und ab wann sich welche Lizenz lohnt – mit den Regeln der Regeldateien und den aktuellen Preisen. *@
+<MudStack Spacing="4" Style="max-width: 980px">
+    <MudText Typo="Typo.body2">
+        @L["All amounts use your prices per pack under \"Prices and rules\", otherwise the list prices from the rules files as a reference. The thresholds therefore move with your prices."]
+    </MudText>
+
+    <MudPaper Outlined="true" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-2">Windows Server</MudText>
+        <ol style="padding-left: 1.4em">
+            <li><MudText Typo="Typo.body2">@L["Only physical cores of the host count, hyperthreading does not. Every processor counts at least {0} cores, every server at least {1}; licences come in packs of {2} cores.", Ws.MinCoresPerProcessor, Ws.MinCoresPerServer, Rules.PackSize]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Standard: licensing all cores of the host allows {0} Windows Server VMs. For every further {0} VMs all cores are licensed again (stacking).", Ws.StandardVmsPerLicense]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Datacenter: licensing all cores once allows any number of Windows Server VMs on the host."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Per VM (only with Software Assurance or a subscription): every VM is licensed with its virtual cores, at least {0} per VM; the licence moves with the VM.", Ws.PerVmMinCores]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["In a cluster, a licence may move to another host only every {0} days. Every host is therefore licensed for all Windows Server VMs of its cluster (can be switched off under \"Prices and rules\").", Ws.LicenceReassignmentDays]</MudText></li>
+        </ol>
+        @if (_wsBreakEven is { } breakEven)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="my-2">
+                @L["Datacenter pays off from {0} Windows Server VMs per host: Standard costs {1:N0} per 2-core pack and two VMs, Datacenter {2:N0} per 2-core pack. The number of cores does not matter, it applies to both.", breakEven, Price(MicrosoftRules.WindowsServerStandard), Price(MicrosoftRules.WindowsServerDatacenter)]
+            </MudAlert>
+        }
+        <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">@L["Example: host with {0} processors × {1} cores ({2} cores to license)", ExampleSockets, ExampleCoresPerSocket, ExampleCores]</MudText>
+        <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+            <thead>
+                <tr>
+                    <th>@L["Windows Server VMs"]</th><th style="text-align: right">Standard</th><th style="text-align: right">Datacenter</th>
+                    <th style="text-align: right">@L["Per VM ({0} vCPU each)", ExampleVmCpus]</th><th>@(Overview.SoftwareAssurance ? L["Cheapest"] : L["Cheapest without SA"])</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var vms in new[] { 1, 2, 4, 6, 8, 10, 12, 14, 16, 20 })
+                {
+                    var standard = Cost(MicrosoftRules.WindowsServerStandard, ExampleCores * Math.Max(1, (vms + Ws.StandardVmsPerLicense - 1) / Ws.StandardVmsPerLicense));
+                    var datacenter = Cost(MicrosoftRules.WindowsServerDatacenter, ExampleCores);
+                    var perVm = Cost(MicrosoftRules.WindowsServerPerVm, vms * Rules.RoundToPacks(Math.Max(ExampleVmCpus, Ws.PerVmMinCores)));
+                    // Je VM nur mit SA: ohne SA kommt sie für den günstigsten Weg nicht in Frage.
+                    var options = Overview.SoftwareAssurance ? new[] { ("Standard", standard), ("Datacenter", datacenter), (L["per VM (SA)"].Value, perVm) } : new[] { ("Standard", standard), ("Datacenter", datacenter) };
+                    var cheapest = options.MinBy(c => c.Item2).Item1;
+                    <tr>
+                        <td>@vms</td>
+                        <td style="text-align: right">@standard.ToString("N0")</td>
+                        <td style="text-align: right">@datacenter.ToString("N0")</td>
+                        <td style="text-align: right">@perVm.ToString("N0")</td>
+                        <td>@cheapest</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+        <MudText Typo="Typo.caption" Class="d-block mt-1" Style="color: var(--mud-palette-text-secondary)">
+            @L["Per VM pays off for a few small VMs on large hosts; it needs Software Assurance or a subscription and is chosen only then. The amounts are licence prices without the yearly SA or subscription fees."]
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Outlined="true" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-2">SQL Server</MudText>
+        <ol style="padding-left: 1.4em">
+            <li><MudText Typo="Typo.body2">@L["Physical server: all physical cores, at least {0} per processor, in the edition installed (Standard or Enterprise).", Sql.MinCoresPerProcessor]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Virtual machine: its virtual cores, at least {0} per VM. From SQL Server 2022 this needs Software Assurance or a subscription.", Sql.MinCoresPerVm]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Whole host: all physical cores of the host (at least {0} per processor) in the highest edition of its SQL VMs cover as many SQL VMs as core licences. With Enterprise and Software Assurance any number of SQL VMs may run on it.", Sql.MinCoresPerProcessor]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Standard server + CAL: one server licence per server or VM plus one CAL per user or device that uses SQL Server; worth it only with few users. Shown as a hint, not chosen automatically."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Developer, Express and Evaluation cost nothing; Developer and Evaluation must not run in production."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["The highest edition of a server or VM counts: one Enterprise instance makes the whole OS Enterprise."]</MudText></li>
+        </ol>
+        <MudSimpleTable Dense="true" Outlined="true" Elevation="0" Class="mt-2">
+            <thead><tr><th>@L["When does which licence pay off?"]</th><th style="text-align: right">@L["Threshold"]</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>@L["Whole host ({0} cores) in the same edition instead of VMs with {1} vCPU each", ExampleSqlCores, Sql.MinCoresPerVm]</td>
+                    <td style="text-align: right">@L["from {0} VMs", Threshold(ExampleSqlCores, Sql.MinCoresPerVm)]</td>
+                </tr>
+                <tr>
+                    <td>@L["Whole host ({0} cores Enterprise, with SA: any number of VMs) instead of Standard VMs with {1} vCPU each", ExampleSqlCores, Sql.MinCoresPerVm]</td>
+                    <td style="text-align: right">@L["from {0} VMs", Threshold(Cost(MicrosoftRules.SqlEnterprise, ExampleSqlCores), Cost(MicrosoftRules.SqlStandard, Sql.MinCoresPerVm))]</td>
+                </tr>
+                <tr>
+                    <td>@L["Standard per core ({0} cores) instead of server + CAL", Sql.MinCoresPerVm]</td>
+                    <td style="text-align: right">@L["from {0} users or devices", Threshold(Cost(MicrosoftRules.SqlStandard, Sql.MinCoresPerVm) - Price(MicrosoftRules.SqlStandardServer), Price(MicrosoftRules.SqlCal))]</td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+        <MudText Typo="Typo.caption" Class="d-block mt-1" Style="color: var(--mud-palette-text-secondary)">
+            @L["Example host with {0} processors × {1} cores. Prices per 2-core pack: Enterprise {2:N0}, Standard {3:N0}; Standard server {4:N0}, CAL {5:N0}.", ExampleSockets, ExampleCoresPerSocket,
+                Price(MicrosoftRules.SqlEnterprise), Price(MicrosoftRules.SqlStandard), Price(MicrosoftRules.SqlStandardServer), Price(MicrosoftRules.SqlCal)]
+        </MudText>
+    </MudPaper>
+
+    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">
+        @L["Rules: Windows Server {0} (valid from {1}), SQL Server {2} (valid from {3}). {4}", Rules.Version, Rules.ValidFrom.ToString("d"), Sql.Version, Sql.ValidFrom.ToString("d"), Rules.Source]
+    </MudText>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public LicensingOverview Overview { get; set; } = default!;
+
+    // Beispielhost für die Tabellen: 2 × 16 Kerne ist ein typischer Virtualisierungshost.
+    private const int ExampleSockets = 2;
+    private const int ExampleCoresPerSocket = 16;
+    private const int ExampleVmCpus = 4;
+
+    private MicrosoftRules Rules => Overview.Rules;
+    private WindowsServerRules Ws => Rules.WindowsServer;
+    private SqlServerRules Sql => Rules.SqlServer;
+    private int ExampleCores => Rules.RoundToPacks(Math.Max(ExampleSockets * Math.Max(ExampleCoresPerSocket, Ws.MinCoresPerProcessor), Ws.MinCoresPerServer));
+    private int ExampleSqlCores => Rules.RoundToPacks(ExampleSockets * Math.Max(ExampleCoresPerSocket, Sql.MinCoresPerProcessor));
+    private int? _wsBreakEven => WindowsServerEngine.BreakEvenVms(Price(MicrosoftRules.WindowsServerStandard), Price(MicrosoftRules.WindowsServerDatacenter), Ws.StandardVmsPerLicense);
+
+    private decimal Price(string product) => Rules.Price(product, Overview.Prices);
+
+    private decimal Cost(string product, int cores) => Price(product) * cores / Rules.PackSize;
+
+    /// <summary>Ab wie vielen Einheiten zu je <paramref name="each"/> die Summe <paramref name="total"/> erreicht.</summary>
+    private static string Threshold(decimal total, decimal each) => each <= 0 ? "–" : Math.Max(1, (int)Math.Ceiling(total / each)).ToString();
+}

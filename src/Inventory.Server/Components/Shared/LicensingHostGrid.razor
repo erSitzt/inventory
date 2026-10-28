@@ -1,0 +1,106 @@
+@using Inventory.Core.Licensing
+@inject IStringLocalizer<SharedResource> L
+@inject LicensingService Service
+
+@* Hosts bzw. Server mit der gewählten Lizenzierung; aufgeklappt der Rechenweg, die Varianten und die VMs. *@
+<MudDataGrid T="HostLicensing" Items="Items" Dense="true" Hover="true" SortMode="SortMode.Single">
+    <Columns>
+        <HierarchyColumn T="HostLicensing" />
+        <TemplateColumn Title="@HostTitle" SortBy="h => h.Host.Name">
+            <CellTemplate>
+                @if (context.Item.Host.ComputerId is { } id)
+                {
+                    <MudLink Href="@($"computers/{id}")">@context.Item.Host.Name</MudLink>
+                }
+                else
+                {
+                    @context.Item.Host.Name
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Cluster"]" SortBy="h => h.Host.Cluster"><CellTemplate>@context.Item.Host.Cluster</CellTemplate></TemplateColumn>
+        <TemplateColumn Title="@L["Source"]" SortBy="h => h.Host.Source"><CellTemplate>@SourceName(context.Item.Host.Source)</CellTemplate></TemplateColumn>
+        <TemplateColumn Title="@VmTitle" SortBy="h => h.WindowsVms" CellStyle="text-align: right"><CellTemplate>@context.Item.WindowsVms</CellTemplate></TemplateColumn>
+        <TemplateColumn Title="@L["Licensed with"]" SortBy="h => h.Chosen == null ? null : h.Chosen.Product">
+            <CellTemplate>
+                @if (context.Item.Chosen is { } chosen)
+                {
+                    <span>@ProductName(chosen.Product): @L["{0} cores", chosen.Cores]</span>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@(context.Item.Variants.Count == 0 && context.Item.WindowsVms == 0 ? EmptyLabel : L["not calculable"])</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Cost"]" SortBy="h => h.Chosen == null ? 0 : h.Chosen.Cost" CellStyle="text-align: right">
+            <CellTemplate>@(context.Item.Chosen?.Cost.ToString("N0"))</CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <ChildRowContent>
+        <div class="pa-2">
+            @if (context.Item.Steps.Count > 0)
+            {
+                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["How it is calculated"]</MudText>
+                <ol class="mb-2" style="padding-left: 1.4em">
+                    @foreach (var step in context.Item.Steps)
+                    {
+                        <li><MudText Typo="Typo.body2">@Note(step)</MudText></li>
+                    }
+                </ol>
+            }
+            @if (context.Item.Variants.Count > 0)
+            {
+                <MudSimpleTable Dense="true" Elevation="0" Class="mb-2">
+                    <thead><tr><th>@L["Variant"]</th><th style="text-align: right">@L["Cores"]</th><th style="text-align: right">@L["Cost"]</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var variant in context.Item.Variants)
+                        {
+                            <tr style="@(variant == context.Item.Chosen ? "font-weight: 600" : "")">
+                                <td>@ProductName(variant.Product)</td>
+                                <td style="text-align: right">@variant.Cores</td>
+                                <td style="text-align: right">@variant.Cost.ToString("N0")</td>
+                                <td>@(variant == context.Item.Chosen ? L["chosen"] : variant.Reason is { } reason ? Note(reason) : "")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            @foreach (var note in context.Item.Notes)
+            {
+                <MudText Typo="Typo.body2" Class="mb-1">@Note(note)</MudText>
+            }
+            @if (context.Item.Host.VirtualMachines.Count > 0)
+            {
+                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["Virtual machines"]</MudText>
+                <MudText Typo="Typo.body2">
+                    @string.Join(", ", context.Item.Host.VirtualMachines.Select(v => v.Name + (v.VirtualCpus is { } cpus ? $" ({cpus} vCPU)" : "")
+                        + (v.Running ? "" : " – " + L["off"]) + (v.WindowsServer == false ? " – " + L["no Windows Server"] : v.WindowsServer is null ? " – ?" : "")))
+                </MudText>
+            }
+        </div>
+    </ChildRowContent>
+    <NoRecordsContent>
+        <MudText Class="pa-4">@EmptyText</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<HostLicensing> Items { get; set; } = [];
+    [Parameter, EditorRequired] public string HostTitle { get; set; } = "";
+    [Parameter, EditorRequired] public string VmTitle { get; set; } = "";
+    [Parameter, EditorRequired] public string EmptyText { get; set; } = "";
+    /// <summary>Text, wenn ein Eintrag nichts braucht (z. B. ein Host ohne Windows-Server-Last).</summary>
+    [Parameter] public string EmptyLabel { get; set; } = "";
+
+    private string ProductName(string key) => L[Service.Rules.Product(key)?.Name ?? key];
+
+    private string Note(LicensingNote note) => L[note.Text, note.Args];
+
+    private string SourceName(string source) => source switch
+    {
+        "physical" => L["physical server"],
+        "VM" => L["VM without known host"],
+        _ => source,
+    };
+}

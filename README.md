@@ -351,7 +351,15 @@ record – an estimate according to versioned rules (`rules/microsoft/*.json`), 
   export them.
 - **Data gaps** – virtual machines without a known host, hosts without processor data, expired Software Assurance – are
   listed instead of being estimated.
-- SQL Server, CALs and Windows clients follow; their stock can already be recorded.
+- **SQL Server** is calculated from the instances found by the scan, highest edition per server or VM: physical servers
+  per core (all cores, at least 4 per processor); VMs per VM (vCPUs, at least 4 – from SQL Server 2022 only with SA or a
+  subscription) or by licensing the whole host in the VMs' edition (as many VMs as core licences, with Enterprise and SA
+  any number). Developer, Express and Evaluation cost nothing; Developer and Evaluation in use are listed because they
+  must not run in production. Standard server + CAL is shown as a hint.
+- Every host and SQL server shows **how it is calculated**, step by step with the numbers used, the variants with their
+  cost, and from how many VMs Datacenter (Windows Server) or the whole host (SQL Server) pays off at your prices. The tab
+  *How it is calculated* explains the rules and shows the thresholds and an example host.
+- CALs and Windows clients follow; their stock can already be recorded.
 
 ### Audit trail
 

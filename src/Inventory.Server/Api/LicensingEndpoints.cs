@@ -11,11 +11,14 @@ public sealed record LicenseBalanceDto(string Product, string Name, string Unit,
 
 public sealed record LicenseVariantDto(string Product, int Cores, decimal Cost, bool Allowed, string? Reason);
 
-public sealed record HostLicensingDto(string Host, string? Cluster, string Source, int LicensedCores, int WindowsServerVms, LicenseVariantDto? Chosen,
-    IReadOnlyList<LicenseVariantDto> Variants, IReadOnlyList<string> Notes);
+/// <param name="VirtualMachines">Bei Windows Server die zu deckenden Windows-Server-VMs, bei SQL Server die SQL-VMs.</param>
+/// <param name="Steps">Der Rechenweg in der Sprache der Anfrage.</param>
+public sealed record HostLicensingDto(string Host, string? Cluster, string Source, int LicensedCores, int VirtualMachines, LicenseVariantDto? Chosen,
+    IReadOnlyList<LicenseVariantDto> Variants, IReadOnlyList<string> Steps, IReadOnlyList<string> Notes);
 
-public sealed record LicensingDto(string RulesVersion, DateTime CalculatedUtc, bool SoftwareAssurance, IReadOnlyList<LicenseBalanceDto> Balances,
-    IReadOnlyList<HostLicensingDto> Hosts, IReadOnlyList<string> Gaps);
+public sealed record LicensingDto(string RulesVersion, string SqlRulesVersion, DateTime CalculatedUtc, bool SoftwareAssurance, bool SqlSoftwareAssurance,
+    IReadOnlyList<LicenseBalanceDto> Balances, IReadOnlyList<HostLicensingDto> Hosts, IReadOnlyList<HostLicensingDto> SqlServer, IReadOnlyList<string> SqlFree,
+    IReadOnlyList<string> Gaps);
 
 public sealed record EntitlementDto(int Id, string Product, int Quantity, string? Version, DateOnly? SoftwareAssuranceUntil, string? ContractNumber, string? Notes);
 
@@ -34,14 +37,17 @@ public static class LicensingEndpoints
             var overview = await service.CalculateAsync(ct);
             string Text(Inventory.Core.Licensing.LicensingNote note) => L[note.Text, note.Args];
             LicenseVariantDto Variant(Inventory.Core.Licensing.LicenseVariant v) => new(v.Product, v.Cores, v.Cost, v.Allowed, v.Reason is null ? null : Text(v.Reason));
-            return new LicensingDto(overview.Rules.Version, DateTime.SpecifyKind(overview.CalculatedUtc, DateTimeKind.Utc), overview.SoftwareAssurance,
+            HostLicensingDto Host(Inventory.Core.Licensing.HostLicensing h) => new(h.Host.Name, h.Host.Cluster, h.Host.Source, h.LicensedCores, h.WindowsVms,
+                h.Chosen is null ? null : Variant(h.Chosen), h.Variants.Select(Variant).ToList(), h.Steps.Select(Text).ToList(), h.Notes.Select(Text).ToList());
+            return new LicensingDto(overview.Rules.Version, overview.Rules.SqlServer.Version, DateTime.SpecifyKind(overview.CalculatedUtc, DateTimeKind.Utc),
+                overview.SoftwareAssurance, overview.SqlSoftwareAssurance,
                 overview.Balances.Select(b => new LicenseBalanceDto(b.Product.Key, b.Product.Name, b.Product.Unit, b.Need, b.Stock, b.Delta, b.SoftwareAssurance)).ToList(),
-                overview.WindowsServer.Hosts.Select(h => new HostLicensingDto(h.Host.Name, h.Host.Cluster, h.Host.Source, h.LicensedCores, h.WindowsVms,
-                    h.Chosen is null ? null : Variant(h.Chosen), h.Variants.Select(Variant).ToList(), h.Notes.Select(Text).ToList())).ToList(),
+                overview.WindowsServer.Hosts.Select(Host).ToList(), overview.SqlServer.Entries.Select(Host).ToList(), overview.SqlServer.Free.Select(Text).ToList(),
                 overview.Gaps.Select(Text).ToList());
         }).WithSummary("Microsoft licence need and stock").WithDescription(
-            "Estimate from the inventory: Windows Server per core for every physical host (Hyper-V, vCenter, physical servers) with the variants considered, "
-            + "need vs stock per product, and the data gaps that keep the need from being complete. need is null for products not calculated yet.");
+            "Estimate from the inventory: Windows Server per core for every physical host (Hyper-V, vCenter, XCP-ng, physical servers) and SQL Server per core "
+            + "(physical servers, per VM or whole host) with the variants considered and the calculation steps, need vs stock per product, free SQL editions "
+            + "and the data gaps that keep the need from being complete. need is null for products not calculated yet.");
 
         group.MapGet("balance.csv", async (LicensingService service, CancellationToken ct) =>
             ReportEndpoints.Csv(ReportExport.Csv(service.BalanceTable(await service.CalculateAsync(ct))), "licensing-balance.csv"))

@@ -53,7 +53,7 @@ else
                 </tbody>
             </MudSimpleTable>
             <MudText Typo="Typo.caption" Class="d-block mt-2" Style="color: var(--mud-palette-text-secondary)">
-                @L["Calculated so far: Windows Server per core. SQL Server, CALs and Windows clients follow; their stock is already shown."]
+                @L["Calculated so far: Windows Server and SQL Server per core. CALs and Windows clients follow; their stock is already shown."]
             </MudText>
             @if (_overview.Gaps.Count > 0)
             {
@@ -63,75 +63,29 @@ else
             }
         </MudTabPanel>
 
-        <MudTabPanel Text="@($"{L["Hosts"]} ({_overview.WindowsServer.Hosts.Count(h => h.Chosen is not null)})")">
-            <MudDataGrid T="HostLicensing" Items="_overview.WindowsServer.Hosts" Dense="true" Hover="true" SortMode="SortMode.Single">
-                <Columns>
-                    <HierarchyColumn T="HostLicensing" />
-                    <TemplateColumn Title="@L["Host"]" SortBy="h => h.Host.Name">
-                        <CellTemplate>
-                            @if (context.Item.Host.ComputerId is { } id)
-                            {
-                                <MudLink Href="@($"computers/{id}")">@context.Item.Host.Name</MudLink>
-                            }
-                            else
-                            {
-                                @context.Item.Host.Name
-                            }
-                        </CellTemplate>
-                    </TemplateColumn>
-                    <TemplateColumn Title="@L["Cluster"]" SortBy="h => h.Host.Cluster"><CellTemplate>@context.Item.Host.Cluster</CellTemplate></TemplateColumn>
-                    <TemplateColumn Title="@L["Source"]" SortBy="h => h.Host.Source"><CellTemplate>@SourceName(context.Item.Host.Source)</CellTemplate></TemplateColumn>
-                    <TemplateColumn Title="@L["Licensed cores"]" SortBy="h => h.LicensedCores" CellStyle="text-align: right"><CellTemplate>@context.Item.LicensedCores</CellTemplate></TemplateColumn>
-                    <TemplateColumn Title="@L["Windows Server VMs"]" SortBy="h => h.WindowsVms" CellStyle="text-align: right"><CellTemplate>@context.Item.WindowsVms</CellTemplate></TemplateColumn>
-                    <TemplateColumn Title="@L["Licensed with"]" SortBy="h => h.Chosen == null ? null : h.Chosen.Product">
-                        <CellTemplate>
-                            @if (context.Item.Chosen is { } chosen)
-                            {
-                                <span>@ProductName(chosen.Product): @L["{0} cores", chosen.Cores]</span>
-                            }
-                            else
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@(context.Item.LicensedCores == 0 && context.Item.WindowsVms == 0 ? L["no Windows Server"] : L["not calculable"])</MudText>
-                            }
-                        </CellTemplate>
-                    </TemplateColumn>
-                </Columns>
-                <ChildRowContent>
-                    <div class="pa-2">
-                        @if (context.Item.Variants.Count > 0)
-                        {
-                            <MudSimpleTable Dense="true" Elevation="0" Class="mb-2">
-                                <thead><tr><th>@L["Variant"]</th><th style="text-align: right">@L["Cores"]</th><th style="text-align: right">@L["Cost"]</th><th></th></tr></thead>
-                                <tbody>
-                                    @foreach (var variant in context.Item.Variants)
-                                    {
-                                        <tr style="@(variant == context.Item.Chosen ? "font-weight: 600" : "")">
-                                            <td>@ProductName(variant.Product)</td>
-                                            <td style="text-align: right">@variant.Cores</td>
-                                            <td style="text-align: right">@variant.Cost.ToString("N0")</td>
-                                            <td>@(variant == context.Item.Chosen ? L["chosen"] : variant.Reason is { } reason ? Note(reason) : "")</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </MudSimpleTable>
-                        }
-                        @foreach (var note in context.Item.Notes)
-                        {
-                            <MudText Typo="Typo.body2" Class="mb-1">@Note(note)</MudText>
-                        }
-                        @if (context.Item.Host.VirtualMachines.Count > 0)
-                        {
-                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["Virtual machines"]</MudText>
-                            <MudText Typo="Typo.body2">
-                                @string.Join(", ", context.Item.Host.VirtualMachines.Select(v => v.Name + (v.Running ? "" : " (" + L["off"] + ")") + (v.WindowsServer == false ? " – " + L["no Windows Server"] : v.WindowsServer is null ? " – ?" : "")))
-                            </MudText>
-                        }
-                    </div>
-                </ChildRowContent>
-                <NoRecordsContent>
-                    <MudText Class="pa-4">@L["No servers found. Scan the servers with the current runner and set up the vCenter if you use VMware."]</MudText>
-                </NoRecordsContent>
-            </MudDataGrid>
+        <MudTabPanel Text="@($"Windows Server ({_overview.WindowsServer.Hosts.Count(h => h.Chosen is not null)})")">
+            <LicensingHostGrid Items="_overview.WindowsServer.Hosts" HostTitle="@L["Host"]" VmTitle="@L["Windows Server VMs"]" EmptyLabel="@L["no Windows Server"]"
+                               EmptyText="@L["No servers found. Scan the servers with the current runner and set up the vCenter if you use VMware."]" />
+        </MudTabPanel>
+
+        <MudTabPanel Text="@($"SQL Server ({_overview.SqlServer.Entries.Count})")">
+            <MudText Typo="Typo.body2" Class="mb-2">
+                @L["Physical SQL servers are licensed per core; SQL VMs per VM or by licensing the whole host. Software Assurance for SQL Server: {0}.", _overview.SqlSoftwareAssurance ? L["yes"] : L["no"]]
+            </MudText>
+            <LicensingHostGrid Items="_overview.SqlServer.Entries" HostTitle="@L["Server or host"]" VmTitle="@L["SQL Server VMs"]"
+                               EmptyText="@L["No SQL Server Standard or Enterprise found. Instances appear after a scan with the current runner."]" />
+            @if (_overview.SqlServer.Free.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">@L["Free editions"]</MudText>
+                @foreach (var note in _overview.SqlServer.Free)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-1">• @Note(note)</MudText>
+                }
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="@L["How it is calculated"]">
+            <LicensingExplanation Overview="_overview" />
         </MudTabPanel>
 
         <MudTabPanel Text="@($"{L["Stock"]} ({_entitlements.Count})")">
@@ -189,12 +143,13 @@ else
         <AdminOnly>
             <MudTabPanel Text="@L["Prices and rules"]">
                 <MudStack Spacing="3" Style="max-width: 640px">
-                    <MudText Typo="Typo.body2">@L["Prices per 2-core pack decide which variant is cheaper. Empty = the list price from the rules file is used as a reference."]</MudText>
-                    @foreach (var product in new[] { MicrosoftRules.WindowsServerStandard, MicrosoftRules.WindowsServerDatacenter, MicrosoftRules.WindowsServerPerVm })
+                    <MudText Typo="Typo.body2">@L["Prices per 2-core pack (server licence and CAL: per licence) decide which variant is cheaper. Empty = the list price from the rules files is used as a reference."]</MudText>
+                    @foreach (var product in new[] { MicrosoftRules.WindowsServerStandard, MicrosoftRules.WindowsServerDatacenter, MicrosoftRules.WindowsServerPerVm,
+                                                     MicrosoftRules.SqlEnterprise, MicrosoftRules.SqlStandard, MicrosoftRules.SqlStandardServer, MicrosoftRules.SqlCal })
                     {
                         var key = product;
                         <MudNumericField T="decimal?" Value="_prices.GetValueOrDefault(key)" ValueChanged="@(v => _prices[key] = v)" Label="@ProductName(key)" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                         Min="0" HideSpinButtons="true" Clearable="true" Placeholder="@(Service.Rules.Product(key)?.ListPricePerPack?.ToString("N0") ?? "")" />
+                                         Min="0" HideSpinButtons="true" Clearable="true" Placeholder="@Service.Rules.Price(key, new Dictionary<string, decimal>()).ToString("N0")" />
                     }
                     <MudSwitch T="bool" @bind-Value="_clusterWide" Color="Color.Primary" Label="@L["License every cluster host for all Windows Server VMs of its cluster"]" />
                     <MudText Typo="Typo.caption">@L["Windows Server licences may move to another host only every 90 days; VMs that migrate freely within a cluster therefore need licences on every host. Switch off only if VMs are bound to their host."]</MudText>
@@ -230,12 +185,6 @@ else
     private string ProductName(string key) => L[Service.Rules.Product(key)?.Name ?? key];
 
     private string Note(LicensingNote note) => L[note.Text, note.Args];
-
-    private string SourceName(string source) => source switch
-    {
-        "physical" => L["physical server"],
-        _ => source,
-    };
 
     private async Task EditAsync(LicenseEntitlement? entitlement)
     {

@@ -1,0 +1,16 @@
+{
+  "version": "2025.1",
+  "validFrom": "2025-01-01",
+  "source": "SQL Server 2022 licensing guide and Microsoft Product Terms; check against the current Product Terms before relying on the result.",
+  "minCoresPerProcessor": 4,
+  "minCoresPerVm": 4,
+  "perVmRequiresSoftwareAssuranceFromMajorVersion": 16,
+  "freeEditions": [ "Developer", "Express", "Evaluation" ],
+  "nonProductionEditions": [ "Developer", "Evaluation" ],
+  "listPrices": {
+    "SqlServerEnterpriseCore": 15123.0,
+    "SqlServerStandardCore": 3945.0,
+    "SqlServerStandardServer": 989.0,
+    "SqlServerCal": 230.0
+  }
+}
