@@ -125,6 +125,10 @@ else if (_computer.ReverseDnsMismatch)
                         @Row("BIOS", _computer.BiosVersion)
                         @Row(L["Processor"], _computer.CpuName)
                         @Row(L["Cores / threads"], _computer.CpuCores is null ? null : $"{_computer.CpuCores} / {_computer.CpuLogicalProcessors}")
+                        @if (_computer.CpuSockets is { } sockets)
+                        {
+                            @Row(L["Sockets × cores"], $"{sockets} × {_computer.CpuCoresPerSocket}")
+                        }
                         @Row(L["Memory"], Display.Bytes(_computer.MemoryBytes))
                         @Row(L["Collections"], string.Join(", ", _computer.Collections.Select(c => c.Name)))
                         @Row(L["Agent"], _computer.AgentKeyHash is null ? L["not installed"] : L["Version {0}, last contact {1}", _computer.AgentVersion, Display.LocalTime(_computer.AgentLastSeenUtc)])
@@ -358,6 +362,115 @@ else if (_computer.ReverseDnsMismatch)
                 <TemplateColumn Title="DHCP"><CellTemplate>@Display.YesNo(context.Item.DhcpEnabled)</CellTemplate></TemplateColumn>
             </Columns>
         </MudDataGrid>
+    </MudTabPanel>
+
+    <MudTabPanel Text="@L["Licensing"]">
+        @if (_computer.LicensingScanUtc is null)
+        {
+            <MudText Color="Color.Secondary">@L["Not captured yet. Licensing details are read with the next scan; computers with an agent need the current agent version first."]</MudText>
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                        <tbody>
+                            @Row(L["Edition"], _computer.OsEdition)
+                            @Row(L["Licence channel"], Display.LicenseChannel(_computer.LicenseChannel))
+                            @Row(L["Processor sockets"], _computer.CpuSockets?.ToString())
+                            @Row(L["Physical cores per socket"], _computer.CpuCoresPerSocket?.ToString())
+                            @Row(L["Virtual machine"], _computer.IsVirtual ? L["yes"] : L["no"])
+                            @if (_computer.IsVirtual)
+                            {
+                                <tr>
+                                    <td style="width: 40%; color: var(--mud-palette-text-secondary)">@L["Runs on host"]</td>
+                                    <td>
+                                        @if (_computer.HostComputerId is { } hostId && _names.TryGetValue(hostId, out var hostName))
+                                        {
+                                            <MudLink Href="@($"computers/{hostId}")">@hostName</MudLink>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.BiosUuid ? L["matched by BIOS UUID"] : L["reported by the guest"])</MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Warning">@(_computer.ReportedHostName is { } reported ? L["{0} (not inventoried)", reported] : L["unknown"])</MudText>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @Row(L["Cluster"], _computer.ClusterName)
+                            @Row("BIOS UUID", _computer.BiosUuid)
+                        </tbody>
+                    </MudSimpleTable>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">@L["SQL Server instances"]</MudText>
+                    @if (_computer.SqlInstances.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@L["none"]</MudText>
+                    }
+                    else
+                    {
+                        <MudSimpleTable Dense="true" Outlined="true" Elevation="0" Class="mb-3">
+                            <thead><tr><th>@L["Instance"]</th><th>@L["Edition"]</th><th>@L["Version"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var instance in _computer.SqlInstances.OrderBy(i => i.Name))
+                                {
+                                    <tr>
+                                        <td>@instance.Name@(instance.Clustered ? " (" + L["Cluster"] + ")" : "")</td>
+                                        <td>@instance.Edition</td>
+                                        <td>@instance.Version</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                    @if (_computer.OsProductType is 2 or 3)
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Server roles and features"]</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">@(_computer.ServerFeatures.Count == 0 ? "–" : string.Join(", ", _computer.ServerFeatures.Select(f => f.Name).Order()))</MudText>
+                    }
+                </MudItem>
+                @if (_computer.VirtualMachines.Count > 0 || _guests.Count > 0)
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Virtual machines on this host"]</MudText>
+                        <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                            <thead><tr><th>@L["Name"]</th><th>@L["Virtual processors"]</th><th>@L["State"]</th><th>@L["Inventoried as"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var vm in _computer.VirtualMachines.OrderBy(v => v.Name))
+                                {
+                                    <tr>
+                                        <td>@vm.Name</td>
+                                        <td>@vm.VirtualCpus</td>
+                                        <td>@(vm.Running ? L["running"] : L["off"])</td>
+                                        <td>
+                                            @if (vm.GuestComputerId is { } guestId && _names.TryGetValue(guestId, out var guestName))
+                                            {
+                                                <MudLink Href="@($"computers/{guestId}")">@guestName</MudLink>
+                                            }
+                                            else
+                                            {
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not inventoried"]</MudText>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                @* Gäste, die sich über die Gastdienste diesem Host zuordnen, ohne dass er sie meldet (z. B. ohne Rechte auf Hyper-V). *@
+                                @foreach (var guest in _guests.Where(g => _computer.VirtualMachines.All(v => v.GuestComputerId != g.Id)))
+                                {
+                                    <tr>
+                                        <td>@guest.Name</td>
+                                        <td>@guest.CpuCores</td>
+                                        <td>–</td>
+                                        <td><MudLink Href="@($"computers/{guest.Id}")">@guest.Name</MudLink></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
     </MudTabPanel>
 
     <MudTabPanel Text="@($"{L["Services"]} ({_computer.Services.Count})")">
@@ -615,6 +728,20 @@ else if (_computer.ReverseDnsMismatch)
     private bool _scanning;
     private string _softwareSearch = "";
     private List<(InventoryChange Change, string Computer)> _changes = [];
+    /// <summary>Namen von Host und Gästen für die Verweise im Reiter Lizenzierung.</summary>
+    private Dictionary<int, string> _names = [];
+    private List<Computer> _guests = [];
+
+    private async Task LoadLinksAsync()
+    {
+        if (_computer is null)
+            return;
+        _guests = await ComputerService.GuestsAsync(_computer.Id);
+        var ids = _computer.VirtualMachines.Select(v => v.GuestComputerId).OfType<int>().Concat(_guests.Select(g => g.Id)).ToList();
+        if (_computer.HostComputerId is { } host)
+            ids.Add(host);
+        _names = await ComputerService.NamesAsync(ids);
+    }
 
     private DateTime? _shownScanUtc;
 
@@ -622,6 +749,7 @@ else if (_computer.ReverseDnsMismatch)
     {
         _computer = await ComputerService.GetDetailAsync(Id);
         _changes = await Store.ChangesAsync(Id);
+        await LoadLinksAsync();
         _shownScanUtc = _computer?.LastScanUtc;
         _loaded = true;
     }
@@ -633,6 +761,7 @@ else if (_computer.ReverseDnsMismatch)
             return;
         _computer = await ComputerService.GetDetailAsync(Id);
         _changes = await Store.ChangesAsync(Id);
+        await LoadLinksAsync();
         _shownScanUtc = _computer?.LastScanUtc;
     }
 
@@ -667,6 +796,7 @@ else if (_computer.ReverseDnsMismatch)
             Snackbar.Add(outcome.Success ? L["Scan completed."] : L["Scan failed: {0}", outcome.Error], outcome.Success ? Severity.Success : Severity.Error);
             _computer = await ComputerService.GetDetailAsync(Id);
             _changes = await Store.ChangesAsync(Id);
+            await LoadLinksAsync();
         }
         finally
         {

@@ -63,6 +63,13 @@ count. The *Profiles* tab lists the user profiles.
 BitLocker per volume, graphics, memory modules and free slots, physical disks with type and health, battery health,
 monitors and printers.
 
+**Licensing data** (tab *Licensing*): processor sockets and physical cores per socket, Windows edition and licence
+channel (OEM, retail, MAK, KMS), server roles and features, SQL Server instances with edition and version, and for
+virtual machines the host they run on. A Hyper-V host lists its virtual machines; each one is matched to its
+inventoried guest by the BIOS UUID, otherwise by the host name the guest's integration services report, and the
+failover cluster is recorded. Everything is read-only; values that cannot be read are kept from the previous scan.
+These fields are also available in dynamic collections and in the computer report.
+
 ### Security and configuration
 
 ![Security](docs/screenshots/en/security.png)

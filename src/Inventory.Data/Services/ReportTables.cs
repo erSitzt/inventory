@@ -65,7 +65,10 @@ public sealed partial class ReportService
             case ReportSource.Computers:
             {
                 var computers = await db.Computers.AsNoTracking().Where(c => members == null || members.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
-                return Build(ComputerColumns(zone), computers, query, limit);
+                // Der Host einer VM muss nicht in derselben Sammlung sein.
+                var hostIds = computers.Select(c => c.HostComputerId).OfType<int>().Distinct().ToList();
+                var names = await db.Computers.Where(c => hostIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Name, ct);
+                return Build(ComputerColumns(zone, names), computers, query, limit);
             }
             case ReportSource.Software:
             {
@@ -163,7 +166,8 @@ public sealed partial class ReportService
 
     private static string? Number(long? value) => value?.ToString(CultureInfo.InvariantCulture);
 
-    private List<Column<Computer>> ComputerColumns(TimeZoneInfo zone) =>
+    /// <param name="names">Rechnernamen nach Kennung, für die Spalte Host; ohne sie bleibt sie leer.</param>
+    private List<Column<Computer>> ComputerColumns(TimeZoneInfo zone, IReadOnlyDictionary<int, string>? names = null) =>
     [
         new("name", L["Name"], c => c.Name),
         new("reportedName", L["Reported name"], c => c.ReportedName),
@@ -211,6 +215,13 @@ public sealed partial class ReportService
         new("builtinAdmin", L["Built-in administrator account"], c => YesNo(c.BuiltinAdminEnabled)),
         new("builtinAdminPasswordAge", L["Built-in administrator: password age (days)"], c => Number(c.BuiltinAdminPasswordAgeDays), Numeric: true),
         new("activated", L["Windows activated"], c => YesNo(c.WindowsActivated)),
+        new("edition", L["Edition"], c => c.OsEdition),
+        new("licenseChannel", L["Licence channel"], c => c.LicenseChannel),
+        new("sockets", L["Processor sockets"], c => Number(c.CpuSockets), Numeric: true),
+        new("cores", L["Physical cores"], c => Number(c.CpuCores), Numeric: true),
+        new("virtual", L["Virtual machine"], c => c.LicensingScanUtc is null && !c.IsVirtual ? null : YesNo(c.IsVirtual)),
+        new("host", L["Host"], c => c.HostComputerId is { } host && names is not null && names.TryGetValue(host, out var name) ? name : c.ReportedHostName),
+        new("cluster", L["Cluster"], c => c.ClusterName),
         new("adOu", L["AD organizational unit"], c => c.DirectoryOu),
         new("adGroups", L["AD groups"], c => string.Join(", ", c.DirectoryGroupNames)),
         new("adDescription", L["AD description"], c => c.DirectoryDescription),

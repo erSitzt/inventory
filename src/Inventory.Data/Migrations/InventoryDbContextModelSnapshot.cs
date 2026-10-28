@@ -249,6 +249,9 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("BiosDateUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("BiosUuid")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("BiosVersion")
                         .HasColumnType("TEXT");
 
@@ -261,10 +264,16 @@ namespace Inventory.Data.Migrations
                     b.Property<int?>("ChassisType")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ClusterName")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CostCenter")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("CpuCores")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CpuCoresPerSocket")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("CpuLogicalProcessors")
@@ -272,6 +281,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<string>("CpuName")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("CpuSockets")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
@@ -354,6 +366,18 @@ namespace Inventory.Data.Migrations
                     b.Property<DateTime?>("HardwareScanUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("HostComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("HostSource")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("HyperVGuest")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HypervisorPresent")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("InventoryNumber")
                         .HasColumnType("TEXT");
 
@@ -376,6 +400,12 @@ namespace Inventory.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastSeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LicenseChannel")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LicensingScanUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Location")
@@ -414,14 +444,23 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("OsArchitecture")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("OsEdition")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("OsInstalledUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("OsName")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("OsProductType")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("OsRelease")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("OsSku")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("OsVersion")
                         .HasColumnType("TEXT");
@@ -440,6 +479,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<bool?>("RdpNla")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ReportedHostName")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ReportedName")
                         .HasColumnType("TEXT");
@@ -518,7 +560,11 @@ namespace Inventory.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BiosUuid");
+
                     b.HasIndex("CredentialId");
+
+                    b.HasIndex("HostComputerId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -890,6 +936,29 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Printers");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerServerFeature", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FeatureId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("ServerFeatures");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerSoftware", b =>
                 {
                     b.Property<int>("Id")
@@ -935,6 +1004,41 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("Name");
 
                     b.ToTable("Software");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerSqlInstance", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Clustered")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Edition")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InstanceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PatchLevel")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("SqlInstances");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.ComputerUserProfile", b =>
@@ -1311,6 +1415,42 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("NetworkDeviceId");
 
                     b.ToTable("DeviceSupplies");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.HostedVirtualMachine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BiosUuid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("GuestComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Running")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("VirtualCpus")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BiosUuid");
+
+                    b.HasIndex("ComputerId");
+
+                    b.HasIndex("GuestComputerId");
+
+                    b.ToTable("HostedVirtualMachines");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>
@@ -1986,6 +2126,11 @@ namespace Inventory.Data.Migrations
                         .HasForeignKey("CredentialId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany()
+                        .HasForeignKey("HostComputerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Credential");
                 });
 
@@ -2088,10 +2233,28 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerServerFeature", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("ServerFeatures")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerSoftware", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
                         .WithMany("Software")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerSqlInstance", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("SqlInstances")
                         .HasForeignKey("ComputerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2167,6 +2330,20 @@ namespace Inventory.Data.Migrations
                         .HasForeignKey("NetworkDeviceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.HostedVirtualMachine", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("VirtualMachines")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany()
+                        .HasForeignKey("GuestComputerId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>
@@ -2311,11 +2488,17 @@ namespace Inventory.Data.Migrations
 
                     b.Navigation("Printers");
 
+                    b.Navigation("ServerFeatures");
+
                     b.Navigation("Services");
 
                     b.Navigation("Software");
 
+                    b.Navigation("SqlInstances");
+
                     b.Navigation("UserProfiles");
+
+                    b.Navigation("VirtualMachines");
 
                     b.Navigation("Volumes");
                 });

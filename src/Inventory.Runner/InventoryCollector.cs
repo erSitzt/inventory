@@ -50,6 +50,7 @@ namespace Inventory.Runner
             Section(data, "Akku", HardwareAreas.Battery, () => ReadBattery(hardware));
             Section(data, "Monitore", HardwareAreas.Monitors, () => ReadMonitors(hardware));
             Section(data, "Drucker", HardwareAreas.Printers, () => ReadPrinters(hardware));
+            data.Licensing = LicensingCollector.Read(data.Warnings);
             return data;
         }
 

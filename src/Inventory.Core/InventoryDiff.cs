@@ -147,8 +147,34 @@ public static partial class InventoryDiff
                     hardware.Printers.Select(p => (p.Name, p.Port)));
             }
         }
+        // Lizenzangaben: wie die Hardware erst ab dem zweiten Scan, der sie liefert.
+        if (current.Licensing is { } licensing && previous.LicensingScanUtc is not null)
+        {
+            void Known(string item, string? oldValue, string? newValue)
+            {
+                if (oldValue is not null && newValue is not null && !string.Equals(oldValue, newValue, StringComparison.OrdinalIgnoreCase))
+                    Add("System", ChangeKind.Changed, item, oldValue, newValue);
+            }
+            Known("Windows edition", previous.OsEdition, licensing.OsEdition);
+            Known("Licence channel", previous.LicenseChannel, licensing.LicenseChannel);
+            Known("Processor sockets", previous.CpuSockets?.ToString(), licensing.CpuSockets?.ToString());
+            Known("Cluster", previous.ClusterName, licensing.ClusterName);
+            if (licensing.ServerFeatures is { } features)
+                Set("Server role", previous.ServerFeatures.Select(f => (f.Name, (string?)null)), features.Select(f => (f.Name, (string?)null)));
+            if (licensing.SqlInstances is { } instances)
+                Set("SQL Server",
+                    previous.SqlInstances.Select(i => (i.Name, SqlDescription(i.Edition, i.Version))),
+                    instances.Select(i => (i.Name, SqlDescription(i.Edition, i.Version))));
+            if (licensing.VirtualMachines is { } machines)
+                Set("Virtual machine",
+                    previous.VirtualMachines.Select(v => (v.Name, v.VirtualCpus?.ToString())),
+                    machines.Select(v => (v.Name, v.VirtualCpus?.ToString())));
+        }
         return MergeUpdates(changes);
     }
+
+    private static string? SqlDescription(string? edition, string? version) =>
+        string.Join(" ", new[] { edition, version }.Where(p => !string.IsNullOrWhiteSpace(p)));
 
     /// <summary>Englische Bezeichnungen der Stufen der Benutzerkontensteuerung; zugleich Schlüssel für die Übersetzung.</summary>
     public static readonly string[] UacLevels = ["never notify", "notify without dimming the desktop", "default level", "always notify"];

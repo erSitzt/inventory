@@ -28,6 +28,9 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ComputerMonitor> Monitors => Set<ComputerMonitor>();
     public DbSet<ComputerPrinter> Printers => Set<ComputerPrinter>();
     public DbSet<ComputerApp> Apps => Set<ComputerApp>();
+    public DbSet<ComputerServerFeature> ServerFeatures => Set<ComputerServerFeature>();
+    public DbSet<ComputerSqlInstance> SqlInstances => Set<ComputerSqlInstance>();
+    public DbSet<HostedVirtualMachine> HostedVirtualMachines => Set<HostedVirtualMachine>();
     public DbSet<InventoryChange> InventoryChanges => Set<InventoryChange>();
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
@@ -71,6 +74,12 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasMany(c => c.Monitors).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.Printers).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.Apps).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.ServerFeatures).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.SqlInstances).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.VirtualMachines).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            // Verschwindet der Host aus dem Inventar, ist die VM nur nicht mehr zugeordnet.
+            e.HasOne<Computer>().WithMany().HasForeignKey(c => c.HostComputerId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(c => c.BiosUuid);
             e.HasMany<InventoryChange>().WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -78,6 +87,12 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         {
             e.Property(s => s.Name).UseCollation("NOCASE");
             e.HasIndex(s => s.Name);
+        });
+
+        modelBuilder.Entity<HostedVirtualMachine>(e =>
+        {
+            e.HasIndex(v => v.BiosUuid);
+            e.HasOne<Computer>().WithMany().HasForeignKey(v => v.GuestComputerId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<InventoryChange>().HasIndex(c => c.TimeUtc);
