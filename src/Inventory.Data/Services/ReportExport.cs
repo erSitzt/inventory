@@ -15,23 +15,28 @@ public static class ReportExport
     {
         var csv = new StringBuilder();
         Row(csv, table.Columns.Select(c => (string?)c.Title).ToArray());
+        var numeric = table.Columns.Select(c => c.Numeric).ToArray();
         foreach (var row in table.Rows)
-            Row(csv, row);
+            Row(csv, numeric, row);
         return csv.ToString();
     }
 
     /// <summary>UTF-8 mit BOM, damit Excel die Umlaute erkennt.</summary>
     public static byte[] CsvBytes(ReportTable table) => [.. Encoding.UTF8.GetPreamble(), .. Encoding.UTF8.GetBytes(Csv(table))];
 
-    internal static void Row(StringBuilder csv, params string?[] values)
-    {
-        csv.AppendJoin(';', values.Select(Escape)).Append("\r\n");
+    internal static void Row(StringBuilder csv, params string?[] values) => Row(csv, null, values);
 
-        static string Escape(string? value)
+    /// <param name="numeric">Zahlenspalten: eine echte Zahl wie -72 bleibt, wie sie ist, statt als mögliche Formel maskiert zu werden.</param>
+    private static void Row(StringBuilder csv, bool[]? numeric, string?[] values)
+    {
+        csv.AppendJoin(';', values.Select((v, i) => Escape(v, numeric is not null && i < numeric.Length && numeric[i]))).Append("\r\n");
+
+        static string Escape(string? value, bool number)
         {
             value ??= "";
             // Ein führendes =, +, - oder @ würde Excel als Formel ausführen.
-            if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@')
+            if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@'
+                && !(number && decimal.TryParse(value, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out _)))
                 value = "'" + value;
             return value.IndexOfAny([';', '"', '\r', '\n']) >= 0 ? $"\"{value.Replace("\"", "\"\"")}\"" : value;
         }

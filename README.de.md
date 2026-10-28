@@ -24,7 +24,7 @@ Zu jeder Funktion gehört unten ein Bild der passenden Seite. Die Bilder stammen
   [Zeitpläne und Pflicht-Verteilungen](#zeitpläne-und-pflicht-verteilungen) ·
   [Remote-Befehl und Fernzugriff](#remote-befehl-und-fernzugriff)
 - [Gespeicherte Berichte](#gespeicherte-berichte) · [Alarme und Benachrichtigungskanäle](#alarme-und-benachrichtigungskanäle) ·
-  [Lizenzzählung](#lizenzzählung) · [Nachvollziehbarkeit](#nachvollziehbarkeit)
+  [Lizenzzählung](#lizenzzählung) · [Microsoft-Lizenzierung](#microsoft-lizenzierung) · [Nachvollziehbarkeit](#nachvollziehbarkeit)
 
 ### Übersicht und Verläufe
 
@@ -334,6 +334,26 @@ Server-Aktualisierung fehlschlägt – mit Pause je Regel und Wahl der Kanäle (
 Je Produkt eintragen, wie viele Lizenzen vorhanden sind; das Inventar zählt die Rechner, auf denen die Software
 installiert ist, und zeigt, was fehlt oder frei ist, mit Kosten und Ablaufdatum. Eine Alarmregel meldet überschrittene
 Lizenzen.
+
+### Microsoft-Lizenzierung
+
+Die Seite *Microsoft-Lizenzierung* schätzt, welche Microsoft-Lizenzen das Inventar braucht, und stellt sie dem
+erfassten Bestand gegenüber – eine Schätzung nach versionierten Regeln (`rules/microsoft/*.json`), keine Aussage für
+ein Audit.
+
+- **Windows Server** wird je physischem Host berechnet – Hyper-V-Hosts aus dem Scan, ESXi-Hosts aus dem vCenter (siehe
+  [Virtualisierung](#virtualisierung-und-vcenter)) und physische Windows-Server: physische Kerne mit den Mindestmengen
+  (8 je Prozessor, 16 je Server, 2-Kern-Pakete), dann *Standard* (alle Kerne erneut je zwei Windows-Server-VMs),
+  *Datacenter* (beliebig viele VMs) und mit aktiver Software Assurance oder Abonnement *je VM* (mindestens 8 Kerne je
+  VM). Gewählt wird die günstigste zulässige Variante, mit Ihren Preisen je Paket oder dem Listenpreis der Regeldatei;
+  die übrigen bleiben je Host sichtbar. Im Cluster wird jeder Host für alle Windows-Server-VMs des Clusters lizenziert,
+  weil Lizenzen nur alle 90 Tage umziehen dürfen (abschaltbar).
+- Der **Bestand** wird von Hand erfasst oder als CSV importiert (`Product;Quantity;Version;SA until;Contract;Notes`);
+  Produkte sind die Schlüssel aus der Regeldatei. Bedarf, Bestand und Differenz je Produkt stehen auf einen Blick; CSV,
+  PDF und `GET /api/licensing` exportieren sie.
+- **Datenlücken** – virtuelle Maschinen ohne bekannten Host, Hosts ohne Prozessorangaben, abgelaufene Software
+  Assurance – werden aufgelistet statt geschätzt.
+- SQL Server, CALs und Windows-Clients folgen; ihr Bestand lässt sich schon erfassen.
 
 ### Nachvollziehbarkeit
 

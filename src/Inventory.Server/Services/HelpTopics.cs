@@ -120,6 +120,13 @@ public static class HelpTopics
                 L["The name pattern decides which programs count, e.g. \"Microsoft Office*\"."],
                 L["An alert rule \"A licence is exceeded\" reports when installations outgrow the owned licences."],
             ], L["licence-counting"]),
+            ("licensing", _) => new(L["Microsoft licensing"], L["The Microsoft licences the inventory needs, compared with the licences you own – an estimate, not an audit statement."],
+            [
+                L["Windows Server is calculated per physical host: cores with the minimums, then Standard, Datacenter or per VM, whichever is cheaper."],
+                L["Record the stock under \"Stock\" by hand or import it as CSV; Software Assurance allows licensing per VM."],
+                L["\"Data gaps\" lists what could not be placed, e.g. VMs without a known host – the need may then be higher."],
+                L["Hosts come from Hyper-V scans and the vCenter (page Virtualization); prices per pack decide the variant."],
+            ], L["microsoft-licensing"]),
             ("updates", _) => new(L["Updates"], L["Updates that Windows reports as pending, per update and per computer."],
             [
                 L["Select an update to see which computers miss it; \"Install …\" deploys it to them."],

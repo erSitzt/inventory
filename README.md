@@ -24,7 +24,7 @@ Every feature below comes with a picture of the page that belongs to it. The pic
   [Schedules and required deployments](#schedules-and-required-deployments) ·
   [Remote command and remote access](#remote-command-and-remote-access)
 - [Saved reports](#saved-reports) · [Alerts and notification channels](#alerts-and-notification-channels) ·
-  [Licence counting](#licence-counting) · [Audit trail](#audit-trail)
+  [Licence counting](#licence-counting) · [Microsoft licensing](#microsoft-licensing) · [Audit trail](#audit-trail)
 
 ### Overview and trends
 
@@ -323,6 +323,25 @@ and a choice of channels ([details](#notifications)).
 
 Record how many licences you own per product; the inventory counts the computers the software is installed on and
 shows what is missing or free, with cost and expiry date. An alert rule reports exceeded licences.
+
+### Microsoft licensing
+
+The page *Microsoft licensing* estimates the Microsoft licences the inventory needs and compares them with the stock you
+record – an estimate according to versioned rules (`rules/microsoft/*.json`), not a statement for an audit.
+
+- **Windows Server** is calculated per physical host – Hyper-V hosts from the scan, ESXi hosts from the vCenter (see
+  [Virtualization](#virtualization-and-vcenter)) and physical Windows servers: physical cores with the minimums (8 per
+  processor, 16 per server, 2-core packs), then *Standard* (all cores again for every two Windows Server VMs),
+  *Datacenter* (unlimited VMs) and, with active Software Assurance or a subscription, *per VM* (at least 8 cores per
+  VM). The cheapest allowed variant is chosen, using your prices per pack or the list price from the rules file; the
+  others stay visible per host. In a cluster each host is licensed for all Windows Server VMs of the cluster, because
+  licences may move only every 90 days (can be switched off).
+- **Stock** is recorded by hand or imported as CSV (`Product;Quantity;Version;SA until;Contract;Notes`); products are the
+  keys from the rules file. Need, stock and difference per product show at a glance; CSV, PDF and `GET /api/licensing`
+  export them.
+- **Data gaps** – virtual machines without a known host, hosts without processor data, expired Software Assurance – are
+  listed instead of being estimated.
+- SQL Server, CALs and Windows clients follow; their stock can already be recorded.
 
 ### Audit trail
 

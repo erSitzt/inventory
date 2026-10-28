@@ -1588,6 +1588,42 @@ namespace Inventory.Data.Migrations
                     b.ToTable("InventoryChanges");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.LicenseEntitlement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContractNumber")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Product")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly?>("SoftwareAssuranceUntil")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Product");
+
+                    b.ToTable("LicenseEntitlements");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.NetworkDevice", b =>
                 {
                     b.Property<int>("Id")

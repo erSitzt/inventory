@@ -1,0 +1,74 @@
+@inject LicensingService Licensing
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudSelect T="string" @bind-Value="_product" Label="@L["Product"]" Variant="Variant.Outlined" Required="true">
+                @foreach (var product in Licensing.Rules.Products)
+                {
+                    <MudSelectItem T="string" Value="@product.Key">@L[product.Name]</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int" @bind-Value="_quantity" Label="@(Licensing.Rules.Product(_product)?.PerCore == true ? L["Cores"] : L["Licences"])" Variant="Variant.Outlined" Min="1"
+                             HelperText="@(Licensing.Rules.Product(_product)?.PerCore == true ? L["Number of cores, not packs: a 16-core licence is 16."] : null)" />
+            <MudTextField @bind-Value="_version" Label="@L["Version"]" Variant="Variant.Outlined" Placeholder="2022" />
+            <MudDatePicker @bind-Date="_saUntil" Label="@L["Software Assurance or subscription until"]" Variant="Variant.Outlined" Clearable="true" Editable="true"
+                           HelperText="@L["Empty = no Software Assurance. With active SA, Windows Server may also be licensed per virtual machine."]" />
+            <MudTextField @bind-Value="_contract" Label="@L["Contract"]" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto" MaxLines="8" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(string.IsNullOrEmpty(_product) || _quantity <= 0)" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neuen Eintrag anlegen.</summary>
+    [Parameter] public LicenseEntitlement? Entitlement { get; set; }
+
+    private string _product = Inventory.Core.Licensing.MicrosoftRules.WindowsServerDatacenter;
+    private int _quantity = 16;
+    private string? _version;
+    private DateTime? _saUntil;
+    private string? _contract;
+    private string? _notes;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        if (Entitlement is null)
+            return;
+        (_product, _quantity, _version, _contract, _notes) = (Entitlement.Product, Entitlement.Quantity, Entitlement.Version, Entitlement.ContractNumber, Entitlement.Notes);
+        _saUntil = Entitlement.SoftwareAssuranceUntil?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        try
+        {
+            var saved = await Licensing.SaveEntitlementAsync(new LicenseEntitlement
+            {
+                Id = Entitlement?.Id ?? 0, Product = _product, Quantity = _quantity, Version = _version, ContractNumber = _contract, Notes = _notes,
+                SoftwareAssuranceUntil = _saUntil is { } date ? DateOnly.FromDateTime(date) : null,
+            });
+            await Audit.LogAsync(Entitlement is null ? L["Licence stock added"] : L["Licence stock changed"], $"{saved.Product}: {saved.Quantity}");
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

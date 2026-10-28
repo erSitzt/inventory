@@ -77,4 +77,8 @@ public static class SettingKeys
     public const string VCenterIntervalHours = "VCenter.IntervalHours";
     public const string VCenterLastRunUtc = "VCenter.LastRunUtc";
     public const string VCenterLastResult = "VCenter.LastResult";
+    /// <summary>Eigene Preise je 2-Kern-Paket als JSON {Produktschlüssel: Preis}; fehlende Produkte rechnen mit dem Listenpreis der Regeldatei.</summary>
+    public const string LicensingPrices = "Licensing.Prices";
+    /// <summary>"False" = jeder Host nur für seine eigenen VMs; sonst für alle Windows-VMs seines Clusters.</summary>
+    public const string LicensingClusterWide = "Licensing.ClusterWide";
 }

@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\oui.txt.gz" LogicalName="Inventory.Core.oui.txt.gz" />
+    <!-- Lizenzregeln liegen versioniert im Repository (rules/microsoft) und werden in die Bibliothek eingebettet. -->
+    <EmbeddedResource Include="..\..\rules\microsoft\*.json" LogicalName="Inventory.Core.Rules.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -158,7 +158,7 @@ public static class ReportEndpoints
 
     private static SavedReportDto ToDto(Report r) => new(r.Id, r.Name, r.Description, r.Source, r.CollectionId, r.Days, r.ColumnKeys, r.SortColumn, r.SortDescending);
 
-    private static async ValueTask<object?> MapErrors(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    internal static async ValueTask<object?> MapErrors(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         try
         {
@@ -187,6 +187,6 @@ public static class ReportEndpoints
     private static DateTime? Utc(DateTime? value) => value is { } v ? v.ToUniversalTime() : null;
 
     // Mit BOM, damit Excel die Umlaute als UTF-8 erkennt.
-    private static IResult Csv(string content, string fileName) =>
+    internal static IResult Csv(string content, string fileName) =>
         Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(content)).ToArray(), "text/csv; charset=utf-8", fileName);
 }

@@ -33,6 +33,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<HostedVirtualMachine> HostedVirtualMachines => Set<HostedVirtualMachine>();
     public DbSet<HypervisorHost> HypervisorHosts => Set<HypervisorHost>();
     public DbSet<HypervisorVm> HypervisorVms => Set<HypervisorVm>();
+    public DbSet<LicenseEntitlement> LicenseEntitlements => Set<LicenseEntitlement>();
     public DbSet<InventoryChange> InventoryChanges => Set<InventoryChange>();
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
@@ -90,6 +91,12 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         {
             e.Property(s => s.Name).UseCollation("NOCASE");
             e.HasIndex(s => s.Name);
+        });
+
+        modelBuilder.Entity<LicenseEntitlement>(e =>
+        {
+            e.Property(l => l.Product).HasMaxLength(100);
+            e.HasIndex(l => l.Product);
         });
 
         modelBuilder.Entity<HypervisorHost>(e =>
