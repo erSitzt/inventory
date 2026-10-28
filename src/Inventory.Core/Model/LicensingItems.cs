@@ -39,10 +39,11 @@ public class HostedVirtualMachine
     public int? GuestComputerId { get; set; }
 }
 
-/// <summary>Physischer Host aus einer Virtualisierungsverwaltung (vCenter); kein inventarisierter Rechner.</summary>
+/// <summary>Physischer Host aus einer Virtualisierungsverwaltung (vCenter, XCP-ng); kein inventarisierter Rechner.</summary>
 public class HypervisorHost
 {
     public int Id { get; set; }
+    public Abstractions.HypervisorKind Kind { get; set; }
     /// <summary>Kennung in der Verwaltung, z. B. host-42.</summary>
     public required string ExternalId { get; set; }
     public required string Name { get; set; }
@@ -56,10 +57,11 @@ public class HypervisorHost
     public List<HypervisorVm> VirtualMachines { get; set; } = [];
 }
 
-/// <summary>Virtuelle Maschine aus einer Virtualisierungsverwaltung (vCenter).</summary>
+/// <summary>Virtuelle Maschine aus einer Virtualisierungsverwaltung (vCenter, XCP-ng).</summary>
 public class HypervisorVm
 {
     public int Id { get; set; }
+    public Abstractions.HypervisorKind Kind { get; set; }
     public required string ExternalId { get; set; }
     public required string Name { get; set; }
     /// <summary>Normalisiert wie <see cref="Computer.BiosUuid"/>.</summary>
@@ -82,10 +84,10 @@ public static class HostSources
     public const string BiosUuid = "uuid";
     /// <summary>Die Gastdienste nennen den Host, und ein Rechner dieses Namens ist inventarisiert.</summary>
     public const string GuestReport = "guest";
-    /// <summary>Das vCenter führt eine VM mit derselben BIOS-UUID.</summary>
-    public const string VCenter = "vcenter";
-    /// <summary>Das vCenter führt eine VM, deren Gastname zum Rechner passt (ohne UUID-Treffer).</summary>
-    public const string VCenterName = "vcenter-name";
+    /// <summary>Eine Virtualisierungsverwaltung (vCenter, XCP-ng) führt eine VM mit derselben BIOS-UUID; der Wert stammt aus der Zeit nur mit vCenter.</summary>
+    public const string Hypervisor = "vcenter";
+    /// <summary>Eine Virtualisierungsverwaltung führt eine VM, deren Gastname zum Rechner passt (ohne UUID-Treffer).</summary>
+    public const string HypervisorName = "vcenter-name";
 }
 
 /// <summary>Die Serverrollen, auf die es bei der Lizenzierung ankommt (IDs aus Win32_ServerFeature).</summary>

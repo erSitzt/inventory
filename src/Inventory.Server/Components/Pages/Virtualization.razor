@@ -1,6 +1,6 @@
 @page "/virtualization"
 @inject VirtualizationService Hosts
-@inject VCenterSyncService VCenter
+@inject HypervisorSyncService Hypervisors
 @inject Auditor Audit
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<SharedResource> L
@@ -13,21 +13,22 @@
     <MudText Typo="Typo.h5">@L["Virtualization"]</MudText>
     <MudSpacer />
     <AdminOnly>
-        @if (_settings?.Url is not null)
+        @foreach (var (kind, settings) in _settings.Where(s => s.Value.Url is not null))
         {
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Sync" Disabled="_busy" OnClick="SyncAsync">@L["Synchronize vCenter"]</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Sync" Disabled="_busy" OnClick="@(() => SyncAsync(kind))">@L["Synchronize {0}", HypervisorSyncService.Name(kind)]</MudButton>
         }
         <MudButton Variant="Variant.Text" Href="settings#vcenter">@L["Settings"]</MudButton>
     </AdminOnly>
 </MudStack>
 
 <MudText Typo="Typo.body2" Class="mb-2">
-    @L["Physical hosts with their virtual machines: Hyper-V hosts from the inventory scan, ESXi hosts from the vCenter. Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name."]
+    @L["Physical hosts with their virtual machines: Hyper-V hosts from the inventory scan, ESXi hosts from the vCenter, XCP-ng hosts from the pool master. Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name."]
 </MudText>
-@if (_settings?.LastResult is { } last)
+@foreach (var (kind, settings) in _settings.Where(s => s.Value.LastResult is not null))
 {
-    <MudText Typo="Typo.caption" Class="d-block mb-3" Style="color: var(--mud-palette-text-secondary)">vCenter: @L["Last run {0}: {1}", Display.LocalTime(_settings.LastRunUtc), last]</MudText>
+    <MudText Typo="Typo.caption" Class="d-block" Style="color: var(--mud-palette-text-secondary)">@HypervisorSyncService.Name(kind): @L["Last run {0}: {1}", Display.LocalTime(settings.LastRunUtc), settings.LastResult]</MudText>
 }
+<div class="mb-3"></div>
 
 <MudStack Row="true" Spacing="2" Class="mb-3" Wrap="Wrap.Wrap">
     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Hosts"]: @_hosts.Count</MudChip>
@@ -58,7 +59,7 @@
         </TemplateColumn>
         <PropertyColumn Property="h => h.Cluster" Title="@L["Cluster"]" />
         <TemplateColumn Title="@L["Source"]" SortBy="h => h.Source">
-            <CellTemplate>@(context.Item.Source == VirtualHostSource.VCenter ? "vCenter" : "Hyper-V")</CellTemplate>
+            <CellTemplate>@(context.Item.Source switch { VirtualHostSource.VCenter => "vCenter", VirtualHostSource.XcpNg => "XCP-ng", _ => "Hyper-V" })</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Sockets / cores"]" SortBy="h => h.CpuCores ?? 0" CellStyle="text-align: right">
             <CellTemplate>@(context.Item.CpuSockets is null && context.Item.CpuCores is null ? "–" : $"{context.Item.CpuSockets?.ToString() ?? "?"} / {context.Item.CpuCores?.ToString() ?? "?"}")</CellTemplate>
@@ -97,7 +98,7 @@
         </MudSimpleTable>
     </ChildRowContent>
     <NoRecordsContent>
-        <MudText Class="pa-4">@L["No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware, set up the vCenter under Settings."]</MudText>
+        <MudText Class="pa-4">@L["No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware and XCP-ng, set up the connection under Settings."]</MudText>
     </NoRecordsContent>
 </MudDataGrid>
 
@@ -105,7 +106,7 @@
 {
     <MudText Typo="Typo.h6" Class="mt-6 mb-1">@L["Inventoried VMs without a known host"]</MudText>
     <MudText Typo="Typo.body2" Class="mb-2">
-        @L["These computers are virtual machines, but neither a Hyper-V host nor the vCenter lists them. The licence calculation cannot place them on a host."]
+        @L["These computers are virtual machines, but neither a Hyper-V host nor the vCenter or XCP-ng lists them. The licence calculation cannot place them on a host."]
     </MudText>
     <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
         @foreach (var computer in _withoutHost)
@@ -118,7 +119,7 @@
 @code {
     private List<VirtualHostView> _hosts = [];
     private List<Computer> _withoutHost = [];
-    private VCenterSettings? _settings;
+    private Dictionary<Inventory.Core.Abstractions.HypervisorKind, HypervisorSettings> _settings = [];
     private bool _busy;
 
     protected override Task OnInitializedAsync() => LoadAsync();
@@ -127,18 +128,20 @@
     {
         _hosts = await Hosts.HostsAsync();
         _withoutHost = await Hosts.GuestsWithoutHostAsync();
-        _settings = await VCenter.GetSettingsAsync();
+        _settings = [];
+        foreach (var kind in Hypervisors.Kinds)
+            _settings[kind] = await Hypervisors.GetSettingsAsync(kind);
     }
 
-    private async Task SyncAsync()
+    private async Task SyncAsync(Inventory.Core.Abstractions.HypervisorKind kind)
     {
         if (!await Access.DemandAdminAsync())
             return;
         _busy = true;
         try
         {
-            var result = await VCenter.SyncAsync();
-            await Audit.LogAsync(L["vCenter synchronized"], $"{result.Hosts} hosts, {result.VirtualMachines} virtual machines, {result.Matched} matched");
+            var result = await Hypervisors.SyncAsync(kind);
+            await Audit.LogAsync(L["{0} synchronized", HypervisorSyncService.Name(kind)], $"{result.Hosts} hosts, {result.VirtualMachines} virtual machines, {result.Matched} matched");
             Snackbar.Add(L["{0} hosts in {1} clusters, {2} virtual machines, {3} of them matched to inventoried computers.", result.Hosts, result.Clusters, result.VirtualMachines, result.Matched], Severity.Success);
         }
         catch (Inventory.Core.Abstractions.RemoteException ex)

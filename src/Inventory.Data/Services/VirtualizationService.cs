@@ -10,6 +10,8 @@ public enum VirtualHostSource
     HyperV,
     /// <summary>ESXi-Host aus dem vCenter.</summary>
     VCenter,
+    /// <summary>Host aus einem XCP-ng-Pool.</summary>
+    XcpNg,
 }
 
 /// <param name="GuestComputerId">Der inventarisierte Rechner dieser VM; null = nicht inventarisiert.</param>
@@ -31,7 +33,7 @@ public sealed class VirtualizationService(IDbContextFactory<InventoryDbContext> 
         var result = new List<VirtualHostView>();
 
         foreach (var host in await db.HypervisorHosts.AsNoTracking().Include(h => h.VirtualMachines).ToListAsync(ct))
-            result.Add(new VirtualHostView(VirtualHostSource.VCenter, host.Id, host.Name, host.Cluster, host.CpuSockets, host.CpuCores, host.Model, null,
+            result.Add(new VirtualHostView(host.Kind == Inventory.Core.Abstractions.HypervisorKind.XcpNg ? VirtualHostSource.XcpNg : VirtualHostSource.VCenter, host.Id, host.Name, host.Cluster, host.CpuSockets, host.CpuCores, host.Model, null,
                 host.VirtualMachines.OrderBy(v => v.Name)
                     .Select(v => new VirtualMachineView(v.Name, v.VirtualCpus, v.PoweredOn, v.GuestOs, v.GuestComputerId, Name(v.GuestComputerId))).ToList()));
 

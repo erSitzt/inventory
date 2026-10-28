@@ -214,7 +214,8 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
                     true, host.OsEdition, hostId, vms));
             }
             else
-                hosts.Add(new LicensingHost($"vcenter:{view.Id}", view.Name, view.Cluster, "vCenter", view.CpuSockets, null, view.CpuCores, false, null, null, vms));
+                hosts.Add(new LicensingHost($"hypervisor:{view.Id}", view.Name, view.Cluster, view.Source == VirtualHostSource.XcpNg ? "XCP-ng" : "vCenter",
+                    view.CpuSockets, null, view.CpuCores, false, null, null, vms));
         }
 
         var gaps = new List<LicensingNote>();

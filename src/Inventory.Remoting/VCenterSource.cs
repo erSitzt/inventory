@@ -15,6 +15,8 @@ namespace Inventory.Remoting;
 /// </summary>
 public sealed class VCenterSource(Func<HttpMessageHandler, HttpMessageHandler>? wrap = null) : IHypervisorSource
 {
+    public HypervisorKind Kind => HypervisorKind.VCenter;
+
     private static readonly XNamespace Soap = "http://schemas.xmlsoap.org/soap/envelope/";
     private static readonly XNamespace Vim = "urn:vim25";
     private static readonly XNamespace Xsi = "http://www.w3.org/2001/XMLSchema-instance";
@@ -26,26 +28,8 @@ public sealed class VCenterSource(Func<HttpMessageHandler, HttpMessageHandler>? 
     {
         if (!Uri.TryCreate(connection.Url.Trim(), UriKind.Absolute, out var baseUri) || baseUri.Scheme != Uri.UriSchemeHttps)
             throw new RemoteException("The vCenter address must start with https://.");
-        string? rejectedThumbprint = null;
-        var handler = new SocketsHttpHandler
-        {
-            CookieContainer = new CookieContainer(),
-            UseCookies = true,
-            ConnectTimeout = TimeSpan.FromSeconds(15),
-            SslOptions = new SslClientAuthenticationOptions
-            {
-                RemoteCertificateValidationCallback = (_, certificate, _, errors) =>
-                {
-                    if (errors == SslPolicyErrors.None)
-                        return true;
-                    var thumbprint = certificate is null ? null : Thumbprint(certificate);
-                    if (thumbprint is not null && string.Equals(thumbprint, Core.CertificateThumbprints.Normalize(connection.CertificateThumbprint), StringComparison.Ordinal))
-                        return true;
-                    rejectedThumbprint = thumbprint;
-                    return false;
-                },
-            },
-        };
+        var pinned = new PinnedCertificateHandler(connection.CertificateThumbprint, cookies: true);
+        var handler = pinned.Handler;
         using var client = new HttpClient(wrap?.Invoke(handler) ?? handler) { BaseAddress = new Uri(baseUri, "/sdk"), Timeout = TimeSpan.FromMinutes(5) };
         var session = new Session(client);
         try
@@ -91,7 +75,7 @@ public sealed class VCenterSource(Func<HttpMessageHandler, HttpMessageHandler>? 
                 }
             }
         }
-        catch (HttpRequestException ex) when (rejectedThumbprint is not null)
+        catch (HttpRequestException ex) when (pinned.Rejected is { } rejectedThumbprint)
         {
             throw new RemoteException($"The certificate of the vCenter is not trusted. If it is the right one, enter its SHA-256 thumbprint: {rejectedThumbprint}", ex);
         }
@@ -104,8 +88,6 @@ public sealed class VCenterSource(Func<HttpMessageHandler, HttpMessageHandler>? 
             throw new RemoteException("The vCenter did not answer in time.", ex);
         }
     }
-
-    public static string Thumbprint(X509Certificate certificate) => Convert.ToHexString(SHA256.HashData(certificate.GetRawCertData()));
 
     private static XElement This(string type, string id) => new(Vim + "_this", new XAttribute("type", type), id);
 

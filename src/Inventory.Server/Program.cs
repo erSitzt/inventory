@@ -67,6 +67,7 @@ if (options.ResolveSimulate())
     builder.Services.AddSingleton<IDirectorySource, SimulatedDirectorySource>();
     builder.Services.AddSingleton<IDeviceProbe, SimulatedDeviceProbe>();
     builder.Services.AddSingleton<IHypervisorSource, SimulatedHypervisorSource>();
+    builder.Services.AddSingleton<IHypervisorSource, SimulatedXcpNgSource>();
     var framework = new SimulatedFrameworkInstaller();
     builder.Services.AddSingleton<IFrameworkInstaller>(framework);
     builder.Services.AddSingleton<IFrameworkSource>(framework);
@@ -78,6 +79,7 @@ else
     builder.Services.AddSingleton<IDirectorySource, LdapDirectorySource>();
     builder.Services.AddSingleton<IDeviceProbe, Inventory.Remoting.Devices.DeviceProbe>();
     builder.Services.AddSingleton<IHypervisorSource>(new VCenterSource());
+    builder.Services.AddSingleton<IHypervisorSource>(new XcpNgSource());
     if (OperatingSystem.IsWindows())
     {
         builder.Services.AddSingleton<SmbServiceTransport>();
@@ -106,7 +108,7 @@ builder.Services.AddSingleton<WakeService>();
 builder.Services.AddSingleton<DeploymentService>();
 builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddSingleton<AdSyncService>();
-builder.Services.AddSingleton<VCenterSyncService>();
+builder.Services.AddSingleton<HypervisorSyncService>();
 builder.Services.AddSingleton<VirtualizationService>();
 builder.Services.AddSingleton<LicensingService>();
 builder.Services.AddSingleton<HeartbeatService>();

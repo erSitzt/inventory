@@ -58,7 +58,7 @@ public static class VirtualHosts
             if (machine is not null)
                 (source, hostComputer) = (HostSources.BiosUuid, machine.ComputerId);
             else if ((vm = await db.HypervisorVms.Where(v => v.BiosUuid != null && candidates.Contains(v.BiosUuid)).OrderByDescending(v => v.PoweredOn).FirstOrDefaultAsync(ct)) is not null)
-                source = HostSources.VCenter;
+                source = HostSources.Hypervisor;
         }
         if (source is null && guest.ReportedHostName is { Length: > 0 } reported && await FindByNameAsync(db, reported, guest.Id, ct) is { } host)
             (source, hostComputer) = (HostSources.GuestReport, host.Id);
@@ -68,7 +68,7 @@ public static class VirtualHosts
             vm = (await db.HypervisorVms.Where(v => v.GuestComputerId == null || v.GuestComputerId == guest.Id).ToListAsync(ct))
                 .FirstOrDefault(v => Matches(v, guest));
             if (vm is not null)
-                source = HostSources.VCenterName;
+                source = HostSources.HypervisorName;
         }
 
         // Verweise, die nicht mehr gelten, lösen.
@@ -124,7 +124,7 @@ public static class VirtualHosts
                 continue;
             if (!byUuid.TryGetValue(uuid, out var vm) && !byUuid.TryGetValue(BiosUuids.Swapped(uuid), out vm) || !claimed.Add(vm))
                 continue;
-            Link(computer, vm, HostSources.VCenter);
+            Link(computer, vm, HostSources.Hypervisor);
             pending.Remove(computer);
         }
         var unclaimed = vms.Where(v => !claimed.Contains(v)).ToList();
@@ -134,9 +134,9 @@ public static class VirtualHosts
             if (vm is not null)
             {
                 unclaimed.Remove(vm);
-                Link(computer, vm, HostSources.VCenterName);
+                Link(computer, vm, HostSources.HypervisorName);
             }
-            else if (computer.HostSource is HostSources.VCenter or HostSources.VCenterName || computer.HypervisorHostId is not null)
+            else if (computer.HostSource is HostSources.Hypervisor or HostSources.HypervisorName || computer.HypervisorHostId is not null)
             {
                 // Die bisherige vCenter-VM gibt es nicht mehr; vielleicht kennt ein Hyper-V-Host den Rechner.
                 computer.HypervisorHostId = null;

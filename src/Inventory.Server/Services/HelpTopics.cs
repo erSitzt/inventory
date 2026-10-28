@@ -55,9 +55,9 @@ public static class HelpTopics
                 L["Search, the subnet selection and the type chips narrow the view; \"Save as PNG\" exports the current diagram."],
                 L["Administrators can limit the map to the relevant networks (\"Relevant networks\"); home networks of notebooks then only count under \"Home and other networks\", and traceroute and the gateway check stay inside."],
             ], L["network-map"]),
-            ("virtualization", _) => new(L["Virtualization"], L["Physical hosts and their virtual machines, from Hyper-V hosts in the inventory and from the vCenter."],
+            ("virtualization", _) => new(L["Virtualization"], L["Physical hosts and their virtual machines, from Hyper-V hosts in the inventory, the vCenter and XCP-ng."],
             [
-                L["Hyper-V hosts appear after their inventory scan; VMware hosts after a vCenter synchronization (Settings, read-only account)."],
+                L["Hyper-V hosts appear after their inventory scan; VMware and XCP-ng hosts after a synchronization (Settings, read-only account)."],
                 L["Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name; expand a host to see its machines."],
                 L["\"Inventoried VMs without a known host\" lists virtual machines no host reports – the licence calculation cannot place them."],
             ], L["virtualization-and-vcenter"]),

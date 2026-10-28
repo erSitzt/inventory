@@ -389,7 +389,7 @@ else if (_computer.ReverseDnsMismatch)
                                         @if (_hypervisorHost is { } esx)
                                         {
                                             <MudLink Href="virtualization">@esx.Name</MudLink>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.VCenterName ? L["vCenter, matched by name"] : L["vCenter, matched by BIOS UUID"])</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.HypervisorName ? L["{0}, matched by name", HypervisorSyncService.Name(esx.Kind)] : L["{0}, matched by BIOS UUID", HypervisorSyncService.Name(esx.Kind)])</MudText>
                                         }
                                         else if (_computer.HostComputerId is { } hostId && _names.TryGetValue(hostId, out var hostName))
                                         {

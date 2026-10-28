@@ -557,6 +557,9 @@
   <data name="always notify" xml:space="preserve">
     <value>immer benachrichtigen</value>
   </data>
+  <data name="An account with the read-only role is enough (pool-wide, e.g. from Active Directory); otherwise root." xml:space="preserve">
+    <value>Ein Konto mit der Rolle read-only genügt (poolweit, z. B. aus dem Active Directory); sonst root.</value>
+  </data>
   <data name="An administrator approves the package before operators and schedules may deploy it; changes withdraw the approval." xml:space="preserve">
     <value>Ein Administrator gibt das Paket frei, bevor Operatoren und Zeitpläne es verteilen dürfen; Änderungen heben die Freigabe auf.</value>
   </data>
@@ -2018,8 +2021,8 @@
   <data name="https://… – whoever knows the address can post to the channel, so it is stored encrypted." xml:space="preserve">
     <value>https://… – wer die Adresse kennt, kann in den Kanal schreiben; sie wird deshalb verschlüsselt gespeichert.</value>
   </data>
-  <data name="Hyper-V hosts appear after their inventory scan; VMware hosts after a vCenter synchronization (Settings, read-only account)." xml:space="preserve">
-    <value>Hyper-V-Hosts erscheinen nach ihrem Inventar-Scan, VMware-Hosts nach einem Abgleich mit dem vCenter (Einstellungen, Konto mit Leserechten).</value>
+  <data name="Hyper-V hosts appear after their inventory scan; VMware and XCP-ng hosts after a synchronization (Settings, read-only account)." xml:space="preserve">
+    <value>Hyper-V-Hosts erscheinen nach ihrem Inventar-Scan, VMware- und XCP-ng-Hosts nach einem Abgleich (Einstellungen, Konto mit Leserechten).</value>
   </data>
   <data name="Hypervisor" xml:space="preserve">
     <value>Hypervisor</value>
@@ -2861,8 +2864,8 @@
   <data name="No gaps: every server and virtual machine could be placed." xml:space="preserve">
     <value>Keine Lücken: jeder Server und jede virtuelle Maschine ließ sich zuordnen.</value>
   </data>
-  <data name="No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware, set up the vCenter under Settings." xml:space="preserve">
-    <value>Noch keine Hosts bekannt. Hyper-V-Hosts erscheinen nach ihrem nächsten Inventar-Scan; für VMware das vCenter unter Einstellungen einrichten.</value>
+  <data name="No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware and XCP-ng, set up the connection under Settings." xml:space="preserve">
+    <value>Noch keine Hosts bekannt. Hyper-V-Hosts erscheinen nach ihrem nächsten Inventar-Scan; für VMware und XCP-ng die Verbindung unter Einstellungen einrichten.</value>
   </data>
   <data name='No installed program matches "{0}".' xml:space="preserve">
     <value>Kein installiertes Programm passt auf „{0}“.</value>
@@ -3512,11 +3515,11 @@
   <data name="Physical disks" xml:space="preserve">
     <value>Physische Datenträger</value>
   </data>
-  <data name="Physical hosts and their virtual machines, from Hyper-V hosts in the inventory and from the vCenter." xml:space="preserve">
-    <value>Physische Hosts und ihre virtuellen Maschinen, von Hyper-V-Hosts im Inventar und aus dem vCenter.</value>
+  <data name="Physical hosts and their virtual machines, from Hyper-V hosts in the inventory, the vCenter and XCP-ng." xml:space="preserve">
+    <value>Physische Hosts und ihre virtuellen Maschinen, von Hyper-V-Hosts im Inventar, aus dem vCenter und aus XCP-ng.</value>
   </data>
-  <data name="Physical hosts with their virtual machines: Hyper-V hosts from the inventory scan, ESXi hosts from the vCenter. Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name." xml:space="preserve">
-    <value>Physische Hosts mit ihren virtuellen Maschinen: Hyper-V-Hosts aus dem Inventar-Scan, ESXi-Hosts aus dem vCenter. Jede virtuelle Maschine wird über die BIOS-UUID ihrem inventarisierten Rechner zugeordnet, sonst über den Namen.</value>
+  <data name="Physical hosts with their virtual machines: Hyper-V hosts from the inventory scan, ESXi hosts from the vCenter, XCP-ng hosts from the pool master. Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name." xml:space="preserve">
+    <value>Physische Hosts mit ihren virtuellen Maschinen: Hyper-V-Hosts aus dem Inventar-Scan, ESXi-Hosts aus dem vCenter, XCP-ng-Hosts vom Pool-Master. Jede virtuelle Maschine wird über die BIOS-UUID ihrem inventarisierten Rechner zugeordnet, sonst über den Namen.</value>
   </data>
   <data name="physical server" xml:space="preserve">
     <value>physischer Server</value>
@@ -3536,20 +3539,20 @@
   <data name="Please choose a collection." xml:space="preserve">
     <value>Bitte eine Sammlung wählen.</value>
   </data>
-  <data name="Please choose credentials for the vCenter." xml:space="preserve">
-    <value>Bitte Zugangsdaten für das vCenter auswählen.</value>
+  <data name="Please choose credentials." xml:space="preserve">
+    <value>Bitte Zugangsdaten auswählen.</value>
   </data>
   <data name="Please choose how to sign in." xml:space="preserve">
     <value>Bitte einen Anmeldeweg wählen.</value>
+  </data>
+  <data name="Please enter the address first." xml:space="preserve">
+    <value>Bitte zuerst die Adresse eintragen.</value>
   </data>
   <data name="Please enter the program name to count." xml:space="preserve">
     <value>Bitte den zu zählenden Programmnamen eintragen.</value>
   </data>
   <data name="Please enter the server address for agents under Settings first." xml:space="preserve">
     <value>Bitte zuerst unter Einstellungen die Server-Adresse für Agenten eintragen.</value>
-  </data>
-  <data name="Please enter the vCenter address first." xml:space="preserve">
-    <value>Bitte zuerst die Adresse des vCenters eintragen.</value>
   </data>
   <data name="Please observe the vendor's license terms; the library only refers to the vendor's download." xml:space="preserve">
     <value>Bitte die Lizenzbedingungen des Herstellers beachten; die Bibliothek verweist nur auf dessen Download.</value>
@@ -3559,6 +3562,9 @@
   </data>
   <data name="PNG or JPEG, at most {0} KB and {1} pixels. A PNG with a transparent background looks best." xml:space="preserve">
     <value>PNG oder JPEG, höchstens {0} KB und {1} Pixel. Am besten wirkt ein PNG mit transparentem Hintergrund.</value>
+  </data>
+  <data name="Pool master address" xml:space="preserve">
+    <value>Adresse des Pool-Masters</value>
   </data>
   <data name="Port" xml:space="preserve">
     <value>Anschluss</value>
@@ -3721,6 +3727,9 @@
   </data>
   <data name="Reads hosts, clusters and virtual machines from the vCenter, read-only, and matches the virtual machines to the inventoried computers. The licence calculation needs this for virtual machines on VMware." xml:space="preserve">
     <value>Liest Hosts, Cluster und virtuelle Maschinen aus dem vCenter, nur lesend, und ordnet die virtuellen Maschinen den inventarisierten Rechnern zu. Die Lizenzberechnung braucht das für virtuelle Maschinen auf VMware.</value>
+  </data>
+  <data name="Reads hosts, the pool and virtual machines from the XCP-ng pool master through the XAPI, read-only, and matches the virtual machines to the inventoried computers." xml:space="preserve">
+    <value>Liest Hosts, den Pool und virtuelle Maschinen vom XCP-ng-Pool-Master über die XAPI, nur lesend, und ordnet die virtuellen Maschinen den inventarisierten Rechnern zu.</value>
   </data>
   <data name="ready" xml:space="preserve">
     <value>bereit</value>
@@ -4796,8 +4805,8 @@
   <data name="Synchronize regularly" xml:space="preserve">
     <value>Regelmäßig synchronisieren</value>
   </data>
-  <data name="Synchronize vCenter" xml:space="preserve">
-    <value>vCenter abgleichen</value>
+  <data name="Synchronize {0}" xml:space="preserve">
+    <value>{0} abgleichen</value>
   </data>
   <data name="System" xml:space="preserve">
     <value>System</value>
@@ -4879,6 +4888,9 @@
   </data>
   <data name="The Active Directory synchronization fails" xml:space="preserve">
     <value>Der Active-Directory-Abgleich schlägt fehl</value>
+  </data>
+  <data name="The address must start with https://." xml:space="preserve">
+    <value>Die Adresse muss mit https:// beginnen.</value>
   </data>
   <data name="The agent did not report back within {0} days after the restart" xml:space="preserve">
     <value>Der Agent hat sich innerhalb von {0} Tagen nach dem Neustart nicht zurückgemeldet</value>
@@ -5168,9 +5180,6 @@
   <data name="The value for an allow rule by file hash in your endpoint protection. It changes with every server update." xml:space="preserve">
     <value>Der Wert für eine Freigabe per Datei-Hash in Ihrem Endpoint-Schutz. Er ändert sich mit jedem Server-Update.</value>
   </data>
-  <data name="The vCenter address must start with https://." xml:space="preserve">
-    <value>Die Adresse des vCenters muss mit https:// beginnen.</value>
-  </data>
   <data name="The wake-up could not be sent: the server has no way into the network and no agent in the computer's subnet is online." xml:space="preserve">
     <value>Das Wecksignal ließ sich nicht senden: der Server hat keinen Weg ins Netz, und im Subnetz des Rechners ist kein Agent online.</value>
   </data>
@@ -5195,8 +5204,8 @@
   <data name="These are the default credentials. Make other credentials the default first." xml:space="preserve">
     <value>Das sind die Standard-Zugangsdaten. Zuerst andere Zugangsdaten zum Standard machen.</value>
   </data>
-  <data name="These computers are virtual machines, but neither a Hyper-V host nor the vCenter lists them. The licence calculation cannot place them on a host." xml:space="preserve">
-    <value>Diese Rechner sind virtuelle Maschinen, aber weder ein Hyper-V-Host noch das vCenter führt sie. Die Lizenzberechnung kann sie keinem Host zuordnen.</value>
+  <data name="These computers are virtual machines, but neither a Hyper-V host nor the vCenter or XCP-ng lists them. The licence calculation cannot place them on a host." xml:space="preserve">
+    <value>Diese Rechner sind virtuelle Maschinen, aber weder ein Hyper-V-Host noch das vCenter oder XCP-ng führt sie. Die Lizenzberechnung kann sie keinem Host zuordnen.</value>
   </data>
   <data name="These entries are not part of the base selection and come unchanged from the winget manifests. The checksum secures the download, but only a test shows whether the silent parameters are right – try it on a single computer before deploying." xml:space="preserve">
     <value>Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download, aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.</value>
@@ -5554,18 +5563,6 @@
   </data>
   <data name="vCenter address" xml:space="preserve">
     <value>Adresse des vCenters</value>
-  </data>
-  <data name="vCenter synchronization: {0}, {1}, every {2} h" xml:space="preserve">
-    <value>vCenter-Abgleich: {0}, {1}, alle {2} h</value>
-  </data>
-  <data name="vCenter synchronized" xml:space="preserve">
-    <value>vCenter abgeglichen</value>
-  </data>
-  <data name="vCenter, matched by BIOS UUID" xml:space="preserve">
-    <value>vCenter, über die BIOS-UUID zugeordnet</value>
-  </data>
-  <data name="vCenter, matched by name" xml:space="preserve">
-    <value>vCenter, über den Namen zugeordnet</value>
   </data>
   <data name="vendor-specific" xml:space="preserve">
     <value>herstellereigen</value>
@@ -6191,6 +6188,12 @@
   <data name="{0} subnets, {1} routers, {2} devices, {3} computers. Dashed outline: subnet assumed as /24 because no mask is known." xml:space="preserve">
     <value>{0} Subnetze, {1} Router, {2} Geräte, {3} Rechner. Gestrichelter Rand: Subnetz als /24 angenommen, weil keine Maske bekannt ist.</value>
   </data>
+  <data name="{0} synchronization: {1}, {2}, every {3} h" xml:space="preserve">
+    <value>{0}-Abgleich: {1}, {2}, alle {3} h</value>
+  </data>
+  <data name="{0} synchronized" xml:space="preserve">
+    <value>{0} abgeglichen</value>
+  </data>
   <data name="{0} updated to {1}." xml:space="preserve">
     <value>{0} auf {1} aktualisiert.</value>
   </data>
@@ -6214,6 +6217,12 @@
   </data>
   <data name="{0}, including drivers" xml:space="preserve">
     <value>{0}, einschließlich Treiber</value>
+  </data>
+  <data name="{0}, matched by BIOS UUID" xml:space="preserve">
+    <value>{0}, über die BIOS-UUID zugeordnet</value>
+  </data>
+  <data name="{0}, matched by name" xml:space="preserve">
+    <value>{0}, über den Namen zugeordnet</value>
   </data>
   <data name='{0}: "{1}" is not a date (expected e.g. 2027-03-31 or 31.03.2027).' xml:space="preserve">
     <value>{0}: „{1}“ ist kein Datum (erwartet z. B. 2027-03-31 oder 31.03.2027).</value>
