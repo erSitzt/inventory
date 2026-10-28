@@ -197,6 +197,11 @@ meldet, Modell), den Pool und die virtuellen Maschinen (UUID, vCPUs, Host, Betri
 vom Gastagenten) über die XAPI (JSON-RPC), nur lesend. Ein Xen-Gast meldet die UUID der VM als BIOS-UUID; die Zuordnung
 klappt also wie bei VMware.
 
+Mit **Xen Orchestra** lassen sich dieselben Pools stattdessen über dessen REST-Schnittstelle lesen, mit einem
+Authentication Token statt eines Kennworts (das Token als Kennwort einer Zugangsdaten-Eintragung speichern; der
+Benutzername wird nicht verwendet). Für dieselben Pools entweder die direkte XCP-ng-Verbindung oder Xen Orchestra
+einrichten, nicht beides.
+
 ### Sammlungen und Wartungsfenster
 
 ![Sammlungen](docs/screenshots/de/collections.png)

@@ -59,7 +59,7 @@
         </TemplateColumn>
         <PropertyColumn Property="h => h.Cluster" Title="@L["Cluster"]" />
         <TemplateColumn Title="@L["Source"]" SortBy="h => h.Source">
-            <CellTemplate>@(context.Item.Source switch { VirtualHostSource.VCenter => "vCenter", VirtualHostSource.XcpNg => "XCP-ng", _ => "Hyper-V" })</CellTemplate>
+            <CellTemplate>@(context.Item.Source switch { VirtualHostSource.VCenter => "vCenter", VirtualHostSource.XcpNg => "XCP-ng", VirtualHostSource.XenOrchestra => "Xen Orchestra", _ => "Hyper-V" })</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Sockets / cores"]" SortBy="h => h.CpuCores ?? 0" CellStyle="text-align: right">
             <CellTemplate>@(context.Item.CpuSockets is null && context.Item.CpuCores is null ? "–" : $"{context.Item.CpuSockets?.ToString() ?? "?"} / {context.Item.CpuCores?.ToString() ?? "?"}")</CellTemplate>

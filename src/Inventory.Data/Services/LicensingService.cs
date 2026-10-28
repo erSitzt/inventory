@@ -214,7 +214,7 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
                     true, host.OsEdition, hostId, vms));
             }
             else
-                hosts.Add(new LicensingHost($"hypervisor:{view.Id}", view.Name, view.Cluster, view.Source == VirtualHostSource.XcpNg ? "XCP-ng" : "vCenter",
+                hosts.Add(new LicensingHost($"hypervisor:{view.Id}", view.Name, view.Cluster, view.Source switch { VirtualHostSource.XcpNg => "XCP-ng", VirtualHostSource.XenOrchestra => "Xen Orchestra", _ => "vCenter" },
                     view.CpuSockets, null, view.CpuCores, false, null, null, vms));
         }
 

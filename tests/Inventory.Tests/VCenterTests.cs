@@ -339,4 +339,56 @@ public class VCenterTests
         Assert.Null((await sync.GetSettingsAsync(HypervisorKind.XcpNg)).Thumbprint);
         Assert.StartsWith("1 hosts", (await sync.GetSettingsAsync(HypervisorKind.XcpNg)).LastResult);
     }
+
+    /// <summary>Beantwortet die REST-Abfragen von Xen Orchestra; ohne das richtige Token-Cookie gibt es 401.</summary>
+    private sealed class FakeXenOrchestra : HttpMessageHandler
+    {
+        public List<string> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Requests.Add($"{request.Method} {request.RequestUri!.PathAndQuery}");
+            if (!request.Headers.TryGetValues("Cookie", out var cookies) || !cookies.Contains("authenticationToken=tok-123"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+            var json = request.RequestUri.AbsolutePath switch
+            {
+                "/rest/v0/pools" => """[{"id":"pool-1","name_label":"XCP-POOL"}]""",
+                "/rest/v0/hosts" => """
+                    [{"id":"aaaa-1","name_label":"xcp01","hostname":"xcp01.corp.example","enabled":true,"$pool":"pool-1",
+                      "CPUs":{"cpu_count":"48","socket_count":"2","cores_per_socket":"12"},"bios_strings":{"system-product-name":"ProLiant DL360"},
+                      "productBrand":"XCP-ng","version":"8.3.0"}]
+                    """,
+                "/rest/v0/vms" => """
+                    [{"id":"4c4c4544-0042-3510-8052-b4c04f4e3732","name_label":"XEN-APP01","power_state":"Running","$container":"aaaa-1",
+                      "CPUs":{"max":4,"number":4},"os_version":{"name":"Microsoft Windows Server 2022 Standard|C:\\Windows"}},
+                     {"id":"5d5d","name_label":"XEN-OFF","power_state":"Halted","$container":"pool-1","CPUs":{"max":2,"number":2}}]
+                    """,
+                _ => "[]",
+            };
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") });
+        }
+    }
+
+    [Fact]
+    public async Task Xen_orchestra_is_read_with_an_authentication_token()
+    {
+        var fake = new FakeXenOrchestra();
+        var token = new HypervisorConnection("https://xo.corp.example", new NetworkCredential("token", "tok-123"), null);
+        var inventory = await new XenOrchestraSource(_ => fake).ReadAsync(token);
+
+        Assert.Equal("Xen Orchestra · XCP-ng 8.3.0", inventory.Version);
+        Assert.Equal([new HypervisorHostInfo("aaaa-1", "xcp01.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360", true)], inventory.Hosts);
+        var app = inventory.VirtualMachines[0];
+        Assert.Equal(("XEN-APP01", "4c4c4544-0042-3510-8052-b4c04f4e3732", 4, "aaaa-1", true, "Microsoft Windows Server 2022 Standard"),
+            (app.Name, app.BiosUuid, app.VirtualCpus!.Value, app.HostId, app.PoweredOn, app.GuestOs));
+        // Eine angehaltene VM hängt am Pool, nicht an einem Host.
+        Assert.Equal((null, false), (inventory.VirtualMachines[1].HostId, inventory.VirtualMachines[1].PoweredOn));
+        Assert.All(fake.Requests, r => Assert.StartsWith("GET /rest/v0/", r));
+
+        var rejected = await Assert.ThrowsAsync<RemoteException>(() => new XenOrchestraSource(_ => new FakeXenOrchestra())
+            .ReadAsync(token with { Credential = new NetworkCredential("token", "wrong") }));
+        Assert.Equal("Xen Orchestra rejected the authentication token.", rejected.Message);
+        await Assert.ThrowsAsync<RemoteException>(() => new XenOrchestraSource(_ => new FakeXenOrchestra())
+            .ReadAsync(token with { Credential = new NetworkCredential("token", "") }));
+    }
 }

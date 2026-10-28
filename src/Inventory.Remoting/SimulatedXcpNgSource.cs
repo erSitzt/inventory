@@ -6,11 +6,12 @@ namespace Inventory.Remoting;
 /// XCP-ng-Pool der Simulation: zwei Hosts (2 × 12 Kerne) im Pool XCP-POOL mit Server-VMs, deren UUIDs zu den simulierten Rechnern
 /// XEN-* passen (bei Xen meldet der Gast die UUID der VM unverändert).
 /// </summary>
-public sealed class SimulatedXcpNgSource : IHypervisorSource
+/// <param name="kind">XcpNg oder XenOrchestra: derselbe Pool, einmal direkt, einmal über Xen Orchestra gelesen.</param>
+public sealed class SimulatedXcpNgSource(HypervisorKind kind = HypervisorKind.XcpNg) : IHypervisorSource
 {
     public static readonly string[] Guests = ["XEN-APP01", "XEN-APP02", "XEN-SQL01", "XEN-WEB01"];
 
-    public HypervisorKind Kind => HypervisorKind.XcpNg;
+    public HypervisorKind Kind => kind;
 
     public Task<HypervisorInventory> ReadAsync(HypervisorConnection connection, CancellationToken ct = default)
     {

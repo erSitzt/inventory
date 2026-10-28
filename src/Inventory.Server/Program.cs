@@ -67,7 +67,8 @@ if (options.ResolveSimulate())
     builder.Services.AddSingleton<IDirectorySource, SimulatedDirectorySource>();
     builder.Services.AddSingleton<IDeviceProbe, SimulatedDeviceProbe>();
     builder.Services.AddSingleton<IHypervisorSource, SimulatedHypervisorSource>();
-    builder.Services.AddSingleton<IHypervisorSource, SimulatedXcpNgSource>();
+    builder.Services.AddSingleton<IHypervisorSource>(new SimulatedXcpNgSource());
+    builder.Services.AddSingleton<IHypervisorSource>(new SimulatedXcpNgSource(HypervisorKind.XenOrchestra));
     var framework = new SimulatedFrameworkInstaller();
     builder.Services.AddSingleton<IFrameworkInstaller>(framework);
     builder.Services.AddSingleton<IFrameworkSource>(framework);
@@ -80,6 +81,7 @@ else
     builder.Services.AddSingleton<IDeviceProbe, Inventory.Remoting.Devices.DeviceProbe>();
     builder.Services.AddSingleton<IHypervisorSource>(new VCenterSource());
     builder.Services.AddSingleton<IHypervisorSource>(new XcpNgSource());
+    builder.Services.AddSingleton<IHypervisorSource>(new XenOrchestraSource());
     if (OperatingSystem.IsWindows())
     {
         builder.Services.AddSingleton<SmbServiceTransport>();

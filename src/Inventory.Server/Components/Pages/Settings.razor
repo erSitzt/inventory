@@ -207,6 +207,10 @@
                            Description="@L["Reads hosts, the pool and virtual machines from the XCP-ng pool master through the XAPI, read-only, and matches the virtual machines to the inventoried computers."]"
                            AddressLabel="@L["Pool master address"]" Placeholder="https://xcp01.corp.example"
                            AccountHint="@L["An account with the read-only role is enough (pool-wide, e.g. from Active Directory); otherwise root."]" />
+<HypervisorSettingsSection Kind="Inventory.Core.Abstractions.HypervisorKind.XenOrchestra" Anchor="xenorchestra" Title="Xen Orchestra" Credentials="_credentials"
+                           Description="@L["Alternative to the direct XCP-ng connection: reads pools, hosts and virtual machines from Xen Orchestra through its REST API with an authentication token, read-only. Set up only one of the two for the same pools."]"
+                           AddressLabel="@L["Xen Orchestra address"]" Placeholder="https://xo.corp.example"
+                           AccountHint="@L["Credentials whose password is the authentication token (Xen Orchestra: user settings, Authentication tokens); the user name is not used. A token of a read-only user is enough."]" />
 
 <MudPaper id="defender" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="3">

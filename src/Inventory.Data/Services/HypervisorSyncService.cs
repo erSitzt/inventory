@@ -34,11 +34,17 @@ public sealed class HypervisorSyncService(IDbContextFactory<InventoryDbContext> 
     public static string Name(HypervisorKind kind) => kind switch
     {
         HypervisorKind.XcpNg => "XCP-ng",
+        HypervisorKind.XenOrchestra => "Xen Orchestra",
         _ => "vCenter",
     };
 
     /// <summary>Präfix der Einstellungen; "VCenter" bleibt aus der Zeit nur mit vCenter.</summary>
-    private static string Key(HypervisorKind kind, string name) => (kind == HypervisorKind.XcpNg ? "XcpNg." : "VCenter.") + name;
+    private static string Key(HypervisorKind kind, string name) => kind switch
+    {
+        HypervisorKind.XcpNg => "XcpNg.",
+        HypervisorKind.XenOrchestra => "XenOrchestra.",
+        _ => "VCenter.",
+    } + name;
 
     public async Task<HypervisorSettings> GetSettingsAsync(HypervisorKind kind, CancellationToken ct = default) => new(
         await settings.GetAsync(Key(kind, "Enabled"), ct) == bool.TrueString,

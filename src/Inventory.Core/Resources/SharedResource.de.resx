@@ -554,6 +554,9 @@
   <data name="Also sent through the agent on {0}." xml:space="preserve">
     <value>Zusätzlich über den Agenten auf {0} gesendet.</value>
   </data>
+  <data name="Alternative to the direct XCP-ng connection: reads pools, hosts and virtual machines from Xen Orchestra through its REST API with an authentication token, read-only. Set up only one of the two for the same pools." xml:space="preserve">
+    <value>Alternative zur direkten XCP-ng-Verbindung: liest Pools, Hosts und virtuelle Maschinen aus Xen Orchestra über dessen REST-Schnittstelle mit einem Authentication Token, nur lesend. Für dieselben Pools nur eins von beiden einrichten.</value>
+  </data>
   <data name="always notify" xml:space="preserve">
     <value>immer benachrichtigen</value>
   </data>
@@ -1171,6 +1174,9 @@
   </data>
   <data name='Credentials named "{0}" already exist.' xml:space="preserve">
     <value>Es gibt bereits Zugangsdaten mit dem Namen „{0}“.</value>
+  </data>
+  <data name="Credentials whose password is the authentication token (Xen Orchestra: user settings, Authentication tokens); the user name is not used. A token of a read-only user is enough." xml:space="preserve">
+    <value>Zugangsdaten, deren Kennwort das Authentication Token ist (Xen Orchestra: Benutzereinstellungen, Authentication tokens); der Benutzername wird nicht verwendet. Ein Token eines Benutzers mit Leserechten genügt.</value>
   </data>
   <data name="Credentials {0} not found" xml:space="preserve">
     <value>Zugangsdaten {0} nicht gefunden</value>
@@ -5911,6 +5917,9 @@
   </data>
   <data name="Wrong computer responds" xml:space="preserve">
     <value>Falscher Rechner antwortet</value>
+  </data>
+  <data name="Xen Orchestra address" xml:space="preserve">
+    <value>Adresse von Xen Orchestra</value>
   </data>
   <data name="Year" xml:space="preserve">
     <value>Baujahr</value>

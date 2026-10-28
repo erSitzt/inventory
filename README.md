@@ -193,6 +193,10 @@ them, model), the pool and the virtual machines (UUID, vCPUs, host, power state,
 agent) through the XAPI (JSON-RPC), read-only. A Xen guest reports the VM's UUID as its BIOS UUID, so matching works as
 with VMware.
 
+With **Xen Orchestra** the same pools can be read through its REST API instead, with an authentication token in place
+of a password (store the token as the password of a credential; the user name is not used). Set up either the direct
+XCP-ng connection or Xen Orchestra for the same pools, not both.
+
 ### Collections and maintenance windows
 
 ![Collections](docs/screenshots/en/collections.png)

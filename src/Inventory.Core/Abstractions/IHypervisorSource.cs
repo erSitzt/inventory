@@ -8,6 +8,8 @@ public enum HypervisorKind
     VCenter = 0,
     /// <summary>XCP-ng bzw. Citrix Hypervisor, über die XAPI des Pool-Masters.</summary>
     XcpNg = 1,
+    /// <summary>XCP-ng-Pools über die REST-Schnittstelle von Xen Orchestra, mit Token statt Kennwort.</summary>
+    XenOrchestra = 2,
 }
 
 /// <summary>Zugang zu einer Virtualisierungsverwaltung, z. B. einem vCenter.</summary>
