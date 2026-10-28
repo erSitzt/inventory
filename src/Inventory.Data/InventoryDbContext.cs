@@ -31,6 +31,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ComputerServerFeature> ServerFeatures => Set<ComputerServerFeature>();
     public DbSet<ComputerSqlInstance> SqlInstances => Set<ComputerSqlInstance>();
     public DbSet<HostedVirtualMachine> HostedVirtualMachines => Set<HostedVirtualMachine>();
+    public DbSet<HypervisorManager> HypervisorManagers => Set<HypervisorManager>();
     public DbSet<HypervisorHost> HypervisorHosts => Set<HypervisorHost>();
     public DbSet<HypervisorVm> HypervisorVms => Set<HypervisorVm>();
     public DbSet<LicenseEntitlement> LicenseEntitlements => Set<LicenseEntitlement>();
@@ -99,15 +100,23 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasIndex(l => l.Product);
         });
 
+        modelBuilder.Entity<HypervisorManager>(e =>
+        {
+            e.Property(m => m.Name).UseCollation("NOCASE").HasMaxLength(100);
+            e.HasIndex(m => m.Name).IsUnique();
+            e.HasOne<Credential>().WithMany().HasForeignKey(m => m.CredentialId).OnDelete(DeleteBehavior.SetNull);
+        });
         modelBuilder.Entity<HypervisorHost>(e =>
         {
-            e.HasIndex(h => new { h.Kind, h.ExternalId }).IsUnique();
+            e.HasIndex(h => new { h.ManagerId, h.ExternalId }).IsUnique();
+            e.HasOne<HypervisorManager>().WithMany().HasForeignKey(h => h.ManagerId).OnDelete(DeleteBehavior.Cascade);
             // Verschwindet ein Host, bleiben seine VMs bis zum nächsten Abgleich ohne Host.
             e.HasMany(h => h.VirtualMachines).WithOne().HasForeignKey(v => v.HostId).OnDelete(DeleteBehavior.SetNull);
         });
         modelBuilder.Entity<HypervisorVm>(e =>
         {
-            e.HasIndex(v => new { v.Kind, v.ExternalId }).IsUnique();
+            e.HasIndex(v => new { v.ManagerId, v.ExternalId }).IsUnique();
+            e.HasOne<HypervisorManager>().WithMany().HasForeignKey(v => v.ManagerId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(v => v.BiosUuid);
             e.HasOne<Computer>().WithMany().HasForeignKey(v => v.GuestComputerId).OnDelete(DeleteBehavior.SetNull);
         });

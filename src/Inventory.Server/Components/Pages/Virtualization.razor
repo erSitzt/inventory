@@ -13,21 +13,13 @@
     <MudText Typo="Typo.h5">@L["Virtualization"]</MudText>
     <MudSpacer />
     <AdminOnly>
-        @foreach (var (kind, settings) in _settings.Where(s => s.Value.Url is not null))
-        {
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Sync" Disabled="_busy" OnClick="@(() => SyncAsync(kind))">@L["Synchronize {0}", HypervisorSyncService.Name(kind)]</MudButton>
-        }
-        <MudButton Variant="Variant.Text" Href="settings#vcenter">@L["Settings"]</MudButton>
+        <MudButton Variant="Variant.Text" Href="settings#virtualization">@L["Settings"]</MudButton>
     </AdminOnly>
 </MudStack>
 
 <MudText Typo="Typo.body2" Class="mb-2">
     @L["Physical hosts with their virtual machines: Hyper-V hosts from the inventory scan, ESXi hosts from the vCenter, XCP-ng hosts from the pool master. Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name."]
 </MudText>
-@foreach (var (kind, settings) in _settings.Where(s => s.Value.LastResult is not null))
-{
-    <MudText Typo="Typo.caption" Class="d-block" Style="color: var(--mud-palette-text-secondary)">@HypervisorSyncService.Name(kind): @L["Last run {0}: {1}", Display.LocalTime(settings.LastRunUtc), settings.LastResult]</MudText>
-}
 <div class="mb-3"></div>
 
 <MudStack Row="true" Spacing="2" Class="mb-3" Wrap="Wrap.Wrap">
@@ -41,66 +33,54 @@
     }
 </MudStack>
 
-<MudDataGrid T="VirtualHostView" Items="_hosts" Dense="true" Hover="true" SortMode="SortMode.Single" Groupable="false">
-    <Columns>
-        <HierarchyColumn T="VirtualHostView" />
-        <TemplateColumn Title="@L["Host"]" SortBy="h => h.Name">
-            <CellTemplate>
-                @if (context.Item.ComputerId is { } computerId)
-                {
-                    <MudLink Href="@($"computers/{computerId}")">@context.Item.Name</MudLink>
-                }
-                else
-                {
-                    @context.Item.Name
-                }
-                <MudText Typo="Typo.caption" Class="d-block" Style="color: var(--mud-palette-text-secondary)">@context.Item.Model</MudText>
-            </CellTemplate>
-        </TemplateColumn>
-        <PropertyColumn Property="h => h.Cluster" Title="@L["Cluster"]" />
-        <TemplateColumn Title="@L["Source"]" SortBy="h => h.Source">
-            <CellTemplate>@(context.Item.Source switch { VirtualHostSource.VCenter => "vCenter", VirtualHostSource.XcpNg => "XCP-ng", VirtualHostSource.XenOrchestra => "Xen Orchestra", _ => "Hyper-V" })</CellTemplate>
-        </TemplateColumn>
-        <TemplateColumn Title="@L["Sockets / cores"]" SortBy="h => h.CpuCores ?? 0" CellStyle="text-align: right">
-            <CellTemplate>@(context.Item.CpuSockets is null && context.Item.CpuCores is null ? "–" : $"{context.Item.CpuSockets?.ToString() ?? "?"} / {context.Item.CpuCores?.ToString() ?? "?"}")</CellTemplate>
-        </TemplateColumn>
-        <TemplateColumn Title="@L["Virtual machines"]" SortBy="h => h.VirtualMachines.Count" CellStyle="text-align: right">
-            <CellTemplate>@context.Item.VirtualMachines.Count</CellTemplate>
-        </TemplateColumn>
-        <TemplateColumn Title="@L["Inventoried"]" SortBy="h => h.VirtualMachines.Count(v => v.GuestComputerId is not null)" CellStyle="text-align: right">
-            <CellTemplate>@context.Item.VirtualMachines.Count(v => v.GuestComputerId is not null)</CellTemplate>
-        </TemplateColumn>
-    </Columns>
-    <ChildRowContent>
-        <MudSimpleTable Dense="true" Elevation="0">
-            <thead><tr><th>@L["Name"]</th><th>@L["Virtual processors"]</th><th>@L["State"]</th><th>@L["Guest operating system"]</th><th>@L["Inventoried as"]</th></tr></thead>
-            <tbody>
-                @foreach (var vm in context.Item.VirtualMachines)
-                {
-                    <tr>
-                        <td>@vm.Name</td>
-                        <td>@vm.VirtualCpus</td>
-                        <td>@(vm.Running switch { true => L["running"], false => L["off"], null => "–" })</td>
-                        <td>@vm.GuestOs</td>
-                        <td>
-                            @if (vm.GuestComputerId is { } guestId)
-                            {
-                                <MudLink Href="@($"computers/{guestId}")">@vm.GuestName</MudLink>
-                            }
-                            else
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not inventoried"]</MudText>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
-    </ChildRowContent>
-    <NoRecordsContent>
-        <MudText Class="pa-4">@L["No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware and XCP-ng, set up the connection under Settings."]</MudText>
-    </NoRecordsContent>
-</MudDataGrid>
+@if (_hosts.Count == 0)
+{
+    <MudText Class="pa-4">@L["No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware and XCP-ng, set up the connection under Settings."]</MudText>
+}
+@foreach (var platform in _hosts.GroupBy(PlatformOf).OrderBy(g => g.Key))
+{
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">@platform.Key</MudText>
+    <MudExpansionPanels MultiExpansion="true" Elevation="0" Outlined="true">
+        @foreach (var system in platform.GroupBy(h => (h.ManagerId, h.ManagerName, h.Source)).OrderBy(g => g.Key.ManagerName))
+        {
+            var hosts = system.ToList();
+            var manager = system.Key.ManagerId is { } id ? _managers.FirstOrDefault(m => m.Id == id) : null;
+            <MudExpansionPanel Expanded="true">
+                <TitleContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="3">
+                        <MudText Typo="Typo.subtitle1"><b>@(system.Key.ManagerName ?? "Hyper-V")</b></MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@(manager is null ? L["Hosts from the inventory scan"] : SourceName(system.Key.Source) + " · " + manager.Url)</MudText>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Hosts"]: @hosts.Count</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Clusters"]: @hosts.Select(h => h.Cluster).Where(c => c is not null).Distinct(StringComparer.OrdinalIgnoreCase).Count()</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Virtual machines"]: @hosts.Sum(h => h.VirtualMachines.Count)</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success">@L["Inventoried"]: @hosts.Sum(h => h.VirtualMachines.Count(v => v.GuestComputerId is not null))</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Cores"]: @hosts.Sum(h => h.CpuCores ?? 0)</MudChip>
+                    </MudStack>
+                    @if (manager?.LastRunUtc is not null)
+                    {
+                        <MudText Typo="Typo.caption" Class="d-block" Style="color: var(--mud-palette-text-secondary)">@L["Last run {0}: {1}", Display.LocalTime(manager.LastRunUtc), manager.LastResult ?? ""]</MudText>
+                    }
+                </TitleContent>
+                <ChildContent>
+                    @if (manager is not null)
+                    {
+                        <AdminOnly>
+                            <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Sync" Disabled="_busy" Class="mb-2" OnClick="@(() => SyncAsync(manager))">@L["Synchronize now"]</MudButton>
+                        </AdminOnly>
+                    }
+                    @foreach (var cluster in hosts.GroupBy(h => h.Cluster ?? "").OrderBy(g => g.Key == "").ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">
+                            @(cluster.Key == "" ? L["Without cluster"] : (system.Key.Source is VirtualHostSource.XcpNg or VirtualHostSource.XenOrchestra ? L["Pool {0}", cluster.Key] : L["Cluster {0}", cluster.Key]))
+                            <span style="color: var(--mud-palette-text-secondary); font-weight: normal"> · @L["{0} hosts, {1} cores, {2} virtual machines", cluster.Count(), cluster.Sum(h => h.CpuCores ?? 0), cluster.Sum(h => h.VirtualMachines.Count)]</span>
+                        </MudText>
+                        <VirtualHostGrid Items="cluster.OrderBy(h => h.Name, StringComparer.OrdinalIgnoreCase).ToList()" />
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+        }
+    </MudExpansionPanels>
+}
 
 @if (_withoutHost.Count > 0)
 {
@@ -119,7 +99,7 @@
 @code {
     private List<VirtualHostView> _hosts = [];
     private List<Computer> _withoutHost = [];
-    private Dictionary<Inventory.Core.Abstractions.HypervisorKind, HypervisorSettings> _settings = [];
+    private List<HypervisorManager> _managers = [];
     private bool _busy;
 
     protected override Task OnInitializedAsync() => LoadAsync();
@@ -128,25 +108,38 @@
     {
         _hosts = await Hosts.HostsAsync();
         _withoutHost = await Hosts.GuestsWithoutHostAsync();
-        _settings = [];
-        foreach (var kind in Hypervisors.Kinds)
-            _settings[kind] = await Hypervisors.GetSettingsAsync(kind);
+        _managers = await Hypervisors.ListAsync();
     }
 
-    private async Task SyncAsync(Inventory.Core.Abstractions.HypervisorKind kind)
+    private static string PlatformOf(VirtualHostView host) => host.Source switch
+    {
+        VirtualHostSource.VCenter => "VMware",
+        VirtualHostSource.XcpNg or VirtualHostSource.XenOrchestra => "XCP-ng",
+        _ => "Hyper-V",
+    };
+
+    private static string SourceName(VirtualHostSource source) => source switch
+    {
+        VirtualHostSource.VCenter => "vCenter",
+        VirtualHostSource.XcpNg => "XCP-ng",
+        VirtualHostSource.XenOrchestra => "Xen Orchestra",
+        _ => "Hyper-V",
+    };
+
+    private async Task SyncAsync(HypervisorManager manager)
     {
         if (!await Access.DemandAdminAsync())
             return;
         _busy = true;
         try
         {
-            var result = await Hypervisors.SyncAsync(kind);
-            await Audit.LogAsync(L["{0} synchronized", HypervisorSyncService.Name(kind)], $"{result.Hosts} hosts, {result.VirtualMachines} virtual machines, {result.Matched} matched");
-            Snackbar.Add(L["{0} hosts in {1} clusters, {2} virtual machines, {3} of them matched to inventoried computers.", result.Hosts, result.Clusters, result.VirtualMachines, result.Matched], Severity.Success);
+            var result = await Hypervisors.SyncAsync(manager.Id);
+            await Audit.LogAsync(L["{0} synchronized", HypervisorSyncService.Name(manager.Kind)], $"{manager.Name}: {result.Hosts} hosts, {result.VirtualMachines} virtual machines, {result.Matched} matched");
+            Snackbar.Add($"{manager.Name}: " + L["{0} hosts in {1} clusters, {2} virtual machines, {3} of them matched to inventoried computers.", result.Hosts, result.Clusters, result.VirtualMachines, result.Matched], Severity.Success);
         }
         catch (Inventory.Core.Abstractions.RemoteException ex)
         {
-            Snackbar.Add(ex.Message, Severity.Error);
+            Snackbar.Add($"{manager.Name}: {ex.Message}", Severity.Error);
         }
         finally
         {

@@ -386,6 +386,9 @@
   <data name="Add to computers ({0})" xml:space="preserve">
     <value>In Rechnerliste übernehmen ({0})</value>
   </data>
+  <data name="Address" xml:space="preserve">
+    <value>Adresse</value>
+  </data>
   <data name="Address for the new computer:" xml:space="preserve">
     <value>Adresse für den neuen Rechner:</value>
   </data>
@@ -932,6 +935,9 @@
   <data name="Cluster" xml:space="preserve">
     <value>Cluster</value>
   </data>
+  <data name="Cluster {0}" xml:space="preserve">
+    <value>Cluster {0}</value>
+  </data>
   <data name="Clusters" xml:space="preserve">
     <value>Cluster</value>
   </data>
@@ -1372,6 +1378,9 @@
   </data>
   <data name="Delete {0} × {1}?" xml:space="preserve">
     <value>{0} × {1} löschen?</value>
+  </data>
+  <data name="Deleted." xml:space="preserve">
+    <value>Gelöscht.</value>
   </data>
   <data name="Deletes the key with everything below it. Top-level branches such as HKCU\Software or HKLM\SOFTWARE\Microsoft are refused." xml:space="preserve">
     <value>Löscht den Schlüssel mit allem darunter. Oberste Zweige wie HKCU\Software oder HKLM\SOFTWARE\Microsoft werden abgelehnt.</value>
@@ -2059,6 +2068,12 @@
   </data>
   <data name="Hosts come from Hyper-V scans and the vCenter (page Virtualization); prices per pack decide the variant." xml:space="preserve">
     <value>Die Hosts stammen aus Hyper-V-Scans und dem vCenter (Seite Virtualisierung); die Preise je Paket entscheiden über die Variante.</value>
+  </data>
+  <data name="Hosts from the inventory scan" xml:space="preserve">
+    <value>Hosts aus dem Inventar-Scan</value>
+  </data>
+  <data name="Hosts, clusters and virtual machines are read from these systems, read-only, and matched to the inventoried computers – the licence calculation needs this for virtual machines. Any number of systems per type, e.g. vcenter1 and vcenter2." xml:space="preserve">
+    <value>Hosts, Cluster und virtuelle Maschinen werden aus diesen Systemen gelesen, nur lesend, und den inventarisierten Rechnern zugeordnet – die Lizenzberechnung braucht das für virtuelle Maschinen. Beliebig viele Systeme je Art, z. B. vcenter1 und vcenter2.</value>
   </data>
   <data name="Hotfix" xml:space="preserve">
     <value>Hotfix</value>
@@ -3041,6 +3056,9 @@
   <data name="None of the checked ports is open." xml:space="preserve">
     <value>Keiner der geprüften Ports ist offen.</value>
   </data>
+  <data name="None set up yet." xml:space="preserve">
+    <value>Noch keins eingerichtet.</value>
+  </data>
   <data name="normal" xml:space="preserve">
     <value>normal</value>
   </data>
@@ -3659,6 +3677,9 @@
   <data name="Please choose how to sign in." xml:space="preserve">
     <value>Bitte einen Anmeldeweg wählen.</value>
   </data>
+  <data name="Please enter a name." xml:space="preserve">
+    <value>Bitte einen Namen eingeben.</value>
+  </data>
   <data name="Please enter the address first." xml:space="preserve">
     <value>Bitte zuerst die Adresse eintragen.</value>
   </data>
@@ -3679,6 +3700,9 @@
   </data>
   <data name="Pool master address" xml:space="preserve">
     <value>Adresse des Pool-Masters</value>
+  </data>
+  <data name="Pool {0}" xml:space="preserve">
+    <value>Pool {0}</value>
   </data>
   <data name="Port" xml:space="preserve">
     <value>Anschluss</value>
@@ -4027,6 +4051,9 @@
   </data>
   <data name="Remove the indicators of earlier runners" xml:space="preserve">
     <value>Indikatoren früherer Runner entfernen</value>
+  </data>
+  <data name="Remove {0} with its hosts and virtual machines? The inventoried computers stay." xml:space="preserve">
+    <value>{0} mit seinen Hosts und virtuellen Maschinen entfernen? Die inventarisierten Rechner bleiben.</value>
   </data>
   <data name="removed" xml:space="preserve">
     <value>entfernt</value>
@@ -4622,6 +4649,9 @@
   <data name="Shared" xml:space="preserve">
     <value>Freigegeben</value>
   </data>
+  <data name="Short name in the overviews, e.g. vcenter1 or xoa-site2." xml:space="preserve">
+    <value>Kurzer Name in den Übersichten, z. B. vcenter1 oder xoa-standort2.</value>
+  </data>
   <data name="Short name of the service, e.g. Spooler" xml:space="preserve">
     <value>Kurzname des Dienstes, z. B. Spooler</value>
   </data>
@@ -5194,6 +5224,9 @@
   </data>
   <data name="The Microsoft licences the inventory needs, compared with the licences you own – an estimate, not an audit statement." xml:space="preserve">
     <value>Die Microsoft-Lizenzen, die das Inventar braucht, verglichen mit den vorhandenen – eine Schätzung, keine Auditaussage.</value>
+  </data>
+  <data name='The name "{0}" is already used.' xml:space="preserve">
+    <value>Der Name „{0}“ ist schon vergeben.</value>
   </data>
   <data name='The name pattern decides which programs count, e.g. "Microsoft Office*".' xml:space="preserve">
     <value>Das Namensmuster bestimmt, welche Programme zählen, z. B. „Microsoft Office*“.</value>
@@ -6128,6 +6161,9 @@
   <data name="Without an answer the installation starts in {0} minutes." xml:space="preserve">
     <value>Ohne Antwort beginnt die Installation in {0} Minuten.</value>
   </data>
+  <data name="Without cluster" xml:space="preserve">
+    <value>Ohne Cluster</value>
+  </data>
   <data name="Without launcher: commands to copy" xml:space="preserve">
     <value>Ohne Starter: Befehle zum Kopieren</value>
   </data>
@@ -6317,6 +6353,9 @@
   <data name="{0} hosts in {1} clusters, {2} virtual machines, {3} of them matched to inventoried computers." xml:space="preserve">
     <value>{0} Hosts in {1} Clustern, {2} virtuelle Maschinen, davon {3} inventarisierten Rechnern zugeordnet.</value>
   </data>
+  <data name="{0} hosts, {1} cores, {2} virtual machines" xml:space="preserve">
+    <value>{0} Hosts, {1} Kerne, {2} virtuelle Maschinen</value>
+  </data>
   <data name="{0} hours, {1} minutes" xml:space="preserve">
     <value>{0} Stunden, {1} Minuten</value>
   </data>
@@ -6394,6 +6433,9 @@
   </data>
   <data name="{0} processors × {1} physical cores (at least {2} per processor): {3} cores." xml:space="preserve">
     <value>{0} Prozessoren × {1} physische Kerne (mindestens {2} je Prozessor): {3} Kerne.</value>
+  </data>
+  <data name="{0} removed" xml:space="preserve">
+    <value>{0} entfernt</value>
   </data>
   <data name="{0} retries" xml:space="preserve">
     <value>{0} Wiederholungen</value>

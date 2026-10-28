@@ -1,0 +1,122 @@
+@using Inventory.Core.Abstractions
+@inject HypervisorSyncService Hypervisors
+@inject IDialogService Dialogs
+@inject Auditor Audit
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
+@inject Access Access
+
+@* Die Virtualisierungsverwaltungen (vCenter, XCP-ng, Xen Orchestra), beliebig viele je Art. *@
+<MudPaper id="virtualization" Class="pa-4 mt-4" Style="max-width: 960px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h6">@L["Virtualization"]</MudText>
+            <MudSpacer />
+            <MudMenu Label="@L["Add"]" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Dense="true">
+                @foreach (var kind in Hypervisors.Kinds)
+                {
+                    <MudMenuItem OnClick="@(() => EditAsync(null, kind))">@KindName(kind)</MudMenuItem>
+                }
+            </MudMenu>
+        </MudStack>
+        <MudText Typo="Typo.body2">
+            @L["Hosts, clusters and virtual machines are read from these systems, read-only, and matched to the inventoried computers – the licence calculation needs this for virtual machines. Any number of systems per type, e.g. vcenter1 and vcenter2."]
+        </MudText>
+        @if (_managers.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["None set up yet."]</MudText>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                <thead><tr><th>@L["Name"]</th><th>@L["Type"]</th><th>@L["Address"]</th><th>@L["Last run"]</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var manager in _managers)
+                    {
+                        <tr>
+                            <td>@manager.Name@(manager.Enabled ? "" : " (" + L["off"] + ")")</td>
+                            <td>@KindName(manager.Kind)</td>
+                            <td>@manager.Url</td>
+                            <td>
+                                @if (manager.LastRunUtc is not null)
+                                {
+                                    <MudText Typo="Typo.caption" Color="@((manager.LastResult ?? "").StartsWith(L["Failed: {0}", ""]) ? Color.Error : Color.Default)">@Display.LocalTime(manager.LastRunUtc): @manager.LastResult</MudText>
+                                }
+                            </td>
+                            <td style="white-space: nowrap">
+                                <MudTooltip Text="@L["Synchronize now"]"><MudIconButton Icon="@Icons.Material.Filled.Sync" Size="Size.Small" Disabled="_busy" aria-label="@L["Synchronize now"]" OnClick="@(() => SyncAsync(manager))" /></MudTooltip>
+                                <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(manager, manager.Kind))" /></MudTooltip>
+                                <MudTooltip Text="@L["Delete"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(manager))" /></MudTooltip>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+        @if (_message is not null)
+        {
+            <MudAlert Severity="@_severity" Dense="true">@_message</MudAlert>
+        }
+        <MudButton Variant="Variant.Text" Href="virtualization" Style="width: fit-content">@L["Show hosts and virtual machines"]</MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public IReadOnlyList<Credential> Credentials { get; set; } = [];
+
+    private List<HypervisorManager> _managers = [];
+    private string? _message;
+    private Severity _severity;
+    private bool _busy;
+
+    public static string KindName(HypervisorKind kind) => kind == HypervisorKind.VCenter ? "VMware vCenter" : HypervisorSyncService.Name(kind);
+
+    protected override async Task OnInitializedAsync() => _managers = await Hypervisors.ListAsync();
+
+    private async Task EditAsync(HypervisorManager? manager, HypervisorKind kind)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var parameters = new DialogParameters<EditHypervisorDialog> { { d => d.Manager, manager }, { d => d.Kind, kind }, { d => d.Credentials, Credentials } };
+        var dialog = await Dialogs.ShowAsync<EditHypervisorDialog>(manager?.Name ?? KindName(kind), parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            _managers = await Hypervisors.ListAsync();
+    }
+
+    private async Task SyncAsync(HypervisorManager manager)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _busy = true;
+        _message = null;
+        try
+        {
+            var result = await Hypervisors.SyncAsync(manager.Id);
+            await Audit.LogAsync(L["{0} synchronized", HypervisorSyncService.Name(manager.Kind)], $"{manager.Name}: {result.Hosts} hosts, {result.VirtualMachines} virtual machines, {result.Matched} matched");
+            (_message, _severity) = ($"{manager.Name}: " + L["{0} hosts in {1} clusters, {2} virtual machines, {3} of them matched to inventoried computers.", result.Hosts, result.Clusters, result.VirtualMachines, result.Matched].Value
+                + (result.Version is null ? "" : $" ({result.Version})"), Severity.Success);
+        }
+        catch (RemoteException ex)
+        {
+            (_message, _severity) = ($"{manager.Name}: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+            _managers = await Hypervisors.ListAsync();
+        }
+    }
+
+    private async Task DeleteAsync(HypervisorManager manager)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (await Dialogs.ShowMessageBoxAsync(L["Delete"], L["Remove {0} with its hosts and virtual machines? The inventoried computers stay.", manager.Name], yesText: L["Delete"], cancelText: L["Cancel"]) != true)
+            return;
+        await Hypervisors.DeleteAsync(manager.Id);
+        await Audit.LogAsync(L["Setting changed"], L["{0} removed", $"{HypervisorSyncService.Name(manager.Kind)} {manager.Name}"]);
+        _managers = await Hypervisors.ListAsync();
+        Snackbar.Add(L["Deleted."], Severity.Success);
+    }
+}

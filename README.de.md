@@ -183,8 +183,9 @@ Das Diagramm nutzt [Cytoscape.js](https://js.cytoscape.org/) (MIT-Lizenz), das m
 ### Virtualisierung und vCenter
 
 Die Seite *Virtualisierung* listet die physischen Hosts mit ihren virtuellen Maschinen, nach Cluster sortiert:
-Hyper-V-Hosts aus dem Inventar-Scan und ESXi-Hosts aus einem VMware-**vCenter**. Für das vCenter trägt man unter
-*Einstellungen* dessen Adresse und ein Konto mit Leserechten ein; der Server liest Hosts (Sockel, physische Kerne,
+Hyper-V-Hosts aus dem Inventar-Scan und ESXi-Hosts aus einem VMware-**vCenter**. Unter *Einstellungen → Virtualisierung* lassen sich beliebig viele Systeme einrichten – mehrere vCenter, Pool-Master oder
+Xen-Orchestra-Instanzen, jedes mit einem kurzen Namen wie vcenter1 –, und die Seite gruppiert die Hosts nach Plattform,
+System und Cluster. Für ein vCenter trägt man dessen Adresse und ein Konto mit Leserechten ein; der Server liest Hosts (Sockel, physische Kerne,
 Modell, Cluster) und virtuelle Maschinen (BIOS-UUID, vCPUs, Betriebszustand, Gastname) über die vSphere-Schnittstelle
 nach Zeitplan oder auf Knopfdruck und ändert dort nichts. Ein selbst signiertes Zertifikat wird nur über seinen
 SHA-256-Fingerabdruck angenommen, den ein fehlgeschlagener Lauf anzeigt. Jede virtuelle Maschine wird über die BIOS-UUID

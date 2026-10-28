@@ -1483,6 +1483,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int>("Kind")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("ManagerId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Model")
                         .HasColumnType("TEXT");
 
@@ -1495,10 +1498,60 @@ namespace Inventory.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Kind", "ExternalId")
+                    b.HasIndex("ManagerId", "ExternalId")
                         .IsUnique();
 
                     b.ToTable("HypervisorHosts");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.HypervisorManager", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CredentialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("IntervalHours")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastResult")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastRunUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("Thumbprint")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CredentialId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("HypervisorManagers");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.HypervisorVm", b =>
@@ -1529,6 +1582,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int>("Kind")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("ManagerId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1550,7 +1606,7 @@ namespace Inventory.Data.Migrations
 
                     b.HasIndex("HostId");
 
-                    b.HasIndex("Kind", "ExternalId")
+                    b.HasIndex("ManagerId", "ExternalId")
                         .IsUnique();
 
                     b.ToTable("HypervisorVms");
@@ -2490,6 +2546,23 @@ namespace Inventory.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.HypervisorHost", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.HypervisorManager", null)
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.HypervisorManager", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Credential", null)
+                        .WithMany()
+                        .HasForeignKey("CredentialId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.HypervisorVm", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -2501,6 +2574,12 @@ namespace Inventory.Data.Migrations
                         .WithMany("VirtualMachines")
                         .HasForeignKey("HostId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Inventory.Core.Model.HypervisorManager", null)
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>

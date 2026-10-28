@@ -199,18 +199,7 @@
     </MudStack>
 </MudPaper>
 
-<HypervisorSettingsSection Kind="Inventory.Core.Abstractions.HypervisorKind.VCenter" Anchor="vcenter" Title="VMware vCenter" Credentials="_credentials"
-                           Description="@L["Reads hosts, clusters and virtual machines from the vCenter, read-only, and matches the virtual machines to the inventoried computers. The licence calculation needs this for virtual machines on VMware."]"
-                           AddressLabel="@L["vCenter address"]" Placeholder="https://vcenter.corp.example"
-                           AccountHint="@L["A vCenter account with read-only rights is enough, e.g. user@vsphere.local or DOMAIN\\user."]" />
-<HypervisorSettingsSection Kind="Inventory.Core.Abstractions.HypervisorKind.XcpNg" Anchor="xcpng" Title="XCP-ng" Credentials="_credentials"
-                           Description="@L["Reads hosts, the pool and virtual machines from the XCP-ng pool master through the XAPI, read-only, and matches the virtual machines to the inventoried computers."]"
-                           AddressLabel="@L["Pool master address"]" Placeholder="https://xcp01.corp.example"
-                           AccountHint="@L["An account with the read-only role is enough (pool-wide, e.g. from Active Directory); otherwise root."]" />
-<HypervisorSettingsSection Kind="Inventory.Core.Abstractions.HypervisorKind.XenOrchestra" Anchor="xenorchestra" Title="Xen Orchestra" Credentials="_credentials"
-                           Description="@L["Alternative to the direct XCP-ng connection: reads pools, hosts and virtual machines from Xen Orchestra through its REST API with an authentication token, read-only. Set up only one of the two for the same pools."]"
-                           AddressLabel="@L["Xen Orchestra address"]" Placeholder="https://xo.corp.example"
-                           AccountHint="@L["Credentials whose password is the authentication token (Xen Orchestra: user settings, Authentication tokens); the user name is not used. A token of a read-only user is enough."]" />
+<HypervisorManagersSection Credentials="_credentials" />
 
 <MudPaper id="defender" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="3">

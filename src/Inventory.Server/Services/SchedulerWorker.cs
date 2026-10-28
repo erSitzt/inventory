@@ -30,10 +30,9 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                 }
                 await heartbeat.RunIfDueAsync(stoppingToken);
                 await adSync.SyncIfDueAsync(stoppingToken);
-                foreach (var kind in hypervisors.Kinds)
-                    if (await hypervisors.SyncIfDueAsync(kind, stoppingToken) is { } synced)
-                        await audit.LogAsync(Inventory.Core.Model.AuditActor.System("(automatic)"), $"{HypervisorSyncService.Name(kind)} synchronized",
-                            $"{synced.Hosts} hosts, {synced.VirtualMachines} virtual machines, {synced.Matched} matched", stoppingToken);
+                foreach (var (manager, synced) in await hypervisors.SyncDueAsync(stoppingToken))
+                    await audit.LogAsync(Inventory.Core.Model.AuditActor.System("(automatic)"), $"{HypervisorSyncService.Name(manager.Kind)} synchronized",
+                        $"{manager.Name}: {synced.Hosts} hosts, {synced.VirtualMachines} virtual machines, {synced.Matched} matched", stoppingToken);
                 await updates.CheckAsync(force: false, stoppingToken);
                 await updates.ReportPreviousAsync(startup: false, stoppingToken);
                 await updates.ApplyIfDueAsync(stoppingToken);
