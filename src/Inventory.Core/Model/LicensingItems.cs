@@ -39,10 +39,35 @@ public class HostedVirtualMachine
     public int? GuestComputerId { get; set; }
 }
 
+/// <summary>
+/// Eine Virtualisierungsverwaltung, aus der Hosts und VMs gelesen werden: ein vCenter, ein XCP-ng-Pool-Master oder ein Xen
+/// Orchestra. Von jeder Art kann es mehrere geben, z. B. vcenter1 und vcenter2.
+/// </summary>
+public class HypervisorManager
+{
+    public int Id { get; set; }
+    public Abstractions.HypervisorKind Kind { get; set; }
+    /// <summary>Kurzer Name, unter dem die Verwaltung in Übersichten steht, z. B. vcenter1.</summary>
+    public required string Name { get; set; }
+    /// <summary>https-Adresse ohne Pfad.</summary>
+    public required string Url { get; set; }
+    public int? CredentialId { get; set; }
+    /// <summary>SHA-256-Fingerabdruck eines selbst signierten Zertifikats, dem vertraut wird.</summary>
+    public string? Thumbprint { get; set; }
+    /// <summary>Regelmäßig abgleichen.</summary>
+    public bool Enabled { get; set; } = true;
+    public int IntervalHours { get; set; } = 6;
+    public DateTime? LastRunUtc { get; set; }
+    public string? LastResult { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
 /// <summary>Physischer Host aus einer Virtualisierungsverwaltung (vCenter, XCP-ng); kein inventarisierter Rechner.</summary>
 public class HypervisorHost
 {
     public int Id { get; set; }
+    /// <summary>Die Verwaltung, aus der der Host stammt.</summary>
+    public int ManagerId { get; set; }
     public Abstractions.HypervisorKind Kind { get; set; }
     /// <summary>Kennung in der Verwaltung, z. B. host-42.</summary>
     public required string ExternalId { get; set; }
@@ -61,6 +86,7 @@ public class HypervisorHost
 public class HypervisorVm
 {
     public int Id { get; set; }
+    public int ManagerId { get; set; }
     public Abstractions.HypervisorKind Kind { get; set; }
     public required string ExternalId { get; set; }
     public required string Name { get; set; }

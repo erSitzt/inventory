@@ -14,7 +14,7 @@
     <MudText Typo="Typo.h5">@L["Microsoft licensing"]</MudText>
     <MudSpacer />
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="api/licensing/balance.csv" Target="_blank">CSV</MudButton>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf" Href="api/licensing/report.pdf" Target="_blank">PDF</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf" Href="api/licensing/report.pdf" Target="_blank">@L["Report (PDF)"]</MudButton>
 </MudStack>
 
 <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
@@ -34,10 +34,16 @@ else
 
     <MudTabs Elevation="0" Outlined="true" PanelClass="pt-3" @bind-ActivePanelIndex="_tab">
         <MudTabPanel Text="@L["Overview"]">
+            @{ var shown = _overview.Balances.Where(b => b.Need is not null || b.Stock > 0).ToList(); }
             <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
-                <thead><tr><th>@L["Product"]</th><th style="text-align: right">@L["Need"]</th><th style="text-align: right">@L["Stock"]</th><th style="text-align: right">@L["Difference"]</th><th>@L["Status"]</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>@L["Product"]</th><th style="text-align: right">@L["Need"]</th><th style="text-align: right">@L["Stock"]</th><th style="text-align: right">@L["Difference"]</th>
+                        <th>@L["Status"]</th><th style="text-align: right">@L["Cost of the need"]</th><th style="text-align: right">@L["Still to buy"]</th>
+                    </tr>
+                </thead>
                 <tbody>
-                    @foreach (var balance in _overview.Balances.Where(b => b.Need is not null || b.Stock > 0))
+                    @foreach (var balance in shown)
                     {
                         <tr>
                             <td>@L[balance.Product.Name]@(balance.SoftwareAssurance ? " · SA" : "")</td>
@@ -48,10 +54,20 @@ else
                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
                                          Color="@(balance.Delta switch { null => Color.Default, < 0 => Color.Error, _ => Color.Success })">@Service.Status(balance)</MudChip>
                             </td>
+                            <td style="text-align: right">@(balance.NeedCost?.ToString("N0") ?? "–")</td>
+                            <td style="text-align: right">@(balance.ShortfallCost is > 0 ? balance.ShortfallCost.Value.ToString("N0") : balance.ShortfallCost is null ? "–" : "0")</td>
                         </tr>
                     }
+                    <tr style="font-weight: 600; border-top: 2px solid var(--mud-palette-text-primary)">
+                        <td>@L["Total"]</td><td></td><td></td><td></td><td></td>
+                        <td style="text-align: right">@shown.Sum(b => b.NeedCost ?? 0).ToString("N0")</td>
+                        <td style="text-align: right">@shown.Sum(b => b.ShortfallCost ?? 0).ToString("N0")</td>
+                    </tr>
                 </tbody>
             </MudSimpleTable>
+            <MudText Typo="Typo.caption" Class="d-block mt-1" Style="color: var(--mud-palette-text-secondary)">
+                @L["Costs at your prices or the list prices as a reference, without Software Assurance or subscription fees."]
+            </MudText>
             <MudText Typo="Typo.caption" Class="d-block mt-2" Style="color: var(--mud-palette-text-secondary)">
                 @L["Calculated so far: Windows Server and SQL Server per core. CALs and Windows clients follow; their stock is already shown."]
             </MudText>

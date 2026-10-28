@@ -215,6 +215,7 @@ var app = builder.Build();
 await using (var db = await app.Services.GetRequiredService<IDbContextFactory<InventoryDbContext>>().CreateDbContextAsync())
     await db.Database.MigrateAsync();
 await app.Services.GetRequiredService<InventoryStore>().BackfillPendingUpdatesAsync();
+await app.Services.GetRequiredService<HypervisorSyncService>().MigrateSettingsAsync();
 await app.Services.GetRequiredService<ExampleData>().SeedSchedulesAsync();
 await app.Services.GetRequiredService<ExampleData>().SeedReportsAsync();
 await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();

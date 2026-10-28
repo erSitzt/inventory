@@ -1,0 +1,102 @@
+@using Inventory.Core.Abstractions
+@inject HypervisorSyncService Hypervisors
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">@Description</MudText>
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true"
+                          HelperText="@L["Short name in the overviews, e.g. vcenter1 or xoa-site2."]" />
+            <MudTextField @bind-Value="_url" Label="@L["Address"]" Variant="Variant.Outlined" Placeholder="@Placeholder" Immediate="true" />
+            <MudSelect T="int?" @bind-Value="_credentialId" Label="@L["Credentials"]" Variant="Variant.Outlined" Clearable="true" HelperText="@AccountHint">
+                @foreach (var credential in Credentials)
+                {
+                    <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_thumbprint" Label="@L["Certificate thumbprint (SHA-256)"]" Variant="Variant.Outlined"
+                          HelperText="@L["Only for a certificate Windows does not trust (self-signed). The error message of a failed run shows the thumbprint of the certificate offered."]" />
+            <MudNumericField T="int" @bind-Value="_intervalHours" Label="@L["Interval (hours)"]" Variant="Variant.Outlined" Min="1" Max="168" />
+            <MudSwitch T="bool" @bind-Value="_enabled" Color="Color.Primary" Label="@L["Synchronize regularly"]" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_url))" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public HypervisorKind Kind { get; set; }
+    /// <summary>null = neue Verwaltung.</summary>
+    [Parameter] public HypervisorManager? Manager { get; set; }
+    [Parameter] public IReadOnlyList<Credential> Credentials { get; set; } = [];
+
+    private string _name = "";
+    private string _url = "";
+    private int? _credentialId;
+    private string? _thumbprint;
+    private int _intervalHours = HypervisorSyncService.DefaultIntervalHours;
+    private bool _enabled = true;
+    private string? _error;
+
+    private HypervisorKind EffectiveKind => Manager?.Kind ?? Kind;
+
+    private string Description => EffectiveKind switch
+    {
+        HypervisorKind.XcpNg => L["Reads hosts, the pool and virtual machines from the XCP-ng pool master through the XAPI, read-only, and matches the virtual machines to the inventoried computers."],
+        HypervisorKind.XenOrchestra => L["Alternative to the direct XCP-ng connection: reads pools, hosts and virtual machines from Xen Orchestra through its REST API with an authentication token, read-only. Set up only one of the two for the same pools."],
+        _ => L["Reads hosts, clusters and virtual machines from the vCenter, read-only, and matches the virtual machines to the inventoried computers. The licence calculation needs this for virtual machines on VMware."],
+    };
+
+    private string Placeholder => EffectiveKind switch
+    {
+        HypervisorKind.XcpNg => "https://xcp01.corp.example",
+        HypervisorKind.XenOrchestra => "https://xo.corp.example",
+        _ => "https://vcenter.corp.example",
+    };
+
+    private string AccountHint => EffectiveKind switch
+    {
+        HypervisorKind.XcpNg => L["An account with the read-only role is enough (pool-wide, e.g. from Active Directory); otherwise root."],
+        HypervisorKind.XenOrchestra => L["Credentials whose password is the authentication token (Xen Orchestra: user settings, Authentication tokens); the user name is not used. A token of a read-only user is enough."],
+        _ => L["A vCenter account with read-only rights is enough, e.g. user@vsphere.local or DOMAIN\\user."],
+    };
+
+    protected override void OnInitialized()
+    {
+        if (Manager is null)
+            return;
+        (_name, _url, _credentialId, _thumbprint, _intervalHours, _enabled) = (Manager.Name, Manager.Url, Manager.CredentialId, Manager.Thumbprint, Manager.IntervalHours, Manager.Enabled);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        try
+        {
+            var saved = await Hypervisors.SaveAsync(new HypervisorManager
+            {
+                Id = Manager?.Id ?? 0, Kind = EffectiveKind, Name = _name, Url = _url, CredentialId = _credentialId, Thumbprint = _thumbprint,
+                IntervalHours = _intervalHours, Enabled = _enabled,
+            });
+            await Audit.LogAsync(L["Setting changed"], L["{0} synchronization: {1}, {2}, every {3} h", $"{HypervisorSyncService.Name(saved.Kind)} {saved.Name}", Display.OnOff(saved.Enabled), saved.Url, saved.IntervalHours]);
+            MudDialog.Close(DialogResult.Ok(saved));
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    [Inject] private Display Display { get; set; } = default!;
+}

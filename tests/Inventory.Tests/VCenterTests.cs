@@ -146,11 +146,13 @@ public class VCenterTests
             ], "test"));
         var credential = await credentials.SaveAsync(null, "vCenter", "reader@vsphere.local", "secret", null);
         var sync = new HypervisorSyncService(db, [source], settings, credentials, TimeProvider.System);
-        await Assert.ThrowsAsync<ArgumentException>(() => sync.SaveSettingsAsync(HypervisorKind.VCenter, true, "http://vcenter", credential.Id, null, 6));
-        await sync.SaveSettingsAsync(HypervisorKind.VCenter, true, "https://vcenter.corp.example/", credential.Id, "aa:bb", 6);
-        var result = await sync.SyncAsync(HypervisorKind.VCenter);
+        await Assert.ThrowsAsync<ArgumentException>(() => sync.SaveAsync(new HypervisorManager { Kind = HypervisorKind.VCenter, Name = "vcenter1", Url = "http://vcenter", CredentialId = credential.Id }));
+        var manager = await sync.SaveAsync(new HypervisorManager { Kind = HypervisorKind.VCenter, Name = "vcenter1", Url = "https://vcenter.corp.example/", CredentialId = credential.Id, Thumbprint = "aa:bb" });
+        await Assert.ThrowsAsync<ArgumentException>(() => sync.SaveAsync(new HypervisorManager { Kind = HypervisorKind.VCenter, Name = "VCENTER1", Url = "https://other", CredentialId = credential.Id }));
+        var result = await sync.SyncAsync(manager.Id);
         Assert.Equal((2, 1, 4, 3), (result.Hosts, result.Clusters, result.VirtualMachines, result.Matched));
-        Assert.Equal(("https://vcenter.corp.example", "AABB"), ((await sync.GetSettingsAsync(HypervisorKind.VCenter)).Url, (await sync.GetSettingsAsync(HypervisorKind.VCenter)).Thumbprint));
+        var stored = Assert.Single(await sync.ListAsync());
+        Assert.Equal(("https://vcenter.corp.example", "AABB"), (stored.Url, stored.Thumbprint));
 
         var hosts = new VirtualizationService(db);
         var views = await hosts.HostsAsync();
@@ -168,15 +170,15 @@ public class VCenterTests
         {
             VirtualMachines = [source.Inventory.VirtualMachines[0] with { HostId = "host-12" }, source.Inventory.VirtualMachines[2], source.Inventory.VirtualMachines[3]],
         };
-        await sync.SyncAsync(HypervisorKind.VCenter);
+        await sync.SyncAsync(manager.Id);
         Assert.Equal("esx02", (await hosts.HypervisorHostAsync((await computers.GetAsync(ids["vm-sql01"]))!.HypervisorHostId!.Value))!.Name);
         var app = (await computers.GetAsync(ids["vm-app01"]))!;
         Assert.Equal((null, null), (app.HypervisorHostId, app.HostSource));
         Assert.Equal(["VM-APP01"], (await hosts.GuestsWithoutHostAsync()).Select(c => c.Name.ToUpperInvariant()));
 
         // Ein dritter Abgleich ohne Änderungen behält alle Zuordnungen (die VMs sind in der Datenbank wirklich verknüpft).
-        await sync.SyncAsync(HypervisorKind.VCenter);
-        await sync.SyncAsync(HypervisorKind.VCenter);
+        await sync.SyncAsync(manager.Id);
+        await sync.SyncAsync(manager.Id);
         var views2 = await hosts.HostsAsync();
         Assert.Equal(2, views2.Sum(h => h.VirtualMachines.Count(v => v.GuestComputerId is not null)));
 
@@ -192,11 +194,12 @@ public class VCenterTests
         var settings = new SettingsService(db);
         var credentials = new CredentialService(db, new ReversingProtector());
         var sync = new HypervisorSyncService(db, [new FailingSource()], settings, credentials, TimeProvider.System);
-        var error = await Assert.ThrowsAsync<RemoteException>(() => sync.SyncAsync(HypervisorKind.VCenter));
-        Assert.Equal("Please enter the address first.", error.Message);
-        Assert.StartsWith("Failed:", (await sync.GetSettingsAsync(HypervisorKind.VCenter)).LastResult);
+        var manager = await sync.SaveAsync(new HypervisorManager { Kind = HypervisorKind.VCenter, Name = "vcenter1", Url = "https://vcenter", Enabled = false });
+        var error = await Assert.ThrowsAsync<RemoteException>(() => sync.SyncAsync(manager.Id));
+        Assert.Equal("Please choose credentials.", error.Message);
+        Assert.StartsWith("Failed:", Assert.Single(await sync.ListAsync()).LastResult);
         // Ausgeschaltet läuft nichts von selbst.
-        Assert.Null(await sync.SyncIfDueAsync(HypervisorKind.VCenter));
+        Assert.Empty(await sync.SyncDueAsync());
     }
 
     private sealed class FailingSource : IHypervisorSource
@@ -219,8 +222,8 @@ public class VCenterTests
         var credential = await credentials.SaveAsync(null, "vCenter", "reader@vsphere.local", "secret", null);
         var sync = new HypervisorSyncService(db, [new FixedSource(new HypervisorInventory([new("host-1", "esx01", null, 2, 32, null, true)],
             [new("vm-1", "VM-A", uuid, 4, "host-1", true, null, null)], null))], settings, credentials, TimeProvider.System);
-        await sync.SaveSettingsAsync(HypervisorKind.VCenter, true, "https://vcenter", credential.Id, null, 6);
-        await sync.SyncAsync(HypervisorKind.VCenter);
+        var manager = await sync.SaveAsync(new HypervisorManager { Kind = HypervisorKind.VCenter, Name = "vcenter1", Url = "https://vcenter", CredentialId = credential.Id });
+        await sync.SyncAsync(manager.Id);
         Assert.Equal(HostSources.Hypervisor, (await computers.GetAsync(ids["vm-a"]))!.HostSource);
 
         // Die VM taucht (z. B. nach einer Migration) auf einem Hyper-V-Host auf: der gewinnt, der vCenter-Verweis wird gelöst.
@@ -234,7 +237,7 @@ public class VCenterTests
         var views = await new VirtualizationService(db).HostsAsync();
         Assert.Equal(1, views.Sum(h => h.VirtualMachines.Count(v => v.GuestComputerId == ids["vm-a"])));
         // Auch ein weiterer vCenter-Abgleich nimmt sie Hyper-V nicht weg.
-        await sync.SyncAsync(HypervisorKind.VCenter);
+        await sync.SyncAsync(manager.Id);
         Assert.Equal(ids["hv-01"], (await computers.GetAsync(ids["vm-a"]))!.HostComputerId);
         Assert.Equal(1, (await new VirtualizationService(db).HostsAsync()).Sum(h => h.VirtualMachines.Count(v => v.GuestComputerId == ids["vm-a"])));
     }
@@ -324,20 +327,53 @@ public class VCenterTests
             new FixedSource(new HypervisorInventory([new("h1", "xcp01", "POOL", 2, 24, null, true)], [new("v1", "XEN-B", xenUuid, 4, "h1", true, null, null)], null), HypervisorKind.XcpNg),
         ], settings, credentials, TimeProvider.System);
         Assert.Equal([HypervisorKind.VCenter, HypervisorKind.XcpNg], sync.Kinds);
+        var managers = new List<HypervisorManager>();
         foreach (var kind in sync.Kinds)
         {
-            await sync.SaveSettingsAsync(kind, true, "https://manager", credential.Id, null, 6);
-            Assert.Equal(1, (await sync.SyncAsync(kind)).Matched);
+            managers.Add(await sync.SaveAsync(new HypervisorManager { Kind = kind, Name = kind.ToString().ToLowerInvariant() + "1", Url = "https://manager", CredentialId = credential.Id }));
+            Assert.Equal(1, (await sync.SyncAsync(managers[^1].Id)).Matched);
         }
         // Ein zweiter Abgleich des vCenters lässt den XCP-ng-Pool und seine Zuordnung stehen.
-        await sync.SyncAsync(HypervisorKind.VCenter);
+        await sync.SyncAsync(managers[0].Id);
         var hosts = await new VirtualizationService(db).HostsAsync();
         Assert.Equal([("esx01", VirtualHostSource.VCenter, "VM-A"), ("xcp01", VirtualHostSource.XcpNg, "XEN-B")],
             hosts.Select(h => (h.Name, h.Source, Assert.Single(h.VirtualMachines).Name)).OrderBy(h => h.Item1));
         Assert.All(hosts, h => Assert.NotNull(h.VirtualMachines[0].GuestComputerId));
         Assert.Equal("xcp01", (await new VirtualizationService(db).HypervisorHostAsync((await computers.GetAsync(ids["xen-b"]))!.HypervisorHostId!.Value))!.Name);
-        Assert.Null((await sync.GetSettingsAsync(HypervisorKind.XcpNg)).Thumbprint);
-        Assert.StartsWith("1 hosts", (await sync.GetSettingsAsync(HypervisorKind.XcpNg)).LastResult);
+        Assert.StartsWith("1 hosts", (await sync.ListAsync()).Single(m => m.Kind == HypervisorKind.XcpNg).LastResult);
+        Assert.Equal(["vcenter1", "xcpng1"], hosts.Select(h => h.ManagerName).Order());
+
+        // Zwei vCenter derselben Art: beide nebeneinander; das Entfernen des einen lässt den anderen stehen und löst die Gäste.
+        var second = await sync.SaveAsync(new HypervisorManager { Kind = HypervisorKind.VCenter, Name = "vcenter2", Url = "https://vcenter2", CredentialId = credential.Id });
+        await sync.SyncAsync(second.Id);
+        Assert.Equal(3, (await new VirtualizationService(db).HostsAsync()).Count);
+        await sync.DeleteAsync(managers[0].Id);
+        var remaining = await new VirtualizationService(db).HostsAsync();
+        Assert.Equal(["vcenter2", "xcpng1"], remaining.Select(h => h.ManagerName).Order());
+        Assert.Equal("esx01", (await new VirtualizationService(db).HypervisorHostAsync((await computers.GetAsync(ids["vm-a"]))!.HypervisorHostId!.Value))!.Name);
+    }
+
+    [Fact]
+    public async Task Settings_from_the_time_with_one_system_per_type_become_systems()
+    {
+        using var db = new TestDb();
+        var settings = new SettingsService(db);
+        var credentials = new CredentialService(db, new ReversingProtector());
+        var credential = await credentials.SaveAsync(null, "reader", "reader", "secret", null);
+        await settings.SetAsync("VCenter.Url", "https://vcenter.corp.example");
+        await settings.SetAsync("VCenter.CredentialId", credential.Id.ToString());
+        await settings.SetAsync("VCenter.Enabled", "True");
+        await settings.SetAsync("XenOrchestra.Url", "https://xo.corp.example");
+        await settings.SetAsync("VCenter.LastRunUtc", "2026-10-28T08:00:00.0000000Z");
+        await settings.SetAsync("VCenter.LastResult", "4 hosts");
+        var sync = new HypervisorSyncService(db, [], settings, credentials, TimeProvider.System);
+        await sync.MigrateSettingsAsync();
+        await sync.MigrateSettingsAsync();
+        var managers = await sync.ListAsync();
+        Assert.Equal([("vcenter", HypervisorKind.VCenter, true, (int?)credential.Id), ("xenorchestra", HypervisorKind.XenOrchestra, false, null)],
+            managers.Select(m => (m.Name, m.Kind, m.Enabled, m.CredentialId)));
+        Assert.Null(await settings.GetAsync("VCenter.Url"));
+        Assert.Equal((new DateTime(2026, 10, 28, 8, 0, 0, DateTimeKind.Utc), "4 hosts"), (managers[0].LastRunUtc!.Value, managers[0].LastResult));
     }
 
     /// <summary>Beantwortet die REST-Abfragen von Xen Orchestra; ohne das richtige Token-Cookie gibt es 401.</summary>

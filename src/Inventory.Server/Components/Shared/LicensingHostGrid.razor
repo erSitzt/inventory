@@ -84,6 +84,20 @@
         <MudText Class="pa-4">@EmptyText</MudText>
     </NoRecordsContent>
 </MudDataGrid>
+@if (Items.Any(h => h.Chosen is not null))
+{
+    var chosen = Items.Where(h => h.Chosen is not null).ToList();
+    <MudPaper Outlined="true" Class="pa-3 mt-2">
+        <MudStack Row="true" Spacing="6" Wrap="Wrap.Wrap">
+            <MudText Typo="Typo.body2"><b>@L["Total"]</b></MudText>
+            @foreach (var product in chosen.GroupBy(h => h.Chosen!.Product))
+            {
+                <MudText Typo="Typo.body2">@ProductName(product.Key): <b>@L["{0} cores", product.Sum(h => h.Chosen!.Cores)]</b> · @product.Sum(h => h.Chosen!.Cost).ToString("N0")</MudText>
+            }
+            <MudText Typo="Typo.body2">@L["Cost"]: <b>@chosen.Sum(h => h.Chosen!.Cost).ToString("N0")</b></MudText>
+        </MudStack>
+    </MudPaper>
+}
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<HostLicensing> Items { get; set; } = [];

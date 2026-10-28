@@ -62,16 +62,14 @@ public static class LicensingEndpoints
             var overview = await service.CalculateAsync(ct);
             var branding = await settings.GetReportBrandingAsync(ct);
             var zone = ReportEndpoints.Zone(http) ?? TimeZoneInfo.Local;
-            var balance = string.Join(" · ", overview.Balances.Where(b => b.Need is not null || b.Stock > 0)
-                .Select(b => $"{L[b.Product.Name]}: {L["need {0}, stock {1}", b.Need?.ToString(CultureInfo.CurrentCulture) ?? "–", b.Stock]}"));
-            var pdf = ReportPdf.Write(service.HostTable(overview), new ReportPdfOptions(
+            var pdf = ReportPdf.WriteSections(service.ReportSections(overview, await service.EntitlementsAsync(ct)), new ReportPdfOptions(
                 L["Microsoft licensing"],
                 Meta: L["Rules version {0} · {1}", overview.Rules.Version, TimeZoneInfo.ConvertTimeFromUtc(overview.CalculatedUtc, zone).ToString("g", CultureInfo.CurrentCulture)],
-                Description: balance + " – " + L["An estimate from the inventory data, not a binding statement for an audit."],
+                Description: L["An estimate from the inventory data, not a binding statement for an audit."],
                 Organization: branding.Organization, Logo: branding.Logo,
-                PageLabel: L["Page {0} of {1}"], TruncatedNote: L["First {0} of {1} rows."]));
+                PageLabel: L["Page {0} of {1}"], TruncatedNote: L["First {0} of {1} rows."], GeneratedBy: L["Created with Inventory"]));
             return Results.File(pdf, "application/pdf", "microsoft-licensing.pdf");
-        }).WithSummary("Licensing report as PDF");
+        }).WithSummary("Licensing report as PDF").WithDescription("Summary with need, stock and costs, Windows Server and SQL Server per host with the calculation steps and variants, data gaps, stock and the rules used.");
 
         group.MapGet("entitlements", async (LicensingService service, CancellationToken ct) => (await service.EntitlementsAsync(ct)).Select(ToDto))
             .WithSummary("Licence stock").WithDescription("Products are the keys from the rules file (see GET /api/licensing, balances[].product). Quantity: cores for core licences, otherwise licences.");

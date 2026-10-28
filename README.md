@@ -180,8 +180,9 @@ ships with the server.
 ### Virtualization and vCenter
 
 The page *Virtualization* lists the physical hosts with their virtual machines, grouped by cluster: Hyper-V hosts from
-the inventory scan and ESXi hosts from a VMware **vCenter**. For the vCenter, enter its address and a read-only account
-under *Settings*; the server reads hosts (sockets, physical cores, model, cluster) and virtual machines (BIOS UUID,
+the inventory scan and ESXi hosts from a VMware **vCenter**. Under *Settings → Virtualization* any number of systems can be set up – several vCenters, pool masters or Xen
+Orchestra instances, each with a short name such as vcenter1 – and the page groups the hosts by platform, system and
+cluster. For a vCenter, enter its address and a read-only account; the server reads hosts (sockets, physical cores, model, cluster) and virtual machines (BIOS UUID,
 vCPUs, power state, guest name) through the vSphere API on a schedule or on demand and never changes anything there. A
 self-signed certificate is accepted only by its SHA-256 thumbprint, which a failed run shows. Each virtual machine is
 matched to its inventoried computer by the BIOS UUID, otherwise by its name; inventoried virtual machines that no host

@@ -1,0 +1,61 @@
+@inject IStringLocalizer<SharedResource> L
+
+@* Hosts mit Sockeln, Kernen und ihren VMs; aufgeklappt die VMs mit dem inventarisierten Rechner. *@
+<MudDataGrid T="VirtualHostView" Items="Items" Dense="true" Hover="true" SortMode="SortMode.Single" Groupable="false">
+    <Columns>
+        <HierarchyColumn T="VirtualHostView" />
+        <TemplateColumn Title="@L["Host"]" SortBy="h => h.Name">
+            <CellTemplate>
+                @if (context.Item.ComputerId is { } computerId)
+                {
+                    <MudLink Href="@($"computers/{computerId}")">@context.Item.Name</MudLink>
+                }
+                else
+                {
+                    @context.Item.Name
+                }
+                <MudText Typo="Typo.caption" Class="d-block" Style="color: var(--mud-palette-text-secondary)">@context.Item.Model</MudText>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="h => h.Cluster" Title="@L["Cluster"]" />
+        <TemplateColumn Title="@L["Sockets / cores"]" SortBy="h => h.CpuCores ?? 0" CellStyle="text-align: right">
+            <CellTemplate>@(context.Item.CpuSockets is null && context.Item.CpuCores is null ? "–" : $"{context.Item.CpuSockets?.ToString() ?? "?"} / {context.Item.CpuCores?.ToString() ?? "?"}")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Virtual machines"]" SortBy="h => h.VirtualMachines.Count" CellStyle="text-align: right">
+            <CellTemplate>@context.Item.VirtualMachines.Count</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Inventoried"]" SortBy="h => h.VirtualMachines.Count(v => v.GuestComputerId is not null)" CellStyle="text-align: right">
+            <CellTemplate>@context.Item.VirtualMachines.Count(v => v.GuestComputerId is not null)</CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <ChildRowContent>
+        <MudSimpleTable Dense="true" Elevation="0">
+            <thead><tr><th>@L["Name"]</th><th>@L["Virtual processors"]</th><th>@L["State"]</th><th>@L["Guest operating system"]</th><th>@L["Inventoried as"]</th></tr></thead>
+            <tbody>
+                @foreach (var vm in context.Item.VirtualMachines)
+                {
+                    <tr>
+                        <td>@vm.Name</td>
+                        <td>@vm.VirtualCpus</td>
+                        <td>@(vm.Running switch { true => L["running"], false => L["off"], null => "–" })</td>
+                        <td>@vm.GuestOs</td>
+                        <td>
+                            @if (vm.GuestComputerId is { } guestId)
+                            {
+                                <MudLink Href="@($"computers/{guestId}")">@vm.GuestName</MudLink>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not inventoried"]</MudText>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </ChildRowContent>
+</MudDataGrid>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<VirtualHostView> Items { get; set; } = [];
+}
