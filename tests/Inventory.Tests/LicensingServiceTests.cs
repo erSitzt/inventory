@@ -65,7 +65,7 @@ public class LicensingServiceTests
         var balance = overview.Balances.Single(b => b.Product.Key == MicrosoftRules.WindowsServerDatacenter);
         Assert.Equal((64, 48, -16, true), (balance.Need!.Value, balance.Stock, balance.Delta!.Value, overview.SoftwareAssurance));
         Assert.Equal("shortfall", service.Status(balance));
-        Assert.Equal(["product", "need", "stock", "delta", "status"], service.BalanceTable(overview).Columns.Select(c => c.Key));
+        Assert.Equal(["product", "unit", "need", "stock", "delta", "status", "needCost", "shortfallCost"], service.BalanceTable(overview).Columns.Select(c => c.Key));
         // SQL Server: SRV-SQL01 (Standard 2022) auf dem Hyper-V-Host ohne SA → ganzer Host in Standard; die VMware-VM ohne Host ist eine Lücke.
         var sql = Assert.Single(overview.SqlServer.Entries, e => e.Chosen is not null);
         Assert.Equal((MicrosoftRules.SqlStandard, 32), (sql.Chosen!.Product, sql.Chosen.Cores));
@@ -83,5 +83,38 @@ public class LicensingServiceTests
         var settings = await service.GetSettingsAsync();
         Assert.False(settings.ClusterWide);
         Assert.Equal(new Dictionary<string, decimal> { [MicrosoftRules.WindowsServerStandard] = 120m }, settings.Prices);
+    }
+
+    [Fact]
+    public async Task The_report_has_a_summary_with_totals_and_the_calculation_per_host()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var names = new[] { "hv-01", "hv-02", "srv-sql01", "srv-sql02" };
+        var ids = (await computers.ImportAsync(string.Join("\n", names))).ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+        foreach (var name in names)
+            await store.SaveAsync(ids[name], SimulatedInventory.Create(name));
+        var service = Service(db);
+        await service.SaveEntitlementAsync(new LicenseEntitlement { Product = MicrosoftRules.WindowsServerDatacenter, Quantity = 16, ContractNumber = "EA-1" });
+        var overview = await service.CalculateAsync();
+
+        var balance = overview.Balances.Single(b => b.Product.Key == MicrosoftRules.WindowsServerDatacenter);
+        Assert.Equal(64 * 846m / 2, balance.NeedCost);
+        Assert.Equal(48 * 846m / 2, balance.ShortfallCost);
+        var table = service.BalanceTable(overview, total: true);
+        Assert.Equal("Total", table.Rows[^1][0]);
+
+        var sections = service.ReportSections(overview, await service.EntitlementsAsync());
+        Assert.Contains(sections, s => s.Heading == "Windows Server: hv-01 (HVCLUSTER01)" && s.Paragraphs!.Any(p => p.StartsWith("1. 2 processors")));
+        Assert.Contains(sections, s => s.Heading.StartsWith("SQL Server: "));
+        var pdf = ReportPdf.WriteSections(sections, new ReportPdfOptions("Microsoft licensing", "test"));
+        using var document = UglyToad.PdfPig.PdfDocument.Open(pdf);
+        Assert.True(document.NumberOfPages >= 3);
+        var text = string.Join("\n", document.GetPages().Select(p => p.Text));
+        Assert.Contains("Summary", text);
+        Assert.Contains("Total", text);
+        Assert.Contains("Rules and assumptions", text);
+        Assert.Contains("EA-1", text);
     }
 }

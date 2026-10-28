@@ -10,6 +10,12 @@ namespace Inventory.Data.Services;
 /// <param name="Organization">Name der Organisation im Kopf, im Fuß und als Autor des Dokuments.</param>
 /// <param name="TruncatedNote">Hinweis, wenn Zeilen weggelassen wurden; {0} = gezeigte, {1} = vorhandene Zeilen.</param>
 /// <param name="ColumnsLabel">Fuß, wenn die Spalten auf mehrere Seitenfolgen verteilt sind; {0} = Teil, {1} = Teile.</param>
+/// <summary>Ein Abschnitt eines mehrteiligen Berichts: Überschrift, Absätze, optional eine Tabelle.</summary>
+/// <param name="Level">1 = Abschnitt, 2 = Unterabschnitt (kleinere Überschrift).</param>
+/// <param name="TotalRow">Die letzte Tabellenzeile ist eine Summe: fett und mit Linie darüber.</param>
+/// <param name="NewPage">Der Abschnitt beginnt auf einer neuen Seite.</param>
+public sealed record ReportSection(string Heading, IReadOnlyList<string>? Paragraphs = null, ReportTable? Table = null, bool TotalRow = false, int Level = 1, bool NewPage = false);
+
 public sealed record ReportPdfOptions(
     string Title,
     string Meta = "",
@@ -123,6 +129,142 @@ public static class ReportPdf
             contents.Add(content.ToString());
         }
         return Assemble(contents, options);
+    }
+
+    /// <summary>
+    /// Ein mehrteiliger Bericht: Abschnitte mit Überschrift, Absätzen und Tabellen fließen über die Seiten; Tabellen wiederholen
+    /// ihre Kopfzeile nach einem Seitenumbruch. Alle Spalten einer Tabelle stehen nebeneinander (breite Spalten brechen um).
+    /// </summary>
+    public static byte[] WriteSections(IReadOnlyList<ReportSection> sections, ReportPdfOptions options)
+    {
+        var flow = new Flow(options);
+        if (!string.IsNullOrWhiteSpace(options.Description))
+        {
+            foreach (var line in Wrap(options.Description.Trim(), Usable, DescriptionSize, Font.Regular, 6))
+            {
+                Text(flow.Page, Margin, flow.Y - 8.5, DescriptionSize, Font.Regular, Muted, line);
+                flow.Y -= 11;
+            }
+            flow.Y -= 8;
+        }
+        foreach (var section in sections)
+        {
+            if (section.NewPage && flow.Y < ContentTop)
+                flow.Start();
+            var size = section.Level == 1 ? 12.5 : 9.5;
+            // Eine Überschrift nicht allein unten auf der Seite stehen lassen.
+            flow.Need(size + 8 + 3 * LineHeight);
+            Text(flow.Page, Margin, flow.Y - size, size, Font.Bold, section.Level == 1 ? Accent : Ink, Fit(section.Heading, Usable, size, bold: true));
+            flow.Y -= size + (section.Level == 1 ? 9 : 5);
+            foreach (var paragraph in section.Paragraphs ?? [])
+            {
+                foreach (var line in Wrap(paragraph, Usable, DescriptionSize, Font.Regular, 12))
+                {
+                    flow.Need(11);
+                    Text(flow.Page, Margin, flow.Y - 8.5, DescriptionSize, Font.Regular, Ink, line);
+                    flow.Y -= 11;
+                }
+                flow.Y -= 3;
+            }
+            if (section.Table is { } table)
+            {
+                flow.Y -= 2;
+                FlowTable(flow, table, section.TotalRow);
+            }
+            flow.Y -= section.Level == 1 ? 14 : 8;
+        }
+        var contents = flow.Pages.Select((p, n) =>
+        {
+            Foot(p, options, n + 1, flow.Pages.Count, null);
+            return p.ToString();
+        }).ToList();
+        return Assemble(contents, options);
+    }
+
+    /// <summary>Seiten eines fließenden Berichts mit der aktuellen Schreibposition.</summary>
+    private sealed class Flow
+    {
+        private readonly ReportPdfOptions _options;
+        public List<StringBuilder> Pages { get; } = [];
+        public StringBuilder Page { get; private set; } = null!;
+        public double Y { get; set; }
+
+        public Flow(ReportPdfOptions options)
+        {
+            _options = options;
+            Start();
+        }
+
+        public void Start()
+        {
+            Page = new StringBuilder();
+            Head(Page, _options);
+            Pages.Add(Page);
+            Y = ContentTop;
+        }
+
+        /// <summary>Beginnt eine neue Seite, wenn <paramref name="height"/> nicht mehr passt; true, wenn umgebrochen wurde.</summary>
+        public bool Need(double height)
+        {
+            if (Y - height >= ContentBottom)
+                return false;
+            Start();
+            return true;
+        }
+    }
+
+    /// <summary>Zeichnet eine Tabelle an der Schreibposition und bricht bei Bedarf auf neue Seiten um, mit wiederholter Kopfzeile.</summary>
+    private static void FlowTable(Flow flow, ReportTable table, bool totalRow)
+    {
+        var rows = table.Rows.Count > MaxRows ? table.Rows.Take(MaxRows).ToList() : table.Rows;
+        var widths = ColumnWidths(table, rows);
+        var factor = widths.Sum() is > 0 and var sum ? Usable / sum : 1;
+        widths = widths.Select(w => w * factor).ToArray();
+        var header = widths.Select((w, c) => Wrap(table.Columns[c].Title, w - 2 * PadX, FontSize, Font.Bold, (int)MaxHeaderLines)).ToList();
+        var headerHeight = header.Max(l => (int?)l.Count).GetValueOrDefault(1) * LineHeight + 2 * PadY;
+
+        void Header()
+        {
+            Rect(flow.Page, Margin, flow.Y - headerHeight, Usable, headerHeight, Accent);
+            var x = Margin;
+            for (var c = 0; c < widths.Length; c++)
+            {
+                Cell(flow.Page, x, flow.Y, widths[c], header[c], Font.Bold, White, table.Columns[c].Numeric);
+                x += widths[c];
+            }
+            flow.Y -= headerHeight;
+        }
+
+        flow.Need(headerHeight + LineHeight + 2 * PadY);
+        Header();
+        if (rows.Count == 0)
+        {
+            Text(flow.Page, Margin + PadX, flow.Y - 13, FontSize, Font.Italic, Muted, "–");
+            flow.Y -= 18;
+            return;
+        }
+        foreach (var (row, index) in rows.Select((r, n) => (r, n)))
+        {
+            var total = totalRow && index == rows.Count - 1;
+            var font = total ? Font.Bold : Font.Regular;
+            var cells = widths.Select((w, c) => c < row.Length && !string.IsNullOrEmpty(row[c]) ? Wrap(row[c]!, w - 2 * PadX, FontSize, font, (int)MaxCellLines) : []).ToList();
+            var height = Math.Max(1, cells.Max(l => (int?)l.Count).GetValueOrDefault(1)) * LineHeight + 2 * PadY;
+            if (flow.Need(height))
+                Header();
+            if (total)
+                Line(flow.Page, Margin, flow.Y, Margin + Usable, flow.Y, 1, Ink);
+            else if (index % 2 == 1)
+                Rect(flow.Page, Margin, flow.Y - height, Usable, height, Stripe);
+            var x = Margin;
+            for (var c = 0; c < widths.Length; c++)
+            {
+                Cell(flow.Page, x, flow.Y, widths[c], cells[c], font, Ink, table.Columns[c].Numeric);
+                x += widths[c];
+            }
+            flow.Y -= height;
+            if (!total)
+                Line(flow.Page, Margin, flow.Y, Margin + Usable, flow.Y, 0.4, Rule);
+        }
     }
 
     private sealed record Band(List<int> Columns, double[] Widths);

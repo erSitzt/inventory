@@ -566,6 +566,9 @@
   <data name="always notify" xml:space="preserve">
     <value>immer benachrichtigen</value>
   </data>
+  <data name="Amounts are licence prices (your prices or the list prices as a reference) without Software Assurance or subscription fees." xml:space="preserve">
+    <value>Die Beträge sind Lizenzpreise (Ihre Preise oder die Listenpreise als Vergleichswert) ohne Kosten für Software Assurance oder Abonnement.</value>
+  </data>
   <data name="An account with the read-only role is enough (pool-wide, e.g. from Active Directory); otherwise root." xml:space="preserve">
     <value>Ein Konto mit der Rolle read-only genügt (poolweit, z. B. aus dem Active Directory); sonst root.</value>
   </data>
@@ -718,6 +721,9 @@
   </data>
   <data name="At most this many updates per run" xml:space="preserve">
     <value>Höchstens so viele Updates je Lauf</value>
+  </data>
+  <data name="At the prices used Datacenter pays off from {0} Windows Server VMs per host." xml:space="preserve">
+    <value>Bei den verwendeten Preisen lohnt sich Datacenter ab {0} Windows-Server-VMs je Host.</value>
   </data>
   <data name="At these prices Datacenter pays off from {0} Windows Server VMs per host; below that Standard is cheaper." xml:space="preserve">
     <value>Bei diesen Preisen lohnt sich Datacenter ab {0} Windows-Server-VMs je Host; darunter ist Standard günstiger.</value>
@@ -1130,8 +1136,14 @@
   <data name="Cost center" xml:space="preserve">
     <value>Kostenstelle</value>
   </data>
+  <data name="Cost of the need" xml:space="preserve">
+    <value>Kosten des Bedarfs</value>
+  </data>
   <data name="Cost per licence" xml:space="preserve">
     <value>Kosten je Lizenz</value>
+  </data>
+  <data name="Costs at your prices or the list prices as a reference, without Software Assurance or subscription fees." xml:space="preserve">
+    <value>Kosten zu Ihren Preisen oder den Listenpreisen als Vergleichswert, ohne Kosten für Software Assurance oder Abonnement.</value>
   </data>
   <data name="Counted programs" xml:space="preserve">
     <value>Gezählte Programme</value>
@@ -2990,6 +3002,9 @@
   <data name="No servers found. Scan the servers with the current runner and set up the vCenter if you use VMware." xml:space="preserve">
     <value>Keine Server gefunden. Die Server mit dem aktuellen Runner scannen und bei VMware das vCenter einrichten.</value>
   </data>
+  <data name="No servers to calculate." xml:space="preserve">
+    <value>Keine Server zu berechnen.</value>
+  </data>
   <data name="no setup log available" xml:space="preserve">
     <value>kein Setup-Protokoll vorhanden</value>
   </data>
@@ -3094,6 +3109,9 @@
   </data>
   <data name="Not scanned yet" xml:space="preserve">
     <value>Noch nicht gescannt</value>
+  </data>
+  <data name="Note" xml:space="preserve">
+    <value>Hinweis</value>
   </data>
   <data name="Notes" xml:space="preserve">
     <value>Notizen</value>
@@ -3551,6 +3569,9 @@
   <data name="Pending updates per computer, the ones with the most security updates first" xml:space="preserve">
     <value>Ausstehende Updates je Rechner, die mit den meisten Sicherheitsupdates zuerst</value>
   </data>
+  <data name="Per physical host: the cheapest allowed variant after using the existing stock." xml:space="preserve">
+    <value>Je physischem Host: die günstigste zulässige Variante, nachdem der vorhandene Bestand verbraucht ist.</value>
+  </data>
   <data name="per user" xml:space="preserve">
     <value>pro Benutzer</value>
   </data>
@@ -3613,6 +3634,9 @@
   </data>
   <data name="Physical SQL servers are licensed per core; SQL VMs per VM or by licensing the whole host. Software Assurance for SQL Server: {0}." xml:space="preserve">
     <value>Physische SQL-Server werden je Kern lizenziert, SQL-VMs je VM oder über die Lizenzierung des ganzen Hosts. Software Assurance für SQL Server: {0}.</value>
+  </data>
+  <data name="Physical SQL servers per core; SQL VMs per VM or by licensing the whole host." xml:space="preserve">
+    <value>Physische SQL-Server je Kern; SQL-VMs je VM oder über die Lizenzierung des ganzen Hosts.</value>
   </data>
   <data name="Pilot group" xml:space="preserve">
     <value>Pilotgruppe</value>
@@ -4031,6 +4055,9 @@
   <data name='Report "{0}"' xml:space="preserve">
     <value>Bericht „{0}“</value>
   </data>
+  <data name="Report (PDF)" xml:space="preserve">
+    <value>Bericht (PDF)</value>
+  </data>
   <data name="Report changed" xml:space="preserve">
     <value>Bericht geändert</value>
   </data>
@@ -4177,6 +4204,9 @@
   </data>
   <data name="Rules / description" xml:space="preserve">
     <value>Regeln / Beschreibung</value>
+  </data>
+  <data name="Rules and assumptions" xml:space="preserve">
+    <value>Regeln und Annahmen</value>
   </data>
   <data name='Rules combine software, hardware, security, updates, Active Directory and asset data; "member of collection" nests them.' xml:space="preserve">
     <value>Regeln kombinieren Software, Hardware, Sicherheit, Updates, Active Directory und Bestandsdaten; „Mitglied der Sammlung“ verschachtelt sie.</value>
@@ -4718,6 +4748,9 @@
   <data name="Software Assurance or subscription until" xml:space="preserve">
     <value>Software Assurance bzw. Abonnement bis</value>
   </data>
+  <data name="Software Assurance – Windows Server: {0}, SQL Server: {1}. Data gaps: {2}." xml:space="preserve">
+    <value>Software Assurance – Windows Server: {0}, SQL Server: {1}. Datenlücken: {2}.</value>
+  </data>
   <data name="Software installation" xml:space="preserve">
     <value>Softwareinstallation</value>
   </data>
@@ -4771,6 +4804,9 @@
   </data>
   <data name="SQL Server {0} per core: {1} cores, {2:N0}." xml:space="preserve">
     <value>SQL Server {0} je Kern: {1} Kerne, {2:N0}.</value>
+  </data>
+  <data name="SQL Server: physical servers all cores (at least {0} per processor); VMs per VM (at least {1} cores; from SQL Server 2022 only with SA) or the whole host in the VMs' edition (as many VMs as core licences, with Enterprise and SA any number). Developer, Express and Evaluation are free." xml:space="preserve">
+    <value>SQL Server: physische Server alle Kerne (mindestens {0} je Prozessor); VMs je VM (mindestens {1} Kerne; ab SQL Server 2022 nur mit SA) oder der ganze Host in der Edition der VMs (so viele VMs wie Kernlizenzen, mit Enterprise und SA beliebig viele). Developer, Express und Evaluation sind kostenlos.</value>
   </data>
   <data name="SSH banner" xml:space="preserve">
     <value>SSH-Banner</value>
@@ -4850,6 +4886,12 @@
   <data name="Still open" xml:space="preserve">
     <value>Noch offen</value>
   </data>
+  <data name="Still to buy" xml:space="preserve">
+    <value>Noch zu kaufen</value>
+  </data>
+  <data name="Still to buy at the prices used: {0}." xml:space="preserve">
+    <value>Noch zu kaufen zu den verwendeten Preisen: {0}.</value>
+  </data>
   <data name="Stock" xml:space="preserve">
     <value>Bestand</value>
   </data>
@@ -4906,6 +4948,9 @@
   </data>
   <data name="Success exit codes" xml:space="preserve">
     <value>Erfolgs-Exitcodes</value>
+  </data>
+  <data name="Summary" xml:space="preserve">
+    <value>Zusammenfassung</value>
   </data>
   <data name="Supplies" xml:space="preserve">
     <value>Verbrauchsmaterial</value>
@@ -5192,6 +5237,9 @@
   <data name="The quantity must be greater than zero." xml:space="preserve">
     <value>Die Menge muss größer als null sein.</value>
   </data>
+  <data name="The recorded stock covers the calculated need." xml:space="preserve">
+    <value>Der erfasste Bestand deckt den berechneten Bedarf.</value>
+  </data>
   <data name="The release contains no checksums; nothing is installed without them." xml:space="preserve">
     <value>Das Release enthält keine Prüfsummen; ohne sie wird nichts installiert.</value>
   </data>
@@ -5435,6 +5483,9 @@
   <data name="Tools" xml:space="preserve">
     <value>Tools</value>
   </data>
+  <data name="Total" xml:space="preserve">
+    <value>Summe</value>
+  </data>
   <data name="Total cost of the recorded licences: {0}" xml:space="preserve">
     <value>Gesamtkosten der erfassten Lizenzen: {0}</value>
   </data>
@@ -5515,6 +5566,9 @@
   </data>
   <data name="Uninstall …" xml:space="preserve">
     <value>Deinstallieren …</value>
+  </data>
+  <data name="Unit" xml:space="preserve">
+    <value>Einheit</value>
   </data>
   <data name="unknown" xml:space="preserve">
     <value>unbekannt</value>
@@ -6019,6 +6073,12 @@
   </data>
   <data name="Windows Server VMs to cover: {0}." xml:space="preserve">
     <value>Zu deckende Windows-Server-VMs: {0}.</value>
+  </data>
+  <data name="Windows Server: physical cores only, at least {0} per processor and {1} per server, packs of {2}. Standard covers {3} VMs per full licensing, Datacenter any number; per VM (at least {4} cores) only with SA. Cluster hosts are licensed for all Windows Server VMs of their cluster." xml:space="preserve">
+    <value>Windows Server: nur physische Kerne, mindestens {0} je Prozessor und {1} je Server, Pakete zu {2}. Standard deckt {3} VMs je volle Lizenzierung, Datacenter beliebig viele; je VM (mindestens {4} Kerne) nur mit SA. Cluster-Hosts werden für alle Windows-Server-VMs ihres Clusters lizenziert.</value>
+  </data>
+  <data name="Windows Server: {0} hosts, {1} cores to license. SQL Server: {2} servers or hosts, {3} cores to license." xml:space="preserve">
+    <value>Windows Server: {0} Hosts, {1} zu lizenzierende Kerne. SQL Server: {2} Server oder Hosts, {3} zu lizenzierende Kerne.</value>
   </data>
   <data name="Windows service" xml:space="preserve">
     <value>Windows-Dienst</value>

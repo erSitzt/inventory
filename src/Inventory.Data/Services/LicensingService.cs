@@ -10,10 +10,17 @@ namespace Inventory.Data.Services;
 
 /// <summary>Bedarf, Bestand und Differenz eines Produkts.</summary>
 /// <param name="Need">null = dieses Produkt rechnet die Lizenzberechnung (noch) nicht.</param>
-public sealed record ProductBalance(LicenseProduct Product, int? Need, int Stock, bool SoftwareAssurance)
+/// <param name="UnitPrice">Preis je Kern bzw. je Lizenz (eigener Preis oder Listenpreis); null, wenn keiner bekannt ist.</param>
+public sealed record ProductBalance(LicenseProduct Product, int? Need, int Stock, bool SoftwareAssurance, decimal? UnitPrice = null)
 {
     /// <summary>Bestand minus Bedarf; negativ = Unterdeckung.</summary>
     public int? Delta => Need is { } need ? Stock - need : null;
+
+    /// <summary>Was der Bedarf kostet.</summary>
+    public decimal? NeedCost => Need is { } need && UnitPrice is { } price ? need * price : null;
+
+    /// <summary>Was die Unterdeckung kostet, also noch zu kaufen ist; 0 bei Deckung.</summary>
+    public decimal? ShortfallCost => Delta is { } delta && UnitPrice is { } price ? Math.Max(0, -delta) * price : null;
 }
 
 /// <param name="SoftwareAssurance">SA bzw. Abonnement für Windows Server.</param>
@@ -187,7 +194,8 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
             var sa = entitlements.Any(e => e.Product == product.Key && e.SoftwareAssuranceActive(today));
             int? need = windowsServerProducts.Contains(product.Key) ? result.Need.GetValueOrDefault(product.Key)
                 : sqlProducts.Contains(product.Key) ? sql.Need.GetValueOrDefault(product.Key) : null;
-            return new ProductBalance(product, need, stock, sa);
+            var price = Rules.Price(product.Key, options.Prices);
+            return new ProductBalance(product, need, stock, sa, price > 0 ? product.PerCore ? price / Rules.PackSize : price : null);
         }).ToList();
         foreach (var expired in entitlements.Where(e => e.SoftwareAssuranceUntil is { } until && until < today))
             gaps.Add(new("Software Assurance of {0} ({1}) ended on {2}.", Rules.Product(expired.Product)?.Name ?? expired.Product, expired.ContractNumber ?? "–",
@@ -266,27 +274,129 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         computer.OsProductType is 2 or 3 || (computer.OsName ?? "").Contains("Server", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Bedarf, Bestand und Differenz als Tabelle für CSV, Excel und PDF.</summary>
-    public ReportTable BalanceTable(LicensingOverview overview) => new(
-        [
-            new("product", L["Product"]), new("need", L["Need"], true), new("stock", L["Stock"], true), new("delta", L["Difference"], true), new("status", L["Status"]),
-        ],
-        overview.Balances.Where(b => b.Need is not null || b.Stock > 0).Select(b => new string?[]
+    /// <param name="total">Mit Summenzeile (für PDF und Oberfläche); die CSV-Ausgabe bleibt ohne, damit sie sich weiterverarbeiten lässt.</param>
+    public ReportTable BalanceTable(LicensingOverview overview, bool total = false)
+    {
+        var balances = overview.Balances.Where(b => b.Need > 0 || b.Stock > 0).ToList();
+        var rows = balances.Select(b => new string?[]
         {
-            L[b.Product.Name], b.Need?.ToString(CultureInfo.InvariantCulture), b.Stock.ToString(CultureInfo.InvariantCulture),
-            b.Delta?.ToString(CultureInfo.InvariantCulture), Status(b),
-        }).ToList());
+            L[b.Product.Name], L[b.Product.PerCore ? "Cores" : "Licences"], b.Need?.ToString(CultureInfo.InvariantCulture), b.Stock.ToString(CultureInfo.InvariantCulture),
+            b.Delta?.ToString(CultureInfo.InvariantCulture), Status(b), Money(b.NeedCost), Money(b.ShortfallCost),
+        }).ToList();
+        if (total)
+            rows.Add([L["Total"], null, null, null, null, null, Money(balances.Sum(b => b.NeedCost ?? 0)), Money(balances.Sum(b => b.ShortfallCost ?? 0))]);
+        return new(
+        [
+            new("product", L["Product"]), new("unit", L["Unit"]), new("need", L["Need"], true), new("stock", L["Stock"], true), new("delta", L["Difference"], true),
+            new("status", L["Status"]), new("needCost", L["Cost of the need"], true), new("shortfallCost", L["Still to buy"], true),
+        ], rows);
+    }
 
-    /// <summary>Je Host die gewählte Variante, mit den Kernen und den berücksichtigten VMs.</summary>
-    public ReportTable HostTable(LicensingOverview overview) => new(
-        [
-            new("host", L["Host"]), new("cluster", L["Cluster"]), new("source", L["Source"]), new("cores", L["Licensed cores"], true),
-            new("vms", L["Virtual machines"], true), new("product", L["Product"]), new("licences", L["Cores to license"], true),
-        ],
-        overview.WindowsServer.Hosts.Concat(overview.SqlServer.Entries).Where(h => h.Chosen is not null).Select(h => new string?[]
+    private static string? Money(decimal? value) => value?.ToString("N0", CultureInfo.CurrentCulture);
+
+    /// <summary>Je Host die gewählte Variante, mit den Kernen und den berücksichtigten VMs; Windows Server und SQL Server zusammen.</summary>
+    public ReportTable HostTable(LicensingOverview overview) => HostTable(overview, overview.WindowsServer.Hosts.Concat(overview.SqlServer.Entries), total: false);
+
+    /// <param name="total">Mit Summenzeile (Kerne und Kosten).</param>
+    public ReportTable HostTable(LicensingOverview overview, IEnumerable<HostLicensing> entries, bool total)
+    {
+        var chosen = entries.Where(h => h.Chosen is not null).ToList();
+        var rows = chosen.Select(h => new string?[]
         {
-            h.Host.Name, h.Host.Cluster, h.Host.Source, h.LicensedCores.ToString(CultureInfo.InvariantCulture), h.WindowsVms.ToString(CultureInfo.InvariantCulture),
-            L[overview.Rules.Product(h.Chosen!.Product)?.Name ?? h.Chosen.Product], h.Chosen.Cores.ToString(CultureInfo.InvariantCulture),
-        }).ToList());
+            h.Host.Name, h.Host.Cluster, SourceName(h.Host.Source), h.WindowsVms.ToString(CultureInfo.InvariantCulture),
+            L[overview.Rules.Product(h.Chosen!.Product)?.Name ?? h.Chosen.Product], h.Chosen.Cores.ToString(CultureInfo.InvariantCulture), Money(h.Chosen.Cost),
+        }).ToList();
+        if (total)
+            rows.Add([L["Total"], null, null, chosen.Sum(h => h.WindowsVms).ToString(CultureInfo.InvariantCulture), null,
+                chosen.Sum(h => h.Chosen!.Cores).ToString(CultureInfo.InvariantCulture), Money(chosen.Sum(h => h.Chosen!.Cost))]);
+        return new(
+        [
+            new("host", L["Host"]), new("cluster", L["Cluster"]), new("source", L["Source"]), new("vms", L["Virtual machines"], true),
+            new("product", L["Licensed with"]), new("cores", L["Cores to license"], true), new("cost", L["Cost"], true),
+        ], rows);
+    }
+
+    /// <summary>
+    /// Der ausführliche Bericht: Zusammenfassung mit Summen, Windows Server und SQL Server je Host mit Rechenweg, Datenlücken,
+    /// Bestand und die Regeln mit den Schwellen.
+    /// </summary>
+    public IReadOnlyList<ReportSection> ReportSections(LicensingOverview overview, IReadOnlyList<LicenseEntitlement> stock)
+    {
+        string Text(LicensingNote note) => L[note.Text, note.Args];
+        var sections = new List<ReportSection>();
+        var ws = overview.WindowsServer.Hosts.Where(h => h.Chosen is not null).ToList();
+        var sql = overview.SqlServer.Entries.Where(h => h.Chosen is not null).ToList();
+        var shortfall = overview.Balances.Sum(b => b.ShortfallCost ?? 0);
+        sections.Add(new(L["Summary"],
+        [
+            L["Windows Server: {0} hosts, {1} cores to license. SQL Server: {2} servers or hosts, {3} cores to license.", ws.Count, ws.Sum(h => h.Chosen!.Cores),
+                sql.Count, sql.Sum(h => h.Chosen!.Cores)],
+            shortfall > 0 ? L["Still to buy at the prices used: {0}.", Money(shortfall)!] : L["The recorded stock covers the calculated need."],
+            L["Software Assurance – Windows Server: {0}, SQL Server: {1}. Data gaps: {2}.", overview.SoftwareAssurance ? L["yes"] : L["no"], overview.SqlSoftwareAssurance ? L["yes"] : L["no"], overview.Gaps.Count],
+        ], BalanceTable(overview, total: true), TotalRow: true));
+
+        sections.Add(new("Windows Server", [L["Per physical host: the cheapest allowed variant after using the existing stock."]],
+            HostTable(overview, overview.WindowsServer.Hosts, total: true), TotalRow: true, NewPage: true));
+        sections.Add(new("SQL Server", [L["Physical SQL servers per core; SQL VMs per VM or by licensing the whole host."]],
+            HostTable(overview, overview.SqlServer.Entries, total: true), TotalRow: true));
+        if (overview.SqlServer.Free.Count > 0)
+            sections.Add(new(L["Free editions"], overview.SqlServer.Free.Select(n => "• " + Text(n)).ToList(), Level: 2));
+
+        var first = true;
+        foreach (var entry in ws.Select(h => ("Windows Server", h)).Concat(sql.Select(h => ("SQL Server", h))))
+        {
+            var (product, host) = entry;
+            var paragraphs = host.Steps.Select((step, n) => $"{n + 1}. {Text(step)}").ToList();
+            paragraphs.AddRange(host.Notes.Select(n => "• " + Text(n)));
+            var variants = new ReportTable(
+                [new("variant", L["Variant"]), new("cores", L["Cores"], true), new("cost", L["Cost"], true), new("note", L["Note"])],
+                host.Variants.Select(v => new string?[]
+                {
+                    L[overview.Rules.Product(v.Product)?.Name ?? v.Product], v.Cores.ToString(CultureInfo.InvariantCulture), Money(v.Cost),
+                    v == host.Chosen ? L["chosen"] : v.Reason is { } reason ? Text(reason) : null,
+                }).ToList());
+            sections.Add(new($"{product}: {host.Host.Name}" + (host.Host.Cluster is { } cluster ? $" ({cluster})" : ""), paragraphs, variants, Level: 2,
+                NewPage: first));
+            first = false;
+        }
+        if (first)
+            sections.Add(new(L["How it is calculated"], [L["No servers to calculate."]], NewPage: true));
+
+        sections.Add(new(L["Data gaps"], overview.Gaps.Count == 0
+            ? [L["No gaps: every server and virtual machine could be placed."]]
+            : overview.Gaps.Select(g => "• " + Text(g)).ToList(), NewPage: true));
+        sections.Add(new(L["Stock"], stock.Count == 0 ? [L["No licences recorded yet."]] : null,
+            stock.Count == 0 ? null : new ReportTable(
+                [new("product", L["Product"]), new("quantity", L["Quantity"], true), new("version", L["Version"]), new("sa", L["SA until"]), new("contract", L["Contract"])],
+                stock.Select(e => new string?[]
+                {
+                    L[overview.Rules.Product(e.Product)?.Name ?? e.Product], e.Quantity.ToString(CultureInfo.InvariantCulture), e.Version,
+                    e.SoftwareAssuranceUntil?.ToString("d", CultureInfo.CurrentCulture), e.ContractNumber,
+                }).ToList())));
+        var rules = overview.Rules;
+        var breakEven = WindowsServerEngine.BreakEvenVms(rules.Price(MicrosoftRules.WindowsServerStandard, overview.Prices),
+            rules.Price(MicrosoftRules.WindowsServerDatacenter, overview.Prices), rules.WindowsServer.StandardVmsPerLicense);
+        sections.Add(new(L["Rules and assumptions"],
+        [
+            L["Windows Server: physical cores only, at least {0} per processor and {1} per server, packs of {2}. Standard covers {3} VMs per full licensing, Datacenter any number; per VM (at least {4} cores) only with SA. Cluster hosts are licensed for all Windows Server VMs of their cluster.",
+                rules.WindowsServer.MinCoresPerProcessor, rules.WindowsServer.MinCoresPerServer, rules.PackSize, rules.WindowsServer.StandardVmsPerLicense, rules.WindowsServer.PerVmMinCores],
+            breakEven is { } vms ? L["At the prices used Datacenter pays off from {0} Windows Server VMs per host.", vms] : "",
+            L["SQL Server: physical servers all cores (at least {0} per processor); VMs per VM (at least {1} cores; from SQL Server 2022 only with SA) or the whole host in the VMs' edition (as many VMs as core licences, with Enterprise and SA any number). Developer, Express and Evaluation are free.",
+                rules.SqlServer.MinCoresPerProcessor, rules.SqlServer.MinCoresPerVm],
+            L["Rules: Windows Server {0} (valid from {1}), SQL Server {2} (valid from {3}). {4}", rules.Version, rules.ValidFrom.ToString("d", CultureInfo.CurrentCulture),
+                rules.SqlServer.Version, rules.SqlServer.ValidFrom.ToString("d", CultureInfo.CurrentCulture), rules.Source],
+            L["Amounts are licence prices (your prices or the list prices as a reference) without Software Assurance or subscription fees."],
+            L["An estimate from the inventory data according to the rules below, not a binding statement for an audit. Check the result against your contracts and the current Microsoft Product Terms."],
+        ]));
+        return sections;
+    }
+
+    public string SourceName(string source) => source switch
+    {
+        "physical" => L["physical server"],
+        "VM" => L["VM without known host"],
+        _ => source,
+    };
 
     public string Status(ProductBalance balance) => balance.Delta switch
     {
