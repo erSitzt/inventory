@@ -20,12 +20,22 @@
         </TemplateColumn>
         <TemplateColumn Title="@L["Cluster"]" SortBy="h => h.Host.Cluster"><CellTemplate>@context.Item.Host.Cluster</CellTemplate></TemplateColumn>
         <TemplateColumn Title="@L["Source"]" SortBy="h => h.Host.Source"><CellTemplate>@SourceName(context.Item.Host.Source)</CellTemplate></TemplateColumn>
-        <TemplateColumn Title="@VmTitle" SortBy="h => h.WindowsVms" CellStyle="text-align: right"><CellTemplate>@context.Item.WindowsVms</CellTemplate></TemplateColumn>
+        <TemplateColumn Title="@VmTitle" SortBy="h => h.VmsOnHost" CellStyle="text-align: right">
+            <CellTemplate>
+                @context.Item.VmsOnHost
+                @if (context.Item.WindowsVms != context.Item.VmsOnHost)
+                {
+                    <MudTooltip Text="@L["The host is licensed for {0} VMs of its cluster, since they may move to it.", context.Item.WindowsVms]">
+                        <span style="color: var(--mud-palette-text-secondary)">&nbsp;/ @context.Item.WindowsVms</span>
+                    </MudTooltip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
         <TemplateColumn Title="@L["Licensed with"]" SortBy="h => h.Chosen == null ? null : h.Chosen.Product">
             <CellTemplate>
                 @if (context.Item.Chosen is { } chosen)
                 {
-                    <span>@ProductName(chosen.Product): @L["{0} cores", chosen.Cores]</span>
+                    <span>@string.Join(" + ", chosen.Parts.Select(p => ProductName(p.Product) + ": " + L["{0} cores", p.Cores]))</span>
                 }
                 else
                 {
@@ -35,6 +45,9 @@
         </TemplateColumn>
         <TemplateColumn Title="@L["Cost"]" SortBy="h => h.Chosen == null ? 0 : h.Chosen.Cost" CellStyle="text-align: right">
             <CellTemplate>@(context.Item.Chosen?.Cost.ToString("N0"))</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Still to buy"]" SortBy="h => h.AdditionalCost ?? 0" CellStyle="text-align: right">
+            <CellTemplate>@(context.Item.AdditionalCost?.ToString("N0"))</CellTemplate>
         </TemplateColumn>
     </Columns>
     <ChildRowContent>
@@ -57,7 +70,7 @@
                         @foreach (var variant in context.Item.Variants)
                         {
                             <tr style="@(variant == context.Item.Chosen ? "font-weight: 600" : "")">
-                                <td>@ProductName(variant.Product)</td>
+                                <td>@string.Join(" + ", variant.Parts.Select(p => ProductName(p.Product) + (variant.Parts.Count > 1 ? $" ({p.Cores})" : "")))</td>
                                 <td style="text-align: right">@variant.Cores</td>
                                 <td style="text-align: right">@variant.Cost.ToString("N0")</td>
                                 <td>@(variant == context.Item.Chosen ? L["chosen"] : variant.Reason is { } reason ? Note(reason) : "")</td>
@@ -90,11 +103,12 @@
     <MudPaper Outlined="true" Class="pa-3 mt-2">
         <MudStack Row="true" Spacing="6" Wrap="Wrap.Wrap">
             <MudText Typo="Typo.body2"><b>@L["Total"]</b></MudText>
-            @foreach (var product in chosen.GroupBy(h => h.Chosen!.Product))
+            @foreach (var product in chosen.SelectMany(h => h.Chosen!.Parts).GroupBy(p => p.Product))
             {
-                <MudText Typo="Typo.body2">@ProductName(product.Key): <b>@L["{0} cores", product.Sum(h => h.Chosen!.Cores)]</b> · @product.Sum(h => h.Chosen!.Cost).ToString("N0")</MudText>
+                <MudText Typo="Typo.body2">@ProductName(product.Key): <b>@L["{0} cores", product.Sum(p => p.Cores)]</b> · @product.Sum(p => p.Cost).ToString("N0")</MudText>
             }
             <MudText Typo="Typo.body2">@L["Cost"]: <b>@chosen.Sum(h => h.Chosen!.Cost).ToString("N0")</b></MudText>
+            <MudText Typo="Typo.body2">@L["Still to buy"]: <b>@chosen.Sum(h => h.AdditionalCost ?? 0).ToString("N0")</b></MudText>
         </MudStack>
     </MudPaper>
 }

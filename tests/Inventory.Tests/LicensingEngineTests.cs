@@ -139,4 +139,64 @@ public class LicensingEngineTests
         Assert.Contains(result.Hosts.Single(h => h.Host.Name == "z-hyperv").Notes, n => n.Text == "Covered by the existing stock.");
         Assert.Equal(MicrosoftRules.WindowsServerPerVm, result.Hosts.Single(h => h.Host.Name == "a-esx").Chosen!.Product);
     }
+
+    [Fact]
+    public void A_cluster_whose_vms_move_is_licensed_one_way_on_all_hosts()
+    {
+        // Zwei Hosts, 2 + 5 Windows-VMs; Datacenter-Bestand reicht nur für einen Host. Je Host gewählt bekäme der eine Datacenter aus dem
+        // Bestand, der andere je VM – eine VM, die vom ersten auf den zweiten zieht, wäre dort nicht gedeckt.
+        var hosts = new[]
+        {
+            Esx("xcp01", 2, 20, "POOL", Vm("a", 2), Vm("b", 2)),
+            Esx("xcp02", 2, 20, "POOL", Vm("c", 2), Vm("d", 4), Vm("e", 2), Vm("f", 2), Vm("g", 2)),
+        };
+        var stock = new Dictionary<string, int> { [MicrosoftRules.WindowsServerDatacenter] = 40 };
+        var result = WindowsServerEngine.Calculate(hosts, ListPrices with { SoftwareAssurance = true, Stock = stock }, Rules);
+        Assert.All(result.Hosts, h =>
+        {
+            Assert.Equal(MicrosoftRules.WindowsServerPerVm, h.Chosen!.Product);
+            Assert.Equal(7, h.WindowsVms);
+            Assert.True(h.Mobile);
+            Assert.Contains(h.Notes, n => n.Text.StartsWith("The whole cluster is licensed per VM", StringComparison.Ordinal));
+        });
+        // Je VM zählt jede VM einmal, mindestens 8 Kerne: 2 × 8 und 5 × 8.
+        Assert.Equal([16, 40], result.Hosts.Select(h => h.Chosen!.Cores));
+        Assert.Equal([2, 5], result.Hosts.Select(h => h.VmsOnHost));
+
+        // Ohne SA bleibt nur die Lizenzierung nach Kernen: beide Hosts für alle 7 VMs, der Bestand deckt einen davon.
+        var withoutSa = WindowsServerEngine.Calculate(hosts, ListPrices with { Stock = stock }, Rules);
+        Assert.All(withoutSa.Hosts, h => Assert.Equal(LicenseVariant.PlanHost, h.Chosen!.Plan));
+        Assert.Equal(40, withoutSa.Hosts.Sum(h => h.FromStock));
+        Assert.Contains(withoutSa.Hosts, h => h.AdditionalCost == 0);
+    }
+
+    [Fact]
+    public void Vms_that_stay_on_their_host_count_only_there_and_hosts_may_differ()
+    {
+        var hosts = new[]
+        {
+            Esx("esx01", 2, 16, "LAB", Vm("a"), Vm("b")) with { Mobile = false, MobilitySource = MobilitySource.Setting },
+            Esx("esx02", 2, 16, "LAB") with { Mobile = false, MobilitySource = MobilitySource.Setting },
+        };
+        var result = WindowsServerEngine.Calculate(hosts, ListPrices with { SoftwareAssurance = true }, Rules);
+        var first = result.Hosts.Single(h => h.Host.Name == "esx01");
+        Assert.Equal((2, false), (first.WindowsVms, first.Mobile));
+        Assert.Contains(first.Notes, n => n.Text.StartsWith("Cluster {0} is set to: VMs stay on their host", StringComparison.Ordinal));
+        // Ohne eigene VMs braucht der zweite Host nichts.
+        Assert.Null(result.Hosts.Single(h => h.Host.Name == "esx02").Chosen);
+
+        // Wandern die VMs (DRS), braucht auch der leere Host Lizenzen für beide.
+        var drs = WindowsServerEngine.Calculate(hosts.Select(h => h with { Mobile = true, MobilitySource = MobilitySource.Drs }).ToList(), ListPrices, Rules);
+        var empty = drs.Hosts.Single(h => h.Host.Name == "esx02");
+        Assert.Equal((2, 0), (empty.WindowsVms, empty.VmsOnHost));
+        Assert.Equal((MicrosoftRules.WindowsServerStandard, 32), (empty.Chosen!.Product, empty.Chosen.Cores));
+        Assert.Contains(empty.Notes, n => n.Text.StartsWith("vSphere DRS is on", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_rules_name_the_microsoft_documents()
+    {
+        Assert.Contains(Rules.Documents, d => d.Url.StartsWith("https://", StringComparison.Ordinal) && d.Title.Contains("Windows Server", StringComparison.Ordinal));
+        Assert.Contains(Rules.SqlServer.Documents, d => d.Url.EndsWith(".pdf", StringComparison.Ordinal));
+    }
 }

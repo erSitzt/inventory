@@ -25,10 +25,25 @@ public sealed record ProductBalance(LicenseProduct Product, int? Need, int Stock
 
 /// <param name="SoftwareAssurance">SA bzw. Abonnement für Windows Server.</param>
 /// <param name="SqlSoftwareAssurance">SA bzw. Abonnement für SQL Server.</param>
+/// <param name="Clusters">Die Cluster mit VMs und ob deren VMs zwischen den Hosts wandern.</param>
 public sealed record LicensingOverview(WindowsServerResult WindowsServer, SqlServerResult SqlServer, IReadOnlyList<ProductBalance> Balances, IReadOnlyList<LicensingNote> Gaps,
-    MicrosoftRules Rules, bool SoftwareAssurance, bool SqlSoftwareAssurance, IReadOnlyDictionary<string, decimal> Prices, DateTime CalculatedUtc);
+    MicrosoftRules Rules, bool SoftwareAssurance, bool SqlSoftwareAssurance, IReadOnlyDictionary<string, decimal> Prices, DateTime CalculatedUtc)
+{
+    public IReadOnlyList<LicensingCluster> Clusters { get; init; } = [];
+}
 
-public sealed record LicensingSettings(IReadOnlyDictionary<string, decimal> Prices, bool ClusterWide);
+/// <summary>Ein Cluster bzw. Pool für die Lizenzierung.</summary>
+/// <param name="Key">Schlüssel wie <see cref="LicensingHost.ClusterKey"/>; unter ihm wird die Einstellung gespeichert.</param>
+/// <param name="Mobile">Die VMs wandern zwischen den Hosts (so wird gerechnet).</param>
+/// <param name="Setting">Für diesen Cluster eingestellt; null = automatisch (erkannt oder Voreinstellung).</param>
+/// <param name="Licensing">Die gewählte Art: <see cref="LicenseVariant.PlanHost"/>, <see cref="LicenseVariant.PlanVm"/> oder null (gemischt bzw. nichts).</param>
+public sealed record LicensingCluster(string Key, string Name, string Source, int Hosts, int WindowsVms, bool Mobile, MobilitySource Reason, bool? Setting, string? Licensing);
+
+/// <param name="ClusterMobility">Je Cluster eingestellt, ob die VMs wandern (fehlt einer: automatisch).</param>
+public sealed record LicensingSettings(IReadOnlyDictionary<string, decimal> Prices, bool ClusterWide)
+{
+    public IReadOnlyDictionary<string, bool> ClusterMobility { get; init; } = new Dictionary<string, bool>();
+}
 
 /// <param name="Rows">Gelesene Einträge (noch nicht gespeichert bei der Vorschau).</param>
 /// <param name="Errors">Zeilen, die ausgelassen werden.</param>
@@ -162,7 +177,31 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
                 // Unlesbar: dann gelten die Listenpreise.
             }
         }
-        return new LicensingSettings(prices, await settings.GetAsync(SettingKeys.LicensingClusterWide, ct) != bool.FalseString);
+        var mobility = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        if (await settings.GetAsync(SettingKeys.LicensingClusterMobility, ct) is { Length: > 0 } mobilityJson)
+        {
+            try
+            {
+                foreach (var (key, value) in JsonSerializer.Deserialize<Dictionary<string, bool>>(mobilityJson) ?? [])
+                    mobility[key] = value;
+            }
+            catch (JsonException)
+            {
+                // Unlesbar: dann gilt für alle Cluster die Erkennung bzw. Voreinstellung.
+            }
+        }
+        return new LicensingSettings(prices, await settings.GetAsync(SettingKeys.LicensingClusterWide, ct) != bool.FalseString) { ClusterMobility = mobility };
+    }
+
+    /// <summary>Stellt für einen Cluster ein, ob seine VMs zwischen den Hosts wandern; null = wieder automatisch.</summary>
+    public async Task SaveClusterMobilityAsync(string clusterKey, bool? mobile, CancellationToken ct = default)
+    {
+        var mobility = new Dictionary<string, bool>((await GetSettingsAsync(ct)).ClusterMobility, StringComparer.OrdinalIgnoreCase);
+        if (mobile is { } value)
+            mobility[clusterKey] = value;
+        else
+            mobility.Remove(clusterKey);
+        await settings.SetAsync(SettingKeys.LicensingClusterMobility, mobility.Count == 0 ? null : JsonSerializer.Serialize(mobility), ct);
     }
 
     public async Task SaveSettingsAsync(IReadOnlyDictionary<string, decimal?> prices, bool clusterWide, CancellationToken ct = default)
@@ -180,13 +219,13 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         var options = await GetSettingsAsync(ct);
         var windowsServerProducts = new[] { MicrosoftRules.WindowsServerStandard, MicrosoftRules.WindowsServerDatacenter, MicrosoftRules.WindowsServerPerVm };
         var softwareAssurance = entitlements.Any(e => windowsServerProducts.Contains(e.Product) && e.SoftwareAssuranceActive(today));
-        var (hosts, gaps) = await HostsAsync(ct);
+        var (hosts, gaps) = await HostsAsync(options.ClusterMobility, ct);
         var stock = entitlements.GroupBy(e => e.Product).ToDictionary(g => g.Key, g => g.Sum(e => e.Quantity));
         var result = WindowsServerEngine.Calculate(hosts, new WindowsServerOptions(options.Prices, options.ClusterWide, softwareAssurance, stock), Rules);
 
         var sqlProducts = new[] { MicrosoftRules.SqlEnterprise, MicrosoftRules.SqlStandard };
         var sqlAssurance = entitlements.Any(e => sqlProducts.Contains(e.Product) && e.SoftwareAssuranceActive(today));
-        var sql = SqlServerEngine.Calculate(await SqlMachinesAsync(ct), hosts.ToDictionary(h => h.Key), new SqlServerOptions(options.Prices, sqlAssurance, stock), Rules);
+        var sql = SqlServerEngine.Calculate(await SqlMachinesAsync(ct), hosts.ToDictionary(h => h.Key), new SqlServerOptions(options.Prices, sqlAssurance, stock, options.ClusterWide), Rules);
 
         var balances = Rules.Products.Select(product =>
         {
@@ -200,8 +239,19 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         foreach (var expired in entitlements.Where(e => e.SoftwareAssuranceUntil is { } until && until < today))
             gaps.Add(new("Software Assurance of {0} ({1}) ended on {2}.", Rules.Product(expired.Product)?.Name ?? expired.Product, expired.ContractNumber ?? "–",
                 expired.SoftwareAssuranceUntil!.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+        // Cluster der Virtualisierung (nicht die Failover-Cluster physischer Server): wie gerechnet wird und was eingestellt ist.
+        var clusters = result.Hosts.Where(h => h.Host.ClusterKey is not null && h.Host.Source != "physical").GroupBy(h => h.Host.ClusterKey!)
+            .Select(g =>
+            {
+                var first = g.First();
+                var plans = g.Where(h => h.Chosen is not null).Select(h => h.Chosen!.Plan).Distinct().ToList();
+                return new LicensingCluster(g.Key, first.Host.Cluster!, first.Host.Source, g.Count(), g.Sum(h => h.VmsOnHost),
+                    WindowsServerEngine.IsMobile(first.Host, options.ClusterWide), first.Host.MobilitySource,
+                    options.ClusterMobility.TryGetValue(g.Key, out var set) ? set : null, plans.Count == 1 ? plans[0] : null);
+            })
+            .OrderBy(c => c.Source, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
         return new LicensingOverview(result, sql, balances, [.. gaps, .. result.Gaps, .. sql.Gaps], Rules, softwareAssurance, sqlAssurance, options.Prices,
-            time.GetUtcNow().UtcDateTime);
+            time.GetUtcNow().UtcDateTime) { Clusters = clusters };
     }
 
     /// <summary>
@@ -229,8 +279,22 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     /// Die physischen Server: Hyper-V- und ESXi-Hosts mit ihren VMs, dazu Windows Server ohne Virtualisierung. VMs ohne bekannten Host
     /// werden als Lücke gemeldet.
     /// </summary>
-    private async Task<(List<LicensingHost> Hosts, List<LicensingNote> Gaps)> HostsAsync(CancellationToken ct)
+    /// <param name="mobility">Je Cluster eingestellt, ob die VMs wandern; sonst gilt, was die Verwaltung meldet (DRS, HA), sonst die Voreinstellung.</param>
+    private async Task<(List<LicensingHost> Hosts, List<LicensingNote> Gaps)> HostsAsync(IReadOnlyDictionary<string, bool> mobility, CancellationToken ct)
     {
+        LicensingHost Mobility(LicensingHost host, bool? drs = null, bool? ha = null)
+        {
+            if (host.ClusterKey is not { } key)
+                return host;
+            if (mobility.TryGetValue(key, out var set))
+                return host with { Mobile = set, MobilitySource = MobilitySource.Setting };
+            // Eingeschaltetes DRS oder HA heißt sicher: VMs wandern. Ausgeschaltet heißt nur, dass sie nicht selbsttätig wandern – von Hand
+            // geht es trotzdem; dann gilt die Voreinstellung.
+            return drs == true ? host with { Mobile = true, MobilitySource = MobilitySource.Drs }
+                : ha == true ? host with { Mobile = true, MobilitySource = MobilitySource.Ha }
+                : host;
+        }
+
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var computers = await db.Computers.AsNoTracking().ToDictionaryAsync(c => c.Id, ct);
         bool? WindowsServer(int? computerId, string? guestOs)
@@ -247,14 +311,15 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
             if (view.Source == VirtualHostSource.HyperV && view.ComputerId is { } hostId && computers.TryGetValue(hostId, out var host))
             {
                 hostComputers.Add(hostId);
-                hosts.Add(new LicensingHost($"computer:{hostId}", host.Name, host.ClusterName, "Hyper-V", host.CpuSockets, host.CpuCoresPerSocket, host.CpuCores,
-                    true, host.OsEdition, hostId, vms));
+                hosts.Add(Mobility(new LicensingHost($"computer:{hostId}", host.Name, host.ClusterName, "Hyper-V", host.CpuSockets, host.CpuCoresPerSocket, host.CpuCores,
+                    true, host.OsEdition, hostId, vms) { ClusterKey = host.ClusterName is { } cluster ? $"hyperv|{cluster.ToUpperInvariant()}" : null }));
             }
             else
                 // Die Verwaltung gehört zur Quelle: gleichnamige Cluster zweier vCenter sind verschiedene Cluster.
-                hosts.Add(new LicensingHost($"hypervisor:{view.Id}", view.Name, view.Cluster,
+                hosts.Add(Mobility(new LicensingHost($"hypervisor:{view.Id}", view.Name, view.Cluster,
                     (view.Source switch { VirtualHostSource.XcpNg => "XCP-ng", VirtualHostSource.XenOrchestra => "Xen Orchestra", _ => "vCenter" }) + (view.ManagerName is { } manager ? $" · {manager}" : ""),
-                    view.CpuSockets, null, view.CpuCores, false, null, null, vms));
+                    view.CpuSockets, null, view.CpuCores, false, null, null, vms)
+                    { ClusterKey = view.Cluster is { } cluster ? $"m{view.ManagerId}|{cluster.ToUpperInvariant()}" : null }, view.ClusterDrs, view.ClusterHa));
         }
 
         var gaps = new List<LicensingNote>();
@@ -267,7 +332,8 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
                 continue;
             }
             hosts.Add(new LicensingHost($"computer:{computer.Id}", computer.Name, computer.ClusterName, "physical", computer.CpuSockets, computer.CpuCoresPerSocket, computer.CpuCores,
-                true, computer.OsEdition, computer.Id, []));
+                true, computer.OsEdition, computer.Id, [])
+                { ClusterKey = computer.ClusterName is { } cluster ? $"physical|{cluster.ToUpperInvariant()}" : null });
         }
         return (hosts, gaps);
     }
@@ -308,17 +374,19 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         var chosen = shown.Where(h => h.Chosen is not null).ToList();
         var rows = shown.Select(h => new string?[]
         {
-            h.Host.Name, h.Host.Cluster, SourceName(h.Host.Source), h.WindowsVms.ToString(CultureInfo.InvariantCulture),
-            h.Chosen is { } pick ? L[overview.Rules.Product(pick.Product)?.Name ?? pick.Product] : L["not calculable"],
-            h.Chosen?.Cores.ToString(CultureInfo.InvariantCulture), Money(h.Chosen?.Cost),
+            h.Host.Name, h.Host.Cluster, SourceName(h.Host.Source), h.VmsOnHost.ToString(CultureInfo.InvariantCulture), h.WindowsVms.ToString(CultureInfo.InvariantCulture),
+            h.Chosen is { } pick ? string.Join(" + ", pick.Parts.Select(p => L[overview.Rules.Product(p.Product)?.Name ?? p.Product] + (pick.Parts.Count > 1 ? $" ({p.Cores})" : "")))
+                : L["not calculable"],
+            h.Chosen?.Cores.ToString(CultureInfo.InvariantCulture), Money(h.Chosen?.Cost), Money(h.AdditionalCost),
         }).ToList();
+        // Jede VM einmal: die auf dem Host laufenden zählen, nicht die im Cluster mitlizenzierten.
         if (total)
-            rows.Add([L["Total"], null, null, chosen.Sum(h => h.WindowsVms).ToString(CultureInfo.InvariantCulture), null,
-                chosen.Sum(h => h.Chosen!.Cores).ToString(CultureInfo.InvariantCulture), Money(chosen.Sum(h => h.Chosen!.Cost))]);
+            rows.Add([L["Total"], null, null, shown.Sum(h => h.VmsOnHost).ToString(CultureInfo.InvariantCulture), null, null,
+                chosen.Sum(h => h.Chosen!.Cores).ToString(CultureInfo.InvariantCulture), Money(chosen.Sum(h => h.Chosen!.Cost)), Money(chosen.Sum(h => h.AdditionalCost ?? 0))]);
         return new(
         [
-            new("host", L["Host"]), new("cluster", L["Cluster"]), new("source", L["Source"]), new("vms", L["Virtual machines"], true),
-            new("product", L["Licensed with"]), new("cores", L["Cores to license"], true), new("cost", L["Cost"], true),
+            new("host", L["Host"]), new("cluster", L["Cluster"]), new("source", L["Source"]), new("vms", L["VMs on the host"], true), new("covered", L["VMs covered"], true),
+            new("product", L["Licensed with"]), new("cores", L["Cores to license"], true), new("cost", L["Cost"], true), new("additional", L["Still to buy"], true),
         ], rows);
     }
 
@@ -343,6 +411,16 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
 
         sections.Add(new("Windows Server", [L["Per physical host: the cheapest allowed variant after using the existing stock."]],
             HostTable(overview, overview.WindowsServer.Hosts, total: true), TotalRow: true, NewPage: true));
+        if (overview.Clusters.Count > 0)
+            sections.Add(new(L["Clusters"],
+                [L["If VMs move between the hosts, every host is licensed for all VMs of its cluster (core licences may move only every {0} days); otherwise each host counts only its own VMs.", overview.Rules.WindowsServer.LicenceReassignmentDays]],
+                new ReportTable(
+                    [new("cluster", L["Cluster"]), new("source", L["Source"]), new("hosts", L["Hosts"], true), new("vms", L["Windows Server VMs"], true), new("mobile", L["VMs move"]), new("licensed", L["Licensed"])],
+                    overview.Clusters.Select(c => new string?[]
+                    {
+                        c.Name, c.Source, c.Hosts.ToString(CultureInfo.InvariantCulture), c.WindowsVms.ToString(CultureInfo.InvariantCulture), MobilityText(c),
+                        c.Licensing switch { LicenseVariant.PlanVm => L["per VM"], LicenseVariant.PlanHost => L["by host cores"], _ => L["per host"] },
+                    }).ToList()), Level: 2));
         sections.Add(new("SQL Server", [L["Physical SQL servers per core; SQL VMs per VM or by licensing the whole host."]],
             HostTable(overview, overview.SqlServer.Entries, total: true), TotalRow: true));
         if (overview.SqlServer.Free.Count > 0)
@@ -358,7 +436,8 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
                 [new("variant", L["Variant"]), new("cores", L["Cores"], true), new("cost", L["Cost"], true), new("note", L["Note"])],
                 host.Variants.Select(v => new string?[]
                 {
-                    L[overview.Rules.Product(v.Product)?.Name ?? v.Product], v.Cores.ToString(CultureInfo.InvariantCulture), Money(v.Cost),
+                    string.Join(" + ", v.Parts.Select(p => L[overview.Rules.Product(p.Product)?.Name ?? p.Product] + (v.Parts.Count > 1 ? $" ({p.Cores})" : ""))),
+                    v.Cores.ToString(CultureInfo.InvariantCulture), Money(v.Cost),
                     v == host.Chosen ? L["chosen"] : v.Reason is { } reason ? Text(reason) : null,
                 }).ToList());
             sections.Add(new($"{product}: {host.Host.Name}" + (host.Host.Cluster is { } cluster ? $" ({cluster})" : ""), paragraphs, variants, Level: 2,
@@ -384,7 +463,7 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
             rules.Price(MicrosoftRules.WindowsServerDatacenter, overview.Prices), rules.WindowsServer.StandardVmsPerLicense);
         sections.Add(new(L["Rules and assumptions"],
         [
-            L["Windows Server: physical cores only, at least {0} per processor and {1} per server, packs of {2}. Standard covers {3} VMs per full licensing, Datacenter any number; per VM (at least {4} cores) only with SA. Cluster hosts are licensed for all Windows Server VMs of their cluster.",
+            L["Windows Server: physical cores only, at least {0} per processor and {1} per server, packs of {2}. Standard covers {3} VMs per full licensing, Datacenter any number; per VM (at least {4} cores) only with SA. Where VMs move within a cluster, every host is licensed for all Windows Server VMs of the cluster, or all of them per VM.",
                 rules.WindowsServer.MinCoresPerProcessor, rules.WindowsServer.MinCoresPerServer, rules.PackSize, rules.WindowsServer.StandardVmsPerLicense, rules.WindowsServer.PerVmMinCores],
             breakEven is { } vms ? L["At the prices used Datacenter pays off from {0} Windows Server VMs per host.", vms] : "",
             L["SQL Server: physical servers all cores (at least {0} per processor); VMs per VM (at least {1} cores; from SQL Server 2022 only with SA) or the whole host in the VMs' edition (as many VMs as core licences, with Enterprise and SA any number). Developer, Express and Evaluation are free.",
@@ -394,10 +473,22 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
             L["Amounts are licence prices (your prices or the list prices as a reference) without Software Assurance or subscription fees."],
             L["An estimate from the inventory data according to the rules below, not a binding statement for an audit. Check the result against your contracts and the current Microsoft Product Terms."],
         ]));
+        sections.Add(new(L["Microsoft documents"], [.. rules.Documents.Concat(rules.SqlServer.Documents).Select(d => $"• {d.Title}: {d.Url}")], Level: 2));
         return sections;
     }
 
     /// <summary>Ein Eintrag mit Last: gewählte Variante, Varianten, Rechenweg oder VMs; nicht ein Host ohne Windows-Server-Last.</summary>
+    /// <summary>Ob die VMs eines Clusters wandern, und warum.</summary>
+    public string MobilityText(LicensingCluster cluster) => (cluster.Mobile, cluster.Reason) switch
+    {
+        (true, MobilitySource.Drs) => L["yes (DRS is on)"],
+        (true, MobilitySource.Ha) => L["yes (HA is on)"],
+        (true, MobilitySource.Setting) => L["yes (set)"],
+        (false, MobilitySource.Setting) => L["no (set)"],
+        (true, _) => L["yes (default)"],
+        _ => L["no (default)"],
+    };
+
     private static bool Relevant(HostLicensing h) => h.Chosen is not null || h.Variants.Count > 0 || h.Steps.Count > 0 || h.WindowsVms > 0;
 
     public string SourceName(string source) => source switch

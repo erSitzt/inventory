@@ -66,12 +66,25 @@ public class LicensingServiceTests
         Assert.Equal((64, 48, -16, true), (balance.Need!.Value, balance.Stock, balance.Delta!.Value, overview.SoftwareAssurance));
         Assert.Equal("shortfall", service.Status(balance));
         Assert.Equal(["product", "unit", "need", "stock", "delta", "status", "needCost", "shortfallCost"], service.BalanceTable(overview).Columns.Select(c => c.Key));
-        // SQL Server: SRV-SQL01 (Standard 2022) auf dem Hyper-V-Host ohne SA → ganzer Host in Standard; die VMware-VM ohne Host ist eine Lücke.
-        var sql = Assert.Single(overview.SqlServer.Entries, e => e.Chosen is not null);
-        Assert.Equal((MicrosoftRules.SqlStandard, 32), (sql.Chosen!.Product, sql.Chosen.Cores));
+        // SQL Server: SRV-SQL01 (Standard 2022) im Hyper-V-Cluster ohne SA → ganzer Host in Standard, und zwar auf beiden Hosts, denn die VM
+        // kann auf jeden wandern, die Lizenz aber nicht mit; die VMware-VM ohne Host ist eine Lücke.
+        var sql = overview.SqlServer.Entries.Where(e => e.Chosen is not null).ToList();
+        Assert.Equal(2, sql.Count);
+        Assert.All(sql, e => Assert.Equal((MicrosoftRules.SqlStandard, 32, 1), (e.Chosen!.Product, e.Chosen.Cores, e.WindowsVms)));
+        Assert.Equal([0, 1], sql.Select(e => e.VmsOnHost).Order());
         Assert.Contains(overview.Gaps, g => g.Text.Contains("SQL Server 2022 or later on a VM without a known host"));
         // Im Bericht stehen auch die nicht berechenbaren Einträge (die VMware-VM ohne Host).
-        Assert.Equal(4, service.HostTable(overview).Rows.Count);
+        Assert.Equal(5, service.HostTable(overview).Rows.Count);
+
+        // Bleiben die VMs des Clusters auf ihrem Host, deckt jeder Host nur seine eigenen.
+        var cluster = Assert.Single(overview.Clusters);
+        Assert.True(cluster.Mobile);
+        await service.SaveClusterMobilityAsync(cluster.Key, false);
+        overview = await service.CalculateAsync();
+        Assert.Equal((false, (bool?)false), (overview.Clusters.Single().Mobile, overview.Clusters.Single().Setting));
+        Assert.Single(overview.SqlServer.Entries, e => e.Chosen is not null && e.Host.Source == "Hyper-V");
+        await service.SaveClusterMobilityAsync(cluster.Key, null);
+        Assert.Empty((await service.GetSettingsAsync()).ClusterMobility);
     }
 
     [Fact]

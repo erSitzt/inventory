@@ -30,7 +30,9 @@ public sealed record SqlMachine(int ComputerId, string Name, bool Virtual, strin
 }
 
 /// <param name="SoftwareAssurance">Für SQL Server besteht SA oder ein Abonnement.</param>
-public sealed record SqlServerOptions(IReadOnlyDictionary<string, decimal> PricePerPack, bool SoftwareAssurance = false, IReadOnlyDictionary<string, int>? Stock = null);
+/// <param name="ClusterWide">Voreinstellung für Cluster ohne eigene Angabe: die VMs wandern zwischen den Hosts.</param>
+public sealed record SqlServerOptions(IReadOnlyDictionary<string, decimal> PricePerPack, bool SoftwareAssurance = false, IReadOnlyDictionary<string, int>? Stock = null,
+    bool ClusterWide = true);
 
 /// <param name="Free">Instanzen ohne Lizenzkosten (Developer, Express, Evaluation), mit Warnung bei nicht-produktiven Editionen.</param>
 public sealed record SqlServerResult(IReadOnlyList<HostLicensing> Entries, IReadOnlyDictionary<string, int> Need, IReadOnlyList<LicensingNote> Free, IReadOnlyList<LicensingNote> Gaps);
@@ -39,6 +41,8 @@ public sealed record SqlServerResult(IReadOnlyList<HostLicensing> Entries, IRead
 /// SQL Server je Kern. Physische Server: alle physischen Kerne (mindestens 4 je Prozessor). VMs: je VM ihre vCPUs (mindestens 4);
 /// ab SQL Server 2022 nur mit SA/Abonnement. Alternativ der ganze Host mit Enterprise: mit SA beliebig viele VMs, ohne SA so viele
 /// VMs wie Kernlizenzen. Developer, Express und Evaluation kosten nichts; Developer und Evaluation dürfen nicht produktiv laufen.
+/// Wandern die VMs eines Clusters: mit SA ziehen die Lizenzen mit (License Mobility innerhalb der Serverfarm); ohne SA bleiben sie 90 Tage
+/// auf ihrem Host, jeder Host braucht dann Lizenzen für alle SQL-VMs des Clusters.
 /// </summary>
 public static class SqlServerEngine
 {
@@ -100,27 +104,38 @@ public static class SqlServerEngine
             if (machine.Edition == SqlEdition.Standard)
                 steps.Add(new("Alternative Standard server + CAL: {0:N0} for the server plus {1:N0} per user or device that uses it – cheaper only with few users.",
                     rules.Price(MicrosoftRules.SqlStandardServer, options.PricePerPack), rules.Price(MicrosoftRules.SqlCal, options.PricePerPack)));
-            entries.Add(new HostLicensing(host, cores, 1, variants, null, [], steps));
+            entries.Add(new HostLicensing(host, cores, 1, variants, null, [], steps) { VmsOnHost = 1 });
         }
 
-        // VMs: je Host die Summe je VM gegen den ganzen Host mit Enterprise.
+        // VMs: je Host die Summe je VM gegen den ganzen Host. Ohne bekannten Host bleibt nur die Lizenzierung je VM, jede für sich.
         var virtualMachines = paid.Where(m => m.Virtual).ToList();
-        foreach (var group in virtualMachines.GroupBy(m => m.HostKey is not null && hosts.ContainsKey(m.HostKey) ? m.HostKey : null))
+        foreach (var vm in virtualMachines.Where(m => m.HostKey is null || !hosts.ContainsKey(m.HostKey)))
+            entries.Add(PerVmOnly(vm));
+        var placed = virtualMachines.Where(m => m.HostKey is not null && hosts.ContainsKey(m.HostKey)).ToList();
+        bool Mobile(LicensingHost host) => WindowsServerEngine.IsMobile(host, options.ClusterWide);
+        var clusterSql = placed.Where(m => Mobile(hosts[m.HostKey!])).GroupBy(m => hosts[m.HostKey!].ClusterKey!).ToDictionary(g => g.Key, g => g.ToList());
+        // Im wandernden Cluster alle Hosts, denn jede SQL-VM kann auf jeden von ihnen wandern.
+        var hostKeys = placed.Select(m => m.HostKey!)
+            .Concat(hosts.Values.Where(h => Mobile(h) && clusterSql.ContainsKey(h.ClusterKey!)).Select(h => h.Key))
+            .Distinct().ToList();
+        foreach (var key in hostKeys)
         {
-            var vms = group.ToList();
-            var hostInfo = group.Key is { } key ? hosts[key] : null;
-            if (hostInfo is null)
+            var hostInfo = hosts[key];
+            var own = placed.Where(m => m.HostKey == key).ToList();
+            var mobile = Mobile(hostInfo);
+            var covered = mobile ? clusterSql[hostInfo.ClusterKey!] : own;
+            // Mit SA wandert die Lizenz je VM mit der VM; ohne SA bleibt sie auf dem Host, und jeder Host braucht sie für alle VMs, die zu ihm wandern können.
+            var perVmSet = options.SoftwareAssurance || !mobile ? own : covered;
+            var steps = new List<LicensingNote>
             {
-                // Ohne Host bleibt nur die Lizenzierung je VM, jede für sich.
-                foreach (var vm in vms)
-                    entries.Add(PerVmOnly(vm));
-                continue;
-            }
-            var steps = new List<LicensingNote>();
+                covered.Count > own.Count
+                    ? new("{0} SQL Server VMs on this host; {1} in cluster {2}, which may move here.", own.Count, covered.Count, hostInfo.Cluster!)
+                    : new("{0} SQL Server VMs on this host.", own.Count),
+            };
             var perVm = new List<string>();
             var perVmCost = 0m;
             var perVmCores = new Dictionary<string, int>();
-            foreach (var vm in vms)
+            foreach (var vm in perVmSet)
             {
                 var vmCores = rules.RoundToPacks(Math.Max(vm.VirtualCpus ?? sql.MinCoresPerVm, sql.MinCoresPerVm));
                 var product = Product(vm.Edition);
@@ -128,41 +143,51 @@ public static class SqlServerEngine
                 perVmCost += Cost(product, vmCores);
                 perVm.Add($"{vm.Name} ({vm.Edition}) {vmCores}");
             }
-            var needsSa = vms.Any(v => v.MaxMajorVersion is { } major && major >= sql.PerVmRequiresSoftwareAssuranceFromMajorVersion);
+            var needsSa = perVmSet.Any(v => v.MaxMajorVersion is { } major && major >= sql.PerVmRequiresSoftwareAssuranceFromMajorVersion);
             var perVmAllowed = options.SoftwareAssurance || !needsSa;
-            steps.Add(new("{0} SQL Server VMs on this host.", vms.Count));
-            steps.Add(new("Per VM: each VM its vCPUs, at least {0}: {1}; together {2:N0}.", sql.MinCoresPerVm, string.Join(" + ", perVm), perVmCost));
+            steps.Add(perVmSet.Count == 0
+                ? new("Per VM: no SQL Server VM runs on this host right now; with SA the licences move with the VMs: 0 cores.")
+                : new("Per VM: each VM its vCPUs, at least {0}: {1}; together {2:N0}.", sql.MinCoresPerVm, string.Join(" + ", perVm), perVmCost));
+            if (mobile)
+                steps.Add(options.SoftwareAssurance
+                    ? new("With SA the licences move with the VMs within the server farm (License Mobility); each VM is licensed once.")
+                    : new("Without SA licences stay on their host for {0} days: per VM, this host needs licences for all {1} SQL VMs of the cluster.", rules.WindowsServer.LicenceReassignmentDays, covered.Count));
             if (needsSa)
                 steps.Add(new("SQL Server 2022 and later may be licensed per VM only with Software Assurance or a subscription."));
 
             var variants = new List<LicenseVariant>();
-            // Je VM als eine Variante je Produkt würde die Auswahl zerreißen: die Kosten zählen als Ganzes, gezählt wird im höchsten Produkt.
-            var mainProduct = perVmCores.ContainsKey(MicrosoftRules.SqlEnterprise) ? MicrosoftRules.SqlEnterprise : MicrosoftRules.SqlStandard;
-            variants.Add(new LicenseVariant(mainProduct, perVmCores.Values.Sum(), perVmCost, perVmAllowed, perVmAllowed ? null : new("Only with Software Assurance or a subscription.")));
+            // Eine Variante mit einem Teil je Edition: gewählt wird sie als Ganzes, gezählt und gegen den Bestand gerechnet je Produkt.
+            var mainProduct = perVmCores.ContainsKey(MicrosoftRules.SqlEnterprise) || (perVmSet.Count == 0 && covered.Any(v => v.Edition == SqlEdition.Enterprise))
+                ? MicrosoftRules.SqlEnterprise : MicrosoftRules.SqlStandard;
+            variants.Add(new LicenseVariant(mainProduct, perVmCores.Values.Sum(), perVmCost, perVmAllowed, perVmAllowed ? null : new("Only with Software Assurance or a subscription."))
+            {
+                Plan = options.SoftwareAssurance ? LicenseVariant.PlanVm : LicenseVariant.PlanHost,
+                Parts = perVmCores.Select(p => new LicensePart(p.Key, p.Value, Cost(p.Key, p.Value))).ToList(),
+            });
 
             var perSocket = hostInfo.CoresPerSocket ?? (hostInfo.Sockets is > 0 && hostInfo.TotalCores is { } total ? (total + hostInfo.Sockets.Value - 1) / hostInfo.Sockets.Value : null);
             if (hostInfo.Sockets is > 0 && perSocket is > 0)
             {
                 var hostCores = rules.RoundToPacks(hostInfo.Sockets.Value * Math.Max(perSocket.Value, sql.MinCoresPerProcessor));
                 // Alle physischen Kerne in der höchsten Edition der VMs: so viele VMs wie Kernlizenzen. Mit SA und Enterprise beliebig viele.
-                var hostEdition = vms.Min(v => v.Edition);
+                var hostEdition = covered.Min(v => v.Edition);
                 var hostProduct = Product(hostEdition);
                 var hostCost = Cost(hostProduct, hostCores);
                 var unlimited = options.SoftwareAssurance && hostEdition == SqlEdition.Enterprise;
-                var hostAllowed = unlimited || vms.Count <= hostCores;
+                var hostAllowed = unlimited || covered.Count <= hostCores;
                 variants.Add(new LicenseVariant(hostProduct, hostCores, hostCost, hostAllowed,
-                    hostAllowed ? null : new("Without SA the full licensing covers only as many VMs as core licences.")));
+                    hostAllowed ? null : new("Without SA the full licensing covers only as many VMs as core licences.")) { Plan = LicenseVariant.PlanHost });
                 steps.Add(new("Whole host in {0}: {1} processors × {2} cores (at least {3} per processor) = {4} cores, {5:N0}; covers up to {4} SQL VMs.",
                     hostEdition.ToString(), hostInfo.Sockets.Value, perSocket.Value, sql.MinCoresPerProcessor, hostCores, hostCost));
                 if (options.SoftwareAssurance && hostEdition == SqlEdition.Standard)
                 {
                     var enterpriseCost = Cost(MicrosoftRules.SqlEnterprise, hostCores);
-                    variants.Add(new LicenseVariant(MicrosoftRules.SqlEnterprise, hostCores, enterpriseCost, true));
+                    variants.Add(new LicenseVariant(MicrosoftRules.SqlEnterprise, hostCores, enterpriseCost, true) { Plan = LicenseVariant.PlanHost });
                     steps.Add(new("Whole host in Enterprise with SA: {0} cores, {1:N0}; any number of SQL VMs.", hostCores, enterpriseCost));
                 }
                 else if (unlimited)
                     steps.Add(new("With Enterprise and SA any number of SQL VMs may run on the fully licensed host."));
-                var averageVm = vms.Count == 0 ? 0 : perVmCost / vms.Count;
+                var averageVm = perVmSet.Count == 0 ? 0 : perVmCost / perVmSet.Count;
                 if (averageVm > 0)
                     steps.Add(new("The whole host pays off from about {0} SQL VMs of this size on it.", (int)Math.Ceiling(hostCost / averageVm)));
             }
@@ -170,8 +195,8 @@ public static class SqlServerEngine
                 steps.Add(new("Whole host: the number of processors or cores of the host is unknown."));
             if (!variants.Any(v => v.Allowed))
                 gaps.Add(new("{0}: no allowed licensing for its SQL VMs – per VM needs SA, and without SA the host covers only as many VMs as core licences.", hostInfo.Name));
-            entries.Add(new HostLicensing(hostInfo with { VirtualMachines = vms.Select(v => new LicensingVm(v.Name, v.VirtualCpus, true, true, v.ComputerId)).ToList() },
-                0, vms.Count, variants, null, [], steps));
+            entries.Add(new HostLicensing(hostInfo with { VirtualMachines = own.Select(v => new LicensingVm(v.Name, v.VirtualCpus, true, true, v.ComputerId)).ToList() },
+                0, covered.Count, variants, null, [], steps) { VmsOnHost = own.Count, Mobile = mobile });
         }
 
         HostLicensing PerVmOnly(SqlMachine vm)
@@ -192,11 +217,11 @@ public static class SqlServerEngine
             }
             var host = new LicensingHost($"computer:{vm.ComputerId}", vm.Name, null, "VM", null, null, vm.VirtualCpus, false, null, vm.ComputerId,
                 [new LicensingVm(vm.Name, vm.VirtualCpus, true, true, vm.ComputerId)]);
-            return new HostLicensing(host, 0, 1, [new LicenseVariant(product, cores, Cost(product, cores), allowed, allowed ? null : new("Only with Software Assurance or a subscription."))], null, [], steps);
+            return new HostLicensing(host, 0, 1, [new LicenseVariant(product, cores, Cost(product, cores), allowed, allowed ? null : new("Only with Software Assurance or a subscription."))], null, [], steps)
+                { VmsOnHost = 1 };
         }
 
         entries = WindowsServerEngine.Choose(entries, options.Stock);
-        var need = entries.Where(e => e.Chosen is not null).GroupBy(e => e.Chosen!.Product).ToDictionary(g => g.Key, g => g.Sum(e => e.Chosen!.Cores));
-        return new SqlServerResult(entries, need, free, gaps);
+        return new SqlServerResult(entries, WindowsServerEngine.Need(entries), free, gaps);
     }
 }

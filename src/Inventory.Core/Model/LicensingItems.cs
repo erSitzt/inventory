@@ -78,6 +78,10 @@ public class HypervisorHost
     public int? CpuCores { get; set; }
     public string? Model { get; set; }
     public bool Connected { get; set; }
+    /// <summary>vSphere DRS des Clusters eingeschaltet: VMs wandern selbsttätig zwischen den Hosts.</summary>
+    public bool? ClusterDrs { get; set; }
+    /// <summary>HA des Clusters bzw. Pools eingeschaltet: VMs starten nach einem Hostausfall auf einem anderen Host.</summary>
+    public bool? ClusterHa { get; set; }
     public DateTime SeenUtc { get; set; }
     public List<HypervisorVm> VirtualMachines { get; set; } = [];
 }

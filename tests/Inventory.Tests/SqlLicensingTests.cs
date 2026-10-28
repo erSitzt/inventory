@@ -107,4 +107,38 @@ public class SqlLicensingTests
         Assert.Contains(steps, s => s.Text.StartsWith("Standard:") && s.Args[3] is 2 && s.Args[4] is 32);
         Assert.Contains(steps, s => s.Text.StartsWith("At these prices Datacenter pays off") && s.Args[0] is 11);
     }
+
+    [Fact]
+    public void In_a_cluster_whose_vms_move_licences_follow_the_vm_only_with_sa()
+    {
+        var hosts = new Dictionary<string, LicensingHost> { ["h1"] = Host("h1", 2, 16), ["h2"] = Host("h2", 2, 16) };
+        var vms = new[] { Vm(1, "sql-a", "h1", 4, Instance("Standard Edition (64-bit)", 15)) };
+        // Ohne SA bleibt die Lizenz 90 Tage auf ihrem Host: beide Hosts brauchen Lizenzen für die VM, die zu ihnen wandern kann.
+        var without = SqlServerEngine.Calculate(vms, hosts, ListPrices, Rules).Entries;
+        Assert.Equal(2, without.Count);
+        Assert.All(without, e => Assert.Equal((MicrosoftRules.SqlStandard, 4, 1), (e.Chosen!.Product, e.Chosen.Cores, e.WindowsVms)));
+        // Mit SA wandert sie mit (License Mobility): einmal 4 Kerne, der zweite Host braucht nichts zusätzlich.
+        var with = SqlServerEngine.Calculate(vms, hosts, ListPrices with { SoftwareAssurance = true }, Rules).Entries;
+        Assert.Equal([4, 0], with.OrderBy(e => e.Host.Key).Select(e => e.Chosen!.Cores));
+        Assert.All(with, e => Assert.Equal(LicenseVariant.PlanVm, e.Chosen!.Plan));
+        // Bleiben die VMs auf ihrem Host, zählt nur der Host der VM.
+        var fixedHosts = hosts.ToDictionary(h => h.Key, h => h.Value with { Mobile = false });
+        Assert.Single(SqlServerEngine.Calculate(vms, fixedHosts, ListPrices, Rules).Entries);
+    }
+
+    [Fact]
+    public void Per_vm_licensing_counts_enterprise_and_standard_vms_each_in_their_product()
+    {
+        var hosts = new Dictionary<string, LicensingHost> { ["h1"] = Host("h1", 2, 16) };
+        var vms = new[] { Vm(1, "sql-ent", "h1", 4, Instance("Enterprise Edition (64-bit)")), Vm(2, "sql-std", "h1", 6, Instance("Standard Edition (64-bit)")) };
+        var result = SqlServerEngine.Calculate(vms, hosts, ListPrices with { SoftwareAssurance = true }, Rules);
+        var entry = Assert.Single(result.Entries);
+        Assert.Equal([(MicrosoftRules.SqlEnterprise, 4), (MicrosoftRules.SqlStandard, 6)], entry.Chosen!.Parts.Select(p => (p.Product, p.Cores)).OrderBy(p => p.Product));
+        Assert.Equal((4, 6), (result.Need[MicrosoftRules.SqlEnterprise], result.Need[MicrosoftRules.SqlStandard]));
+        // Bestand an Standard deckt nur den Standard-Teil; zu kaufen bleibt die Enterprise-VM.
+        var stock = new Dictionary<string, int> { [MicrosoftRules.SqlStandard] = 6 };
+        var covered = Assert.Single(SqlServerEngine.Calculate(vms, hosts, ListPrices with { SoftwareAssurance = true, Stock = stock }, Rules).Entries);
+        Assert.Equal(6, covered.FromStock);
+        Assert.Equal(Rules.Price(MicrosoftRules.SqlEnterprise, new Dictionary<string, decimal>()) * 2, covered.AdditionalCost);
+    }
 }

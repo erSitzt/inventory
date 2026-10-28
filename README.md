@@ -345,8 +345,15 @@ record – an estimate according to versioned rules (`rules/microsoft/*.json`), 
   processor, 16 per server, 2-core packs), then *Standard* (all cores again for every two Windows Server VMs),
   *Datacenter* (unlimited VMs) and, with active Software Assurance or a subscription, *per VM* (at least 8 cores per
   VM). The cheapest allowed variant is chosen, using your prices per pack or the list price from the rules file; the
-  others stay visible per host. In a cluster each host is licensed for all Windows Server VMs of the cluster, because
-  licences may move only every 90 days (can be switched off).
+  others stay visible per host.
+- **Clusters**: core licences may move to another host only every 90 days, VMs at any time. Where the VMs of a cluster
+  move (live migration, vMotion, DRS, HA), every host is licensed for all VMs of the cluster, or – with SA – every VM
+  per VM, whose licence moves with it; the whole cluster is licensed one way, since mixed a moved VM would not be
+  covered. Where live migration is off or not licensed and VMs are moved only rarely by hand, each host counts only its
+  own VMs. vSphere DRS or HA switched on (read from the vCenter, the XCP-ng pool or Xen Orchestra) means the VMs move;
+  otherwise the default applies, and every cluster can be set on the Windows Server tab. SQL Server follows the same
+  idea: with SA the licences move with the VMs (License Mobility), without SA every host needs them for all SQL VMs of
+  the cluster. The page links the Microsoft licensing guides and Product Terms the rules are based on.
 - **Stock** is recorded by hand or imported as CSV (`Product;Quantity;Version;SA until;Contract;Notes`); products are the
   keys from the rules file. Need, stock and difference per product show at a glance; CSV, PDF and `GET /api/licensing`
   export them.

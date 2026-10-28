@@ -47,6 +47,7 @@ public sealed class XcpNgSource(Func<HttpMessageHandler, HttpMessageHandler>? wr
                 var pool = pools.AsObject().Select(p => p.Value).FirstOrDefault();
                 var poolName = Text(pool, "name_label");
                 var masterRef = Text(pool, "master");
+                bool? poolHa = pool?["ha_enabled"] is JsonValue ha && ha.TryGetValue<bool>(out var haOn) ? haOn : null;
                 var hosts = new List<HypervisorHostInfo>();
                 var hostIds = new Dictionary<string, string>();
                 string? version = null;
@@ -62,7 +63,7 @@ public sealed class XcpNgSource(Func<HttpMessageHandler, HttpMessageHandler>? wr
                         : threads is { } t && Int(cpu, "threads_per_core") is { } perCore && perCore > 0 ? t / perCore : null;
                     hosts.Add(new HypervisorHostInfo(id, Text(record, "hostname") ?? Text(record, "name_label") ?? id,
                         string.IsNullOrWhiteSpace(poolName) ? null : poolName, sockets, cores, Text(record?["bios_strings"], "system-product-name"),
-                        record?["enabled"]?.GetValue<bool>() ?? true));
+                        record?["enabled"]?.GetValue<bool>() ?? true, null, poolHa));
                     if (reference == masterRef)
                         version = string.Join(" ", new[] { Text(record?["software_version"], "product_brand"), Text(record?["software_version"], "product_version") }.Where(v => v is not null));
                 }

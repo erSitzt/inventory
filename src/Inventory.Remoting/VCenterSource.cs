@@ -48,12 +48,15 @@ public sealed class VCenterSource(Func<HttpMessageHandler, HttpMessageHandler>? 
             {
                 var clusters = (await RetrieveAsync(session, viewManager, rootFolder, propertyCollector, "ClusterComputeResource", ["name"], ct))
                     .ToDictionary(o => o.Id, o => o.Text("name"));
+                var automation = await ClusterAutomationAsync(session, viewManager, rootFolder, propertyCollector, ct);
                 var hosts = (await RetrieveAsync(session, viewManager, rootFolder, propertyCollector, "HostSystem",
                         ["name", "parent", "summary.hardware.numCpuPkgs", "summary.hardware.numCpuCores", "summary.hardware.model", "runtime.connectionState"], ct))
                     .Select(o => new HypervisorHostInfo(o.Id, o.Text("name") ?? o.Id,
                         o.Ref("parent") is { Type: "ClusterComputeResource" } parent && clusters.TryGetValue(parent.Id, out var cluster) ? cluster : null,
                         o.Int("summary.hardware.numCpuPkgs"), o.Int("summary.hardware.numCpuCores"), o.Text("summary.hardware.model"),
-                        o.Text("runtime.connectionState") == "connected"))
+                        o.Text("runtime.connectionState") == "connected",
+                        o.Ref("parent") is { Type: "ClusterComputeResource" } drsParent && automation.TryGetValue(drsParent.Id, out var drs) ? drs.Drs : null,
+                        o.Ref("parent") is { Type: "ClusterComputeResource" } haParent && automation.TryGetValue(haParent.Id, out var ha) ? ha.Ha : null))
                     .ToList();
                 var vms = (await RetrieveAsync(session, viewManager, rootFolder, propertyCollector, "VirtualMachine",
                         ["name", "config.uuid", "config.hardware.numCPU", "config.template", "config.guestFullName", "runtime.host", "runtime.powerState", "guest.hostName"], ct))
@@ -90,6 +93,27 @@ public sealed class VCenterSource(Func<HttpMessageHandler, HttpMessageHandler>? 
     }
 
     private static XElement This(string type, string id) => new(Vim + "_this", new XAttribute("type", type), id);
+
+    /// <summary>
+    /// DRS und HA je Cluster (für die Lizenzierung: wandern VMs selbsttätig?). Eigene Abfrage, damit ein vCenter, das die Eigenschaften
+    /// nicht kennt oder nicht zeigen darf, den Abgleich nicht scheitern lässt; dann bleibt es "unbekannt".
+    /// </summary>
+    private static async Task<Dictionary<string, (bool? Drs, bool? Ha)>> ClusterAutomationAsync(Session session, string viewManager, string rootFolder,
+        string propertyCollector, CancellationToken ct)
+    {
+        try
+        {
+            return (await RetrieveAsync(session, viewManager, rootFolder, propertyCollector, "ClusterComputeResource",
+                    ["configuration.drsConfig.enabled", "configuration.dasConfig.enabled"], ct))
+                .ToDictionary(o => o.Id, o => (Bool(o.Text("configuration.drsConfig.enabled")), Bool(o.Text("configuration.dasConfig.enabled"))));
+        }
+        catch (RemoteException)
+        {
+            return [];
+        }
+
+        static bool? Bool(string? text) => bool.TryParse(text, out var value) ? value : null;
+    }
 
     /// <summary>Alle Objekte eines Typs mit den genannten Eigenschaften, über eine Container-Sicht ab dem Wurzelordner, seitenweise.</summary>
     private static async Task<List<ManagedObject>> RetrieveAsync(Session session, string viewManager, string rootFolder, string propertyCollector, string type,

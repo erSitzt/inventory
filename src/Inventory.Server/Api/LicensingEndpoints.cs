@@ -12,9 +12,12 @@ public sealed record LicenseBalanceDto(string Product, string Name, string Unit,
 public sealed record LicenseVariantDto(string Product, int Cores, decimal Cost, bool Allowed, string? Reason);
 
 /// <param name="VirtualMachines">Bei Windows Server die zu deckenden Windows-Server-VMs, bei SQL Server die SQL-VMs.</param>
+/// <param name="VmsOnHost">Die VMs, die gerade auf dem Host laufen (im wandernden Cluster deckt der Host mehr).</param>
+/// <param name="Mobile">Die VMs des Clusters wandern zwischen den Hosts.</param>
+/// <param name="StillToBuy">Was nach Abzug des Bestands noch zu kaufen ist.</param>
 /// <param name="Steps">Der Rechenweg in der Sprache der Anfrage.</param>
 public sealed record HostLicensingDto(string Host, string? Cluster, string Source, int LicensedCores, int VirtualMachines, LicenseVariantDto? Chosen,
-    IReadOnlyList<LicenseVariantDto> Variants, IReadOnlyList<string> Steps, IReadOnlyList<string> Notes);
+    IReadOnlyList<LicenseVariantDto> Variants, IReadOnlyList<string> Steps, IReadOnlyList<string> Notes, int VmsOnHost, bool Mobile, decimal? StillToBuy);
 
 public sealed record LicensingDto(string RulesVersion, string SqlRulesVersion, DateTime CalculatedUtc, bool SoftwareAssurance, bool SqlSoftwareAssurance,
     IReadOnlyList<LicenseBalanceDto> Balances, IReadOnlyList<HostLicensingDto> Hosts, IReadOnlyList<HostLicensingDto> SqlServer, IReadOnlyList<string> SqlFree,
@@ -38,7 +41,8 @@ public static class LicensingEndpoints
             string Text(Inventory.Core.Licensing.LicensingNote note) => L[note.Text, note.Args];
             LicenseVariantDto Variant(Inventory.Core.Licensing.LicenseVariant v) => new(v.Product, v.Cores, v.Cost, v.Allowed, v.Reason is null ? null : Text(v.Reason));
             HostLicensingDto Host(Inventory.Core.Licensing.HostLicensing h) => new(h.Host.Name, h.Host.Cluster, h.Host.Source, h.LicensedCores, h.WindowsVms,
-                h.Chosen is null ? null : Variant(h.Chosen), h.Variants.Select(Variant).ToList(), h.Steps.Select(Text).ToList(), h.Notes.Select(Text).ToList());
+                h.Chosen is null ? null : Variant(h.Chosen), h.Variants.Select(Variant).ToList(), h.Steps.Select(Text).ToList(), h.Notes.Select(Text).ToList(),
+                h.VmsOnHost, h.Mobile, h.AdditionalCost);
             return new LicensingDto(overview.Rules.Version, overview.Rules.SqlServer.Version, DateTime.SpecifyKind(overview.CalculatedUtc, DateTimeKind.Utc),
                 overview.SoftwareAssurance, overview.SqlSoftwareAssurance,
                 overview.Balances.Select(b => new LicenseBalanceDto(b.Product.Key, b.Product.Name, b.Product.Unit, b.Need, b.Stock, b.Delta, b.SoftwareAssurance)).ToList(),

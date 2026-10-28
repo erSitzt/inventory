@@ -17,8 +17,8 @@ public sealed class SimulatedXcpNgSource(HypervisorKind kind = HypervisorKind.Xc
     {
         var hosts = new List<HypervisorHostInfo>
         {
-            new("6f1d2c3e-0001-4a5b-8c9d-000000000001", "xcp01.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360 Gen10", true),
-            new("6f1d2c3e-0001-4a5b-8c9d-000000000002", "xcp02.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360 Gen10", true),
+            new("6f1d2c3e-0001-4a5b-8c9d-000000000001", "xcp01.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360 Gen10", true, null, false),
+            new("6f1d2c3e-0001-4a5b-8c9d-000000000002", "xcp02.corp.example", "XCP-POOL", 2, 24, "ProLiant DL360 Gen10", true, null, false),
         };
         var vms = Guests.Select((name, i) => new HypervisorVmInfo(SimulatedInventory.XenUuid(name), name, SimulatedInventory.XenUuid(name),
                 name.Contains("SQL", StringComparison.Ordinal) ? 8 : 4, hosts[i % 2].Id, true, name.ToLowerInvariant(), "Microsoft Windows Server 2022 Standard"))

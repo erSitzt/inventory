@@ -24,7 +24,10 @@ public sealed record HypervisorConnection(string Url, NetworkCredential Credenti
 /// <param name="Id">Kennung in der Verwaltung (beim vCenter die Managed-Object-ID, z. B. host-42, bei XCP-ng die UUID).</param>
 /// <param name="Cluster">vCenter-Cluster bzw. XCP-ng-Pool.</param>
 /// <param name="CpuCores">Physische Kerne insgesamt, ohne Hyperthreading.</param>
-public sealed record HypervisorHostInfo(string Id, string Name, string? Cluster, int? CpuSockets, int? CpuCores, string? Model, bool Connected);
+/// <param name="ClusterDrs">Der Cluster verschiebt VMs selbst (vSphere DRS eingeschaltet); null = unbekannt bzw. gibt es bei der Quelle nicht.</param>
+/// <param name="ClusterHa">Der Cluster bzw. Pool startet VMs nach einem Hostausfall auf einem anderen Host (HA); null = unbekannt.</param>
+public sealed record HypervisorHostInfo(string Id, string Name, string? Cluster, int? CpuSockets, int? CpuCores, string? Model, bool Connected,
+    bool? ClusterDrs = null, bool? ClusterHa = null);
 
 /// <summary>Virtuelle Maschine, wie sie die Verwaltung führt; Vorlagen zählen nicht.</summary>
 /// <param name="BiosUuid">SMBIOS-UUID, wie der Gast sie meldet (beim vCenter config.uuid, bei XCP-ng die UUID der VM).</param>
