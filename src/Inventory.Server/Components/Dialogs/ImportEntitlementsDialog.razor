@@ -1,0 +1,87 @@
+@inject LicensingService Licensing
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">
+                @L["Paste a table with the columns {0}; separated by semicolon, comma or tab. Product is the key or the name from the list of products, quantity is cores or licences. Entries are added to the existing stock.", string.Join(", ", LicensingService.ImportColumns)]
+            </MudText>
+            <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre">Product;Quantity;Version;SA until;Contract;Notes
+WindowsServerDatacenterCore;96;2022;2027-06-30;EA-12345;
+WindowsServerUserCal;250;2022;;EA-12345;</MudText>
+            <MudTextField @bind-Value="_text" Label="@L["Table"]" Variant="Variant.Outlined" Lines="8" Immediate="true" />
+            <MudStack Row="true" Spacing="2">
+                <InputFile id="entitlementFile" accept=".csv,.txt" OnChange="LoadFileAsync" hidden />
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" HtmlTag="label" for="entitlementFile">@L["Load file"]</MudButton>
+                <MudButton Variant="Variant.Outlined" Disabled="@string.IsNullOrWhiteSpace(_text)" OnClick="@(() => RunAsync(apply: false))">@L["Preview"]</MudButton>
+            </MudStack>
+            @if (_result is not null)
+            {
+                <MudAlert Severity="@(_result.Errors.Count > 0 ? Severity.Warning : Severity.Info)" Dense="true">
+                    @L["{0} entries read, {1} lines skipped.", _result.Rows.Count, _result.Errors.Count]
+                    @foreach (var error in _result.Errors.Take(10))
+                    {
+                        <div>@error</div>
+                    }
+                </MudAlert>
+                @if (_result.Rows.Count > 0)
+                {
+                    <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                        <thead><tr><th>@L["Product"]</th><th>@L["Quantity"]</th><th>@L["Version"]</th><th>@L["SA until"]</th><th>@L["Contract"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var row in _result.Rows.Take(20))
+                            {
+                                <tr><td>@L[Licensing.Rules.Product(row.Product)!.Name]</td><td>@row.Quantity</td><td>@row.Version</td><td>@row.SoftwareAssuranceUntil?.ToString("d")</td><td>@row.ContractNumber</td></tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            }
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(_result is not { Rows.Count: > 0 })" OnClick="@(() => RunAsync(apply: true))">@L["Import"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _text = "";
+    private EntitlementImport? _result;
+    private string? _error;
+
+    private async Task LoadFileAsync(InputFileChangeEventArgs e)
+    {
+        using var reader = new StreamReader(e.File.OpenReadStream(1024 * 1024));
+        _text = await reader.ReadToEndAsync();
+        await RunAsync(apply: false);
+    }
+
+    private async Task RunAsync(bool apply)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _error = null;
+        try
+        {
+            _result = await Licensing.ImportAsync(_text, apply);
+            if (!apply)
+                return;
+            await Audit.LogAsync(L["Licence stock imported"], L["{0} entries read, {1} lines skipped.", _result.Rows.Count, _result.Errors.Count]);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (ArgumentException ex)
+        {
+            (_error, _result) = (ex.Message, null);
+        }
+    }
+}

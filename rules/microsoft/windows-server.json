@@ -1,0 +1,28 @@
+{
+  "version": "2025.1",
+  "validFrom": "2025-01-01",
+  "source": "Microsoft Product Terms and Windows Server 2025 licensing guide; check against the current Product Terms before relying on the result.",
+  "packSize": 2,
+  "windowsServer": {
+    "minCoresPerProcessor": 8,
+    "minCoresPerServer": 16,
+    "standardVmsPerLicense": 2,
+    "perVmMinCores": 8,
+    "perVmRequiresSoftwareAssurance": true,
+    "licenceReassignmentDays": 90
+  },
+  "products": [
+    { "key": "WindowsServerStandardCore", "name": "Windows Server Standard (core)", "unit": "core", "listPricePerPack": 147.0 },
+    { "key": "WindowsServerDatacenterCore", "name": "Windows Server Datacenter (core)", "unit": "core", "listPricePerPack": 846.0 },
+    { "key": "WindowsServerPerVmCore", "name": "Windows Server per virtual machine (core, with SA or subscription)", "unit": "core", "listPricePerPack": 147.0 },
+    { "key": "WindowsServerUserCal", "name": "Windows Server user CAL", "unit": "licence" },
+    { "key": "WindowsServerDeviceCal", "name": "Windows Server device CAL", "unit": "licence" },
+    { "key": "RdsUserCal", "name": "Remote Desktop Services user CAL", "unit": "licence" },
+    { "key": "RdsDeviceCal", "name": "Remote Desktop Services device CAL", "unit": "licence" },
+    { "key": "SqlServerEnterpriseCore", "name": "SQL Server Enterprise (core)", "unit": "core" },
+    { "key": "SqlServerStandardCore", "name": "SQL Server Standard (core)", "unit": "core" },
+    { "key": "SqlServerStandardServer", "name": "SQL Server Standard (server)", "unit": "licence" },
+    { "key": "SqlServerCal", "name": "SQL Server CAL", "unit": "licence" },
+    { "key": "WindowsEnterpriseUpgrade", "name": "Windows Enterprise (upgrade, E3/E5)", "unit": "licence" }
+  ]
+}

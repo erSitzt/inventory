@@ -1,0 +1,279 @@
+@page "/licensing"
+@using Inventory.Core.Licensing
+@inject LicensingService Service
+@inject IDialogService Dialogs
+@inject Auditor Audit
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
+@inject Access Access
+
+<PageTitle>@L["Microsoft licensing"] – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">@L["Microsoft licensing"]</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="api/licensing/balance.csv" Target="_blank">CSV</MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf" Href="api/licensing/report.pdf" Target="_blank">PDF</MudButton>
+</MudStack>
+
+<MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+    @L["An estimate from the inventory data according to the rules below, not a binding statement for an audit. Check the result against your contracts and the current Microsoft Product Terms."]
+</MudAlert>
+
+@if (_overview is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudText Typo="Typo.caption" Class="d-block mb-3" Style="color: var(--mud-palette-text-secondary)">
+        @L["Rules version {0} (valid from {1}), calculated {2}. Software Assurance for Windows Server: {3}.", _overview.Rules.Version, _overview.Rules.ValidFrom.ToString("d"),
+            Display.LocalTime(_overview.CalculatedUtc), _overview.SoftwareAssurance ? L["yes"] : L["no"]]
+    </MudText>
+
+    <MudTabs Elevation="0" Outlined="true" PanelClass="pt-3" @bind-ActivePanelIndex="_tab">
+        <MudTabPanel Text="@L["Overview"]">
+            <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                <thead><tr><th>@L["Product"]</th><th style="text-align: right">@L["Need"]</th><th style="text-align: right">@L["Stock"]</th><th style="text-align: right">@L["Difference"]</th><th>@L["Status"]</th></tr></thead>
+                <tbody>
+                    @foreach (var balance in _overview.Balances.Where(b => b.Need is not null || b.Stock > 0))
+                    {
+                        <tr>
+                            <td>@L[balance.Product.Name]@(balance.SoftwareAssurance ? " · SA" : "")</td>
+                            <td style="text-align: right">@(balance.Need?.ToString() ?? "–")</td>
+                            <td style="text-align: right">@balance.Stock</td>
+                            <td style="text-align: right">@(balance.Delta is { } delta ? delta.ToString("+#;-#;0") : "–")</td>
+                            <td>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                         Color="@(balance.Delta switch { null => Color.Default, < 0 => Color.Error, _ => Color.Success })">@Service.Status(balance)</MudChip>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            <MudText Typo="Typo.caption" Class="d-block mt-2" Style="color: var(--mud-palette-text-secondary)">
+                @L["Calculated so far: Windows Server per core. SQL Server, CALs and Windows clients follow; their stock is already shown."]
+            </MudText>
+            @if (_overview.Gaps.Count > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                    @L["{0} data gaps: the need may be higher. See the tab \"Data gaps\".", _overview.Gaps.Count]
+                </MudAlert>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="@($"{L["Hosts"]} ({_overview.WindowsServer.Hosts.Count(h => h.Chosen is not null)})")">
+            <MudDataGrid T="HostLicensing" Items="_overview.WindowsServer.Hosts" Dense="true" Hover="true" SortMode="SortMode.Single">
+                <Columns>
+                    <HierarchyColumn T="HostLicensing" />
+                    <TemplateColumn Title="@L["Host"]" SortBy="h => h.Host.Name">
+                        <CellTemplate>
+                            @if (context.Item.Host.ComputerId is { } id)
+                            {
+                                <MudLink Href="@($"computers/{id}")">@context.Item.Host.Name</MudLink>
+                            }
+                            else
+                            {
+                                @context.Item.Host.Name
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="@L["Cluster"]" SortBy="h => h.Host.Cluster"><CellTemplate>@context.Item.Host.Cluster</CellTemplate></TemplateColumn>
+                    <TemplateColumn Title="@L["Source"]" SortBy="h => h.Host.Source"><CellTemplate>@SourceName(context.Item.Host.Source)</CellTemplate></TemplateColumn>
+                    <TemplateColumn Title="@L["Licensed cores"]" SortBy="h => h.LicensedCores" CellStyle="text-align: right"><CellTemplate>@context.Item.LicensedCores</CellTemplate></TemplateColumn>
+                    <TemplateColumn Title="@L["Windows Server VMs"]" SortBy="h => h.WindowsVms" CellStyle="text-align: right"><CellTemplate>@context.Item.WindowsVms</CellTemplate></TemplateColumn>
+                    <TemplateColumn Title="@L["Licensed with"]" SortBy="h => h.Chosen == null ? null : h.Chosen.Product">
+                        <CellTemplate>
+                            @if (context.Item.Chosen is { } chosen)
+                            {
+                                <span>@ProductName(chosen.Product): @L["{0} cores", chosen.Cores]</span>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@(context.Item.LicensedCores == 0 && context.Item.WindowsVms == 0 ? L["no Windows Server"] : L["not calculable"])</MudText>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <ChildRowContent>
+                    <div class="pa-2">
+                        @if (context.Item.Variants.Count > 0)
+                        {
+                            <MudSimpleTable Dense="true" Elevation="0" Class="mb-2">
+                                <thead><tr><th>@L["Variant"]</th><th style="text-align: right">@L["Cores"]</th><th style="text-align: right">@L["Cost"]</th><th></th></tr></thead>
+                                <tbody>
+                                    @foreach (var variant in context.Item.Variants)
+                                    {
+                                        <tr style="@(variant == context.Item.Chosen ? "font-weight: 600" : "")">
+                                            <td>@ProductName(variant.Product)</td>
+                                            <td style="text-align: right">@variant.Cores</td>
+                                            <td style="text-align: right">@variant.Cost.ToString("N0")</td>
+                                            <td>@(variant == context.Item.Chosen ? L["chosen"] : variant.Reason is { } reason ? Note(reason) : "")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        }
+                        @foreach (var note in context.Item.Notes)
+                        {
+                            <MudText Typo="Typo.body2" Class="mb-1">@Note(note)</MudText>
+                        }
+                        @if (context.Item.Host.VirtualMachines.Count > 0)
+                        {
+                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["Virtual machines"]</MudText>
+                            <MudText Typo="Typo.body2">
+                                @string.Join(", ", context.Item.Host.VirtualMachines.Select(v => v.Name + (v.Running ? "" : " (" + L["off"] + ")") + (v.WindowsServer == false ? " – " + L["no Windows Server"] : v.WindowsServer is null ? " – ?" : "")))
+                            </MudText>
+                        }
+                    </div>
+                </ChildRowContent>
+                <NoRecordsContent>
+                    <MudText Class="pa-4">@L["No servers found. Scan the servers with the current runner and set up the vCenter if you use VMware."]</MudText>
+                </NoRecordsContent>
+            </MudDataGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="@($"{L["Stock"]} ({_entitlements.Count})")">
+            <AdminOnly>
+                <MudStack Row="true" Spacing="2" Class="mb-2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditAsync(null))">@L["Add"]</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" OnClick="ImportAsync">@L["Import (CSV)"]</MudButton>
+                </MudStack>
+            </AdminOnly>
+            <MudDataGrid T="LicenseEntitlement" Items="_entitlements" Dense="true" Hover="true" SortMode="SortMode.Single">
+                <Columns>
+                    <TemplateColumn Title="@L["Product"]" SortBy="e => e.Product"><CellTemplate>@ProductName(context.Item.Product)</CellTemplate></TemplateColumn>
+                    <PropertyColumn Property="e => e.Quantity" Title="@L["Quantity"]" CellStyle="text-align: right" />
+                    <PropertyColumn Property="e => e.Version" Title="@L["Version"]" />
+                    <TemplateColumn Title="@L["SA until"]" SortBy="e => e.SoftwareAssuranceUntil">
+                        <CellTemplate>
+                            @if (context.Item.SoftwareAssuranceUntil is { } until)
+                            {
+                                <MudText Typo="Typo.body2" Color="@(until < DateOnly.FromDateTime(DateTime.Today) ? Color.Error : Color.Default)">@until.ToString("d")</MudText>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="e => e.ContractNumber" Title="@L["Contract"]" />
+                    <PropertyColumn Property="e => e.Notes" Title="@L["Notes"]" Sortable="false" />
+                    <TemplateColumn CellStyle="width: 1%; white-space: nowrap" Sortable="false">
+                        <CellTemplate>
+                            <AdminOnly>
+                                <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" /></MudTooltip>
+                                <MudTooltip Text="@L["Delete"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item))" /></MudTooltip>
+                            </AdminOnly>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <NoRecordsContent>
+                    <MudText Class="pa-4">@L["No licences recorded yet. Add them by hand or import the export of your licensing portal or reseller."]</MudText>
+                </NoRecordsContent>
+            </MudDataGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="@($"{L["Data gaps"]} ({_overview.Gaps.Count})")">
+            @if (_overview.Gaps.Count == 0)
+            {
+                <MudText Typo="Typo.body2">@L["No gaps: every server and virtual machine could be placed."]</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="mb-2">@L["These are not estimated. Close them – scan the servers with the current runner, set up the vCenter – and the need becomes complete."]</MudText>
+                @foreach (var gap in _overview.Gaps)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-1">• @Note(gap)</MudText>
+                }
+            }
+        </MudTabPanel>
+
+        <AdminOnly>
+            <MudTabPanel Text="@L["Prices and rules"]">
+                <MudStack Spacing="3" Style="max-width: 640px">
+                    <MudText Typo="Typo.body2">@L["Prices per 2-core pack decide which variant is cheaper. Empty = the list price from the rules file is used as a reference."]</MudText>
+                    @foreach (var product in new[] { MicrosoftRules.WindowsServerStandard, MicrosoftRules.WindowsServerDatacenter, MicrosoftRules.WindowsServerPerVm })
+                    {
+                        var key = product;
+                        <MudNumericField T="decimal?" Value="_prices.GetValueOrDefault(key)" ValueChanged="@(v => _prices[key] = v)" Label="@ProductName(key)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                         Min="0" HideSpinButtons="true" Clearable="true" Placeholder="@(Service.Rules.Product(key)?.ListPricePerPack?.ToString("N0") ?? "")" />
+                    }
+                    <MudSwitch T="bool" @bind-Value="_clusterWide" Color="Color.Primary" Label="@L["License every cluster host for all Windows Server VMs of its cluster"]" />
+                    <MudText Typo="Typo.caption">@L["Windows Server licences may move to another host only every 90 days; VMs that migrate freely within a cluster therefore need licences on every host. Switch off only if VMs are bound to their host."]</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="width: fit-content" OnClick="SaveSettingsAsync">@L["Save"]</MudButton>
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["Rules: {0}", _overview.Rules.Source]</MudText>
+                </MudStack>
+            </MudTabPanel>
+        </AdminOnly>
+    </MudTabs>
+}
+
+@code {
+    private LicensingOverview? _overview;
+    private List<LicenseEntitlement> _entitlements = [];
+    private Dictionary<string, decimal?> _prices = [];
+    private bool _clusterWide = true;
+    private int _tab;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settings = await Service.GetSettingsAsync();
+        _prices = settings.Prices.ToDictionary(p => p.Key, p => (decimal?)p.Value);
+        _clusterWide = settings.ClusterWide;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _entitlements = await Service.EntitlementsAsync();
+        _overview = await Service.CalculateAsync();
+    }
+
+    private string ProductName(string key) => L[Service.Rules.Product(key)?.Name ?? key];
+
+    private string Note(LicensingNote note) => L[note.Text, note.Args];
+
+    private string SourceName(string source) => source switch
+    {
+        "physical" => L["physical server"],
+        _ => source,
+    };
+
+    private async Task EditAsync(LicenseEntitlement? entitlement)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var dialog = await Dialogs.ShowAsync<EditEntitlementDialog>(entitlement is null ? L["Add licences"] : L["Edit licences"],
+            new DialogParameters<EditEntitlementDialog> { { d => d.Entitlement, entitlement } }, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    private async Task ImportAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var dialog = await Dialogs.ShowAsync<ImportEntitlementsDialog>(L["Import licence stock"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium });
+        if (await dialog.Result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    private async Task DeleteAsync(LicenseEntitlement entitlement)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (await Dialogs.ShowMessageBoxAsync(L["Delete"], L["Delete {0} × {1}?", entitlement.Quantity, ProductName(entitlement.Product)], yesText: L["Delete"], cancelText: L["Cancel"]) != true)
+            return;
+        await Service.DeleteEntitlementAsync(entitlement.Id);
+        await Audit.LogAsync(L["Licence stock deleted"], $"{entitlement.Product}: {entitlement.Quantity}");
+        await LoadAsync();
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await Service.SaveSettingsAsync(_prices, _clusterWide);
+        await Audit.LogAsync(L["Setting changed"], L["Licensing: prices {0}, cluster-wide {1}", string.Join(", ", _prices.Where(p => p.Value is not null).Select(p => $"{p.Key}={p.Value}")), Display.OnOff(_clusterWide)]);
+        Snackbar.Add(L["Saved."], Severity.Success);
+        await LoadAsync();
+    }
+}

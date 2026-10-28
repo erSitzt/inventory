@@ -25,6 +25,7 @@ public class HelpTopicsTests
     [InlineData("schedules", "Schedules")]
     [InlineData("software", "Software")]
     [InlineData("licenses", "Licences")]
+    [InlineData("licensing", "Microsoft licensing")]
     [InlineData("updates", "Updates")]
     [InlineData("changes", "Changes")]
     [InlineData("reports/4", "Reports")]
