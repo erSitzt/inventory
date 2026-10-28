@@ -66,6 +66,7 @@ if (options.ResolveSimulate())
     builder.Services.AddSingleton<IRemoteTransport>(new SimulatedTransport(TransportKind.WinRm));
     builder.Services.AddSingleton<IDirectorySource, SimulatedDirectorySource>();
     builder.Services.AddSingleton<IDeviceProbe, SimulatedDeviceProbe>();
+    builder.Services.AddSingleton<IHypervisorSource, SimulatedHypervisorSource>();
     var framework = new SimulatedFrameworkInstaller();
     builder.Services.AddSingleton<IFrameworkInstaller>(framework);
     builder.Services.AddSingleton<IFrameworkSource>(framework);
@@ -76,6 +77,7 @@ else
     builder.Services.AddSingleton<IWakeSender, UdpWakeSender>();
     builder.Services.AddSingleton<IDirectorySource, LdapDirectorySource>();
     builder.Services.AddSingleton<IDeviceProbe, Inventory.Remoting.Devices.DeviceProbe>();
+    builder.Services.AddSingleton<IHypervisorSource>(new VCenterSource());
     if (OperatingSystem.IsWindows())
     {
         builder.Services.AddSingleton<SmbServiceTransport>();
@@ -104,6 +106,8 @@ builder.Services.AddSingleton<WakeService>();
 builder.Services.AddSingleton<DeploymentService>();
 builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddSingleton<AdSyncService>();
+builder.Services.AddSingleton<VCenterSyncService>();
+builder.Services.AddSingleton<VirtualizationService>();
 builder.Services.AddSingleton<HeartbeatService>();
 builder.Services.AddSingleton<ReportService>();
 builder.Services.AddSingleton<SavedReportService>();

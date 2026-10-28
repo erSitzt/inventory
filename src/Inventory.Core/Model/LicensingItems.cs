@@ -39,6 +39,42 @@ public class HostedVirtualMachine
     public int? GuestComputerId { get; set; }
 }
 
+/// <summary>Physischer Host aus einer Virtualisierungsverwaltung (vCenter); kein inventarisierter Rechner.</summary>
+public class HypervisorHost
+{
+    public int Id { get; set; }
+    /// <summary>Kennung in der Verwaltung, z. B. host-42.</summary>
+    public required string ExternalId { get; set; }
+    public required string Name { get; set; }
+    public string? Cluster { get; set; }
+    public int? CpuSockets { get; set; }
+    /// <summary>Physische Kerne insgesamt.</summary>
+    public int? CpuCores { get; set; }
+    public string? Model { get; set; }
+    public bool Connected { get; set; }
+    public DateTime SeenUtc { get; set; }
+    public List<HypervisorVm> VirtualMachines { get; set; } = [];
+}
+
+/// <summary>Virtuelle Maschine aus einer Virtualisierungsverwaltung (vCenter).</summary>
+public class HypervisorVm
+{
+    public int Id { get; set; }
+    public required string ExternalId { get; set; }
+    public required string Name { get; set; }
+    /// <summary>Normalisiert wie <see cref="Computer.BiosUuid"/>.</summary>
+    public string? BiosUuid { get; set; }
+    public int? VirtualCpus { get; set; }
+    /// <summary>Der Host, auf dem die VM gerade läuft bzw. registriert ist.</summary>
+    public int? HostId { get; set; }
+    public bool PoweredOn { get; set; }
+    public string? GuestHostName { get; set; }
+    public string? GuestOs { get; set; }
+    /// <summary>Der inventarisierte Rechner, der diese VM ist; null = nicht inventarisiert oder nicht zugeordnet.</summary>
+    public int? GuestComputerId { get; set; }
+    public DateTime SeenUtc { get; set; }
+}
+
 /// <summary>Woran der Host einer VM erkannt wurde.</summary>
 public static class HostSources
 {
@@ -46,6 +82,10 @@ public static class HostSources
     public const string BiosUuid = "uuid";
     /// <summary>Die Gastdienste nennen den Host, und ein Rechner dieses Namens ist inventarisiert.</summary>
     public const string GuestReport = "guest";
+    /// <summary>Das vCenter führt eine VM mit derselben BIOS-UUID.</summary>
+    public const string VCenter = "vcenter";
+    /// <summary>Das vCenter führt eine VM, deren Gastname zum Rechner passt (ohne UUID-Treffer).</summary>
+    public const string VCenterName = "vcenter-name";
 }
 
 /// <summary>Die Serverrollen, auf die es bei der Lizenzierung ankommt (IDs aus Win32_ServerFeature).</summary>

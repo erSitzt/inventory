@@ -3,6 +3,7 @@
 @using Microsoft.Extensions.Options
 @inject SettingsService SettingsService
 @inject AdSyncService AdSync
+@inject VCenterSyncService VCenter
 @inject HeartbeatService Heartbeat
 @inject MaintenanceService Maintenance
 @inject AgentService Agents
@@ -195,6 +196,40 @@
         @if (_adLastResult is not null)
         {
             <MudText Typo="Typo.caption">@L["Last run {0}: {1}", Display.LocalTime(_adLastRunUtc), _adLastResult]</MudText>
+        }
+    </MudStack>
+</MudPaper>
+
+<MudPaper id="vcenter" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">VMware vCenter</MudText>
+        <MudText Typo="Typo.body2">
+            @L["Reads hosts, clusters and virtual machines from the vCenter, read-only, and matches the virtual machines to the inventoried computers. The licence calculation needs this for virtual machines on VMware."]
+        </MudText>
+        <MudSwitch T="bool" @bind-Value="_vcEnabled" Color="Color.Primary" Label="@L["Synchronize regularly"]" />
+        <MudTextField @bind-Value="_vcUrl" Label="@L["vCenter address"]" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="https://vcenter.corp.example" />
+        <MudSelect T="int?" @bind-Value="_vcCredentialId" Label="@L["Credentials"]" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                   HelperText="@L["A vCenter account with read-only rights is enough, e.g. user@vsphere.local or DOMAIN\\user."]">
+            @foreach (var credential in _credentials)
+            {
+                <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="_vcThumbprint" Label="@L["Certificate thumbprint (SHA-256)"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      HelperText="@L["Only for a certificate Windows does not trust (self-signed). The error message of a failed run shows the thumbprint of the certificate offered."]" />
+        <MudNumericField T="int" @bind-Value="_vcIntervalHours" Label="@L["Interval (hours)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="168" />
+        <MudStack Row="true" Wrap="Wrap.Wrap">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveVCenterAsync">@L["Save"]</MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_vcBusy" OnClick="SyncVCenterAsync">@L["Synchronize now"]</MudButton>
+            <MudButton Variant="Variant.Text" Href="virtualization">@L["Show hosts and virtual machines"]</MudButton>
+        </MudStack>
+        @if (_vcMessage is not null)
+        {
+            <MudAlert Severity="@_vcSeverity" Dense="true">@_vcMessage</MudAlert>
+        }
+        @if (_vcLastResult is not null)
+        {
+            <MudText Typo="Typo.caption">@L["Last run {0}: {1}", Display.LocalTime(_vcLastRunUtc), _vcLastResult]</MudText>
         }
     </MudStack>
 </MudPaper>
@@ -716,6 +751,76 @@
         }
     }
 
+    private bool _vcEnabled;
+    private string? _vcUrl;
+    private int? _vcCredentialId;
+    private string? _vcThumbprint;
+    private int _vcIntervalHours = VCenterSyncService.DefaultIntervalHours;
+    private DateTime? _vcLastRunUtc;
+    private string? _vcLastResult;
+    private string? _vcMessage;
+    private Severity _vcSeverity;
+    private bool _vcBusy;
+
+    private async Task LoadVCenterAsync()
+    {
+        var vc = await VCenter.GetSettingsAsync();
+        (_vcEnabled, _vcUrl, _vcCredentialId, _vcThumbprint, _vcIntervalHours, _vcLastRunUtc, _vcLastResult) =
+            (vc.Enabled, vc.Url, vc.CredentialId, vc.Thumbprint, vc.IntervalHours, vc.LastRunUtc, vc.LastResult);
+    }
+
+    /// <returns>false, wenn die Eingaben ungültig sind; die Meldung steht dann unter dem Abschnitt.</returns>
+    private async Task<bool> StoreVCenterAsync()
+    {
+        try
+        {
+            await VCenter.SaveSettingsAsync(_vcEnabled, _vcUrl, _vcCredentialId, _vcThumbprint, _vcIntervalHours);
+            return true;
+        }
+        catch (ArgumentException ex)
+        {
+            (_vcMessage, _vcSeverity) = (ex.Message, Severity.Error);
+            return false;
+        }
+    }
+
+    private async Task SaveVCenterAsync()
+    {
+        if (!await Access.DemandAdminAsync() || !await StoreVCenterAsync())
+            return;
+        _vcMessage = null;
+        await Audit.LogAsync(L["Setting changed"], L["vCenter synchronization: {0}, {1}, every {2} h", Display.OnOff(_vcEnabled), _vcUrl ?? "–", _vcIntervalHours]);
+        await LoadVCenterAsync();
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    /// <summary>Speichert zuerst, damit der Abgleich mit den gerade angezeigten Werten läuft.</summary>
+    private async Task SyncVCenterAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _vcBusy = true;
+        _vcMessage = null;
+        try
+        {
+            if (!await StoreVCenterAsync())
+                return;
+            var result = await VCenter.SyncAsync();
+            await Audit.LogAsync(L["vCenter synchronized"], $"{result.Hosts} hosts, {result.VirtualMachines} virtual machines, {result.Matched} matched");
+            (_vcMessage, _vcSeverity) = (L["{0} hosts in {1} clusters, {2} virtual machines, {3} of them matched to inventoried computers.", result.Hosts, result.Clusters, result.VirtualMachines, result.Matched].Value
+                + (result.Version is null ? "" : $" ({result.Version})"), Severity.Success);
+        }
+        catch (Inventory.Core.Abstractions.RemoteException ex)
+        {
+            (_vcMessage, _vcSeverity) = (ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _vcBusy = false;
+            await LoadVCenterAsync();
+        }
+    }
+
     private TransportKind _transport;
     private AgentlessPolicy _agentless;
 
@@ -810,6 +915,7 @@
         _auditDays = await SettingsService.GetAuditRetentionDaysAsync();
         _deploymentDays = await SettingsService.GetDeploymentRetentionDaysAsync();
         await LoadAdAsync();
+        await LoadVCenterAsync();
         await LoadHeartbeatAsync();
         await LoadUpdateAsync();
         await LoadReportBrandingAsync();

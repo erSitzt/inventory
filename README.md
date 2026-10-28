@@ -16,7 +16,7 @@ Every feature below comes with a picture of the page that belongs to it. The pic
 - [Overview and trends](#overview-and-trends) · [Computer list](#computer-list) ·
   [Inventory per computer](#inventory-per-computer) · [Security and configuration](#security-and-configuration) ·
   [Updates and patch status](#updates-and-patch-status) · [Software and apps](#software-and-apps) ·
-  [Change history](#change-history) · [Network devices](#network-devices) · [Network map](#network-map)
+  [Change history](#change-history) · [Network devices](#network-devices) · [Network map](#network-map) · [Virtualization](#virtualization-and-vcenter)
 - [Collections and maintenance windows](#collections-and-maintenance-windows) · [Packages and steps](#packages-and-steps) ·
   [Detection, prerequisites and user notice](#detection-prerequisites-and-user-notice) ·
   [Ready-made packages](#ready-made-packages)
@@ -176,6 +176,16 @@ organisation (CIDR of any size or `192.168.10.x`, e.g. the company network and t
 those; the home networks of notebooks are only counted under "Home and other networks", and traceroute and the gateway
 check stay inside these networks. A gateway that serves several subnets is simply called "Gateway"; operators can name it with a click. The diagram uses [Cytoscape.js](https://js.cytoscape.org/) (MIT licence), which
 ships with the server.
+
+### Virtualization and vCenter
+
+The page *Virtualization* lists the physical hosts with their virtual machines, grouped by cluster: Hyper-V hosts from
+the inventory scan and ESXi hosts from a VMware **vCenter**. For the vCenter, enter its address and a read-only account
+under *Settings*; the server reads hosts (sockets, physical cores, model, cluster) and virtual machines (BIOS UUID,
+vCPUs, power state, guest name) through the vSphere API on a schedule or on demand and never changes anything there. A
+self-signed certificate is accepted only by its SHA-256 thumbprint, which a failed run shows. Each virtual machine is
+matched to its inventoried computer by the BIOS UUID, otherwise by its name; inventoried virtual machines that no host
+lists are shown separately, because the licence calculation cannot place them.
 
 ### Collections and maintenance windows
 

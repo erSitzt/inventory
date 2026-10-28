@@ -16,7 +16,7 @@ Zu jeder Funktion gehört unten ein Bild der passenden Seite. Die Bilder stammen
 - [Übersicht und Verläufe](#übersicht-und-verläufe) · [Rechnerliste](#rechnerliste) ·
   [Inventar je Rechner](#inventar-je-rechner) · [Sicherheit und Konfiguration](#sicherheit-und-konfiguration) ·
   [Updates und Patch-Stand](#updates-und-patch-stand) · [Software und Apps](#software-und-apps) ·
-  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte) · [Netzwerkkarte](#netzwerkkarte)
+  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte) · [Netzwerkkarte](#netzwerkkarte) · [Virtualisierung](#virtualisierung-und-vcenter)
 - [Sammlungen und Wartungsfenster](#sammlungen-und-wartungsfenster) · [Pakete und Schritte](#pakete-und-schritte) ·
   [Erkennung, Voraussetzungen und Hinweis an den Benutzer](#erkennung-voraussetzungen-und-hinweis-an-den-benutzer) ·
   [Fertige Pakete](#fertige-pakete)
@@ -179,6 +179,17 @@ Unter „Relevante Netze“ legen Administratoren fest, welche Netze zum Unterne
 oder `192.168.10.x`, etwa das Firmennetz und die VPN-Pools). Die Karte zeichnet dann nur diese; die Heimnetze der Notebooks
 zählen gesammelt unter „Heim- und Fremdnetze“, und Traceroute und Gateway-Prüfung bleiben innerhalb dieser Netze. Ein Gateway mehrerer Subnetze heißt einfach „Gateway“; Operatoren können ihm per Klick einen Namen geben.
 Das Diagramm nutzt [Cytoscape.js](https://js.cytoscape.org/) (MIT-Lizenz), das mit dem Server ausgeliefert wird.
+
+### Virtualisierung und vCenter
+
+Die Seite *Virtualisierung* listet die physischen Hosts mit ihren virtuellen Maschinen, nach Cluster sortiert:
+Hyper-V-Hosts aus dem Inventar-Scan und ESXi-Hosts aus einem VMware-**vCenter**. Für das vCenter trägt man unter
+*Einstellungen* dessen Adresse und ein Konto mit Leserechten ein; der Server liest Hosts (Sockel, physische Kerne,
+Modell, Cluster) und virtuelle Maschinen (BIOS-UUID, vCPUs, Betriebszustand, Gastname) über die vSphere-Schnittstelle
+nach Zeitplan oder auf Knopfdruck und ändert dort nichts. Ein selbst signiertes Zertifikat wird nur über seinen
+SHA-256-Fingerabdruck angenommen, den ein fehlgeschlagener Lauf anzeigt. Jede virtuelle Maschine wird über die BIOS-UUID
+ihrem inventarisierten Rechner zugeordnet, sonst über den Namen; inventarisierte VMs, die kein Host führt, stehen
+gesondert, weil die Lizenzberechnung sie keinem Host zuordnen kann.
 
 ### Sammlungen und Wartungsfenster
 

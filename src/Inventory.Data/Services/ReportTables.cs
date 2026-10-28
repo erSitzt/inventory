@@ -68,7 +68,9 @@ public sealed partial class ReportService
                 // Der Host einer VM muss nicht in derselben Sammlung sein.
                 var hostIds = computers.Select(c => c.HostComputerId).OfType<int>().Distinct().ToList();
                 var names = await db.Computers.Where(c => hostIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Name, ct);
-                return Build(ComputerColumns(zone, names), computers, query, limit);
+                var esxIds = computers.Select(c => c.HypervisorHostId).OfType<int>().Distinct().ToList();
+                var esx = await db.HypervisorHosts.Where(h => esxIds.Contains(h.Id)).ToDictionaryAsync(h => h.Id, h => (h.Name, h.Cluster), ct);
+                return Build(ComputerColumns(zone, names, esx), computers, query, limit);
             }
             case ReportSource.Software:
             {
@@ -167,7 +169,8 @@ public sealed partial class ReportService
     private static string? Number(long? value) => value?.ToString(CultureInfo.InvariantCulture);
 
     /// <param name="names">Rechnernamen nach Kennung, für die Spalte Host; ohne sie bleibt sie leer.</param>
-    private List<Column<Computer>> ComputerColumns(TimeZoneInfo zone, IReadOnlyDictionary<int, string>? names = null) =>
+    /// <param name="esx">ESXi-Hosts aus dem vCenter nach Kennung (Name, Cluster).</param>
+    private List<Column<Computer>> ComputerColumns(TimeZoneInfo zone, IReadOnlyDictionary<int, string>? names = null, IReadOnlyDictionary<int, (string Name, string? Cluster)>? esx = null) =>
     [
         new("name", L["Name"], c => c.Name),
         new("reportedName", L["Reported name"], c => c.ReportedName),
@@ -220,8 +223,9 @@ public sealed partial class ReportService
         new("sockets", L["Processor sockets"], c => Number(c.CpuSockets), Numeric: true),
         new("cores", L["Physical cores"], c => Number(c.CpuCores), Numeric: true),
         new("virtual", L["Virtual machine"], c => c.LicensingScanUtc is null && !c.IsVirtual ? null : YesNo(c.IsVirtual)),
-        new("host", L["Host"], c => c.HostComputerId is { } host && names is not null && names.TryGetValue(host, out var name) ? name : c.ReportedHostName),
-        new("cluster", L["Cluster"], c => c.ClusterName),
+        new("host", L["Host"], c => c.HypervisorHostId is { } vc && esx is not null && esx.TryGetValue(vc, out var vcHost) ? vcHost.Name
+            : c.HostComputerId is { } host && names is not null && names.TryGetValue(host, out var name) ? name : c.ReportedHostName),
+        new("cluster", L["Cluster"], c => c.ClusterName ?? (c.HypervisorHostId is { } vc && esx is not null && esx.TryGetValue(vc, out var vcHost) ? vcHost.Cluster : null)),
         new("adOu", L["AD organizational unit"], c => c.DirectoryOu),
         new("adGroups", L["AD groups"], c => string.Join(", ", c.DirectoryGroupNames)),
         new("adDescription", L["AD description"], c => c.DirectoryDescription),

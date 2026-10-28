@@ -31,6 +31,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ComputerServerFeature> ServerFeatures => Set<ComputerServerFeature>();
     public DbSet<ComputerSqlInstance> SqlInstances => Set<ComputerSqlInstance>();
     public DbSet<HostedVirtualMachine> HostedVirtualMachines => Set<HostedVirtualMachine>();
+    public DbSet<HypervisorHost> HypervisorHosts => Set<HypervisorHost>();
+    public DbSet<HypervisorVm> HypervisorVms => Set<HypervisorVm>();
     public DbSet<InventoryChange> InventoryChanges => Set<InventoryChange>();
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
@@ -80,6 +82,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             // Verschwindet der Host aus dem Inventar, ist die VM nur nicht mehr zugeordnet.
             e.HasOne<Computer>().WithMany().HasForeignKey(c => c.HostComputerId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(c => c.BiosUuid);
+            e.HasOne<HypervisorHost>().WithMany().HasForeignKey(c => c.HypervisorHostId).OnDelete(DeleteBehavior.SetNull);
             e.HasMany<InventoryChange>().WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -87,6 +90,19 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         {
             e.Property(s => s.Name).UseCollation("NOCASE");
             e.HasIndex(s => s.Name);
+        });
+
+        modelBuilder.Entity<HypervisorHost>(e =>
+        {
+            e.HasIndex(h => h.ExternalId).IsUnique();
+            // Verschwindet ein Host, bleiben seine VMs bis zum nächsten Abgleich ohne Host.
+            e.HasMany(h => h.VirtualMachines).WithOne().HasForeignKey(v => v.HostId).OnDelete(DeleteBehavior.SetNull);
+        });
+        modelBuilder.Entity<HypervisorVm>(e =>
+        {
+            e.HasIndex(v => v.ExternalId).IsUnique();
+            e.HasIndex(v => v.BiosUuid);
+            e.HasOne<Computer>().WithMany().HasForeignKey(v => v.GuestComputerId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<HostedVirtualMachine>(e =>

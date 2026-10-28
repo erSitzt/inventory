@@ -375,6 +375,9 @@ namespace Inventory.Data.Migrations
                     b.Property<bool?>("HyperVGuest")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("HypervisorHostId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool?>("HypervisorPresent")
                         .HasColumnType("INTEGER");
 
@@ -565,6 +568,8 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("CredentialId");
 
                     b.HasIndex("HostComputerId");
+
+                    b.HasIndex("HypervisorHostId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -1453,6 +1458,98 @@ namespace Inventory.Data.Migrations
                     b.ToTable("HostedVirtualMachines");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.HypervisorHost", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Cluster")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Connected")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CpuCores")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CpuSockets")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("HypervisorHosts");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.HypervisorVm", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BiosUuid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("GuestComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("GuestHostName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GuestOs")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("HostId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("PoweredOn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("SeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("VirtualCpus")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BiosUuid");
+
+                    b.HasIndex("ExternalId")
+                        .IsUnique();
+
+                    b.HasIndex("GuestComputerId");
+
+                    b.HasIndex("HostId");
+
+                    b.ToTable("HypervisorVms");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>
                 {
                     b.Property<long>("Id")
@@ -2131,6 +2228,11 @@ namespace Inventory.Data.Migrations
                         .HasForeignKey("HostComputerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Inventory.Core.Model.HypervisorHost", null)
+                        .WithMany()
+                        .HasForeignKey("HypervisorHostId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Credential");
                 });
 
@@ -2346,6 +2448,19 @@ namespace Inventory.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.HypervisorVm", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany()
+                        .HasForeignKey("GuestComputerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Inventory.Core.Model.HypervisorHost", null)
+                        .WithMany("VirtualMachines")
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.InventoryChange", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -2506,6 +2621,11 @@ namespace Inventory.Data.Migrations
             modelBuilder.Entity("Inventory.Core.Model.Deployment", b =>
                 {
                     b.Navigation("Targets");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.HypervisorHost", b =>
+                {
+                    b.Navigation("VirtualMachines");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.NetworkDevice", b =>

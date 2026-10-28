@@ -226,6 +226,8 @@ public class Computer
     public string? ClusterName { get; set; }
     /// <summary>Der Host, auf dem diese VM läuft; null = keine VM oder Host nicht gefunden.</summary>
     public int? HostComputerId { get; set; }
+    /// <summary>Der Host aus dem vCenter, auf dem diese VM läuft; null = keine VMware-VM oder nicht zugeordnet.</summary>
+    public int? HypervisorHostId { get; set; }
     /// <summary>Woran der Host erkannt wurde, siehe <see cref="HostSources"/>.</summary>
     public string? HostSource { get; set; }
 

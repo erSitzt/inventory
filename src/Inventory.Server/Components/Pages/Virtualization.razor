@@ -1,0 +1,154 @@
+@page "/virtualization"
+@inject VirtualizationService Hosts
+@inject VCenterSyncService VCenter
+@inject Auditor Audit
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
+@inject Access Access
+
+<PageTitle>@L["Virtualization"] – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">@L["Virtualization"]</MudText>
+    <MudSpacer />
+    <AdminOnly>
+        @if (_settings?.Url is not null)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Sync" Disabled="_busy" OnClick="SyncAsync">@L["Synchronize vCenter"]</MudButton>
+        }
+        <MudButton Variant="Variant.Text" Href="settings#vcenter">@L["Settings"]</MudButton>
+    </AdminOnly>
+</MudStack>
+
+<MudText Typo="Typo.body2" Class="mb-2">
+    @L["Physical hosts with their virtual machines: Hyper-V hosts from the inventory scan, ESXi hosts from the vCenter. Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name."]
+</MudText>
+@if (_settings?.LastResult is { } last)
+{
+    <MudText Typo="Typo.caption" Class="d-block mb-3" Style="color: var(--mud-palette-text-secondary)">vCenter: @L["Last run {0}: {1}", Display.LocalTime(_settings.LastRunUtc), last]</MudText>
+}
+
+<MudStack Row="true" Spacing="2" Class="mb-3" Wrap="Wrap.Wrap">
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Hosts"]: @_hosts.Count</MudChip>
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Clusters"]: @_hosts.Select(h => h.Cluster).Where(c => c is not null).Distinct(StringComparer.OrdinalIgnoreCase).Count()</MudChip>
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Virtual machines"]: @_hosts.Sum(h => h.VirtualMachines.Count)</MudChip>
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success">@L["Inventoried"]: @_hosts.Sum(h => h.VirtualMachines.Count(v => v.GuestComputerId is not null))</MudChip>
+    @if (_withoutHost.Count > 0)
+    {
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">@L["Inventoried VMs without a known host"]: @_withoutHost.Count</MudChip>
+    }
+</MudStack>
+
+<MudDataGrid T="VirtualHostView" Items="_hosts" Dense="true" Hover="true" SortMode="SortMode.Single" Groupable="false">
+    <Columns>
+        <HierarchyColumn T="VirtualHostView" />
+        <TemplateColumn Title="@L["Host"]" SortBy="h => h.Name">
+            <CellTemplate>
+                @if (context.Item.ComputerId is { } computerId)
+                {
+                    <MudLink Href="@($"computers/{computerId}")">@context.Item.Name</MudLink>
+                }
+                else
+                {
+                    @context.Item.Name
+                }
+                <MudText Typo="Typo.caption" Class="d-block" Style="color: var(--mud-palette-text-secondary)">@context.Item.Model</MudText>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="h => h.Cluster" Title="@L["Cluster"]" />
+        <TemplateColumn Title="@L["Source"]" SortBy="h => h.Source">
+            <CellTemplate>@(context.Item.Source == VirtualHostSource.VCenter ? "vCenter" : "Hyper-V")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Sockets / cores"]" SortBy="h => h.CpuCores ?? 0" CellStyle="text-align: right">
+            <CellTemplate>@(context.Item.CpuSockets is null && context.Item.CpuCores is null ? "–" : $"{context.Item.CpuSockets?.ToString() ?? "?"} / {context.Item.CpuCores?.ToString() ?? "?"}")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Virtual machines"]" SortBy="h => h.VirtualMachines.Count" CellStyle="text-align: right">
+            <CellTemplate>@context.Item.VirtualMachines.Count</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@L["Inventoried"]" SortBy="h => h.VirtualMachines.Count(v => v.GuestComputerId is not null)" CellStyle="text-align: right">
+            <CellTemplate>@context.Item.VirtualMachines.Count(v => v.GuestComputerId is not null)</CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <ChildRowContent>
+        <MudSimpleTable Dense="true" Elevation="0">
+            <thead><tr><th>@L["Name"]</th><th>@L["Virtual processors"]</th><th>@L["State"]</th><th>@L["Guest operating system"]</th><th>@L["Inventoried as"]</th></tr></thead>
+            <tbody>
+                @foreach (var vm in context.Item.VirtualMachines)
+                {
+                    <tr>
+                        <td>@vm.Name</td>
+                        <td>@vm.VirtualCpus</td>
+                        <td>@(vm.Running switch { true => L["running"], false => L["off"], null => "–" })</td>
+                        <td>@vm.GuestOs</td>
+                        <td>
+                            @if (vm.GuestComputerId is { } guestId)
+                            {
+                                <MudLink Href="@($"computers/{guestId}")">@vm.GuestName</MudLink>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not inventoried"]</MudText>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </ChildRowContent>
+    <NoRecordsContent>
+        <MudText Class="pa-4">@L["No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware, set up the vCenter under Settings."]</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@if (_withoutHost.Count > 0)
+{
+    <MudText Typo="Typo.h6" Class="mt-6 mb-1">@L["Inventoried VMs without a known host"]</MudText>
+    <MudText Typo="Typo.body2" Class="mb-2">
+        @L["These computers are virtual machines, but neither a Hyper-V host nor the vCenter lists them. The licence calculation cannot place them on a host."]
+    </MudText>
+    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+        @foreach (var computer in _withoutHost)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Href="@($"computers/{computer.Id}")">@computer.Name</MudChip>
+        }
+    </MudStack>
+}
+
+@code {
+    private List<VirtualHostView> _hosts = [];
+    private List<Computer> _withoutHost = [];
+    private VCenterSettings? _settings;
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _hosts = await Hosts.HostsAsync();
+        _withoutHost = await Hosts.GuestsWithoutHostAsync();
+        _settings = await VCenter.GetSettingsAsync();
+    }
+
+    private async Task SyncAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _busy = true;
+        try
+        {
+            var result = await VCenter.SyncAsync();
+            await Audit.LogAsync(L["vCenter synchronized"], $"{result.Hosts} hosts, {result.VirtualMachines} virtual machines, {result.Matched} matched");
+            Snackbar.Add(L["{0} hosts in {1} clusters, {2} virtual machines, {3} of them matched to inventoried computers.", result.Hosts, result.Clusters, result.VirtualMachines, result.Matched], Severity.Success);
+        }
+        catch (Inventory.Core.Abstractions.RemoteException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+            await LoadAsync();
+        }
+    }
+}
