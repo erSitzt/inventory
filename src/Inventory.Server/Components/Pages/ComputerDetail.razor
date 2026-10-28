@@ -12,6 +12,7 @@
 @inject Display Display
 @inject Access Access
 @inject UpdateInstaller Updates
+@inject VirtualizationService Virtualization
 
 <PageTitle>@(_computer?.Name ?? L["Computer"]) – Inventory</PageTitle>
 
@@ -385,7 +386,12 @@ else if (_computer.ReverseDnsMismatch)
                                 <tr>
                                     <td style="width: 40%; color: var(--mud-palette-text-secondary)">@L["Runs on host"]</td>
                                     <td>
-                                        @if (_computer.HostComputerId is { } hostId && _names.TryGetValue(hostId, out var hostName))
+                                        @if (_hypervisorHost is { } esx)
+                                        {
+                                            <MudLink Href="virtualization">@esx.Name</MudLink>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.VCenterName ? L["vCenter, matched by name"] : L["vCenter, matched by BIOS UUID"])</MudText>
+                                        }
+                                        else if (_computer.HostComputerId is { } hostId && _names.TryGetValue(hostId, out var hostName))
                                         {
                                             <MudLink Href="@($"computers/{hostId}")">@hostName</MudLink>
                                             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.BiosUuid ? L["matched by BIOS UUID"] : L["reported by the guest"])</MudText>
@@ -397,7 +403,7 @@ else if (_computer.ReverseDnsMismatch)
                                     </td>
                                 </tr>
                             }
-                            @Row(L["Cluster"], _computer.ClusterName)
+                            @Row(L["Cluster"], _computer.ClusterName ?? _hypervisorHost?.Cluster)
                             @Row("BIOS UUID", _computer.BiosUuid)
                         </tbody>
                     </MudSimpleTable>
@@ -731,12 +737,15 @@ else if (_computer.ReverseDnsMismatch)
     /// <summary>Namen von Host und Gästen für die Verweise im Reiter Lizenzierung.</summary>
     private Dictionary<int, string> _names = [];
     private List<Computer> _guests = [];
+    /// <summary>Der ESXi-Host aus dem vCenter, wenn der Rechner eine VMware-VM ist.</summary>
+    private HypervisorHost? _hypervisorHost;
 
     private async Task LoadLinksAsync()
     {
         if (_computer is null)
             return;
         _guests = await ComputerService.GuestsAsync(_computer.Id);
+        _hypervisorHost = _computer.HypervisorHostId is { } esx ? await Virtualization.HypervisorHostAsync(esx) : null;
         var ids = _computer.VirtualMachines.Select(v => v.GuestComputerId).OfType<int>().Concat(_guests.Select(g => g.Id)).ToList();
         if (_computer.HostComputerId is { } host)
             ids.Add(host);

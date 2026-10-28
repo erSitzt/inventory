@@ -26,6 +26,9 @@
   <data name='"Import" downloads the setup and creates a package with silent switches and detection.' xml:space="preserve">
     <value>„Importieren“ lädt das Setup herunter und legt ein Paket mit stillen Parametern und Erkennung an.</value>
   </data>
+  <data name='"Inventoried VMs without a known host" lists virtual machines no host reports – the licence calculation cannot place them.' xml:space="preserve">
+    <value>„Inventarisierte VMs ohne bekannten Host“ listet virtuelle Maschinen, die kein Host meldet – die Lizenzberechnung kann sie keinem Host zuordnen.</value>
+  </data>
   <data name='"Local System" has full rights on the computer; "Logged-on user" runs in the session of whoever is signed in.' xml:space="preserve">
     <value>„Lokales System“ hat volle Rechte auf dem Rechner; „Angemeldeter Benutzer“ läuft in der Sitzung dessen, der dort angemeldet ist.</value>
   </data>
@@ -247,6 +250,9 @@
   </data>
   <data name="A token has a role and acts with its rights; the secret is shown only once." xml:space="preserve">
     <value>Ein Token hat eine Rolle und handelt mit deren Rechten; das Geheimnis wird nur einmal angezeigt.</value>
+  </data>
+  <data name="A vCenter account with read-only rights is enough, e.g. user@vsphere.local or DOMAIN\user." xml:space="preserve">
+    <value>Ein vCenter-Konto mit Leserechten genügt, z. B. user@vsphere.local oder DOMÄNE\benutzer.</value>
   </data>
   <data name="A Windows computer that is not in the inventory. Add it to the computer list to scan it and deploy software." xml:space="preserve">
     <value>Ein Windows-Rechner, der nicht im Inventar steht. Übernimm ihn in die Rechnerliste, um ihn zu scannen und Software zu verteilen.</value>
@@ -782,6 +788,9 @@
   <data name="Cancelling …" xml:space="preserve">
     <value>Wird abgebrochen …</value>
   </data>
+  <data name="Certificate thumbprint (SHA-256)" xml:space="preserve">
+    <value>Zertifikat-Fingerabdruck (SHA-256)</value>
+  </data>
   <data name="Change" xml:space="preserve">
     <value>Änderung</value>
   </data>
@@ -873,6 +882,9 @@
     <value>schließt {0}</value>
   </data>
   <data name="Cluster" xml:space="preserve">
+    <value>Cluster</value>
+  </data>
+  <data name="Clusters" xml:space="preserve">
     <value>Cluster</value>
   </data>
   <data name="Collapse everything" xml:space="preserve">
@@ -1529,6 +1541,9 @@
   <data name="E.g. contract number, supplier, where the keys are kept." xml:space="preserve">
     <value>Z. B. Vertragsnummer, Lieferant, Ablageort der Schlüssel.</value>
   </data>
+  <data name="Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name; expand a host to see its machines." xml:space="preserve">
+    <value>Jede virtuelle Maschine wird über die BIOS-UUID ihrem inventarisierten Rechner zugeordnet, sonst über den Namen; ein aufgeklappter Host zeigt seine Maschinen.</value>
+  </data>
   <data name="Edit" xml:space="preserve">
     <value>Bearbeiten</value>
   </data>
@@ -1681,6 +1696,9 @@
   </data>
   <data name="failed" xml:space="preserve">
     <value>fehlgeschlagen</value>
+  </data>
+  <data name="Failed: {0}" xml:space="preserve">
+    <value>Fehlgeschlagen: {0}</value>
   </data>
   <data name="Failures allowed (%)" xml:space="preserve">
     <value>Zulässige Fehler (%)</value>
@@ -1886,6 +1904,9 @@
   <data name='Groups of computers – picked by hand or kept up to date by rules such as "Chrome older than 141". Deployments, schedules and reports work on them.' xml:space="preserve">
     <value>Gruppen von Rechnern – von Hand gewählt oder über Regeln wie „Chrome älter als 141“ aktuell gehalten. Deployments, Zeitpläne und Berichte arbeiten mit ihnen.</value>
   </data>
+  <data name="Guest operating system" xml:space="preserve">
+    <value>Gastbetriebssystem</value>
+  </data>
   <data name="Hardware" xml:space="preserve">
     <value>Hardware</value>
   </data>
@@ -1916,6 +1937,9 @@
   <data name="Host" xml:space="preserve">
     <value>Host</value>
   </data>
+  <data name="Hosts" xml:space="preserve">
+    <value>Hosts</value>
+  </data>
   <data name="Hotfix" xml:space="preserve">
     <value>Hotfix</value>
   </data>
@@ -1939,6 +1963,9 @@
   </data>
   <data name="https://… – whoever knows the address can post to the channel, so it is stored encrypted." xml:space="preserve">
     <value>https://… – wer die Adresse kennt, kann in den Kanal schreiben; sie wird deshalb verschlüsselt gespeichert.</value>
+  </data>
+  <data name="Hyper-V hosts appear after their inventory scan; VMware hosts after a vCenter synchronization (Settings, read-only account)." xml:space="preserve">
+    <value>Hyper-V-Hosts erscheinen nach ihrem Inventar-Scan, VMware-Hosts nach einem Abgleich mit dem vCenter (Einstellungen, Konto mit Leserechten).</value>
   </data>
   <data name="Hypervisor" xml:space="preserve">
     <value>Hypervisor</value>
@@ -2096,8 +2123,14 @@
   <data name="Invalid addresses: {0}" xml:space="preserve">
     <value>Ungültige Adressen: {0}</value>
   </data>
+  <data name="Inventoried" xml:space="preserve">
+    <value>Inventarisiert</value>
+  </data>
   <data name="Inventoried as" xml:space="preserve">
     <value>Inventarisiert als</value>
+  </data>
+  <data name="Inventoried VMs without a known host" xml:space="preserve">
+    <value>Inventarisierte VMs ohne bekannten Host</value>
   </data>
   <data name="Inventory is up to date (checked {0}, source: github.com/{1})." xml:space="preserve">
     <value>Inventory ist aktuell (geprüft {0}, Quelle: github.com/{1}).</value>
@@ -2714,6 +2747,9 @@
   <data name="No further match." xml:space="preserve">
     <value>Kein weiterer Treffer.</value>
   </data>
+  <data name="No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware, set up the vCenter under Settings." xml:space="preserve">
+    <value>Noch keine Hosts bekannt. Hyper-V-Hosts erscheinen nach ihrem nächsten Inventar-Scan; für VMware das vCenter unter Einstellungen einrichten.</value>
+  </data>
   <data name='No installed program matches "{0}".' xml:space="preserve">
     <value>Kein installiertes Programm passt auf „{0}“.</value>
   </data>
@@ -3013,6 +3049,9 @@
   </data>
   <data name="Only copied to computers without .NET Framework 4.8 (Windows Server 2012 to 2016, early Windows 10 releases)." xml:space="preserve">
     <value>Wird nur auf Rechner ohne .NET Framework 4.8 kopiert (Windows Server 2012 bis 2016, frühe Windows-10-Stände).</value>
+  </data>
+  <data name="Only for a certificate Windows does not trust (self-signed). The error message of a failed run shows the thumbprint of the certificate offered." xml:space="preserve">
+    <value>Nur für ein Zertifikat, dem Windows nicht vertraut (selbst signiert). Die Fehlermeldung eines fehlgeschlagenen Laufs nennt den Fingerabdruck des angebotenen Zertifikats.</value>
   </data>
   <data name="only if a restart is pending" xml:space="preserve">
     <value>nur wenn ein Neustart aussteht</value>
@@ -3335,6 +3374,12 @@
   <data name="Physical disks" xml:space="preserve">
     <value>Physische Datenträger</value>
   </data>
+  <data name="Physical hosts and their virtual machines, from Hyper-V hosts in the inventory and from the vCenter." xml:space="preserve">
+    <value>Physische Hosts und ihre virtuellen Maschinen, von Hyper-V-Hosts im Inventar und aus dem vCenter.</value>
+  </data>
+  <data name="Physical hosts with their virtual machines: Hyper-V hosts from the inventory scan, ESXi hosts from the vCenter. Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name." xml:space="preserve">
+    <value>Physische Hosts mit ihren virtuellen Maschinen: Hyper-V-Hosts aus dem Inventar-Scan, ESXi-Hosts aus dem vCenter. Jede virtuelle Maschine wird über die BIOS-UUID ihrem inventarisierten Rechner zugeordnet, sonst über den Namen.</value>
+  </data>
   <data name="Pilot group" xml:space="preserve">
     <value>Pilotgruppe</value>
   </data>
@@ -3350,6 +3395,9 @@
   <data name="Please choose a collection." xml:space="preserve">
     <value>Bitte eine Sammlung wählen.</value>
   </data>
+  <data name="Please choose credentials for the vCenter." xml:space="preserve">
+    <value>Bitte Zugangsdaten für das vCenter auswählen.</value>
+  </data>
   <data name="Please choose how to sign in." xml:space="preserve">
     <value>Bitte einen Anmeldeweg wählen.</value>
   </data>
@@ -3358,6 +3406,9 @@
   </data>
   <data name="Please enter the server address for agents under Settings first." xml:space="preserve">
     <value>Bitte zuerst unter Einstellungen die Server-Adresse für Agenten eintragen.</value>
+  </data>
+  <data name="Please enter the vCenter address first." xml:space="preserve">
+    <value>Bitte zuerst die Adresse des vCenters eintragen.</value>
   </data>
   <data name="Please observe the vendor's license terms; the library only refers to the vendor's download." xml:space="preserve">
     <value>Bitte die Lizenzbedingungen des Herstellers beachten; die Bibliothek verweist nur auf dessen Download.</value>
@@ -3514,6 +3565,9 @@
   </data>
   <data name="Re-captures the computer's hardware and software, e.g. after an installation." xml:space="preserve">
     <value>Erfasst Hard- und Software des Rechners neu, z. B. nach einer Installation.</value>
+  </data>
+  <data name="Reads hosts, clusters and virtual machines from the vCenter, read-only, and matches the virtual machines to the inventoried computers. The licence calculation needs this for virtual machines on VMware." xml:space="preserve">
+    <value>Liest Hosts, Cluster und virtuelle Maschinen aus dem vCenter, nur lesend, und ordnet die virtuellen Maschinen den inventarisierten Rechnern zu. Die Lizenzberechnung braucht das für virtuelle Maschinen auf VMware.</value>
   </data>
   <data name="ready" xml:space="preserve">
     <value>bereit</value>
@@ -4265,6 +4319,9 @@
   <data name="Show computers individually" xml:space="preserve">
     <value>Rechner einzeln zeigen</value>
   </data>
+  <data name="Show hosts and virtual machines" xml:space="preserve">
+    <value>Hosts und virtuelle Maschinen anzeigen</value>
+  </data>
   <data name="Show on the map" xml:space="preserve">
     <value>In der Netzwerkkarte zeigen</value>
   </data>
@@ -4360,6 +4417,9 @@
   </data>
   <data name="So that Remote Assistance, shadowing and Remote Desktop open with one click, your PC needs the launcher once: download it, put it in a fixed place (e.g. C:\Tools) and double-click it once. It registers itself for your user account as the handler for inventory:// links; admin rights are not needed. On the first click the browser asks whether it may open the launcher." xml:space="preserve">
     <value>Damit sich Remoteunterstützung, Spiegelung und Remotedesktop per Klick öffnen, braucht dein PC einmalig den Starter: herunterladen, an einem festen Ort ablegen (z. B. C:\Tools) und einmal doppelklicken. Er trägt sich für dein Benutzerkonto als Ziel für inventory://-Links ein; Adminrechte sind dafür nicht nötig. Beim ersten Klick fragt der Browser, ob er den Starter öffnen darf.</value>
+  </data>
+  <data name="Sockets / cores" xml:space="preserve">
+    <value>Sockel / Kerne</value>
   </data>
   <data name="Sockets × cores" xml:space="preserve">
     <value>Sockel × Kerne</value>
@@ -4534,6 +4594,9 @@
   </data>
   <data name="Synchronize regularly" xml:space="preserve">
     <value>Regelmäßig synchronisieren</value>
+  </data>
+  <data name="Synchronize vCenter" xml:space="preserve">
+    <value>vCenter abgleichen</value>
   </data>
   <data name="System" xml:space="preserve">
     <value>System</value>
@@ -4886,6 +4949,9 @@
   <data name="The value for an allow rule by file hash in your endpoint protection. It changes with every server update." xml:space="preserve">
     <value>Der Wert für eine Freigabe per Datei-Hash in Ihrem Endpoint-Schutz. Er ändert sich mit jedem Server-Update.</value>
   </data>
+  <data name="The vCenter address must start with https://." xml:space="preserve">
+    <value>Die Adresse des vCenters muss mit https:// beginnen.</value>
+  </data>
   <data name="The wake-up could not be sent: the server has no way into the network and no agent in the computer's subnet is online." xml:space="preserve">
     <value>Das Wecksignal ließ sich nicht senden: der Server hat keinen Weg ins Netz, und im Subnetz des Rechners ist kein Agent online.</value>
   </data>
@@ -4906,6 +4972,9 @@
   </data>
   <data name="These are the default credentials. Make other credentials the default first." xml:space="preserve">
     <value>Das sind die Standard-Zugangsdaten. Zuerst andere Zugangsdaten zum Standard machen.</value>
+  </data>
+  <data name="These computers are virtual machines, but neither a Hyper-V host nor the vCenter lists them. The licence calculation cannot place them on a host." xml:space="preserve">
+    <value>Diese Rechner sind virtuelle Maschinen, aber weder ein Hyper-V-Host noch das vCenter führt sie. Die Lizenzberechnung kann sie keinem Host zuordnen.</value>
   </data>
   <data name="These entries are not part of the base selection and come unchanged from the winget manifests. The checksum secures the download, but only a test shows whether the silent parameters are right – try it on a single computer before deploying." xml:space="preserve">
     <value>Diese Einträge gehören nicht zur Grundauswahl und stammen unverändert aus den winget-Manifesten. Die Prüfsumme sichert den Download, aber ob die Silent-Parameter stimmen, zeigt erst ein Test – vor dem Verteilen an einem einzelnen Rechner ausprobieren.</value>
@@ -5255,6 +5324,21 @@
   <data name="Value name" xml:space="preserve">
     <value>Name des Werts</value>
   </data>
+  <data name="vCenter address" xml:space="preserve">
+    <value>Adresse des vCenters</value>
+  </data>
+  <data name="vCenter synchronization: {0}, {1}, every {2} h" xml:space="preserve">
+    <value>vCenter-Abgleich: {0}, {1}, alle {2} h</value>
+  </data>
+  <data name="vCenter synchronized" xml:space="preserve">
+    <value>vCenter abgeglichen</value>
+  </data>
+  <data name="vCenter, matched by BIOS UUID" xml:space="preserve">
+    <value>vCenter, über die BIOS-UUID zugeordnet</value>
+  </data>
+  <data name="vCenter, matched by name" xml:space="preserve">
+    <value>vCenter, über den Namen zugeordnet</value>
+  </data>
   <data name="vendor-specific" xml:space="preserve">
     <value>herstellereigen</value>
   </data>
@@ -5297,11 +5381,20 @@
   <data name="Virtual machine" xml:space="preserve">
     <value>Virtuelle Maschine</value>
   </data>
+  <data name="Virtual machines" xml:space="preserve">
+    <value>Virtuelle Maschinen</value>
+  </data>
   <data name="Virtual machines on this host" xml:space="preserve">
     <value>Virtuelle Maschinen auf diesem Host</value>
   </data>
   <data name="Virtual processors" xml:space="preserve">
     <value>Virtuelle Prozessoren</value>
+  </data>
+  <data name="Virtualization" xml:space="preserve">
+    <value>Virtualisierung</value>
+  </data>
+  <data name="virtualization-and-vcenter" xml:space="preserve">
+    <value>virtualisierung-und-vcenter</value>
   </data>
   <data name="Virus definitions are out of date." xml:space="preserve">
     <value>Die Virendefinitionen sind veraltet.</value>
@@ -5728,6 +5821,9 @@
   </data>
   <data name="{0} free" xml:space="preserve">
     <value>{0} frei</value>
+  </data>
+  <data name="{0} hosts in {1} clusters, {2} virtual machines, {3} of them matched to inventoried computers." xml:space="preserve">
+    <value>{0} Hosts in {1} Clustern, {2} virtuelle Maschinen, davon {3} inventarisierten Rechnern zugeordnet.</value>
   </data>
   <data name="{0} hours, {1} minutes" xml:space="preserve">
     <value>{0} Stunden, {1} Minuten</value>

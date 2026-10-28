@@ -39,33 +39,87 @@ public static class VirtualHosts
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Den Host eines Rechners bestimmen; null, wenn er keine VM ist oder kein Host bekannt ist.</summary>
-    private static async Task ResolveGuestAsync(InventoryDbContext db, Computer guest, CancellationToken ct)
+    /// <summary>
+    /// Den Host eines Rechners bestimmen; null, wenn er keine VM ist oder kein Host bekannt ist. Reihenfolge: Hyper-V-Host
+    /// mit derselben UUID, vCenter-VM mit derselben UUID, Hostname aus den Hyper-V-Gastdiensten, vCenter-VM gleichen Namens.
+    /// </summary>
+    internal static async Task ResolveGuestAsync(InventoryDbContext db, Computer guest, CancellationToken ct)
     {
-        if (guest.BiosUuid is { } uuid)
+        var candidates = guest.BiosUuid is { } uuid ? new[] { uuid, BiosUuids.Swapped(uuid) } : [];
+        if (candidates.Length > 0)
         {
-            var candidates = new[] { uuid, BiosUuids.Swapped(uuid) };
             var machine = await db.HostedVirtualMachines.Where(v => v.BiosUuid != null && candidates.Contains(v.BiosUuid) && v.ComputerId != guest.Id)
                 .OrderByDescending(v => v.Running).FirstOrDefaultAsync(ct);
             if (machine is not null)
             {
                 machine.GuestComputerId = guest.Id;
-                Assign(guest, machine.ComputerId, HostSources.BiosUuid);
+                Assign(guest, machine.ComputerId, null, HostSources.BiosUuid);
+                return;
+            }
+            var vm = await db.HypervisorVms.Where(v => v.BiosUuid != null && candidates.Contains(v.BiosUuid)).OrderByDescending(v => v.PoweredOn).FirstOrDefaultAsync(ct);
+            if (vm is not null)
+            {
+                vm.GuestComputerId = guest.Id;
+                Assign(guest, null, vm.HostId, HostSources.VCenter);
                 return;
             }
         }
         if (guest.ReportedHostName is { Length: > 0 } reported && await FindByNameAsync(db, reported, guest.Id, ct) is { } host)
         {
-            Assign(guest, host.Id, HostSources.GuestReport);
+            Assign(guest, host.Id, null, HostSources.GuestReport);
             return;
         }
-        Assign(guest, null, null);
+        // Ohne UUID-Treffer: eine vCenter-VM, deren Gastname oder Name zum Rechner passt, und die keinem anderen Rechner gehört.
+        if (guest.HyperVGuest != true && guest.IsVirtual)
+        {
+            var named = (await db.HypervisorVms.Where(v => v.GuestComputerId == null || v.GuestComputerId == guest.Id).ToListAsync(ct))
+                .FirstOrDefault(v => SameMachineName(v.GuestHostName, guest) || SameMachineName(v.Name, guest));
+            if (named is not null)
+            {
+                named.GuestComputerId = guest.Id;
+                Assign(guest, null, named.HostId, HostSources.VCenterName);
+                return;
+            }
+        }
+        Assign(guest, null, null, null);
     }
 
-    private static void Assign(Computer guest, int? hostId, string? source)
+    private static bool SameMachineName(string? name, Computer computer)
     {
-        guest.HostComputerId = hostId;
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        var shortName = name.Trim().Split('.')[0];
+        return string.Equals(name.Trim(), computer.DnsName, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(shortName, computer.Name.Split('.')[0], StringComparison.OrdinalIgnoreCase)
+               || string.Equals(shortName, computer.ReportedName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void Assign(Computer guest, int? hostComputerId, int? hypervisorHostId, string? source)
+    {
+        guest.HostComputerId = hostComputerId;
+        guest.HypervisorHostId = hypervisorHostId;
         guest.HostSource = source;
+    }
+
+    /// <summary>
+    /// Nach einem Abgleich mit dem vCenter: jede VM mit ihrem inventarisierten Gast verbinden und Rechner neu zuordnen, die bisher
+    /// einer vCenter-VM zugeordnet waren. Rechner mit Hyper-V-Zuordnung über die UUID behalten diese.
+    /// </summary>
+    public static async Task ResolveVCenterAsync(InventoryDbContext db, CancellationToken ct = default)
+    {
+        // Die Abfragen unten laufen in der Datenbank: Zwischenstände deshalb jeweils speichern.
+        await db.HypervisorVms.ExecuteUpdateAsync(v => v.SetProperty(x => x.GuestComputerId, (int?)null), ct);
+        var computers = await db.Computers.Where(c => c.LicensingScanUtc != null || c.HypervisorHostId != null || c.HostSource != null).ToListAsync(ct);
+        // Physische Rechner haben keinen Host; nur VMs und bisher zugeordnete Rechner prüfen.
+        computers = computers.Where(c => c.IsVirtual || c.HypervisorHostId is not null || c.HostSource is not null).ToList();
+        // Erst die Rechner mit UUID, damit ein Namenstreffer keinem Rechner die VM wegnimmt, die ihm über die UUID gehört.
+        foreach (var computer in computers.OrderBy(c => c.BiosUuid is null))
+        {
+            if (computer.HostSource == HostSources.BiosUuid)
+                continue;
+            await ResolveGuestAsync(db, computer, ct);
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     private static async Task<Computer?> FindByUuidAsync(InventoryDbContext db, string? uuid, int hostId, CancellationToken ct)

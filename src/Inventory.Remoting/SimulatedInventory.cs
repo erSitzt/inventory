@@ -178,6 +178,12 @@ internal static class SimulatedInventory
 
     private static string HostOf(string vm) => HyperVHosts[StableHash(vm) % (uint)HyperVHosts.Length];
 
+    /// <summary>
+    /// UUID, die ein VMware-vCenter für die VM führt; Windows im Gast meldet sie mit vertauschter Bytefolge in den ersten
+    /// drei Feldern (siehe <see cref="Core.Model.BiosUuids"/>).
+    /// </summary>
+    public static string VmwareUuid(string name) => Core.Model.BiosUuids.Swapped(Uuid(name)).ToLowerInvariant();
+
     /// <summary>Gleichbleibende SMBIOS-UUID je Name: Host und Gast melden so dieselbe.</summary>
     private static string Uuid(string name) =>
         new Guid(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(name.ToUpperInvariant()))).ToString("D").ToUpperInvariant();
@@ -241,6 +247,27 @@ internal static class SimulatedInventory
                     ],
                     _ => [],
                 },
+            };
+        }
+        if (SimulatedHypervisorSource.Guests.Contains(name))
+        {
+            data.Manufacturer = "VMware, Inc.";
+            data.Model = "VMware7,1";
+            data.OsName = "Microsoft Windows Server 2022 Standard";
+            data.OsVersion = "10.0.20348.2700";
+            data.OsRelease = "21H2";
+            var vcpus = name.StartsWith("VM-SQL", StringComparison.Ordinal) ? 8 : 4;
+            data.CpuCores = vcpus;
+            data.CpuLogicalProcessors = vcpus;
+            return new LicensingInfo
+            {
+                CpuSockets = vcpus / 2, CpuCoresPerSocket = 2, BiosUuid = Uuid(name), HypervisorPresent = true, HyperVGuest = false,
+                OsSku = 7, OsProductType = 3, OsEdition = "ServerStandard", LicenseChannel = LicenseChannels.VolumeGvlk,
+                ServerFeatures = name == "VM-RDS01" ? [new ServerFeatureItem { Id = 130, Name = "Remote Desktop Session Host" }] : [],
+                SqlInstances = name == "VM-SQL01"
+                    ? [new SqlInstanceItem { Name = "MSSQLSERVER", InstanceId = "MSSQL16.MSSQLSERVER", Edition = "Standard Edition (64-bit)", Version = "16.0.4135.4" }]
+                    : [],
+                ClusterName = "", HyperVHost = false,
             };
         }
         var pro = (data.OsName ?? "").Contains("Pro", StringComparison.Ordinal);

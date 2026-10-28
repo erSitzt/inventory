@@ -15,6 +15,7 @@ public class HelpTopicsTests
     [InlineData("devices", "Network devices")]
     [InlineData("devices/5", "Device details")]
     [InlineData("network?focus=d3", "Network map")]
+    [InlineData("virtualization", "Virtualization")]
     [InlineData("collections", "Collections")]
     [InlineData("packages", "Packages")]
     [InlineData("packages/3", "Package")]
