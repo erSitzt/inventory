@@ -107,8 +107,9 @@ public sealed class VCenterSource(Func<HttpMessageHandler, HttpMessageHandler>? 
                     ["configuration.drsConfig.enabled", "configuration.dasConfig.enabled"], ct))
                 .ToDictionary(o => o.Id, o => (Bool(o.Text("configuration.drsConfig.enabled")), Bool(o.Text("configuration.dasConfig.enabled"))));
         }
-        catch (RemoteException)
+        catch (Exception ex) when (ex is RemoteException or HttpRequestException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
+            // Auch ein Netz- oder Zeitfehler bei dieser Zusatzabfrage lässt nur DRS/HA unbekannt; abgebrochen wird nur auf Wunsch.
             return [];
         }
 

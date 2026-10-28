@@ -9,15 +9,22 @@ namespace Inventory.Server.Api;
 
 public sealed record LicenseBalanceDto(string Product, string Name, string Unit, int? Need, int Stock, int? Delta, bool SoftwareAssurance);
 
-public sealed record LicenseVariantDto(string Product, int Cores, decimal Cost, bool Allowed, string? Reason);
+/// <param name="Product">Das Produkt; bei mehreren Teilen das höchste – die Aufteilung je Produkt steht in <paramref name="Parts"/>.</param>
+/// <param name="Parts">Kerne und Kosten je Produkt (z. B. SQL-VMs in Enterprise und in Standard); passt zu den Summen je Produkt.</param>
+/// <param name="Formula">Wie die Kerne zustande kommen.</param>
+/// <param name="StillToBuy">Was nach Abzug des Bestands noch zu kaufen wäre; null, wenn nicht erlaubt.</param>
+public sealed record LicenseVariantDto(string Product, int Cores, decimal Cost, bool Allowed, string? Reason, IReadOnlyList<LicensePartDto> Parts, string? Formula, decimal? StillToBuy);
+
+public sealed record LicensePartDto(string Product, int Cores, decimal Cost);
 
 /// <param name="VirtualMachines">Bei Windows Server die zu deckenden Windows-Server-VMs, bei SQL Server die SQL-VMs.</param>
 /// <param name="VmsOnHost">Die VMs, die gerade auf dem Host laufen (im wandernden Cluster deckt der Host mehr).</param>
 /// <param name="Mobile">Die VMs des Clusters wandern zwischen den Hosts.</param>
 /// <param name="StillToBuy">Was nach Abzug des Bestands noch zu kaufen ist.</param>
+/// <param name="Decision">Warum die gewählte Variante gewählt wurde.</param>
 /// <param name="Steps">Der Rechenweg in der Sprache der Anfrage.</param>
 public sealed record HostLicensingDto(string Host, string? Cluster, string Source, int LicensedCores, int VirtualMachines, LicenseVariantDto? Chosen,
-    IReadOnlyList<LicenseVariantDto> Variants, IReadOnlyList<string> Steps, IReadOnlyList<string> Notes, int VmsOnHost, bool Mobile, decimal? StillToBuy);
+    IReadOnlyList<LicenseVariantDto> Variants, IReadOnlyList<string> Steps, IReadOnlyList<string> Notes, int VmsOnHost, bool Mobile, decimal? StillToBuy, IReadOnlyList<string> Decision);
 
 public sealed record LicensingDto(string RulesVersion, string SqlRulesVersion, DateTime CalculatedUtc, bool SoftwareAssurance, bool SqlSoftwareAssurance,
     IReadOnlyList<LicenseBalanceDto> Balances, IReadOnlyList<HostLicensingDto> Hosts, IReadOnlyList<HostLicensingDto> SqlServer, IReadOnlyList<string> SqlFree,
@@ -39,10 +46,11 @@ public static class LicensingEndpoints
         {
             var overview = await service.CalculateAsync(ct);
             string Text(Inventory.Core.Licensing.LicensingNote note) => service.Format(note);
-            LicenseVariantDto Variant(Inventory.Core.Licensing.LicenseVariant v) => new(v.Product, v.Cores, v.Cost, v.Allowed, v.Reason is null ? null : Text(v.Reason));
+            LicenseVariantDto Variant(Inventory.Core.Licensing.LicenseVariant v) => new(v.Product, v.Cores, v.Cost, v.Allowed, v.Reason is null ? null : Text(v.Reason),
+                v.Parts.Select(p => new LicensePartDto(p.Product, p.Cores, p.Cost)).ToList(), v.Formula is null ? null : Text(v.Formula), v.Additional);
             HostLicensingDto Host(Inventory.Core.Licensing.HostLicensing h) => new(h.Host.Name, h.Host.Cluster, h.Host.Source, h.LicensedCores, h.WindowsVms,
                 h.Chosen is null ? null : Variant(h.Chosen), h.Variants.Select(Variant).ToList(), h.Steps.Select(Text).ToList(), h.Notes.Select(Text).ToList(),
-                h.VmsOnHost, h.Mobile, h.AdditionalCost);
+                h.VmsOnHost, h.Mobile, h.AdditionalCost, h.Decision.Select(Text).ToList());
             return new LicensingDto(overview.Rules.Version, overview.Rules.SqlServer.Version, DateTime.SpecifyKind(overview.CalculatedUtc, DateTimeKind.Utc),
                 overview.SoftwareAssurance, overview.SqlSoftwareAssurance,
                 overview.Balances.Select(b => new LicenseBalanceDto(b.Product.Key, b.Product.Name, b.Product.Unit, b.Need, b.Stock, b.Delta, b.SoftwareAssurance)).ToList(),

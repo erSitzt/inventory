@@ -196,13 +196,25 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     /// <summary>Stellt für einen Cluster ein, ob seine VMs zwischen den Hosts wandern; null = wieder automatisch.</summary>
     public async Task SaveClusterMobilityAsync(string clusterKey, bool? mobile, CancellationToken ct = default)
     {
-        var mobility = new Dictionary<string, bool>((await GetSettingsAsync(ct)).ClusterMobility, StringComparer.OrdinalIgnoreCase);
-        if (mobile is { } value)
-            mobility[clusterKey] = value;
-        else
-            mobility.Remove(clusterKey);
-        await settings.SetAsync(SettingKeys.LicensingClusterMobility, mobility.Count == 0 ? null : JsonSerializer.Serialize(mobility), ct);
+        // Lesen, ändern, schreiben unter einer Sperre: zwei Administratoren, die gleichzeitig verschiedene Cluster einstellen, überschreiben
+        // sich sonst gegenseitig. Der Server läuft als ein Prozess mit einer Datenbank, eine Sperre im Prozess genügt.
+        await MobilityLock.WaitAsync(ct);
+        try
+        {
+            var mobility = new Dictionary<string, bool>((await GetSettingsAsync(ct)).ClusterMobility, StringComparer.OrdinalIgnoreCase);
+            if (mobile is { } value)
+                mobility[clusterKey] = value;
+            else
+                mobility.Remove(clusterKey);
+            await settings.SetAsync(SettingKeys.LicensingClusterMobility, mobility.Count == 0 ? null : JsonSerializer.Serialize(mobility), ct);
+        }
+        finally
+        {
+            MobilityLock.Release();
+        }
     }
+
+    private static readonly SemaphoreSlim MobilityLock = new(1, 1);
 
     public async Task SaveSettingsAsync(IReadOnlyDictionary<string, decimal?> prices, bool clusterWide, CancellationToken ct = default)
     {

@@ -15,13 +15,17 @@ public class VCenterTests
     private static readonly XNamespace Vim = "urn:vim25";
 
     /// <summary>Beantwortet die vim25-Aufrufe aus festen Daten und merkt sich, welche Methoden aufgerufen wurden.</summary>
-    private sealed class FakeVCenter(bool rejectLogin = false) : HttpMessageHandler
+    /// <param name="failAutomation">Die Abfrage von DRS/HA scheitert am Netz (wie ein abgerissener Transport).</param>
+    private sealed class FakeVCenter(bool rejectLogin = false, bool failAutomation = false) : HttpMessageHandler
     {
         public List<string> Calls { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            var body = XDocument.Parse(await request.Content!.ReadAsStringAsync(ct)).Descendants().First(e => e.Name.LocalName == "Body").Elements().First();
+            var text = await request.Content!.ReadAsStringAsync(ct);
+            if (failAutomation && text.Contains("drsConfig", StringComparison.Ordinal))
+                throw new HttpRequestException("connection reset");
+            var body = XDocument.Parse(text).Descendants().First(e => e.Name.LocalName == "Body").Elements().First();
             var method = body.Name.LocalName;
             Calls.Add(method);
             string Return(string inner) => $"<{method}Response xmlns=\"urn:vim25\"><returnval>{inner}</returnval></{method}Response>";
@@ -94,6 +98,15 @@ public class VCenterTests
         Assert.Equal("Logout", fake.Calls[^1]);
         // Nur lesende Aufrufe.
         Assert.All(fake.Calls, c => Assert.Contains(c, new[] { "RetrieveServiceContent", "Login", "CreateContainerView", "RetrievePropertiesEx", "ContinueRetrievePropertiesEx", "Logout" }));
+    }
+
+    [Fact]
+    public async Task A_failing_drs_and_ha_query_leaves_them_unknown_and_the_sync_goes_on()
+    {
+        var inventory = await new VCenterSource(_ => new FakeVCenter(failAutomation: true)).ReadAsync(Connection());
+        var host = inventory.Hosts.Single(h => h.Id == "host-11");
+        Assert.Equal(("PROD", (bool?)null, (bool?)null), (host.Cluster, host.ClusterDrs, host.ClusterHa));
+        Assert.Equal(2, inventory.VirtualMachines.Count);
     }
 
     [Fact]
