@@ -173,6 +173,12 @@ public class VCenterTests
         Assert.Equal((null, null), (app.HypervisorHostId, app.HostSource));
         Assert.Equal(["VM-APP01"], (await hosts.GuestsWithoutHostAsync()).Select(c => c.Name.ToUpperInvariant()));
 
+        // Ein dritter Abgleich ohne Änderungen behält alle Zuordnungen (die VMs sind in der Datenbank wirklich verknüpft).
+        await sync.SyncAsync();
+        await sync.SyncAsync();
+        var views2 = await hosts.HostsAsync();
+        Assert.Equal(2, views2.Sum(h => h.VirtualMachines.Count(v => v.GuestComputerId is not null)));
+
         // Ein neuer Scan des Gasts behält die Zuordnung.
         await store.SaveAsync(ids["vm-sql01"], VmwareGuest("VM-SQL01", BiosUuids.Swapped(BiosUuids.Normalize(vcenterUuid)!)));
         Assert.Equal(HostSources.VCenter, (await computers.GetAsync(ids["vm-sql01"]))!.HostSource);
@@ -195,5 +201,39 @@ public class VCenterTests
     private sealed class FailingSource : IHypervisorSource
     {
         public Task<HypervisorInventory> ReadAsync(HypervisorConnection connection, CancellationToken ct = default) => throw new RemoteException("unreachable");
+    }
+
+    [Fact]
+    public async Task A_guest_appears_under_only_one_host_when_hyper_v_and_vcenter_both_claim_it()
+    {
+        using var db = new TestDb();
+        var settings = new SettingsService(db);
+        var credentials = new CredentialService(db, new ReversingProtector());
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var ids = (await computers.ImportAsync("vm-a\nhv-01")).ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+        const string uuid = "4C4C4544-0042-3510-8052-B4C04F4E3732";
+        await store.SaveAsync(ids["vm-a"], VmwareGuest("VM-A", uuid));
+        var credential = await credentials.SaveAsync(null, "vCenter", "reader@vsphere.local", "secret", null);
+        var sync = new VCenterSyncService(db, new FixedSource(new HypervisorInventory([new("host-1", "esx01", null, 2, 32, null, true)],
+            [new("vm-1", "VM-A", uuid, 4, "host-1", true, null, null)], null)), settings, credentials, TimeProvider.System);
+        await sync.SaveSettingsAsync(true, "https://vcenter", credential.Id, null, 6);
+        await sync.SyncAsync();
+        Assert.Equal(HostSources.VCenter, (await computers.GetAsync(ids["vm-a"]))!.HostSource);
+
+        // Die VM taucht (z. B. nach einer Migration) auf einem Hyper-V-Host auf: der gewinnt, der vCenter-Verweis wird gelöst.
+        await store.SaveAsync(ids["hv-01"], new InventoryData
+        {
+            ComputerName = "HV-01",
+            Licensing = new LicensingInfo { HyperVHost = true, SqlInstances = [], VirtualMachines = [new HostedVmItem { Name = "VM-A", BiosUuid = uuid, Running = true }] },
+        });
+        var guest = (await computers.GetAsync(ids["vm-a"]))!;
+        Assert.Equal((ids["hv-01"], (int?)null, HostSources.BiosUuid), (guest.HostComputerId, guest.HypervisorHostId, guest.HostSource));
+        var views = await new VirtualizationService(db).HostsAsync();
+        Assert.Equal(1, views.Sum(h => h.VirtualMachines.Count(v => v.GuestComputerId == ids["vm-a"])));
+        // Auch ein weiterer vCenter-Abgleich nimmt sie Hyper-V nicht weg.
+        await sync.SyncAsync();
+        Assert.Equal(ids["hv-01"], (await computers.GetAsync(ids["vm-a"]))!.HostComputerId);
+        Assert.Equal(1, (await new VirtualizationService(db).HostsAsync()).Sum(h => h.VirtualMachines.Count(v => v.GuestComputerId == ids["vm-a"])));
     }
 }
