@@ -2,7 +2,8 @@
 @inject IStringLocalizer<SharedResource> L
 @inject LicensingService Service
 
-@* Hosts bzw. Server mit der gewählten Lizenzierung; aufgeklappt der Rechenweg, die Varianten und die VMs. *@
+@* Hosts bzw. Server mit der gewählten Lizenzierung; aufgeklappt die Entscheidung mit Begründung, die verglichenen Varianten, die gezählten VMs
+   und – eingeklappt – die nicht gezählten VMs und der Rechenweg Schritt für Schritt. *@
 <MudDataGrid T="HostLicensing" Items="Items" Dense="true" Hover="true" SortMode="SortMode.Single">
     <Columns>
         <HierarchyColumn T="HostLicensing" />
@@ -51,45 +52,141 @@
         </TemplateColumn>
     </Columns>
     <ChildRowContent>
-        <div class="pa-2">
-            @if (context.Item.Steps.Count > 0)
+        @{
+            var item = context.Item;
+            var counted = item.Host.VirtualMachines.Where(v => v.Counts).ToList();
+            var ignored = item.Host.VirtualMachines.Where(v => !v.Counts).ToList();
+        }
+        <div class="pa-3">
+            @* Zuerst das Ergebnis und warum: das ist die Frage, mit der man aufklappt. *@
+            @if (item.Chosen is { } result)
             {
-                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["How it is calculated"]</MudText>
-                <ol class="mb-2" style="padding-left: 1.4em">
-                    @foreach (var step in context.Item.Steps)
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                    <div><b>@L["Licensed with {0}: {1} cores, {2:N0}; still to buy {3:N0}.", Label(result), result.Cores, result.Cost, item.AdditionalCost ?? 0]</b></div>
+                    @foreach (var line in item.Decision)
                     {
-                        <li><MudText Typo="Typo.body2">@Note(step)</MudText></li>
+                        <div>@Note(line)</div>
                     }
-                </ol>
+                </MudAlert>
             }
-            @if (context.Item.Variants.Count > 0)
+            else if (item.Variants.Count > 0)
             {
-                <MudSimpleTable Dense="true" Elevation="0" Class="mb-2">
-                    <thead><tr><th>@L["Variant"]</th><th style="text-align: right">@L["Cores"]</th><th style="text-align: right">@L["Cost"]</th><th></th></tr></thead>
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">@L["No variant is allowed; the reasons are in the table."]</MudAlert>
+            }
+
+            @if (item.Variants.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Variants compared"]</MudText>
+                <MudSimpleTable Dense="true" Elevation="0" Outlined="true" Class="mb-3">
+                    <thead>
+                        <tr>
+                            <th>@L["Variant"]</th><th>@L["How the cores come about"]</th><th style="text-align: right">@L["Cores"]</th>
+                            <th style="text-align: right">@L["Cost"]</th><th style="text-align: right">@L["Still to buy"]</th><th></th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        @foreach (var variant in context.Item.Variants)
+                        @foreach (var variant in item.Variants)
                         {
-                            <tr style="@(variant == context.Item.Chosen ? "font-weight: 600" : "")">
-                                <td>@string.Join(" + ", variant.Parts.Select(p => ProductName(p.Product) + (variant.Parts.Count > 1 ? $" ({p.Cores})" : "")))</td>
+                            var isChosen = variant == item.Chosen;
+                            <tr style="@(isChosen ? "font-weight: 600" : variant.Allowed ? "" : "color: var(--mud-palette-text-disabled)")">
+                                <td>@Label(variant)</td>
+                                <td>@(variant.Formula is { } formula ? Note(formula) : "")</td>
                                 <td style="text-align: right">@variant.Cores</td>
                                 <td style="text-align: right">@variant.Cost.ToString("N0")</td>
-                                <td>@(variant == context.Item.Chosen ? L["chosen"] : variant.Reason is { } reason ? Note(reason) : "")</td>
+                                <td style="text-align: right">@(variant.Additional?.ToString("N0") ?? "–")</td>
+                                <td>
+                                    @if (isChosen)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.Check">@L["chosen"]</MudChip>
+                                    }
+                                    else if (!variant.Allowed)
+                                    {
+                                        @(variant.Reason is { } reason ? Note(reason) : L["not allowed"])
+                                    }
+                                    else if (item.Chosen?.Plan is { } plan && variant.Plan is not null && variant.Plan != plan && item.Mobile)
+                                    {
+                                        @L["other way of licensing than the rest of the cluster"]
+                                    }
+                                    else if (variant.Additional is { } additional && item.AdditionalCost is { } chosenAdditional && additional > chosenAdditional)
+                                    {
+                                        @L["{0:N0} more", additional - chosenAdditional]
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </MudSimpleTable>
             }
-            @foreach (var note in context.Item.Notes)
+
+            @if (item.Notes.Count > 0)
             {
-                <MudText Typo="Typo.body2" Class="mb-1">@Note(note)</MudText>
+                <ul class="mb-3" style="padding-left: 1.2em">
+                    @foreach (var note in item.Notes)
+                    {
+                        <li><MudText Typo="Typo.body2">@Note(note)</MudText></li>
+                    }
+                </ul>
             }
-            @if (context.Item.Host.VirtualMachines.Count > 0)
+
+            @if (counted.Count > 0)
             {
-                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@L["Virtual machines"]</MudText>
-                <MudText Typo="Typo.body2">
-                    @string.Join(", ", context.Item.Host.VirtualMachines.Select(v => v.Name + (v.VirtualCpus is { } cpus ? $" ({cpus} vCPU)" : "")
-                        + (v.Running ? "" : " – " + L["off"]) + (v.WindowsServer == false ? " – " + L["no Windows Server"] : v.WindowsServer is null ? " – ?" : "")))
+                <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Virtual machines counted on this host ({0})", counted.Count]</MudText>
+                <MudSimpleTable Dense="true" Elevation="0" Outlined="true" Class="mb-1">
+                    <thead><tr><th>@L["Name"]</th><th style="text-align: right">vCPU</th><th>@L["Operating system"]</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var vm in counted.OrderBy(v => v.Name, StringComparer.OrdinalIgnoreCase))
+                        {
+                            <tr>
+                                <td>@VmName(vm)</td>
+                                <td style="text-align: right">@vm.VirtualCpus</td>
+                                <td>@vm.Os</td>
+                                <td>@(vm.WindowsServer is null ? L["operating system unknown – counted to be safe"] : "")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            @if (item.Mobile && item.WindowsVms > counted.Count && item.Host.Cluster is { } cluster)
+            {
+                <MudText Typo="Typo.body2" Class="mb-3" Style="color: var(--mud-palette-text-secondary)">
+                    @L["Plus {0} VMs on other hosts of cluster {1}, which may move here.", item.WindowsVms - counted.Count, cluster]
                 </MudText>
+            }
+
+            @if (ignored.Count > 0 || item.Steps.Count > 0)
+            {
+                <MudExpansionPanels MultiExpansion="true" Elevation="0" Outlined="true" Class="mt-2">
+                    @if (ignored.Count > 0)
+                    {
+                        <MudExpansionPanel Text="@L["Not counted ({0}): switched off or not Windows Server", ignored.Count]" Dense="true">
+                            <MudSimpleTable Dense="true" Elevation="0">
+                                <thead><tr><th>@L["Name"]</th><th style="text-align: right">vCPU</th><th>@L["Operating system"]</th><th>@L["Why not counted"]</th></tr></thead>
+                                <tbody>
+                                    @foreach (var vm in ignored.OrderBy(v => v.Name, StringComparer.OrdinalIgnoreCase))
+                                    {
+                                        <tr>
+                                            <td>@VmName(vm)</td>
+                                            <td style="text-align: right">@vm.VirtualCpus</td>
+                                            <td>@vm.Os</td>
+                                            <td>@(vm.Running ? L["no Windows Server"] : L["switched off"])</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        </MudExpansionPanel>
+                    }
+                    @if (item.Steps.Count > 0)
+                    {
+                        <MudExpansionPanel Text="@L["Calculation step by step"]" Dense="true">
+                            <ol style="padding-left: 1.4em">
+                                @foreach (var step in item.Steps)
+                                {
+                                    <li><MudText Typo="Typo.body2">@Note(step)</MudText></li>
+                                }
+                            </ol>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
             }
         </div>
     </ChildRowContent>
@@ -123,7 +220,14 @@
 
     private string ProductName(string key) => L[Service.Rules.Product(key)?.Name ?? key];
 
-    private string Note(LicensingNote note) => L[note.Text, note.Args];
+    private string Note(LicensingNote note) => Service.Format(note);
+
+    /// <summary>Name der Variante; bei mehreren Teilen (Editionen) jedes Produkt mit seinen Kernen.</summary>
+    private string Label(LicenseVariant variant) => string.Join(" + ", variant.Parts.Select(p => ProductName(p.Product) + (variant.Parts.Count > 1 ? $" ({p.Cores})" : "")));
+
+    private RenderFragment VmName(LicensingVm vm) => vm.ComputerId is { } id
+        ? @<MudLink Href="@($"computers/{id}")" Typo="Typo.body2">@vm.Name</MudLink>
+        : @<span>@vm.Name</span>;
 
     private string SourceName(string source) => source switch
     {

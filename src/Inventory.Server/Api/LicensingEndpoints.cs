@@ -38,7 +38,7 @@ public static class LicensingEndpoints
         group.MapGet("", async (LicensingService service, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
         {
             var overview = await service.CalculateAsync(ct);
-            string Text(Inventory.Core.Licensing.LicensingNote note) => L[note.Text, note.Args];
+            string Text(Inventory.Core.Licensing.LicensingNote note) => service.Format(note);
             LicenseVariantDto Variant(Inventory.Core.Licensing.LicenseVariant v) => new(v.Product, v.Cores, v.Cost, v.Allowed, v.Reason is null ? null : Text(v.Reason));
             HostLicensingDto Host(Inventory.Core.Licensing.HostLicensing h) => new(h.Host.Name, h.Host.Cluster, h.Host.Source, h.LicensedCores, h.WindowsVms,
                 h.Chosen is null ? null : Variant(h.Chosen), h.Variants.Select(Variant).ToList(), h.Steps.Select(Text).ToList(), h.Notes.Select(Text).ToList(),

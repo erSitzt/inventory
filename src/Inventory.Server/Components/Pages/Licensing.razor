@@ -201,7 +201,7 @@ else
 
     private string ProductName(string key) => L[Service.Rules.Product(key)?.Name ?? key];
 
-    private string Note(LicensingNote note) => L[note.Text, note.Args];
+    private string Note(LicensingNote note) => Service.Format(note);
 
     private async Task EditAsync(LicenseEntitlement? entitlement)
     {

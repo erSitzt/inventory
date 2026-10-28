@@ -120,7 +120,12 @@ public class LicensingEngineTests
         var result = WindowsServerEngine.Calculate(hosts, ListPrices with { SoftwareAssurance = true, Stock = stock }, Rules);
         var first = result.Hosts.Single(h => h.Host.Name == "esx01");
         Assert.Equal(MicrosoftRules.WindowsServerDatacenter, first.Chosen!.Product);
-        Assert.Contains(first.Notes, n => n.Text == "Covered by the existing stock.");
+        // Begründung: vom Bestand gedeckt, die nächstbeste Variante (je VM) mit ihrem Betrag.
+        var reason = Assert.Single(first.Decision);
+        Assert.StartsWith("{0} is covered completely by the existing stock", reason.Text);
+        Assert.Equal([MicrosoftRules.WindowsServerDatacenter, 32, MicrosoftRules.WindowsServerPerVm], reason.Args.Take(3));
+        Assert.Equal(0, first.AdditionalCost);
+        Assert.All(first.Variants, v => Assert.NotNull(v.Formula));
         // Der Bestand ist verbraucht: der zweite Host nimmt wieder die günstigste Variante.
         Assert.Equal((MicrosoftRules.WindowsServerPerVm, 8), (result.Hosts.Single(h => h.Host.Name == "esx02").Chosen!.Product, result.Hosts.Single(h => h.Host.Name == "esx02").Chosen!.Cores));
     }
@@ -136,7 +141,8 @@ public class LicensingEngineTests
         };
         var stock = new Dictionary<string, int> { [MicrosoftRules.WindowsServerDatacenter] = 32 };
         var result = WindowsServerEngine.Calculate(hosts, ListPrices with { SoftwareAssurance = true, Stock = stock }, Rules);
-        Assert.Contains(result.Hosts.Single(h => h.Host.Name == "z-hyperv").Notes, n => n.Text == "Covered by the existing stock.");
+        var hyperV = result.Hosts.Single(h => h.Host.Name == "z-hyperv");
+        Assert.Equal((32, "{0} is the only allowed variant."), (hyperV.FromStock, Assert.Single(hyperV.Decision).Text));
         Assert.Equal(MicrosoftRules.WindowsServerPerVm, result.Hosts.Single(h => h.Host.Name == "a-esx").Chosen!.Product);
     }
 
@@ -157,7 +163,7 @@ public class LicensingEngineTests
             Assert.Equal(MicrosoftRules.WindowsServerPerVm, h.Chosen!.Product);
             Assert.Equal(7, h.WindowsVms);
             Assert.True(h.Mobile);
-            Assert.Contains(h.Notes, n => n.Text.StartsWith("The whole cluster is licensed per VM", StringComparison.Ordinal));
+            Assert.StartsWith("All hosts of cluster {0} are licensed per VM", h.Decision[0].Text);
         });
         // Je VM zählt jede VM einmal, mindestens 8 Kerne: 2 × 8 und 5 × 8.
         Assert.Equal([16, 40], result.Hosts.Select(h => h.Chosen!.Cores));

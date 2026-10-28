@@ -307,7 +307,8 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         var hostComputers = new HashSet<int>();
         foreach (var view in await virtualization.HostsAsync(ct))
         {
-            var vms = view.VirtualMachines.Select(v => new LicensingVm(v.Name, v.VirtualCpus, v.Running ?? true, WindowsServer(v.GuestComputerId, v.GuestOs), v.GuestComputerId)).ToList();
+            var vms = view.VirtualMachines.Select(v => new LicensingVm(v.Name, v.VirtualCpus, v.Running ?? true, WindowsServer(v.GuestComputerId, v.GuestOs), v.GuestComputerId)
+                { Os = v.GuestComputerId is { } id && computers.TryGetValue(id, out var guest) && guest.OsName is { } os ? os : v.GuestOs }).ToList();
             if (view.Source == VirtualHostSource.HyperV && view.ComputerId is { } hostId && computers.TryGetValue(hostId, out var host))
             {
                 hostComputers.Add(hostId);
@@ -396,7 +397,7 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     /// </summary>
     public IReadOnlyList<ReportSection> ReportSections(LicensingOverview overview, IReadOnlyList<LicenseEntitlement> stock)
     {
-        string Text(LicensingNote note) => L[note.Text, note.Args];
+        string Text(LicensingNote note) => Format(note);
         var sections = new List<ReportSection>();
         var ws = overview.WindowsServer.Hosts.Where(Relevant).ToList();
         var sql = overview.SqlServer.Entries.Where(Relevant).ToList();
@@ -430,14 +431,22 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         foreach (var entry in ws.Select(h => ("Windows Server", h)).Concat(sql.Select(h => ("SQL Server", h))))
         {
             var (product, host) = entry;
-            var paragraphs = host.Steps.Select((step, n) => $"{n + 1}. {Text(step)}").ToList();
+            // Zuerst Ergebnis und Begründung, dann die Hinweise, dann der Rechenweg; die verglichenen Varianten als Tabelle.
+            var paragraphs = new List<string>();
+            if (host.Chosen is { } chosen)
+                paragraphs.Add(L["Licensed with {0}: {1} cores, {2:N0}; still to buy {3:N0}.", Label(chosen), chosen.Cores, chosen.Cost, host.AdditionalCost ?? 0]);
+            paragraphs.AddRange(host.Decision.Select(Text));
             paragraphs.AddRange(host.Notes.Select(n => "• " + Text(n)));
+            var counted = host.Host.VirtualMachines.Where(v => v.Counts).Select(v => v.Name).Order(StringComparer.OrdinalIgnoreCase).ToList();
+            if (counted.Count > 0)
+                paragraphs.Add(L["Virtual machines counted on this host ({0})", counted.Count] + ": " + string.Join(", ", counted));
+            paragraphs.AddRange(host.Steps.Select((step, n) => $"{n + 1}. {Text(step)}"));
             var variants = new ReportTable(
-                [new("variant", L["Variant"]), new("cores", L["Cores"], true), new("cost", L["Cost"], true), new("note", L["Note"])],
+                [new("variant", L["Variant"]), new("formula", L["How the cores come about"]), new("cores", L["Cores"], true), new("cost", L["Cost"], true),
+                    new("additional", L["Still to buy"], true), new("note", L["Note"])],
                 host.Variants.Select(v => new string?[]
                 {
-                    string.Join(" + ", v.Parts.Select(p => L[overview.Rules.Product(p.Product)?.Name ?? p.Product] + (v.Parts.Count > 1 ? $" ({p.Cores})" : ""))),
-                    v.Cores.ToString(CultureInfo.InvariantCulture), Money(v.Cost),
+                    Label(v), v.Formula is { } formula ? Text(formula) : null, v.Cores.ToString(CultureInfo.InvariantCulture), Money(v.Cost), Money(v.Additional),
                     v == host.Chosen ? L["chosen"] : v.Reason is { } reason ? Text(reason) : null,
                 }).ToList());
             sections.Add(new($"{product}: {host.Host.Name}" + (host.Host.Cluster is { } cluster ? $" ({cluster})" : ""), paragraphs, variants, Level: 2,
@@ -478,6 +487,14 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     }
 
     /// <summary>Ein Eintrag mit Last: gewählte Variante, Varianten, Rechenweg oder VMs; nicht ein Host ohne Windows-Server-Last.</summary>
+    /// <summary>Name einer Variante; bei mehreren Teilen (Editionen) jedes Produkt mit seinen Kernen.</summary>
+    private string Label(LicenseVariant variant) =>
+        string.Join(" + ", variant.Parts.Select(p => L[Rules.Product(p.Product)?.Name ?? p.Product] + (variant.Parts.Count > 1 ? $" ({p.Cores})" : "")));
+
+    /// <summary>Ein Hinweis der Berechnung in der Sprache der Anfrage; Produktschlüssel in den Platzhaltern werden zu Produktnamen.</summary>
+    public string Format(LicensingNote note) =>
+        L[note.Text, note.Args.Select(a => a is string key && Rules.Product(key) is { } product ? L[product.Name].Value : a).ToArray()];
+
     /// <summary>Ob die VMs eines Clusters wandern, und warum.</summary>
     public string MobilityText(LicensingCluster cluster) => (cluster.Mobile, cluster.Reason) switch
     {

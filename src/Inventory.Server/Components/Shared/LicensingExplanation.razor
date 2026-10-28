@@ -8,6 +8,18 @@
     </MudText>
 
     <MudPaper Outlined="true" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-2">@L["How the licence is chosen"]</MudText>
+        <ol style="padding-left: 1.4em">
+            <li><MudText Typo="Typo.body2">@L["For every host the cores to license are counted (physical cores with the minimums) and the VMs it must cover: its own, or all of its cluster if the VMs move."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["Every variant is calculated: Standard, Datacenter, per VM; for SQL Server per VM and the whole host. Variants that are not allowed (e.g. Standard where Datacenter is installed, per VM without SA) stay visible with the reason."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["The existing stock is deducted: what it covers costs nothing more. Hosts with the fewest choices get the stock first, then the largest."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["The allowed variant with the least still to buy wins; with the same amount, the cheaper one and then the one with fewer cores."]</MudText></li>
+            <li><MudText Typo="Typo.body2">@L["In a cluster whose VMs move, both ways (all hosts by cores, all VMs per VM) are calculated for the whole cluster and the cheaper one applies to every host."]</MudText></li>
+        </ol>
+        <MudText Typo="Typo.body2" Class="mt-1" Style="color: var(--mud-palette-text-secondary)">@L["Expand a host on the Windows Server or SQL Server tab to see the decision, the variants compared and the VMs counted."]</MudText>
+    </MudPaper>
+
+    <MudPaper Outlined="true" Class="pa-4">
         <MudText Typo="Typo.h6" Class="mb-2">Windows Server</MudText>
         <ol style="padding-left: 1.4em">
             <li><MudText Typo="Typo.body2">@L["Only physical cores of the host count, hyperthreading does not. Every processor counts at least {0} cores, every server at least {1}; licences come in packs of {2} cores.", Ws.MinCoresPerProcessor, Ws.MinCoresPerServer, Rules.PackSize]</MudText></li>

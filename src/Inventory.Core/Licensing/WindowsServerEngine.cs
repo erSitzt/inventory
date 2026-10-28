@@ -4,7 +4,14 @@ namespace Inventory.Core.Licensing;
 public sealed record LicensingNote(string Text, params object[] Args);
 
 /// <param name="WindowsServer">true = Windows Server, false = sicher kein Windows Server, null = unbekannt (zählt vorsichtshalber mit).</param>
-public sealed record LicensingVm(string Name, int? VirtualCpus, bool Running, bool? WindowsServer, int? ComputerId);
+public sealed record LicensingVm(string Name, int? VirtualCpus, bool Running, bool? WindowsServer, int? ComputerId)
+{
+    /// <summary>Betriebssystem laut Inventar oder Hypervisor, zur Anzeige.</summary>
+    public string? Os { get; init; }
+
+    /// <summary>Zählt für Windows Server: läuft und ist Windows Server oder unbekannt.</summary>
+    public bool Counts => Running && WindowsServer != false;
+}
 
 /// <summary>Ein physischer Server: Hyper-V-Host, ESXi-Host oder Windows Server ohne VMs.</summary>
 /// <param name="Key">Eindeutig über alle Quellen, z. B. "vcenter:12" oder "computer:5".</param>
@@ -66,6 +73,12 @@ public sealed record LicenseVariant(string Product, int Cores, decimal Cost, boo
     /// </summary>
     public string? Plan { get; init; }
 
+    /// <summary>Wie die Kerne zustande kommen, kurz (z. B. "64 Kerne × 4 (für 8 VMs, je Lizenzierung 2)").</summary>
+    public LicensingNote? Formula { get; init; }
+
+    /// <summary>Was diese Variante nach Abzug des Bestands noch kosten würde (zum Zeitpunkt der Wahl); null, wenn nicht erlaubt.</summary>
+    public decimal? Additional { get; init; }
+
     public const string PlanHost = "host";
     public const string PlanVm = "vm";
 }
@@ -89,6 +102,9 @@ public sealed record HostLicensing(LicensingHost Host, int LicensedCores, int Wi
 
     /// <summary>Was für die gewählte Variante noch zu kaufen ist (anteilig, wenn der Bestand einen Teil deckt); null ohne Wahl.</summary>
     public decimal? AdditionalCost { get; init; }
+
+    /// <summary>Warum die gewählte Variante gewählt wurde, in ganzen Sätzen; Produktschlüssel in den Platzhaltern.</summary>
+    public IReadOnlyList<LicensingNote> Decision { get; init; } = [];
 }
 
 public sealed record WindowsServerResult(IReadOnlyList<HostLicensing> Hosts, IReadOnlyDictionary<string, int> Need, IReadOnlyList<LicensingNote> Gaps, string RulesVersion);
@@ -111,7 +127,7 @@ public static class WindowsServerEngine
         var gaps = new List<LicensingNote>();
         var results = new List<HostLicensing>();
 
-        static bool Counts(LicensingVm v) => v.Running && v.WindowsServer != false;
+        static bool Counts(LicensingVm v) => v.Counts;
         var clusterVms = hosts.Where(h => h.ClusterKey is not null).GroupBy(h => h.ClusterKey!).ToDictionary(g => g.Key, g => g.Sum(h => h.VirtualMachines.Count(Counts)));
         decimal Price(string product) => rules.Price(product, options.PricePerPack);
         decimal Cost(string product, int licensed) => Price(product) * licensed / rules.PackSize;
@@ -166,8 +182,13 @@ public static class WindowsServerEngine
             var standardCores = cores * standardRuns;
             var installedDatacenter = host.RunsWindowsServer && (host.Edition ?? "").Contains("Datacenter", StringComparison.OrdinalIgnoreCase);
             variants.Add(new LicenseVariant(MicrosoftRules.WindowsServerStandard, standardCores, Cost(MicrosoftRules.WindowsServerStandard, standardCores), !installedDatacenter,
-                installedDatacenter ? new("The Datacenter edition is installed on the host.") : null) { Plan = LicenseVariant.PlanHost });
-            variants.Add(new LicenseVariant(MicrosoftRules.WindowsServerDatacenter, cores, Cost(MicrosoftRules.WindowsServerDatacenter, cores), true) { Plan = LicenseVariant.PlanHost });
+                installedDatacenter ? new("The Datacenter edition is installed on the host.") : null)
+            {
+                Plan = LicenseVariant.PlanHost,
+                Formula = new("{0} cores × {1} (for {2} VMs, {3} VMs per full licensing)", cores, standardRuns, licensedVms, server.StandardVmsPerLicense),
+            });
+            variants.Add(new LicenseVariant(MicrosoftRules.WindowsServerDatacenter, cores, Cost(MicrosoftRules.WindowsServerDatacenter, cores), true)
+                { Plan = LicenseVariant.PlanHost, Formula = new("{0} cores once, any number of VMs", cores) });
             steps.Add(new("Standard: one full licensing ({0} cores) covers {1} VMs; {2} VMs need it {3} times: {4} cores, {5:N0}.",
                 cores, server.StandardVmsPerLicense, licensedVms, standardRuns, standardCores, Cost(MicrosoftRules.WindowsServerStandard, standardCores)));
             steps.Add(new("Datacenter: {0} cores cover any number of VMs on this host: {1:N0}.", cores, Cost(MicrosoftRules.WindowsServerDatacenter, cores)));
@@ -180,7 +201,11 @@ public static class WindowsServerEngine
                 var perVmCores = vms.Sum(v => VmCores(v, rules));
                 var allowed = !server.PerVmRequiresSoftwareAssurance || options.SoftwareAssurance;
                 variants.Add(new LicenseVariant(MicrosoftRules.WindowsServerPerVm, perVmCores, Cost(MicrosoftRules.WindowsServerPerVm, perVmCores), allowed,
-                    allowed ? null : new("Only with Software Assurance or a subscription.")) { Plan = LicenseVariant.PlanVm });
+                    allowed ? null : new("Only with Software Assurance or a subscription."))
+                {
+                    Plan = LicenseVariant.PlanVm,
+                    Formula = vms.Count == 0 ? new("no Windows Server VM on this host right now") : new("{0} VMs × their vCPUs, at least {1} each", vms.Count, server.PerVmMinCores),
+                });
                 steps.Add(vms.Count == 0
                     ? new("Per VM (only with SA or subscription): no Windows Server VM runs on this host right now; the licences of the cluster's VMs move with them: 0 cores.")
                     : new("Per VM (only with SA or subscription): each VM its vCPUs, at least {0}: {1} = {2} cores, {3:N0}.", server.PerVmMinCores,
@@ -261,6 +286,7 @@ public static class WindowsServerEngine
             if (plans.Count == 0)
                 plans = [null];
             Trial? best = null;
+            var trials = new List<Trial>();
             foreach (var plan in plans)
             {
                 var trial = new Trial(plan, new Dictionary<string, int>(remaining, StringComparer.OrdinalIgnoreCase));
@@ -268,7 +294,8 @@ public static class WindowsServerEngine
                 {
                     // Je Teil anteilig: was der Bestand des Produkts deckt, kostet nichts mehr.
                     decimal Additional(LicenseVariant v) => v.Parts.Sum(p => p.Cores == 0 ? 0 : p.Cost * Math.Max(0, p.Cores - trial.Stock.GetValueOrDefault(p.Product)) / p.Cores);
-                    var pick = host.Variants.Where(v => v.Allowed && (plan is null || v.Plan == plan)).OrderBy(Additional).ThenBy(v => v.Cost).ThenBy(v => v.Cores).FirstOrDefault();
+                    var evaluated = host.Variants.Select(v => v with { Additional = v.Allowed ? Additional(v) : null }).ToList();
+                    var pick = evaluated.Where(v => v.Allowed && (plan is null || v.Plan == plan)).OrderBy(v => v.Additional).ThenBy(v => v.Cost).ThenBy(v => v.Cores).FirstOrDefault();
                     var (fromStock, additional) = (0, 0m);
                     if (pick is not null)
                     {
@@ -282,37 +309,70 @@ public static class WindowsServerEngine
                             trial.Stock[part.Product] = trial.Stock.GetValueOrDefault(part.Product) - used;
                         }
                     }
-                    trial.Picks.Add((host, pick, fromStock, additional));
+                    trial.Picks.Add((host, pick, fromStock, additional, evaluated));
                 }
+                trials.Add(trial);
                 if (best is null || trial.Additional < best.Additional || (trial.Additional == best.Additional && trial.Cost < best.Cost))
                     best = trial;
             }
             remaining = best!.Stock;
-            foreach (var (host, pick, fromStock, additional) in best.Picks)
+            var otherPlan = trials.Where(t => t != best && t.Plan is not null).MinBy(t => t.Additional);
+            foreach (var (host, pick, fromStock, additional, evaluated) in best.Picks)
             {
-                var notes = host.Notes.ToList();
+                var decision = new List<LicensingNote>();
                 if (clustered && unit.Count > 1 && best.Plan is not null)
-                    notes.Add(best.Plan == LicenseVariant.PlanVm
-                        ? new("The whole cluster is licensed per VM, so that the licences move with the VMs.")
-                        : new("The whole cluster is licensed by the cores of every host, since every VM may run on every host."));
-                if (pick is { Cores: > 0 })
-                {
-                    if (fromStock >= pick.Cores)
-                        notes.Add(new("Covered by the existing stock."));
-                    else if (fromStock > 0)
-                        notes.Add(new("{0} of {1} cores covered by the existing stock.", fromStock, pick.Cores));
-                }
-                chosen[host] = host with { Chosen = pick, Notes = notes, FromStock = fromStock, AdditionalCost = pick is null ? null : additional };
+                    decision.Add(best.Plan == LicenseVariant.PlanVm
+                        ? otherPlan is null
+                            ? new("All hosts of cluster {0} are licensed per VM, so that the licences move with the VMs.", host.Host.Cluster!)
+                            : new("All hosts of cluster {0} are licensed per VM, so that the licences move with the VMs: for the whole cluster {1:N0} remain to buy instead of {2:N0} when licensing the cores of every host.",
+                                host.Host.Cluster!, best.Additional, otherPlan.Additional)
+                        : otherPlan is null
+                            ? new("All hosts of cluster {0} are licensed by their cores, since every VM may run on every host.", host.Host.Cluster!)
+                            : new("All hosts of cluster {0} are licensed by their cores, since every VM may run on every host: for the whole cluster {1:N0} remain to buy instead of {2:N0} when licensing every VM per VM.",
+                                host.Host.Cluster!, best.Additional, otherPlan.Additional));
+                decision.AddRange(Reason(pick, fromStock, evaluated.Where(v => v != pick && v.Allowed && (best.Plan is null || v.Plan == best.Plan)).ToList(), evaluated));
+                chosen[host] = host with { Chosen = pick, Variants = evaluated, FromStock = fromStock, AdditionalCost = pick is null ? null : additional, Decision = decision };
             }
         }
         return hosts.Select(h => chosen.GetValueOrDefault(h) ?? h).ToList();
+    }
+
+    /// <summary>Warum die Variante gewählt wurde: gegen die nächstbeste, mit dem Bestand. Produktschlüssel stehen als Platzhalter.</summary>
+    private static IEnumerable<LicensingNote> Reason(LicenseVariant? pick, int fromStock, List<LicenseVariant> alternatives, List<LicenseVariant> all)
+    {
+        if (pick is null)
+        {
+            yield return new("No variant is allowed; the reasons are in the table.");
+            yield break;
+        }
+        if (pick.Cores == 0)
+        {
+            yield return new("Nothing to license on this host right now: the licences of the VMs move with them.");
+            yield break;
+        }
+        var next = alternatives.OrderBy(v => v.Additional).ThenBy(v => v.Cost).FirstOrDefault();
+        if (next is null)
+        {
+            if (all.Any(v => !v.Allowed))
+                yield return new("{0} is the only allowed variant.", pick.Product);
+        }
+        else if (fromStock >= pick.Cores)
+            yield return new("{0} is covered completely by the existing stock ({1} cores), so nothing remains to buy. Next best: {2} with {3:N0} to buy.",
+                pick.Product, fromStock, next.Product, next.Additional ?? next.Cost);
+        else if (fromStock > 0)
+            yield return new("{0} uses {1} of its {2} cores from the existing stock; {3:N0} remain to buy – less than {4:N0} for {5}.",
+                pick.Product, fromStock, pick.Cores, pick.Additional ?? pick.Cost, next.Additional ?? next.Cost, next.Product);
+        else if ((pick.Additional ?? pick.Cost) == (next.Additional ?? next.Cost))
+            yield return new("{0} and {1} cost the same ({2:N0}); {0} needs fewer cores.", pick.Product, next.Product, pick.Cost);
+        else
+            yield return new("{0} is the cheapest allowed variant: {1:N0} instead of {2:N0} for {3}.", pick.Product, pick.Additional ?? pick.Cost, next.Additional ?? next.Cost, next.Product);
     }
 
     private sealed class Trial(string? plan, Dictionary<string, int> stock)
     {
         public string? Plan { get; } = plan;
         public Dictionary<string, int> Stock { get; } = stock;
-        public List<(HostLicensing Host, LicenseVariant? Pick, int FromStock, decimal Additional)> Picks { get; } = [];
+        public List<(HostLicensing Host, LicenseVariant? Pick, int FromStock, decimal Additional, List<LicenseVariant> Evaluated)> Picks { get; } = [];
         public decimal Additional { get; set; }
         public decimal Cost { get; set; }
     }

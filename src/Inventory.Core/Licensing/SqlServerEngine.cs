@@ -99,7 +99,11 @@ public static class SqlServerEngine
             steps.Add(new("Physical server: {0} processors × {1} physical cores (at least {2} per processor): {3} cores.", machine.Sockets.Value, machine.CoresPerSocket.Value,
                 sql.MinCoresPerProcessor, cores));
             var product = Product(machine.Edition);
-            var variants = new List<LicenseVariant> { new(product, cores, Cost(product, cores), true) };
+            var variants = new List<LicenseVariant>
+            {
+                new(product, cores, Cost(product, cores), true)
+                    { Formula = new("{0} processors × {1} cores, at least {2} per processor", machine.Sockets.Value, machine.CoresPerSocket.Value, sql.MinCoresPerProcessor) },
+            };
             steps.Add(new("SQL Server {0} per core: {1} cores, {2:N0}.", machine.Edition.ToString(), cores, Cost(product, cores)));
             if (machine.Edition == SqlEdition.Standard)
                 steps.Add(new("Alternative Standard server + CAL: {0:N0} for the server plus {1:N0} per user or device that uses it – cheaper only with few users.",
@@ -163,6 +167,9 @@ public static class SqlServerEngine
             {
                 Plan = options.SoftwareAssurance ? LicenseVariant.PlanVm : LicenseVariant.PlanHost,
                 Parts = perVmCores.Select(p => new LicensePart(p.Key, p.Value, Cost(p.Key, p.Value))).ToList(),
+                Formula = perVmSet.Count == 0 ? new("no SQL Server VM on this host right now")
+                    : perVmSet.Count > own.Count ? new("{0} VMs of the cluster × their vCPUs, at least {1} each (without SA on every host)", perVmSet.Count, sql.MinCoresPerVm)
+                    : new("{0} VMs × their vCPUs, at least {1} each", perVmSet.Count, sql.MinCoresPerVm),
             });
 
             var perSocket = hostInfo.CoresPerSocket ?? (hostInfo.Sockets is > 0 && hostInfo.TotalCores is { } total ? (total + hostInfo.Sockets.Value - 1) / hostInfo.Sockets.Value : null);
@@ -176,13 +183,18 @@ public static class SqlServerEngine
                 var unlimited = options.SoftwareAssurance && hostEdition == SqlEdition.Enterprise;
                 var hostAllowed = unlimited || covered.Count <= hostCores;
                 variants.Add(new LicenseVariant(hostProduct, hostCores, hostCost, hostAllowed,
-                    hostAllowed ? null : new("Without SA the full licensing covers only as many VMs as core licences.")) { Plan = LicenseVariant.PlanHost });
+                    hostAllowed ? null : new("Without SA the full licensing covers only as many VMs as core licences."))
+                {
+                    Plan = LicenseVariant.PlanHost,
+                    Formula = unlimited ? new("all {0} cores of the host, with SA any number of SQL VMs", hostCores) : new("all {0} cores of the host, covers up to {0} SQL VMs", hostCores),
+                });
                 steps.Add(new("Whole host in {0}: {1} processors × {2} cores (at least {3} per processor) = {4} cores, {5:N0}; covers up to {4} SQL VMs.",
                     hostEdition.ToString(), hostInfo.Sockets.Value, perSocket.Value, sql.MinCoresPerProcessor, hostCores, hostCost));
                 if (options.SoftwareAssurance && hostEdition == SqlEdition.Standard)
                 {
                     var enterpriseCost = Cost(MicrosoftRules.SqlEnterprise, hostCores);
-                    variants.Add(new LicenseVariant(MicrosoftRules.SqlEnterprise, hostCores, enterpriseCost, true) { Plan = LicenseVariant.PlanHost });
+                    variants.Add(new LicenseVariant(MicrosoftRules.SqlEnterprise, hostCores, enterpriseCost, true)
+                        { Plan = LicenseVariant.PlanHost, Formula = new("all {0} cores of the host, with SA any number of SQL VMs", hostCores) });
                     steps.Add(new("Whole host in Enterprise with SA: {0} cores, {1:N0}; any number of SQL VMs.", hostCores, enterpriseCost));
                 }
                 else if (unlimited)
@@ -217,7 +229,8 @@ public static class SqlServerEngine
             }
             var host = new LicensingHost($"computer:{vm.ComputerId}", vm.Name, null, "VM", null, null, vm.VirtualCpus, false, null, vm.ComputerId,
                 [new LicensingVm(vm.Name, vm.VirtualCpus, true, true, vm.ComputerId)]);
-            return new HostLicensing(host, 0, 1, [new LicenseVariant(product, cores, Cost(product, cores), allowed, allowed ? null : new("Only with Software Assurance or a subscription."))], null, [], steps)
+            return new HostLicensing(host, 0, 1, [new LicenseVariant(product, cores, Cost(product, cores), allowed, allowed ? null : new("Only with Software Assurance or a subscription."))
+                { Formula = new("{0} vCPUs, at least {1}", vm.VirtualCpus?.ToString() ?? "?", sql.MinCoresPerVm) }], null, [], steps)
                 { VmsOnHost = 1 };
         }
 
