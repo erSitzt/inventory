@@ -1,0 +1,263 @@
+@inject DataTransferService Transfer
+@inject DeploymentService Deployments
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject Auditor Audit
+@inject Access Access
+@inject Display Display
+@inject ILogger<DataTransferSection> Logger
+@inject IStringLocalizer<SharedResource> L
+@implements IDisposable
+
+@* Export und Import des ganzen Stands: zum Umzug auf einen anderen Server und als Sicherung, die nicht an den Rechner gebunden ist. *@
+<MudPaper id="transfer" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">@L["Export and import"]</MudText>
+        <MudText Typo="Typo.body2">
+            @L["The export contains the complete state of this installation: computers with inventory and history, packages, collections, schedules, deployments, reports, credentials, settings and the audit log. Use it to move to another server or as a backup that, unlike the daily backup, can be restored on a different computer."]
+        </MudText>
+
+        <MudText Typo="Typo.subtitle2">@L["Export"]</MudText>
+        <MudText Typo="Typo.caption">@L["Stored passwords, webhook addresses and SNMP communities are encrypted with the passphrase. Without it, the export cannot be imported."]</MudText>
+        <MudTextField @bind-Value="_exportPassphrase" Label="@L["Passphrase"]" Variant="Variant.Outlined" InputType="InputType.Password" Immediate="true"
+                      HelperText="@L["At least {0} characters.", DataTransferService.MinPassphraseLength]" autocomplete="new-password" />
+        <MudTextField @bind-Value="_exportRepeat" Label="@L["Repeat passphrase"]" Variant="Variant.Outlined" InputType="InputType.Password" Immediate="true" autocomplete="new-password"
+                      Error="@(_exportRepeat.Length > 0 && _exportRepeat != _exportPassphrase)" ErrorText="@L["The passphrases do not match."]" />
+        <MudCheckBox T="bool" @bind-Value="_includePackages" Color="Color.Primary" Label="@L["Include package files"]" />
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Archive" OnClick="ExportAsync"
+                       Disabled="@(_busy || _exportPassphrase.Length < DataTransferService.MinPassphraseLength || _exportRepeat != _exportPassphrase)">
+                @(_exporting ? L["Creating export …"] : L["Create export"])
+            </MudButton>
+            @if (_exportId is not null)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" Href="@($"download/export/{_exportId:D}")" Target="_blank">
+                    @L["Download"]
+                </MudButton>
+            }
+        </MudStack>
+        @if (_exportManifest is not null)
+        {
+            <MudText Typo="Typo.caption">
+                @L["{0} computers, {1} packages, {2} credentials.", _exportManifest.Computers, _exportManifest.Packages, _exportManifest.Credentials]
+                @(_exportManifest.IncludesPackages ? L["Package files: {0}.", Display.FileSize(_exportManifest.PackageBytes)] : L["Without package files."])
+                @L["The file can be downloaded once; keep it in a safe place."]
+            </MudText>
+        }
+
+        <MudText Typo="Typo.subtitle2" Class="mt-2">@L["Import"]</MudText>
+        @if (_pending is not null)
+        {
+            <MudAlert Severity="Severity.Warning">
+                @L["An import from {0} (exported {1}, version {2}) is ready. It replaces the current state with the next start of Inventory.", _pending.MachineName, Display.LocalTime(_pending.CreatedUtc), _pending.AppVersion]
+                @if (!_pending.IncludesPackages)
+                {
+                    <br />@L["The export contains no package files: the packages keep their steps, but their files are missing until they are uploaded again."]
+                }
+            </MudAlert>
+            @if (Deployments.AnyRunning)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">@L["Deployments are running. A restart interrupts them; their state is not carried over to the imported data."]</MudAlert>
+            }
+            <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                @if (ServiceRestart.Available)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.RestartAlt" Disabled="_busy" OnClick="RestartAsync">@L["Restart now"]</MudButton>
+                }
+                <MudButton Variant="Variant.Outlined" Disabled="_busy" OnClick="DiscardAsync">@L["Discard import"]</MudButton>
+            </MudStack>
+            @if (!ServiceRestart.Available)
+            {
+                <MudText Typo="Typo.caption">@L["Inventory does not run as a Windows service here. Stop and start it to apply the import."]</MudText>
+            }
+        }
+        else
+        {
+            <MudText Typo="Typo.caption">
+                @L["Replaces all data of this installation with the export. The current state is kept in the backups folder of the data directory. Not part of the export is the configuration of this server (appsettings.json: port, sign-in, allowed groups and roles); it stays as it is. Agents keep reporting to the server they were installed from until they are rolled out again from this one."]
+            </MudText>
+            @if (_uploadManifest is null)
+            {
+                <div>
+                    <MudButton HtmlTag="label" for="transfer-import" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="_busy">
+                        @(_uploading ? L["Uploading …"] : L["Choose export file"])
+                    </MudButton>
+                    <InputFile id="transfer-import" OnChange="UploadAsync" accept=".zip" hidden />
+                </div>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    @L["Export of {0} from {1}, version {2}: {3} computers, {4} packages, {5} credentials.", _uploadManifest.MachineName, Display.LocalTime(_uploadManifest.CreatedUtc), _uploadManifest.AppVersion, _uploadManifest.Computers, _uploadManifest.Packages, _uploadManifest.Credentials]
+                    @(_uploadManifest.IncludesPackages ? L["Package files: {0}.", Display.FileSize(_uploadManifest.PackageBytes)] : L["Without package files."])
+                </MudAlert>
+                <MudTextField @bind-Value="_importPassphrase" Label="@L["Passphrase"]" Variant="Variant.Outlined" InputType="InputType.Password" Immediate="true" autocomplete="off" />
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Unarchive" OnClick="StageAsync"
+                               Disabled="@(_busy || _importPassphrase.Length == 0)">
+                        @(_staging ? L["Preparing import …"] : L["Prepare import"])
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="ClearUpload">@L["Cancel"]</MudButton>
+                </MudStack>
+            }
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    /// <summary>Wie beim Hochladen von Paketdateien: größere Exporte gehören direkt in den Ordner, nicht durch den Browser.</summary>
+    private const long MaxUploadBytes = 8L << 30;
+
+    private string _exportPassphrase = "";
+    private string _exportRepeat = "";
+    private bool _includePackages = true;
+    private bool _exporting;
+    private Guid? _exportId;
+    private TransferManifest? _exportManifest;
+
+    private TransferManifest? _pending;
+    private bool _uploading;
+    private string? _uploadPath;
+    private TransferManifest? _uploadManifest;
+    private string _importPassphrase = "";
+    private bool _staging;
+
+    private bool _busy => _exporting || _uploading || _staging;
+
+    protected override void OnInitialized() => _pending = Transfer.PendingImport;
+
+    private async Task ExportAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _exporting = true;
+        _exportId = null;
+        _exportManifest = null;
+        try
+        {
+            (var id, _exportManifest) = await Transfer.ExportAsync(_exportPassphrase, _includePackages, AppVersion.Current);
+            _exportId = id;
+            _exportPassphrase = _exportRepeat = "";
+            await Audit.LogAsync(L["Data exported"], _exportManifest.IncludesPackages ? L["with package files ({0})", Display.FileSize(_exportManifest.PackageBytes)] : L["without package files"]);
+        }
+        catch (TransferException ex)
+        {
+            Snackbar.Add(L[ex.Format, ex.Args], Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Export failed");
+            Snackbar.Add(L["Export failed: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _exporting = false;
+        }
+    }
+
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (e.File.Size > MaxUploadBytes)
+        {
+            Snackbar.Add(L["{0} is too large for the browser upload.", e.File.Name], Severity.Error);
+            return;
+        }
+        ClearUpload();
+        _uploading = true;
+        StateHasChanged();
+        try
+        {
+            _uploadPath = Transfer.NewUploadPath();
+            await using (var target = new FileStream(_uploadPath, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 20, useAsync: true))
+            await using (var source = e.File.OpenReadStream(MaxUploadBytes))
+                await source.CopyToAsync(target);
+            _uploadManifest = DataTransferService.Inspect(_uploadPath);
+        }
+        catch (TransferException ex)
+        {
+            ClearUpload();
+            Snackbar.Add(L[ex.Format, ex.Args], Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            ClearUpload();
+            Logger.LogError(ex, "Upload of the export failed");
+            Snackbar.Add(L["Upload failed: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task StageAsync()
+    {
+        if (!await Access.DemandAdminAsync() || _uploadPath is null || _uploadManifest is null)
+            return;
+        var confirmed = await Dialogs.ShowMessageBoxAsync(L["Import data"],
+            L["All data of this installation is replaced by the export of {0}. Changes made here until the restart are lost. Continue?", _uploadManifest.MachineName],
+            yesText: L["Prepare import"], cancelText: L["Cancel"]);
+        if (confirmed != true)
+            return;
+        _staging = true;
+        StateHasChanged();
+        try
+        {
+            var actor = await Audit.ActorAsync();
+            var details = L["from {0}, exported {1}, version {2}", _uploadManifest.MachineName, Display.LocalTime(_uploadManifest.CreatedUtc), _uploadManifest.AppVersion];
+            _pending = await Transfer.StageImportAsync(_uploadPath, _importPassphrase, new AuditEntry
+            {
+                User = actor.User, Role = actor.Role is null or AccessRole.None ? null : actor.Role, Source = actor.Source,
+                Action = L["Data imported"], Details = details,
+            });
+            // Im jetzigen Protokoll steht, dass ein Import vorbereitet wurde; mit der Sicherung bleibt es erhalten.
+            await Audit.LogAsync(L["Data import prepared"], details);
+            ClearUpload();
+        }
+        catch (TransferException ex)
+        {
+            Snackbar.Add(L[ex.Format, ex.Args], Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Preparing the import failed");
+            Snackbar.Add(L["Import failed: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _staging = false;
+        }
+    }
+
+    private async Task RestartAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await Audit.LogAsync(L["Restart to apply the import"]);
+        ServiceRestart.Schedule(Logger);
+        Snackbar.Add(L["Inventory restarts. Reload the page in about half a minute."], Severity.Info);
+    }
+
+    private async Task DiscardAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        Transfer.CancelPendingImport();
+        _pending = null;
+        await Audit.LogAsync(L["Data import discarded"]);
+    }
+
+    /// <summary>Schließt jemand die Seite mitten im Hochladen oder vor dem Import, bleibt die Datei nicht liegen.</summary>
+    public void Dispose() => ClearUpload();
+
+    private void ClearUpload()
+    {
+        if (_uploadPath is not null)
+            Transfer.DeleteUpload(_uploadPath);
+        _uploadPath = null;
+        _uploadManifest = null;
+        _importPassphrase = "";
+    }
+}

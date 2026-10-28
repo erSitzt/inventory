@@ -506,6 +506,9 @@
   <data name="All computers Inventory knows, with reachability, last scan and security indicators." xml:space="preserve">
     <value>Alle Rechner, die Inventory kennt, mit Erreichbarkeit, letztem Scan und Sicherheitsampel.</value>
   </data>
+  <data name="All data of this installation is replaced by the export of {0}. Changes made here until the restart are lost. Continue?" xml:space="preserve">
+    <value>Alle Daten dieser Installation werden durch den Export von {0} ersetzt. Änderungen, die hier bis zum Neustart gemacht werden, gehen verloren. Fortfahren?</value>
+  </data>
   <data name="All enabled address ranges" xml:space="preserve">
     <value>Alle eingeschalteten Adressbereiche</value>
   </data>
@@ -607,6 +610,9 @@
   </data>
   <data name="An estimate from the inventory data, not a binding statement for an audit." xml:space="preserve">
     <value>Eine Schätzung aus den Inventardaten, keine verbindliche Aussage für ein Audit.</value>
+  </data>
+  <data name="An import from {0} (exported {1}, version {2}) is ready. It replaces the current state with the next start of Inventory." xml:space="preserve">
+    <value>Ein Import von {0} (exportiert {1}, Version {2}) liegt bereit. Er ersetzt den jetzigen Stand beim nächsten Start von Inventory.</value>
   </data>
   <data name="An unexpected error occurred." xml:space="preserve">
     <value>Ein unerwarteter Fehler ist aufgetreten.</value>
@@ -739,6 +745,9 @@
   </data>
   <data name="at least one rule" xml:space="preserve">
     <value>mindestens eine Regel</value>
+  </data>
+  <data name="At least {0} characters." xml:space="preserve">
+    <value>Mindestens {0} Zeichen.</value>
   </data>
   <data name="At least {0} cores per server, in packs of {1}: {2} cores." xml:space="preserve">
     <value>Mindestens {0} Kerne je Server, in Paketen zu {1}: {2} Kerne.</value>
@@ -922,6 +931,9 @@
   </data>
   <data name="Checks the reachability of all computers at fixed intervals so the online status in the computer list and on the overview stays current. Computers with name anomalies – a different computer responds under the name, or reverse DNS names another – are skipped until the discrepancy is resolved." xml:space="preserve">
     <value>Prüft in festen Abständen die Erreichbarkeit aller Rechner, damit der Online-Status in der Rechnerliste und auf der Übersicht aktuell bleibt. Rechner mit Namensauffälligkeiten – ein anderer Rechner antwortet unter dem Namen oder Reverse-DNS nennt einen anderen – werden übersprungen, bis die Abweichung geklärt ist.</value>
+  </data>
+  <data name="Choose export file" xml:space="preserve">
+    <value>Exportdatei auswählen</value>
   </data>
   <data name="Choose file" xml:space="preserve">
     <value>Datei wählen</value>
@@ -1220,6 +1232,9 @@
   <data name='Create dynamic collection "{0} outdated" (computers with an older version)' xml:space="preserve">
     <value>Dynamische Sammlung „{0} veraltet“ anlegen (Rechner mit älterer Version)</value>
   </data>
+  <data name="Create export" xml:space="preserve">
+    <value>Export erstellen</value>
+  </data>
   <data name="Create or import a package" xml:space="preserve">
     <value>Ein Paket anlegen oder importieren</value>
   </data>
@@ -1234,6 +1249,9 @@
   </data>
   <data name="Creates computers from the directory's computer accounts and marks computers whose account is no longer found there. Manually added computers the directory never knew remain untouched." xml:space="preserve">
     <value>Legt Computerkonten aus dem Verzeichnis als Rechner an und kennzeichnet Rechner, deren Konto dort nicht mehr gefunden wird. Von Hand angelegte Rechner, die das Verzeichnis nie gekannt hat, bleiben unberührt.</value>
+  </data>
+  <data name="Creating export …" xml:space="preserve">
+    <value>Export wird erstellt …</value>
   </data>
   <data name="Credential Guard" xml:space="preserve">
     <value>Credential Guard</value>
@@ -1298,8 +1316,20 @@
   <data name="Data directory" xml:space="preserve">
     <value>Datenverzeichnis</value>
   </data>
+  <data name="Data exported" xml:space="preserve">
+    <value>Daten exportiert</value>
+  </data>
   <data name="Data gaps" xml:space="preserve">
     <value>Datenlücken</value>
+  </data>
+  <data name="Data import discarded" xml:space="preserve">
+    <value>Datenimport verworfen</value>
+  </data>
+  <data name="Data import prepared" xml:space="preserve">
+    <value>Datenimport vorbereitet</value>
+  </data>
+  <data name="Data imported" xml:space="preserve">
+    <value>Daten importiert</value>
   </data>
   <data name="Database, keys, package files and daily backups (subfolder backups, 14 copies of database and keys). Package files are not part of the backup – include the folder in the backup of the server if you need them. Configurable via Inventory:DataDirectory." xml:space="preserve">
     <value>Datenbank, Schlüssel, Paketdateien und tägliche Sicherungen (Unterordner backups, 14 Stände von Datenbank und Schlüsseln). Paketdateien sind nicht Teil der Sicherung – wer sie braucht, nimmt den Ordner in die Sicherung des Servers auf. Einstellbar über Inventory:DataDirectory.</value>
@@ -1484,6 +1514,9 @@
   <data name='Deployments and schedules with the option "Only within the maintenance window" run on a computer only while its window is open; otherwise the computer waits (at most 8 days). Collections can have windows of their own. The default window below applies to all computers that are in no such collection. Remote commands and scans are never held back.' xml:space="preserve">
     <value>Deployments und Zeitpläne mit der Option „Nur im Wartungsfenster“ laufen auf einem Rechner nur, solange sein Fenster offen ist; sonst wartet der Rechner (höchstens 8 Tage). Sammlungen können eigene Fenster haben. Das Standardfenster unten gilt für alle Rechner, die in keiner solchen Sammlung sind. Fernbefehle und Scans werden nie zurückgehalten.</value>
   </data>
+  <data name="Deployments are running. A restart interrupts them; their state is not carried over to the imported data." xml:space="preserve">
+    <value>Es laufen Deployments. Ein Neustart unterbricht sie; ihr Stand wird nicht in die importierten Daten übernommen.</value>
+  </data>
   <data name="Deployments are still running. Please wait until they have finished or cancel them under Deployments." xml:space="preserve">
     <value>Es laufen noch Deployments. Bitte warten, bis sie fertig sind, oder sie unter Deployments abbrechen.</value>
   </data>
@@ -1583,6 +1616,9 @@
   <data name="disabled in AD" xml:space="preserve">
     <value>im AD deaktiviert</value>
   </data>
+  <data name="Discard import" xml:space="preserve">
+    <value>Import verwerfen</value>
+  </data>
   <data name="Discovered name" xml:space="preserve">
     <value>Gefundener Name</value>
   </data>
@@ -1624,6 +1660,9 @@
   </data>
   <data name="Done" xml:space="preserve">
     <value>Fertig</value>
+  </data>
+  <data name="Download" xml:space="preserve">
+    <value>Herunterladen</value>
   </data>
   <data name="Download agent setup" xml:space="preserve">
     <value>Agent-Setup herunterladen</value>
@@ -1859,11 +1898,23 @@
   <data name="Explains the page you are on, with a link to the documentation. The tour starts from here, too." xml:space="preserve">
     <value>Erklärt die Seite, auf der Sie gerade sind, mit Link zur Dokumentation. Auch die Tour startet von hier.</value>
   </data>
+  <data name="Export" xml:space="preserve">
+    <value>Export</value>
+  </data>
   <data name="Export (CSV)" xml:space="preserve">
     <value>Export (CSV)</value>
   </data>
+  <data name="Export and import" xml:space="preserve">
+    <value>Export und Import</value>
+  </data>
   <data name="Export as CSV" xml:space="preserve">
     <value>Als CSV exportieren</value>
+  </data>
+  <data name="Export failed: {0}" xml:space="preserve">
+    <value>Export fehlgeschlagen: {0}</value>
+  </data>
+  <data name="Export of {0} from {1}, version {2}: {3} computers, {4} packages, {5} credentials." xml:space="preserve">
+    <value>Export von {0} vom {1}, Version {2}: {3} Rechner, {4} Pakete, {5} Anmeldedaten.</value>
   </data>
   <data name="failed" xml:space="preserve">
     <value>fehlgeschlagen</value>
@@ -2029,6 +2080,9 @@
   </data>
   <data name="from {0} VMs" xml:space="preserve">
     <value>ab {0} VMs</value>
+  </data>
+  <data name="from {0}, exported {1}, version {2}" xml:space="preserve">
+    <value>von {0}, exportiert {1}, Version {2}</value>
   </data>
   <data name="Fulfilled" xml:space="preserve">
     <value>Erfüllt</value>
@@ -2213,6 +2267,12 @@
   <data name="Import asset data (CSV)" xml:space="preserve">
     <value>Bestandsdaten importieren (CSV)</value>
   </data>
+  <data name="Import data" xml:space="preserve">
+    <value>Daten importieren</value>
+  </data>
+  <data name="Import failed: {0}" xml:space="preserve">
+    <value>Import fehlgeschlagen: {0}</value>
+  </data>
   <data name="Import licence stock" xml:space="preserve">
     <value>Lizenzbestand importieren</value>
   </data>
@@ -2254,6 +2314,9 @@
   </data>
   <data name="Include in scheduled scans" xml:space="preserve">
     <value>In geplante Scans einbeziehen</value>
+  </data>
+  <data name="Include package files" xml:space="preserve">
+    <value>Paketdateien einschließen</value>
   </data>
   <data name="included" xml:space="preserve">
     <value>einbezogen</value>
@@ -2360,11 +2423,17 @@
   <data name="Inventoried VMs without a known host" xml:space="preserve">
     <value>Inventarisierte VMs ohne bekannten Host</value>
   </data>
+  <data name="Inventory does not run as a Windows service here. Stop and start it to apply the import." xml:space="preserve">
+    <value>Inventory läuft hier nicht als Windows-Dienst. Beenden und starten Sie es, um den Import einzusetzen.</value>
+  </data>
   <data name="Inventory is up to date (checked {0}, source: github.com/{1})." xml:space="preserve">
     <value>Inventory ist aktuell (geprüft {0}, Quelle: github.com/{1}).</value>
   </data>
   <data name="Inventory number" xml:space="preserve">
     <value>Inventarnummer</value>
+  </data>
+  <data name="Inventory restarts. Reload the page in about half a minute." xml:space="preserve">
+    <value>Inventory startet neu. Laden Sie die Seite in etwa einer halben Minute neu.</value>
   </data>
   <data name="Inventory scan" xml:space="preserve">
     <value>Inventar-Scan</value>
@@ -3584,6 +3653,9 @@
   <data name="Package file uploaded" xml:space="preserve">
     <value>Paketdatei hochgeladen</value>
   </data>
+  <data name="Package files: {0}." xml:space="preserve">
+    <value>Paketdateien: {0}.</value>
+  </data>
   <data name="Package imported from library" xml:space="preserve">
     <value>Paket aus Bibliothek importiert</value>
   </data>
@@ -3661,6 +3733,9 @@
   </data>
   <data name="passive – another antivirus is active" xml:space="preserve">
     <value>passiv – ein anderer Virenschutz ist aktiv</value>
+  </data>
+  <data name="Passphrase" xml:space="preserve">
+    <value>Passphrase</value>
   </data>
   <data name="Password" xml:space="preserve">
     <value>Passwort</value>
@@ -3871,6 +3946,12 @@
   </data>
   <data name="PowerShell on the target computer runs in constrained language mode for this account (AppLocker/WDAC policy). The WinRM transport cannot be used there; please use SMB + service." xml:space="preserve">
     <value>Auf dem Zielrechner läuft PowerShell für dieses Konto im eingeschränkten Sprachmodus (AppLocker/WDAC-Richtlinie). Der WinRM-Transport ist dort nicht nutzbar; bitte SMB + Dienst verwenden.</value>
+  </data>
+  <data name="Prepare import" xml:space="preserve">
+    <value>Import vorbereiten</value>
+  </data>
+  <data name="Preparing import …" xml:space="preserve">
+    <value>Import wird vorbereitet …</value>
   </data>
   <data name="Prerequisites" xml:space="preserve">
     <value>Voraussetzungen</value>
@@ -4214,8 +4295,14 @@
   <data name="Renew secret" xml:space="preserve">
     <value>Geheimnis erneuern</value>
   </data>
+  <data name="Repeat passphrase" xml:space="preserve">
+    <value>Passphrase wiederholen</value>
+  </data>
   <data name="Replace logo" xml:space="preserve">
     <value>Logo ersetzen</value>
+  </data>
+  <data name="Replaces all data of this installation with the export. The current state is kept in the backups folder of the data directory. Not part of the export is the configuration of this server (appsettings.json: port, sign-in, allowed groups and roles); it stays as it is. Agents keep reporting to the server they were installed from until they are rolled out again from this one." xml:space="preserve">
+    <value>Ersetzt alle Daten dieser Installation durch den Export. Der jetzige Stand bleibt im Ordner backups des Datenverzeichnisses erhalten. Nicht Teil des Exports ist die Konfiguration dieses Servers (appsettings.json: Port, Anmeldung, erlaubte Gruppen und Rollen); sie bleibt, wie sie ist. Agenten melden sich weiter bei dem Server, von dem sie installiert wurden, bis sie von diesem aus neu verteilt werden.</value>
   </data>
   <data name="Report" xml:space="preserve">
     <value>Bericht</value>
@@ -4295,8 +4382,14 @@
   <data name="Restart if needed" xml:space="preserve">
     <value>Neustart, falls nötig</value>
   </data>
+  <data name="Restart now" xml:space="preserve">
+    <value>Jetzt neu starten</value>
+  </data>
   <data name="Restart pending" xml:space="preserve">
     <value>Neustart ausstehend</value>
+  </data>
+  <data name="Restart to apply the import" xml:space="preserve">
+    <value>Neustart zum Einsetzen des Imports</value>
   </data>
   <data name="restarting" xml:space="preserve">
     <value>startet neu</value>
@@ -5096,6 +5189,9 @@
   <data name="Stored credentials whose user name and password the mail server accepts." xml:space="preserve">
     <value>Gespeicherte Zugangsdaten, deren Benutzername und Passwort der Mailserver annimmt.</value>
   </data>
+  <data name="Stored passwords, webhook addresses and SNMP communities are encrypted with the passphrase. Without it, the export cannot be imported." xml:space="preserve">
+    <value>Gespeicherte Passwörter, Webhook-Adressen und SNMP-Communities werden mit der Passphrase verschlüsselt. Ohne sie lässt sich der Export nicht importieren.</value>
+  </data>
   <data name="Stored. Leave empty to keep them; tick below to use the general ones again." xml:space="preserve">
     <value>Gespeichert. Leer lassen, um sie zu behalten; unten ankreuzen, um wieder die allgemeinen zu verwenden.</value>
   </data>
@@ -5324,6 +5420,21 @@
   <data name="The existing stock is deducted: what it covers costs nothing more. Hosts with the fewest choices get the stock first, then the largest." xml:space="preserve">
     <value>Der vorhandene Bestand wird abgezogen: Was er deckt, kostet nichts mehr. Den Bestand bekommen zuerst die Hosts mit der geringsten Auswahl, dann die größten.</value>
   </data>
+  <data name="The export comes from a newer version of Inventory ({0}). Update this installation first." xml:space="preserve">
+    <value>Der Export stammt aus einer neueren Version von Inventory ({0}). Aktualisieren Sie zuerst diese Installation.</value>
+  </data>
+  <data name="The export contains no package files: the packages keep their steps, but their files are missing until they are uploaded again." xml:space="preserve">
+    <value>Der Export enthält keine Paketdateien: Die Pakete behalten ihre Schritte, aber ihre Dateien fehlen, bis sie erneut hochgeladen werden.</value>
+  </data>
+  <data name="The export contains the complete state of this installation: computers with inventory and history, packages, collections, schedules, deployments, reports, credentials, settings and the audit log. Use it to move to another server or as a backup that, unlike the daily backup, can be restored on a different computer." xml:space="preserve">
+    <value>Der Export enthält den vollständigen Stand dieser Installation: Rechner mit Inventar und Verlauf, Pakete, Sammlungen, Zeitpläne, Deployments, Berichte, Anmeldedaten, Einstellungen und das Protokoll. Er dient zum Umzug auf einen anderen Server oder als Sicherung, die sich anders als die tägliche Sicherung auch auf einem anderen Rechner zurückspielen lässt.</value>
+  </data>
+  <data name="The export file is damaged or not an Inventory export." xml:space="preserve">
+    <value>Die Exportdatei ist beschädigt oder kein Export von Inventory.</value>
+  </data>
+  <data name="The file can be downloaded once; keep it in a safe place." xml:space="preserve">
+    <value>Die Datei lässt sich einmal herunterladen; bewahren Sie sie sicher auf.</value>
+  </data>
   <data name="The filters and the search narrow the list; the CSV export can be edited and imported again for asset data." xml:space="preserve">
     <value>Filter und Suche grenzen die Liste ein; der CSV-Export lässt sich für Bestandsdaten bearbeiten und wieder importieren.</value>
   </data>
@@ -5411,6 +5522,15 @@
   <data name="The package was deleted" xml:space="preserve">
     <value>Das Paket wurde gelöscht</value>
   </data>
+  <data name="The passphrase is wrong." xml:space="preserve">
+    <value>Die Passphrase ist falsch.</value>
+  </data>
+  <data name="The passphrase needs at least {0} characters." xml:space="preserve">
+    <value>Die Passphrase braucht mindestens {0} Zeichen.</value>
+  </data>
+  <data name="The passphrases do not match." xml:space="preserve">
+    <value>Die Passphrasen stimmen nicht überein.</value>
+  </data>
   <data name='The period is set under "Active Directory" in the settings; nothing is deleted automatically.' xml:space="preserve">
     <value>Die Frist steht in den Einstellungen unter „Active Directory“; automatisch gelöscht wird nichts.</value>
   </data>
@@ -5485,6 +5605,9 @@
   </data>
   <data name="The steps of the selected package run at this point; its files are copied along." xml:space="preserve">
     <value>Die Schritte des gewählten Pakets laufen an dieser Stelle; seine Dateien werden mitkopiert.</value>
+  </data>
+  <data name="The stored secret of {0} &quot;{1}&quot; cannot be decrypted. Enter it again and repeat the export." xml:space="preserve">
+    <value>Das gespeicherte Geheimnis von {0} „{1}“ lässt sich nicht entschlüsseln. Geben Sie es neu ein und wiederholen Sie den Export.</value>
   </data>
   <data name="The subnets and the routers that connect them. Click a subnet to show its devices and computers, click its frame to fold it again; drag subnets and routers to arrange them." xml:space="preserve">
     <value>Die Subnetze und die Router, die sie verbinden. Ein Klick auf ein Subnetz zeigt seine Geräte und Rechner, ein Klick auf den Rahmen klappt es wieder zu; Subnetze und Router lassen sich verschieben.</value>
@@ -5878,6 +6001,9 @@
   </data>
   <data name="Uploading {0} of {1} …" xml:space="preserve">
     <value>Lade {0} von {1} …</value>
+  </data>
+  <data name="Uploading …" xml:space="preserve">
+    <value>Wird hochgeladen …</value>
   </data>
   <data name="UPS" xml:space="preserve">
     <value>USV</value>
@@ -6347,6 +6473,9 @@
   <data name="With Enterprise and SA any number of SQL VMs may run on the fully licensed host." xml:space="preserve">
     <value>Mit Enterprise und SA dürfen beliebig viele SQL-VMs auf dem voll lizenzierten Host laufen.</value>
   </data>
+  <data name="with package files ({0})" xml:space="preserve">
+    <value>mit Paketdateien ({0})</value>
+  </data>
   <data name="With SA the licences move with the VMs within the server farm (License Mobility); each VM is licensed once." xml:space="preserve">
     <value>Mit SA wandern die Lizenzen innerhalb der Serverfarm mit den VMs (License Mobility); jede VM wird einmal lizenziert.</value>
   </data>
@@ -6364,6 +6493,12 @@
   </data>
   <data name="Without launcher: commands to copy" xml:space="preserve">
     <value>Ohne Starter: Befehle zum Kopieren</value>
+  </data>
+  <data name="without package files" xml:space="preserve">
+    <value>ohne Paketdateien</value>
+  </data>
+  <data name="Without package files." xml:space="preserve">
+    <value>Ohne Paketdateien.</value>
   </data>
   <data name="Without SA licences stay on their host for {0} days: per VM, this host needs licences for all {1} SQL VMs of the cluster." xml:space="preserve">
     <value>Ohne SA bleiben Lizenzen {0} Tage auf ihrem Host: Je VM braucht dieser Host Lizenzen für alle {1} SQL-VMs des Clusters.</value>
@@ -6530,6 +6665,9 @@
   <data name="{0} computers would be deleted; that is conspicuously many at once, so nothing was deleted (check the search roots or delete manually)" xml:space="preserve">
     <value>{0} Rechner wären zu löschen; das sind auffällig viele auf einmal, deshalb wurde nichts gelöscht (Suchwurzeln prüfen oder von Hand löschen)</value>
   </data>
+  <data name="{0} computers, {1} packages, {2} credentials." xml:space="preserve">
+    <value>{0} Rechner, {1} Pakete, {2} Anmeldedaten.</value>
+  </data>
   <data name="{0} cores" xml:space="preserve">
     <value>{0} Kerne</value>
   </data>
@@ -6604,6 +6742,9 @@
   </data>
   <data name="{0} is too large for the browser upload – please place it directly in the repository folder." xml:space="preserve">
     <value>{0} ist zu groß für den Upload im Browser – bitte direkt im Repository-Ordner ablegen.</value>
+  </data>
+  <data name="{0} is too large for the browser upload." xml:space="preserve">
+    <value>{0} ist zu groß für das Hochladen über den Browser.</value>
   </data>
   <data name="{0} missing" xml:space="preserve">
     <value>{0} fehlen</value>
