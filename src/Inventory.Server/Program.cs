@@ -46,6 +46,8 @@ builder.Services.Configure<InventoryOptions>(builder.Configuration.GetSection(In
 var options = builder.Configuration.GetSection(InventoryOptions.SectionName).Get<InventoryOptions>() ?? new InventoryOptions();
 var dataDirectory = options.ResolveDataDirectory();
 Directory.CreateDirectory(dataDirectory);
+// Ein vorbereiteter Import ersetzt den Stand, bevor irgendetwas die Datenbank öffnet.
+var importedOver = DataTransferService.ApplyPendingImport(dataDirectory, DateTime.Now);
 
 builder.Services.AddDbContextFactory<InventoryDbContext>(db =>
     db.UseSqlite($"Data Source={Path.Combine(dataDirectory, "inventory.db")}"));
@@ -122,6 +124,7 @@ builder.Services.AddSingleton<DeviceService>();
 builder.Services.AddSingleton<NetworkMapService>();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<SignInLog>();
+builder.Services.AddSingleton(sp => new DataTransferService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), sp.GetRequiredService<ISecretProtector>(), dataDirectory, TimeProvider.System));
 builder.Services.AddSingleton(sp => new BackupService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), Path.Combine(dataDirectory, "backups"), TimeProvider.System, Path.Combine(dataDirectory, "keys")));
 builder.Services.AddScoped<Auditor>();
 builder.Services.AddScoped<ComputerScope>();
@@ -212,6 +215,8 @@ builder.Services.AddMudServices(config => config.SnackbarConfiguration.PositionC
 
 var app = builder.Build();
 
+if (importedOver is not null)
+    app.Logger.LogWarning("Imported data replaced the previous state; the previous database is kept in {Folder}", importedOver);
 await using (var db = await app.Services.GetRequiredService<IDbContextFactory<InventoryDbContext>>().CreateDbContextAsync())
     await db.Database.MigrateAsync();
 await app.Services.GetRequiredService<InventoryStore>().BackfillPendingUpdatesAsync();
@@ -256,6 +261,7 @@ app.MapLicensingEndpoints();
 app.MapDeviceEndpoints();
 app.MapManagementEndpoints();
 app.MapAgentEndpoints();
+app.MapTransferEndpoints();
 // Dokumentation unter /api/docs, Beschreibung unter /api/openapi.json; gleiche Anmeldung wie die übrige API.
 app.MapOpenApi("/api/openapi.json");
 app.MapScalarApiReference("/api/docs", o => o.WithTitle("Inventory API").DisableDefaultFonts().WithOpenApiRoutePattern("/api/openapi.json").WithDefaultHttpClient(ScalarTarget.Shell, ScalarClient.Curl));

@@ -1028,12 +1028,44 @@ The protocol between agent and server (`/api/agent/…`) is not part of the docu
 **Backup and housekeeping.** Once a day the server writes a consistent copy of the database to `backups` and, next
 to it, the keys as `…-keys.zip` – without them the stored passwords of a backup are unreadable; 14 copies are kept.
 On Windows the keys are bound to the server (DPAPI), so they restore on the same machine. Package files
-(`repository`) are not part of the backup: include that folder in the backup of the server if you need them.
+(`repository`) are not part of the backup: include that folder in the backup of the server if you need them. For a
+backup that restores on another computer, use the [export](#moving-to-another-server-export-and-import).
 
 After the backup the server removes what has outlived its retention – audit entries and finished deployments
 (*Settings*, 730 days each by default, 0 = keep everything), inventory changes after two years – and tidies the
 database; if a large share of the file has become free, it is rewritten once no deployment is running. Deployments
 of required schedules stay, because the schedule recognises by them where the package already is.
+
+## Moving to another server (export and import)
+
+*Settings → Export and import* writes the complete state of an installation into one ZIP file and loads it into
+another one – for example from a demo laptop onto the production server. Unlike the daily backup, the export is not
+bound to the computer, so it also works as a backup that can be restored anywhere.
+
+**Export.** Choose a passphrase (at least 8 characters) and whether the package files should be included. The file
+contains the database – computers with inventory and history, packages, collections, schedules, deployments, reports,
+alert rules, notification channels, credentials, virtualization and licensing data, network devices, settings, API
+tokens and the audit log – plus the package files (`repository`) if selected. Stored passwords, webhook addresses and
+SNMP communities and the enrollment secret for agents are encrypted with the passphrase (PBKDF2-SHA256 and AES-GCM);
+nothing secret is in the file in plain text. The file can be downloaded once.
+
+**Import.** Install Inventory on the new server, sign in as administrator, choose the export file and enter the
+passphrase. Inventory checks the file and the passphrase, refuses exports from a newer version, brings the data up to
+its own database schema and encrypts the secrets with the keys of the new server. The import then **replaces** all
+data of the installation with the next start: *Restart now* restarts the service (through the recovery options the
+setup configures); without a service, stop and start Inventory. The previous database – and the previous package files
+if the export brings its own – is kept in `backups\before-import-…`. Merging several installations is not supported.
+
+Not part of the export:
+
+- the configuration of the server (`appsettings.json`: port, sign-in, allowed groups and roles, OIDC, certificate) –
+  set it up on the new server;
+- the daily backups, downloads and caches;
+- settings that belong to the old computer when the import comes from another one: the agent server address, the
+  server addresses of the network map and the last run of the AD synchronization and of the heartbeat;
+- the agent download page without sign-in: it is closed after every import and has to be opened again on purpose;
+- agents: their computers come along, but installed agents keep reporting to the old server until they are rolled out
+  again from the new one (*Settings → Agents*).
 
 ## Roadmap
 

@@ -1070,13 +1070,47 @@ Das Protokoll zwischen Agent und Server (`/api/agent/…`) ist nicht Teil der do
 und daneben die Schlüssel als `…-keys.zip` – ohne sie sind die gespeicherten Passwörter einer Sicherung nicht lesbar;
 14 Stände bleiben erhalten. Unter Windows sind die Schlüssel an den Server gebunden (DPAPI), sie lassen sich also auf
 demselben Rechner zurückspielen. Paketdateien (`repository`) sind nicht Teil der Sicherung: wer sie braucht, nimmt
-diesen Ordner in die Sicherung des Servers auf.
+diesen Ordner in die Sicherung des Servers auf. Für eine Sicherung, die sich auch auf einem anderen Rechner
+zurückspielen lässt, dient der [Export](#umzug-auf-einen-anderen-server-export-und-import).
 
 Nach der Sicherung entfernt der Server, was seine Aufbewahrungsfrist überschritten hat – Protokolleinträge und
 abgeschlossene Deployments (*Einstellungen*, Vorgabe je 730 Tage, 0 = alles behalten), Inventaränderungen nach zwei
 Jahren – und räumt die Datenbank auf; ist ein großer Teil der Datei frei geworden, wird sie neu geschrieben, sobald
 kein Deployment läuft. Deployments von Pflicht-Zeitplänen bleiben, weil der Zeitplan an ihnen erkennt, wo das Paket
 schon ist.
+
+## Umzug auf einen anderen Server (Export und Import)
+
+*Einstellungen → Export und Import* schreibt den vollständigen Stand einer Installation in eine ZIP-Datei und spielt
+ihn in eine andere ein – etwa von einem Vorführ-Laptop auf den Produktivserver. Anders als die tägliche Sicherung ist
+der Export nicht an den Rechner gebunden und taugt damit auch als Sicherung, die sich überall zurückspielen lässt.
+
+**Export.** Eine Passphrase wählen (mindestens 8 Zeichen) und entscheiden, ob die Paketdateien dazugehören. Die Datei
+enthält die Datenbank – Rechner mit Inventar und Verlauf, Pakete, Sammlungen, Zeitpläne, Deployments, Berichte,
+Alarmregeln, Benachrichtigungskanäle, Anmeldedaten, Virtualisierungs- und Lizenzdaten, Netzwerkgeräte, Einstellungen,
+API-Tokens und das Protokoll – und auf Wunsch die Paketdateien (`repository`). Gespeicherte Passwörter,
+Webhook-Adressen, SNMP-Communities und das Anmeldegeheimnis für Agenten sind mit der Passphrase verschlüsselt
+(PBKDF2-SHA256 und AES-GCM); kein Geheimnis steht im Klartext in der Datei. Die Datei lässt sich einmal herunterladen.
+
+**Import.** Inventory auf dem neuen Server installieren, als Administrator anmelden, die Exportdatei auswählen und die
+Passphrase eingeben. Inventory prüft Datei und Passphrase, lehnt Exporte einer neueren Version ab, bringt die Daten auf
+das eigene Datenbankschema und verschlüsselt die Geheimnisse mit den Schlüsseln des neuen Servers. Der Import
+**ersetzt** dann beim nächsten Start alle Daten der Installation: *Jetzt neu starten* startet den Dienst neu (über die
+Wiederherstellungsoptionen, die das Setup einträgt); ohne Dienst Inventory beenden und starten. Die bisherige
+Datenbank – und die bisherigen Paketdateien, wenn der Export eigene mitbringt – bleibt in `backups\before-import-…`
+erhalten. Mehrere Installationen zusammenzuführen ist nicht vorgesehen.
+
+Nicht Teil des Exports:
+
+- die Konfiguration des Servers (`appsettings.json`: Port, Anmeldung, erlaubte Gruppen und Rollen, OIDC, Zertifikat) –
+  sie wird auf dem neuen Server eingerichtet;
+- die täglichen Sicherungen, Downloads und Zwischenspeicher;
+- Einstellungen, die zum alten Rechner gehören, wenn der Import von einem anderen kommt: die Serveradresse für Agenten,
+  die Serveradressen der Netzwerkkarte und der letzte Lauf der AD-Synchronisation und des Heartbeats;
+- die Download-Seite für den Agenten ohne Anmeldung: sie ist nach jedem Import geschlossen und muss bewusst wieder
+  geöffnet werden;
+- Agenten: ihre Rechner kommen mit, aber installierte Agenten melden sich weiter beim alten Server, bis sie vom neuen
+  aus neu verteilt werden (*Einstellungen → Agenten*).
 
 ## Roadmap
 
