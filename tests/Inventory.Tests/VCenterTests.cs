@@ -364,6 +364,8 @@ public class VCenterTests
         await settings.SetAsync("VCenter.CredentialId", credential.Id.ToString());
         await settings.SetAsync("VCenter.Enabled", "True");
         await settings.SetAsync("XenOrchestra.Url", "https://xo.corp.example");
+        await settings.SetAsync("VCenter.LastRunUtc", "2026-10-28T08:00:00.0000000Z");
+        await settings.SetAsync("VCenter.LastResult", "4 hosts");
         var sync = new HypervisorSyncService(db, [], settings, credentials, TimeProvider.System);
         await sync.MigrateSettingsAsync();
         await sync.MigrateSettingsAsync();
@@ -371,6 +373,7 @@ public class VCenterTests
         Assert.Equal([("vcenter", HypervisorKind.VCenter, true, (int?)credential.Id), ("xenorchestra", HypervisorKind.XenOrchestra, false, null)],
             managers.Select(m => (m.Name, m.Kind, m.Enabled, m.CredentialId)));
         Assert.Null(await settings.GetAsync("VCenter.Url"));
+        Assert.Equal((new DateTime(2026, 10, 28, 8, 0, 0, DateTimeKind.Utc), "4 hosts"), (managers[0].LastRunUtc!.Value, managers[0].LastResult));
     }
 
     /// <summary>Beantwortet die REST-Abfragen von Xen Orchestra; ohne das richtige Token-Cookie gibt es 401.</summary>

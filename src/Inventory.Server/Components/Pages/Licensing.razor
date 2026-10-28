@@ -34,7 +34,7 @@ else
 
     <MudTabs Elevation="0" Outlined="true" PanelClass="pt-3" @bind-ActivePanelIndex="_tab">
         <MudTabPanel Text="@L["Overview"]">
-            @{ var shown = _overview.Balances.Where(b => b.Need > 0 || b.Stock > 0).ToList(); }
+            @{ var shown = _overview.Balances.Where(b => b.Need is not null || b.Stock > 0).ToList(); }
             <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
                 <thead>
                     <tr>

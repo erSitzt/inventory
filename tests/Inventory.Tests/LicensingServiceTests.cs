@@ -70,7 +70,8 @@ public class LicensingServiceTests
         var sql = Assert.Single(overview.SqlServer.Entries, e => e.Chosen is not null);
         Assert.Equal((MicrosoftRules.SqlStandard, 32), (sql.Chosen!.Product, sql.Chosen.Cores));
         Assert.Contains(overview.Gaps, g => g.Text.Contains("SQL Server 2022 or later on a VM without a known host"));
-        Assert.Equal(3, service.HostTable(overview).Rows.Count);
+        // Im Bericht stehen auch die nicht berechenbaren Einträge (die VMware-VM ohne Host).
+        Assert.Equal(4, service.HostTable(overview).Rows.Count);
     }
 
     [Fact]
@@ -116,5 +117,17 @@ public class LicensingServiceTests
         Assert.Contains("Total", text);
         Assert.Contains("Rules and assumptions", text);
         Assert.Contains("EA-1", text);
+    }
+
+    [Fact]
+    public void A_long_report_table_keeps_its_total_row()
+    {
+        var rows = Enumerable.Range(1, ReportPdf.MaxRows + 10).Select(i => new string?[] { $"row {i}", "1" }).ToList();
+        rows.Add(["TOTAL-ROW", "9999"]);
+        var pdf = ReportPdf.WriteSections([new ReportSection("Long", Table: new ReportTable([new("a", "A"), new("b", "B", true)], rows), TotalRow: true)],
+            new ReportPdfOptions("Long"));
+        using var document = UglyToad.PdfPig.PdfDocument.Open(pdf);
+        Assert.Contains("TOTAL-ROW", document.GetPage(document.NumberOfPages).Text);
+        Assert.Contains($"First {ReportPdf.MaxRows} of {rows.Count} rows.", document.GetPage(1).Text);
     }
 }

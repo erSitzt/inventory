@@ -184,21 +184,21 @@ public static class ReportPdf
     /// <summary>Seiten eines fließenden Berichts mit der aktuellen Schreibposition.</summary>
     private sealed class Flow
     {
-        private readonly ReportPdfOptions _options;
+        public ReportPdfOptions Options { get; }
         public List<StringBuilder> Pages { get; } = [];
         public StringBuilder Page { get; private set; } = null!;
         public double Y { get; set; }
 
         public Flow(ReportPdfOptions options)
         {
-            _options = options;
+            Options = options;
             Start();
         }
 
         public void Start()
         {
             Page = new StringBuilder();
-            Head(Page, _options);
+            Head(Page, Options);
             Pages.Add(Page);
             Y = ContentTop;
         }
@@ -216,7 +216,15 @@ public static class ReportPdf
     /// <summary>Zeichnet eine Tabelle an der Schreibposition und bricht bei Bedarf auf neue Seiten um, mit wiederholter Kopfzeile.</summary>
     private static void FlowTable(Flow flow, ReportTable table, bool totalRow)
     {
-        var rows = table.Rows.Count > MaxRows ? table.Rows.Take(MaxRows).ToList() : table.Rows;
+        // Beim Kürzen bleibt die Summenzeile am Ende stehen.
+        var rows = table.Rows.Count <= MaxRows ? table.Rows
+            : totalRow ? [.. table.Rows.Take(MaxRows - 1), table.Rows[^1]] : table.Rows.Take(MaxRows).ToList();
+        if (table.Rows.Count > MaxRows)
+        {
+            flow.Need(12);
+            Text(flow.Page, Margin, flow.Y - 8, FontSize, Font.Bold, Warning, Fit(string.Format(CultureInfo.InvariantCulture, flow.Options.TruncatedNote, rows.Count, table.Rows.Count), Usable, FontSize, bold: true));
+            flow.Y -= 12;
+        }
         var widths = ColumnWidths(table, rows);
         var factor = widths.Sum() is > 0 and var sum ? Usable / sum : 1;
         widths = widths.Select(w => w * factor).ToArray();

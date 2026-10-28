@@ -111,6 +111,9 @@ public sealed class HypervisorSyncService(IDbContextFactory<InventoryDbContext> 
                         Thumbprint = await settings.GetAsync(prefix + "Thumbprint", ct),
                         Enabled = await settings.GetAsync(prefix + "Enabled", ct) == bool.TrueString,
                         IntervalHours = int.TryParse(await settings.GetAsync(prefix + "IntervalHours", ct), out var hours) && hours > 0 ? hours : DefaultIntervalHours,
+                        // Der letzte Lauf bleibt sichtbar und bestimmt den nächsten; sonst liefe gleich nach dem Update ein Abgleich.
+                        LastRunUtc = DateTime.TryParse(await settings.GetAsync(prefix + "LastRunUtc", ct), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var last) ? last : null,
+                        LastResult = await settings.GetAsync(prefix + "LastResult", ct),
                     });
                     await db.SaveChangesAsync(ct);
                 }

@@ -279,7 +279,8 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     /// <param name="total">Mit Summenzeile (für PDF und Oberfläche); die CSV-Ausgabe bleibt ohne, damit sie sich weiterverarbeiten lässt.</param>
     public ReportTable BalanceTable(LicensingOverview overview, bool total = false)
     {
-        var balances = overview.Balances.Where(b => b.Need > 0 || b.Stock > 0).ToList();
+        // Berechnete Produkte auch mit Bedarf 0: "nichts nötig" ist eine Aussage; nicht berechnete nur mit Bestand.
+        var balances = overview.Balances.Where(b => b.Need is not null || b.Stock > 0).ToList();
         var rows = balances.Select(b => new string?[]
         {
             L[b.Product.Name], L[b.Product.PerCore ? "Cores" : "Licences"], b.Need?.ToString(CultureInfo.InvariantCulture), b.Stock.ToString(CultureInfo.InvariantCulture),
@@ -302,11 +303,14 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     /// <param name="total">Mit Summenzeile (Kerne und Kosten).</param>
     public ReportTable HostTable(LicensingOverview overview, IEnumerable<HostLicensing> entries, bool total)
     {
-        var chosen = entries.Where(h => h.Chosen is not null).ToList();
-        var rows = chosen.Select(h => new string?[]
+        // Auch Einträge ohne zulässige Variante (z. B. unbekannte Kerne) gehören in den Bericht; nur Hosts ganz ohne Last fehlen.
+        var shown = entries.Where(Relevant).ToList();
+        var chosen = shown.Where(h => h.Chosen is not null).ToList();
+        var rows = shown.Select(h => new string?[]
         {
             h.Host.Name, h.Host.Cluster, SourceName(h.Host.Source), h.WindowsVms.ToString(CultureInfo.InvariantCulture),
-            L[overview.Rules.Product(h.Chosen!.Product)?.Name ?? h.Chosen.Product], h.Chosen.Cores.ToString(CultureInfo.InvariantCulture), Money(h.Chosen.Cost),
+            h.Chosen is { } pick ? L[overview.Rules.Product(pick.Product)?.Name ?? pick.Product] : L["not calculable"],
+            h.Chosen?.Cores.ToString(CultureInfo.InvariantCulture), Money(h.Chosen?.Cost),
         }).ToList();
         if (total)
             rows.Add([L["Total"], null, null, chosen.Sum(h => h.WindowsVms).ToString(CultureInfo.InvariantCulture), null,
@@ -326,13 +330,13 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     {
         string Text(LicensingNote note) => L[note.Text, note.Args];
         var sections = new List<ReportSection>();
-        var ws = overview.WindowsServer.Hosts.Where(h => h.Chosen is not null).ToList();
-        var sql = overview.SqlServer.Entries.Where(h => h.Chosen is not null).ToList();
+        var ws = overview.WindowsServer.Hosts.Where(Relevant).ToList();
+        var sql = overview.SqlServer.Entries.Where(Relevant).ToList();
         var shortfall = overview.Balances.Sum(b => b.ShortfallCost ?? 0);
         sections.Add(new(L["Summary"],
         [
-            L["Windows Server: {0} hosts, {1} cores to license. SQL Server: {2} servers or hosts, {3} cores to license.", ws.Count, ws.Sum(h => h.Chosen!.Cores),
-                sql.Count, sql.Sum(h => h.Chosen!.Cores)],
+            L["Windows Server: {0} hosts, {1} cores to license. SQL Server: {2} servers or hosts, {3} cores to license.", ws.Count, ws.Sum(h => h.Chosen?.Cores ?? 0),
+                sql.Count, sql.Sum(h => h.Chosen?.Cores ?? 0)],
             shortfall > 0 ? L["Still to buy at the prices used: {0}.", Money(shortfall)!] : L["The recorded stock covers the calculated need."],
             L["Software Assurance – Windows Server: {0}, SQL Server: {1}. Data gaps: {2}.", overview.SoftwareAssurance ? L["yes"] : L["no"], overview.SqlSoftwareAssurance ? L["yes"] : L["no"], overview.Gaps.Count],
         ], BalanceTable(overview, total: true), TotalRow: true));
@@ -392,6 +396,9 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         ]));
         return sections;
     }
+
+    /// <summary>Ein Eintrag mit Last: gewählte Variante, Varianten, Rechenweg oder VMs; nicht ein Host ohne Windows-Server-Last.</summary>
+    private static bool Relevant(HostLicensing h) => h.Chosen is not null || h.Variants.Count > 0 || h.Steps.Count > 0 || h.WindowsVms > 0;
 
     public string SourceName(string source) => source switch
     {
