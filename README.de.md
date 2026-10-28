@@ -1089,8 +1089,8 @@ der Export nicht an den Rechner gebunden und taugt damit auch als Sicherung, die
 enthält die Datenbank – Rechner mit Inventar und Verlauf, Pakete, Sammlungen, Zeitpläne, Deployments, Berichte,
 Alarmregeln, Benachrichtigungskanäle, Anmeldedaten, Virtualisierungs- und Lizenzdaten, Netzwerkgeräte, Einstellungen,
 API-Tokens und das Protokoll – und auf Wunsch die Paketdateien (`repository`). Gespeicherte Passwörter,
-Webhook-Adressen und SNMP-Communities sind mit der Passphrase verschlüsselt (PBKDF2-SHA256 und AES-GCM); kein
-Geheimnis steht im Klartext in der Datei. Die Datei lässt sich einmal herunterladen.
+Webhook-Adressen, SNMP-Communities und das Anmeldegeheimnis für Agenten sind mit der Passphrase verschlüsselt
+(PBKDF2-SHA256 und AES-GCM); kein Geheimnis steht im Klartext in der Datei. Die Datei lässt sich einmal herunterladen.
 
 **Import.** Inventory auf dem neuen Server installieren, als Administrator anmelden, die Exportdatei auswählen und die
 Passphrase eingeben. Inventory prüft Datei und Passphrase, lehnt Exporte einer neueren Version ab, bringt die Daten auf
@@ -1107,6 +1107,8 @@ Nicht Teil des Exports:
 - die täglichen Sicherungen, Downloads und Zwischenspeicher;
 - Einstellungen, die zum alten Rechner gehören, wenn der Import von einem anderen kommt: die Serveradresse für Agenten,
   die Serveradressen der Netzwerkkarte und der letzte Lauf der AD-Synchronisation und des Heartbeats;
+- die Download-Seite für den Agenten ohne Anmeldung: sie ist nach jedem Import geschlossen und muss bewusst wieder
+  geöffnet werden;
 - Agenten: ihre Rechner kommen mit, aber installierte Agenten melden sich weiter beim alten Server, bis sie vom neuen
   aus neu verteilt werden (*Einstellungen → Agenten*).
 

@@ -39,6 +39,8 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
     public const int MinPassphraseLength = 8;
     /// <summary>Empfehlung für PBKDF2 mit SHA-256 (OWASP 2023).</summary>
     private const int Iterations = 600_000;
+    /// <summary>Grenzen für die Angabe im Manifest: sie kommt aus der hochgeladenen Datei und bestimmt die Rechenzeit.</summary>
+    private const int MinIterations = 100_000, MaxIterations = 2_000_000;
     private const string CheckText = "Inventory export";
     private const string ManifestEntry = "manifest.json";
     private const string DatabaseEntry = "inventory.db";
@@ -50,6 +52,15 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
         SettingKeys.AgentServerUrl, SettingKeys.NetworkMapServerAddresses,
         SettingKeys.HeartbeatLastRunUtc, SettingKeys.HeartbeatLastResult, SettingKeys.AdSyncLastRunUtc, SettingKeys.AdSyncLastResult,
     ];
+
+    /// <summary>
+    /// Wird bei jedem Import zurückgesetzt: eine ohne Anmeldung erreichbare Download-Seite für den Agenten (samt
+    /// Anmeldegeheimnis) soll auf dem neuen Server niemand unbemerkt mitbringen.
+    /// </summary>
+    internal static readonly string[] ResetSettings = [SettingKeys.AgentPublicDownloadUntilUtc];
+
+    /// <summary>Nur ein Import zur Zeit: alle teilen sich den Ordner import-pending.</summary>
+    private readonly SemaphoreSlim _staging = new(1, 1);
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
@@ -114,8 +125,9 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
             await using (var db = Open(copy))
             {
                 await ReplaceSecretsAsync(db, protector.Unprotect, cipher.Seal, ct);
+                await ConvertPlainSecretsAsync(db, cipher.Seal, ct);
                 var packageBytes = includePackages && Directory.Exists(RepositoryDirectory)
-                    ? Directory.EnumerateFiles(RepositoryDirectory, "*", SearchOption.AllDirectories).Sum(f => new FileInfo(f).Length)
+                    ? RepositoryFiles(RepositoryDirectory).Sum(f => new FileInfo(f).Length)
                     : 0;
                 manifest = new TransferManifest(CurrentFormat, appVersion, (await db.Database.GetAppliedMigrationsAsync(ct)).Last(), time.GetUtcNow().UtcDateTime,
                     _machineName, includePackages, Convert.ToBase64String(salt), Iterations, cipher.Seal(CheckText),
@@ -132,11 +144,8 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
                 await AddFileAsync(archive, copy, DatabaseEntry, CompressionLevel.Optimal, ct);
                 if (includePackages && Directory.Exists(RepositoryDirectory))
                 {
-                    foreach (var file in Directory.EnumerateFiles(RepositoryDirectory, "*", SearchOption.AllDirectories))
+                    foreach (var file in RepositoryFiles(RepositoryDirectory))
                     {
-                        // Halbe Uploads gehören nicht dazu.
-                        if (file.EndsWith(".upload", StringComparison.OrdinalIgnoreCase))
-                            continue;
                         var name = RepositoryEntry + Path.GetRelativePath(RepositoryDirectory, file).Replace('\\', '/');
                         // Installationsdateien sind meist schon komprimiert.
                         await AddFileAsync(archive, file, name, CompressionLevel.Fastest, ct);
@@ -164,6 +173,20 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
     /// </summary>
     /// <param name="audit">Wird in die importierte Datenbank geschrieben; das Protokoll des jetzigen Stands bleibt in der Sicherung.</param>
     public async Task<TransferManifest> StageImportAsync(string zipPath, string passphrase, AuditEntry audit, CancellationToken ct = default)
+    {
+        if (!await _staging.WaitAsync(0, ct))
+            throw new TransferException("Another import is being prepared right now.");
+        try
+        {
+            return await StageAsync(zipPath, passphrase, audit, ct);
+        }
+        finally
+        {
+            _staging.Release();
+        }
+    }
+
+    private async Task<TransferManifest> StageAsync(string zipPath, string passphrase, AuditEntry audit, CancellationToken ct)
     {
         CancelPendingImport();
         var staging = Path.Combine(PendingDirectory, "staging");
@@ -194,9 +217,13 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
             var root = Path.GetFullPath(repository) + Path.DirectorySeparatorChar;
             foreach (var entry in archive.Entries)
             {
+                if (entry.FullName == ManifestEntry)
+                    continue;
                 if (entry.FullName == DatabaseEntry)
                     entry.ExtractToFile(database);
-                else if (manifest.IncludesPackages && entry.FullName.StartsWith(RepositoryEntry, StringComparison.Ordinal) && !entry.FullName.EndsWith('/'))
+                else if (!manifest.IncludesPackages || !entry.FullName.StartsWith(RepositoryEntry, StringComparison.Ordinal))
+                    throw new TransferException("The export file is damaged or not an Inventory export.");
+                else if (!entry.FullName.EndsWith('/'))
                 {
                     var target = Path.GetFullPath(Path.Combine(repository, entry.FullName[RepositoryEntry.Length..]));
                     // Keine Einträge mit ".." oder absoluten Pfaden, die außerhalb des Ordners landen würden.
@@ -213,8 +240,9 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
             {
                 await db.Database.MigrateAsync(ct);
                 await ReplaceSecretsAsync(db, cipher.Open, protector.Protect, ct);
-                if (!string.Equals(manifest.MachineName, _machineName, StringComparison.OrdinalIgnoreCase))
-                    await db.Settings.Where(s => MachineSettings.Contains(s.Key)).ExecuteDeleteAsync(ct);
+                await ConvertPlainSecretsAsync(db, cipher.Open, ct);
+                var reset = string.Equals(manifest.MachineName, _machineName, StringComparison.OrdinalIgnoreCase) ? ResetSettings : [.. ResetSettings, .. MachineSettings];
+                await db.Settings.Where(s => reset.Contains(s.Key)).ExecuteDeleteAsync(ct);
                 db.AuditEntries.Add(audit);
                 await db.SaveChangesAsync(ct);
             }
@@ -253,30 +281,43 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
 
         var pending = Path.Combine(dataDirectory, "import-pending");
         var ready = Path.Combine(pending, "ready");
-        if (!File.Exists(Path.Combine(ready, DatabaseEntry)))
+        if (!File.Exists(Path.Combine(ready, ManifestEntry)))
         {
+            // Nur ein abgebrochenes Vorbereiten: es ersetzt nichts.
             if (Directory.Exists(pending))
                 Directory.Delete(pending, recursive: true);
             return null;
         }
 
-        var previous = Path.Combine(dataDirectory, "backups", $"before-import-{localNow:yyyyMMdd-HHmmss}");
+        // Jeder Schritt lässt sich wiederholen: bricht der Start mittendrin ab, macht der nächste dort weiter. Der Ordner für
+        // den bisherigen Stand steht deshalb fest, bevor etwas verschoben wird.
+        var marker = Path.Combine(pending, "previous.txt");
+        if (!File.Exists(marker))
+            File.WriteAllText(marker, Path.Combine(dataDirectory, "backups", $"before-import-{localNow:yyyyMMdd-HHmmss}"));
+        var previous = File.ReadAllText(marker).Trim();
         Directory.CreateDirectory(previous);
-        var database = Path.Combine(dataDirectory, DatabaseEntry);
-        foreach (var suffix in new[] { "", "-wal", "-shm" })
-        {
-            if (File.Exists(database + suffix))
-                File.Move(database + suffix, Path.Combine(previous, DatabaseEntry + suffix));
-        }
-        var repository = Path.Combine(dataDirectory, "repository");
+
         var importedRepository = Path.Combine(ready, "repository");
         if (Directory.Exists(importedRepository))
         {
-            if (Directory.Exists(repository))
+            var repository = Path.Combine(dataDirectory, "repository");
+            if (Directory.Exists(repository) && !Directory.Exists(Path.Combine(previous, "repository")))
                 Directory.Move(repository, Path.Combine(previous, "repository"));
             Directory.Move(importedRepository, repository);
         }
-        File.Move(Path.Combine(ready, DatabaseEntry), database);
+
+        var importedDatabase = Path.Combine(ready, DatabaseEntry);
+        if (File.Exists(importedDatabase))
+        {
+            var database = Path.Combine(dataDirectory, DatabaseEntry);
+            // Mit allen Begleitdateien: ein liegengebliebenes Journal oder WAL der alten Datei würde SQLite sonst in die neue einspielen.
+            foreach (var suffix in new[] { "", "-wal", "-shm", "-journal" })
+            {
+                if (File.Exists(database + suffix))
+                    File.Move(database + suffix, Path.Combine(previous, DatabaseEntry + suffix), overwrite: false);
+            }
+            File.Move(importedDatabase, database);
+        }
         Directory.Delete(pending, recursive: true);
         return previous;
     }
@@ -318,6 +359,16 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Geheimnisse, die auf dem Server im Klartext liegen; im Export sind sie trotzdem mit der Passphrase verschlüsselt.</summary>
+    private static readonly string[] PlainSecretSettings = [SettingKeys.AgentEnrollmentToken];
+
+    private static async Task ConvertPlainSecretsAsync(InventoryDbContext db, Func<string, string> convert, CancellationToken ct)
+    {
+        foreach (var setting in await db.Settings.Where(s => PlainSecretSettings.Contains(s.Key)).ToListAsync(ct))
+            setting.Value = Reseal(value => value, convert, setting.Value, "setting", setting.Key);
+        await db.SaveChangesAsync(ct);
+    }
+
     private static string? Reseal(Func<string, string> open, Func<string, string> seal, string? value, string kind, string name)
     {
         if (string.IsNullOrEmpty(value))
@@ -331,6 +382,10 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
             throw new TransferException("The stored secret of {0} \"{1}\" cannot be decrypted. Enter it again and repeat the export.", kind, name);
         }
     }
+
+    /// <summary>Die Paketdateien ohne halbe Uploads.</summary>
+    private static IEnumerable<string> RepositoryFiles(string root) =>
+        Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Where(f => !f.EndsWith(".upload", StringComparison.OrdinalIgnoreCase));
 
     private static ZipArchive OpenArchive(string zipPath) => new(File.OpenRead(zipPath), ZipArchiveMode.Read);
 
@@ -348,7 +403,7 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
             {
             }
         }
-        if (manifest is null || string.IsNullOrEmpty(manifest.Migration) || string.IsNullOrEmpty(manifest.Salt) || manifest.Iterations <= 0)
+        if (manifest is null || string.IsNullOrEmpty(manifest.Migration) || string.IsNullOrEmpty(manifest.Salt) || manifest.Iterations is < MinIterations or > MaxIterations)
             throw new TransferException("The export file is damaged or not an Inventory export.");
         if (manifest.Format > CurrentFormat)
             throw new TransferException("The export comes from a newer version of Inventory ({0}). Update this installation first.", manifest.AppVersion);

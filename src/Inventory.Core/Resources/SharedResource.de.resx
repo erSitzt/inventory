@@ -629,6 +629,9 @@
   <data name="and {0} more" xml:space="preserve">
     <value>und {0} weitere</value>
   </data>
+  <data name="Another import is being prepared right now." xml:space="preserve">
+    <value>Gerade wird bereits ein anderer Import vorbereitet.</value>
+  </data>
   <data name="Another job has been running on {0} for more than {1} minutes; this job was not started." xml:space="preserve">
     <value>Auf {0} läuft seit über {1} Minuten ein anderer Job; dieser Job wurde nicht gestartet.</value>
   </data>

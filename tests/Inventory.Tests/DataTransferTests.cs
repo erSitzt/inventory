@@ -61,6 +61,7 @@ public sealed class DataTransferTests : IDisposable
             var password = (await db.Credentials.SingleAsync()).ProtectedPassword;
             Assert.StartsWith("v1:", password);
             Assert.DoesNotContain("geheim", password);
+            Assert.StartsWith("v1:", (await db.Settings.SingleAsync(s => s.Key == SettingKeys.AgentEnrollmentToken)).Value);
         }
 
         using var target = new TestDb();
@@ -92,6 +93,8 @@ public sealed class DataTransferTests : IDisposable
             // Die Adresse des Laptops wäre auf dem neuen Server falsch; was nicht am Rechner hängt, bleibt.
             Assert.False(settings.ContainsKey(SettingKeys.AgentServerUrl));
             Assert.Equal("25", settings[SettingKeys.MaxParallelTargets]);
+            Assert.Equal("enroll-secret", settings[SettingKeys.AgentEnrollmentToken]);
+            Assert.False(settings.ContainsKey(SettingKeys.AgentPublicDownloadUntilUtc));
             Assert.Contains(await db.AuditEntries.ToListAsync(), e => e.Action == "Data imported" && e.User == "admin");
         }
     }
@@ -116,6 +119,8 @@ public sealed class DataTransferTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(SourceDirectory, "repository", "1")));
         await using var imported = Open(Path.Combine(SourceDirectory, "inventory.db"));
         Assert.Equal("https://inventory.example", (await imported.Settings.SingleAsync(s => s.Key == SettingKeys.AgentServerUrl)).Value);
+        // Die öffentliche Download-Seite geht bei jedem Import zu, auch auf demselben Rechner.
+        Assert.False(await imported.Settings.AnyAsync(s => s.Key == SettingKeys.AgentPublicDownloadUntilUtc));
     }
 
     [Fact]
@@ -164,6 +169,65 @@ public sealed class DataTransferTests : IDisposable
         Assert.False(File.Exists(Path.Combine(TargetDirectory, "evil.txt")));
         Assert.False(File.Exists(Path.Combine(TargetDirectory, "import-pending", "evil.txt")));
         Assert.Null(importer.PendingImport);
+    }
+
+    [Fact]
+    public async Task Unknown_entries_are_rejected()
+    {
+        var zip = await ExportAsync();
+        using (var archive = ZipFile.Open(zip, ZipArchiveMode.Update))
+        {
+            await using var entry = archive.CreateEntry("evil.txt").Open();
+            await entry.WriteAsync("x"u8.ToArray());
+        }
+        using var target = new TestDb();
+        var importer = new DataTransferService(target, new PrefixProtector("t:"), TargetDirectory, TimeProvider.System);
+
+        await Assert.ThrowsAsync<TransferException>(() => importer.StageImportAsync(zip, Passphrase, new AuditEntry { User = "a", Action = "x" }));
+        Assert.Null(importer.PendingImport);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public async Task Iteration_count_outside_the_supported_range_is_rejected(int iterations)
+    {
+        var zip = await ExportAsync();
+        await RewriteManifestAsync(zip, manifest => manifest with { Iterations = iterations });
+
+        Assert.Throws<TransferException>(() => DataTransferService.Inspect(zip));
+    }
+
+    /// <summary>Bricht der Start beim Einsetzen ab, macht der nächste dort weiter, ohne etwas zu verlieren.</summary>
+    [Fact]
+    public async Task Interrupted_swap_is_completed_by_the_next_start()
+    {
+        var zip = await ExportAsync(includePackages: true);
+        using var target = new TestDb();
+        var importer = new DataTransferService(target, new PrefixProtector("t:"), TargetDirectory, TimeProvider.System);
+        await importer.StageImportAsync(zip, Passphrase, new AuditEntry { User = "a", Action = "x" });
+        SqliteConnection.ClearAllPools();
+        var database = Path.Combine(TargetDirectory, "inventory.db");
+        await File.WriteAllTextAsync(database, "old");
+        await File.WriteAllTextAsync(database + "-journal", "old journal");
+        Directory.CreateDirectory(Path.Combine(TargetDirectory, "repository", "9"));
+        // Wie ein Abbruch nach dem ersten Schritt: das Repository ist schon getauscht, die Datenbank noch nicht.
+        var previous = Path.Combine(TargetDirectory, "backups", "before-import-first");
+        Directory.CreateDirectory(previous);
+        await File.WriteAllTextAsync(Path.Combine(TargetDirectory, "import-pending", "previous.txt"), previous);
+        Directory.Move(Path.Combine(TargetDirectory, "repository"), Path.Combine(previous, "repository"));
+        Directory.Move(Path.Combine(TargetDirectory, "import-pending", "ready", "repository"), Path.Combine(TargetDirectory, "repository"));
+
+        Assert.Equal(previous, DataTransferService.ApplyPendingImport(TargetDirectory, DateTime.Now));
+
+        Assert.Equal("old", await File.ReadAllTextAsync(Path.Combine(previous, "inventory.db")));
+        Assert.Equal("old journal", await File.ReadAllTextAsync(Path.Combine(previous, "inventory.db-journal")));
+        Assert.False(File.Exists(database + "-journal"));
+        Assert.True(Directory.Exists(Path.Combine(previous, "repository", "9")));
+        Assert.Equal("a", await File.ReadAllTextAsync(Path.Combine(TargetDirectory, "repository", "1", "a.txt")));
+        await using var imported = Open(database);
+        Assert.Equal(1, await imported.Credentials.CountAsync());
+        Assert.False(Directory.Exists(Path.Combine(TargetDirectory, "import-pending")));
     }
 
     [Fact]
@@ -240,7 +304,9 @@ public sealed class DataTransferTests : IDisposable
         db.Settings.AddRange(
             new Setting { Key = SettingKeys.DeviceSnmpCommunities, Value = keys.Protect("community") },
             new Setting { Key = SettingKeys.AgentServerUrl, Value = "https://inventory.example" },
-            new Setting { Key = SettingKeys.MaxParallelTargets, Value = "25" });
+            new Setting { Key = SettingKeys.MaxParallelTargets, Value = "25" },
+            new Setting { Key = SettingKeys.AgentEnrollmentToken, Value = "enroll-secret" },
+            new Setting { Key = SettingKeys.AgentPublicDownloadUntilUtc, Value = "9999-12-31T00:00:00Z" });
         await db.SaveChangesAsync();
     }
 

@@ -1046,8 +1046,8 @@ bound to the computer, so it also works as a backup that can be restored anywher
 contains the database – computers with inventory and history, packages, collections, schedules, deployments, reports,
 alert rules, notification channels, credentials, virtualization and licensing data, network devices, settings, API
 tokens and the audit log – plus the package files (`repository`) if selected. Stored passwords, webhook addresses and
-SNMP communities are encrypted with the passphrase (PBKDF2-SHA256 and AES-GCM); nothing secret is in the file in
-plain text. The file can be downloaded once.
+SNMP communities and the enrollment secret for agents are encrypted with the passphrase (PBKDF2-SHA256 and AES-GCM);
+nothing secret is in the file in plain text. The file can be downloaded once.
 
 **Import.** Install Inventory on the new server, sign in as administrator, choose the export file and enter the
 passphrase. Inventory checks the file and the passphrase, refuses exports from a newer version, brings the data up to
@@ -1063,6 +1063,7 @@ Not part of the export:
 - the daily backups, downloads and caches;
 - settings that belong to the old computer when the import comes from another one: the agent server address, the
   server addresses of the network map and the last run of the AD synchronization and of the heartbeat;
+- the agent download page without sign-in: it is closed after every import and has to be opened again on purpose;
 - agents: their computers come along, but installed agents keep reporting to the old server until they are rolled out
   again from the new one (*Settings → Agents*).
 
