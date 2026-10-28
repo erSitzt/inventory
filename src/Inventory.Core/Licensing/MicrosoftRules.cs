@@ -12,6 +12,13 @@ public sealed record LicenseProduct(string Key, string Name, string Unit, decima
     public bool PerCore => Unit == "core";
 }
 
+/// <summary>Regeln für SQL Server aus rules/microsoft/sql-server.json.</summary>
+/// <param name="PerVmRequiresSoftwareAssuranceFromMajorVersion">Ab dieser Hauptversion (16 = SQL Server 2022) ist die Lizenzierung je VM nur mit SA oder Abonnement erlaubt.</param>
+/// <param name="ListPrices">Listenpreise je 2-Kern-Paket bzw. je Lizenz (Server, CAL) als Vergleichswert.</param>
+public sealed record SqlServerRules(string Version, DateOnly ValidFrom, string Source, int MinCoresPerProcessor, int MinCoresPerVm,
+    int PerVmRequiresSoftwareAssuranceFromMajorVersion, IReadOnlyList<string> FreeEditions, IReadOnlyList<string> NonProductionEditions,
+    IReadOnlyDictionary<string, decimal> ListPrices);
+
 public sealed record WindowsServerRules(int MinCoresPerProcessor, int MinCoresPerServer, int StandardVmsPerLicense, int PerVmMinCores,
     bool PerVmRequiresSoftwareAssurance, int LicenceReassignmentDays);
 
@@ -25,7 +32,20 @@ public sealed record MicrosoftRules(string Version, DateOnly ValidFrom, string S
     public const string WindowsServerDatacenter = "WindowsServerDatacenterCore";
     public const string WindowsServerPerVm = "WindowsServerPerVmCore";
 
-    private static readonly Lazy<MicrosoftRules> Loaded = new(() => Parse(Read("windows-server.json")));
+    public const string SqlEnterprise = "SqlServerEnterpriseCore";
+    public const string SqlStandard = "SqlServerStandardCore";
+    public const string SqlStandardServer = "SqlServerStandardServer";
+    public const string SqlCal = "SqlServerCal";
+
+    private static readonly Lazy<MicrosoftRules> Loaded = new(() => Parse(Read("windows-server.json")) with { SqlServer = ParseSql(Read("sql-server.json")) });
+
+    /// <summary>Die SQL-Server-Regeln; Teil des Regelwerks, aber eine eigene Datei mit eigener Version.</summary>
+    public SqlServerRules SqlServer { get; init; } = null!;
+
+    /// <summary>Preis je Paket bzw. Lizenz: eigener Preis, sonst Listenpreis aus den Regeldateien.</summary>
+    public decimal Price(string product, IReadOnlyDictionary<string, decimal> own) =>
+        own.TryGetValue(product, out var price) ? price
+        : Product(product)?.ListPricePerPack ?? (SqlServer?.ListPrices.TryGetValue(product, out var list) == true ? list : 0m);
 
     public static MicrosoftRules Current => Loaded.Value;
 
@@ -43,6 +63,15 @@ public sealed record MicrosoftRules(string Version, DateOnly ValidFrom, string S
     }
 
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
+
+    /// <exception cref="InvalidDataException">Die Datei ist unvollständig oder unplausibel.</exception>
+    public static SqlServerRules ParseSql(string json)
+    {
+        var rules = JsonSerializer.Deserialize<SqlServerRules>(json, Options) ?? throw new InvalidDataException("Empty SQL Server rules file.");
+        if (string.IsNullOrWhiteSpace(rules.Version) || rules.MinCoresPerProcessor < 1 || rules.MinCoresPerVm < 1 || rules.FreeEditions is null || rules.ListPrices is null)
+            throw new InvalidDataException("The SQL Server rules are incomplete or implausible.");
+        return rules;
+    }
 
     /// <exception cref="InvalidDataException">Die Datei ist unvollständig oder unplausibel.</exception>
     public static MicrosoftRules Parse(string json)

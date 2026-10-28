@@ -16,8 +16,10 @@ public sealed record ProductBalance(LicenseProduct Product, int? Need, int Stock
     public int? Delta => Need is { } need ? Stock - need : null;
 }
 
-public sealed record LicensingOverview(WindowsServerResult WindowsServer, IReadOnlyList<ProductBalance> Balances, IReadOnlyList<LicensingNote> Gaps, MicrosoftRules Rules,
-    bool SoftwareAssurance, DateTime CalculatedUtc);
+/// <param name="SoftwareAssurance">SA bzw. Abonnement für Windows Server.</param>
+/// <param name="SqlSoftwareAssurance">SA bzw. Abonnement für SQL Server.</param>
+public sealed record LicensingOverview(WindowsServerResult WindowsServer, SqlServerResult SqlServer, IReadOnlyList<ProductBalance> Balances, IReadOnlyList<LicensingNote> Gaps,
+    MicrosoftRules Rules, bool SoftwareAssurance, bool SqlSoftwareAssurance, IReadOnlyDictionary<string, decimal> Prices, DateTime CalculatedUtc);
 
 public sealed record LicensingSettings(IReadOnlyDictionary<string, decimal> Prices, bool ClusterWide);
 
@@ -175,17 +177,44 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         var stock = entitlements.GroupBy(e => e.Product).ToDictionary(g => g.Key, g => g.Sum(e => e.Quantity));
         var result = WindowsServerEngine.Calculate(hosts, new WindowsServerOptions(options.Prices, options.ClusterWide, softwareAssurance, stock), Rules);
 
+        var sqlProducts = new[] { MicrosoftRules.SqlEnterprise, MicrosoftRules.SqlStandard };
+        var sqlAssurance = entitlements.Any(e => sqlProducts.Contains(e.Product) && e.SoftwareAssuranceActive(today));
+        var sql = SqlServerEngine.Calculate(await SqlMachinesAsync(ct), hosts.ToDictionary(h => h.Key), new SqlServerOptions(options.Prices, sqlAssurance, stock), Rules);
+
         var balances = Rules.Products.Select(product =>
         {
             var stock = entitlements.Where(e => e.Product == product.Key).Sum(e => e.Quantity);
             var sa = entitlements.Any(e => e.Product == product.Key && e.SoftwareAssuranceActive(today));
-            int? need = windowsServerProducts.Contains(product.Key) ? result.Need.GetValueOrDefault(product.Key) : null;
+            int? need = windowsServerProducts.Contains(product.Key) ? result.Need.GetValueOrDefault(product.Key)
+                : sqlProducts.Contains(product.Key) ? sql.Need.GetValueOrDefault(product.Key) : null;
             return new ProductBalance(product, need, stock, sa);
         }).ToList();
         foreach (var expired in entitlements.Where(e => e.SoftwareAssuranceUntil is { } until && until < today))
             gaps.Add(new("Software Assurance of {0} ({1}) ended on {2}.", Rules.Product(expired.Product)?.Name ?? expired.Product, expired.ContractNumber ?? "–",
                 expired.SoftwareAssuranceUntil!.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
-        return new LicensingOverview(result, balances, [.. gaps, .. result.Gaps], Rules, softwareAssurance, time.GetUtcNow().UtcDateTime);
+        return new LicensingOverview(result, sql, balances, [.. gaps, .. result.Gaps, .. sql.Gaps], Rules, softwareAssurance, sqlAssurance, options.Prices,
+            time.GetUtcNow().UtcDateTime);
+    }
+
+    /// <summary>
+    /// Rechner mit SQL-Server-Instanzen. Bei VMs zählen die virtuellen Kerne laut Hypervisor (sonst laut Gast) und der Schlüssel des
+    /// Hosts, wie <see cref="HostsAsync"/> ihn vergibt.
+    /// </summary>
+    private async Task<List<SqlMachine>> SqlMachinesAsync(CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var computers = await db.Computers.AsNoTracking().Include(c => c.SqlInstances).Where(c => c.SqlInstances.Any()).ToListAsync(ct);
+        var ids = computers.Select(c => c.Id).ToList();
+        var hyperV = await db.HostedVirtualMachines.AsNoTracking().Where(v => v.GuestComputerId != null && ids.Contains(v.GuestComputerId.Value)).ToListAsync(ct);
+        var managed = await db.HypervisorVms.AsNoTracking().Where(v => v.GuestComputerId != null && ids.Contains(v.GuestComputerId.Value)).ToListAsync(ct);
+        return computers.Select(c =>
+        {
+            var vcpus = managed.FirstOrDefault(v => v.GuestComputerId == c.Id)?.VirtualCpus ?? hyperV.FirstOrDefault(v => v.GuestComputerId == c.Id)?.VirtualCpus
+                        ?? c.CpuLogicalProcessors ?? c.CpuCores;
+            var hostKey = c.HypervisorHostId is { } hypervisor ? $"hypervisor:{hypervisor}" : c.HostComputerId is { } host ? $"computer:{host}" : null;
+            return new SqlMachine(c.Id, c.Name, c.IsVirtual, hostKey, c.CpuSockets, c.CpuCoresPerSocket, c.IsVirtual ? vcpus : null,
+                c.SqlInstances.Select(i => new SqlInstanceInfo(i.Name, SqlServerEngine.ParseEdition(i.Edition), SqlServerEngine.MajorVersion(i.Version), i.Clustered)).ToList());
+        }).ToList();
     }
 
     /// <summary>
@@ -251,9 +280,9 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     public ReportTable HostTable(LicensingOverview overview) => new(
         [
             new("host", L["Host"]), new("cluster", L["Cluster"]), new("source", L["Source"]), new("cores", L["Licensed cores"], true),
-            new("vms", L["Windows Server VMs"], true), new("product", L["Product"]), new("licences", L["Cores to license"], true),
+            new("vms", L["Virtual machines"], true), new("product", L["Product"]), new("licences", L["Cores to license"], true),
         ],
-        overview.WindowsServer.Hosts.Where(h => h.Chosen is not null).Select(h => new string?[]
+        overview.WindowsServer.Hosts.Concat(overview.SqlServer.Entries).Where(h => h.Chosen is not null).Select(h => new string?[]
         {
             h.Host.Name, h.Host.Cluster, h.Host.Source, h.LicensedCores.ToString(CultureInfo.InvariantCulture), h.WindowsVms.ToString(CultureInfo.InvariantCulture),
             L[overview.Rules.Product(h.Chosen!.Product)?.Name ?? h.Chosen.Product], h.Chosen.Cores.ToString(CultureInfo.InvariantCulture),

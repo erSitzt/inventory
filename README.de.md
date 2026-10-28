@@ -364,7 +364,16 @@ ein Audit.
   PDF und `GET /api/licensing` exportieren sie.
 - **Datenlücken** – virtuelle Maschinen ohne bekannten Host, Hosts ohne Prozessorangaben, abgelaufene Software
   Assurance – werden aufgelistet statt geschätzt.
-- SQL Server, CALs und Windows-Clients folgen; ihr Bestand lässt sich schon erfassen.
+- **SQL Server** wird aus den gescannten Instanzen berechnet, mit der höchsten Edition je Server bzw. VM: physische
+  Server je Kern (alle Kerne, mindestens 4 je Prozessor); VMs je VM (vCPUs, mindestens 4 – ab SQL Server 2022 nur mit SA
+  oder Abonnement) oder über die Lizenzierung des ganzen Hosts in der Edition der VMs (so viele VMs wie Kernlizenzen, mit
+  Enterprise und SA beliebig viele). Developer, Express und Evaluation kosten nichts; eingesetzte Developer- und
+  Evaluation-Instanzen werden aufgelistet, weil sie nicht produktiv laufen dürfen. Standard Server + CAL erscheint als
+  Hinweis.
+- Jeder Host und jeder SQL-Server zeigt den **Rechenweg** Schritt für Schritt mit den eingesetzten Zahlen, die Varianten
+  mit ihren Kosten und ab wie vielen VMs sich Datacenter (Windows Server) bzw. der ganze Host (SQL Server) bei Ihren
+  Preisen lohnt. Der Reiter *So wird gerechnet* erklärt die Regeln und zeigt die Schwellen und einen Beispielhost.
+- CALs und Windows-Clients folgen; ihr Bestand lässt sich schon erfassen.
 
 ### Nachvollziehbarkeit
 
