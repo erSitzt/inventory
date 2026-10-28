@@ -34,7 +34,25 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
             .Include(c => c.NetworkAdapters).Include(c => c.Services).Include(c => c.Collections)
             .Include(c => c.LocalUsers).Include(c => c.LocalAdmins).Include(c => c.Apps)
             .Include(c => c.PendingUpdates).Include(c => c.UserProfiles).Include(c => c.MemoryModules).Include(c => c.PhysicalDisks).Include(c => c.Volumes).Include(c => c.Monitors).Include(c => c.Printers)
+            .Include(c => c.ServerFeatures).Include(c => c.SqlInstances).Include(c => c.VirtualMachines)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
+    }
+
+    /// <summary>Die Namen der angegebenen Rechner, z. B. für Verweise auf Host und Gäste.</summary>
+    public async Task<Dictionary<int, string>> NamesAsync(IEnumerable<int> ids, CancellationToken ct = default)
+    {
+        var wanted = ids.Distinct().ToList();
+        if (wanted.Count == 0)
+            return [];
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Computers.Where(c => wanted.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Name, ct);
+    }
+
+    /// <summary>Die virtuellen Maschinen, die einem Host zugeordnet sind (auch ohne Eintrag in seiner eigenen VM-Liste).</summary>
+    public async Task<List<Computer>> GuestsAsync(int hostId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Computers.AsNoTracking().Where(c => c.HostComputerId == hostId).OrderBy(c => c.Name).ToListAsync(ct);
     }
 
     /// <summary>Legt alle noch unbekannten Rechner aus dem Text an und liefert die neu angelegten.</summary>

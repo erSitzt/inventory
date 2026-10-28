@@ -168,7 +168,89 @@ internal static class SimulatedInventory
             data.LocalUsers.Add(new LocalUserItem { Name = "support", Description = "Lokales Supportkonto" });
             data.LocalAdmins.Add(new LocalAdminItem { Name = $"{data.ComputerName}\\support" });
         }
+        data.Licensing = Licensing(data, random);
         return data;
+    }
+
+    /// <summary>Server-VMs der Simulation und auf welchem der beiden Hyper-V-Hosts sie laufen.</summary>
+    private static readonly string[] ServerVms = ["SRV-DC01", "SRV-FILE01", "SRV-SQL01", "SRV-SQL02", "SRV-APP01", "SRV-APP02", "SRV-RDS01"];
+    private static readonly string[] HyperVHosts = ["HV-01", "HV-02"];
+
+    private static string HostOf(string vm) => HyperVHosts[StableHash(vm) % (uint)HyperVHosts.Length];
+
+    /// <summary>Gleichbleibende SMBIOS-UUID je Name: Host und Gast melden so dieselbe.</summary>
+    private static string Uuid(string name) =>
+        new Guid(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(name.ToUpperInvariant()))).ToString("D").ToUpperInvariant();
+
+    /// <summary>
+    /// Lizenzangaben: HV-* sind physische Hyper-V-Hosts im Cluster, SRV-* Server-VMs darauf (SRV-SQL* mit SQL Server),
+    /// alles andere Arbeitsplätze mit OEM- oder Volumenlizenz.
+    /// </summary>
+    private static LicensingInfo Licensing(InventoryData data, Random random)
+    {
+        var name = data.ComputerName ?? "";
+        if (HyperVHosts.Contains(name))
+        {
+            data.Manufacturer = "HPE";
+            data.Model = "ProLiant DL380 Gen10 Plus";
+            data.OsName = "Microsoft Windows Server 2022 Datacenter";
+            data.OsVersion = "10.0.20348.2700";
+            data.OsRelease = "21H2";
+            data.CpuName = "Intel(R) Xeon(R) Gold 6326 CPU @ 2.90GHz";
+            data.CpuCores = 32;
+            data.CpuLogicalProcessors = 64;
+            return new LicensingInfo
+            {
+                CpuSockets = 2, CpuCoresPerSocket = 16, BiosUuid = Uuid(name), HypervisorPresent = true, HyperVGuest = false,
+                OsSku = 8, OsProductType = 3, OsEdition = "ServerDatacenter", LicenseChannel = LicenseChannels.VolumeMak,
+                ServerFeatures = [new ServerFeatureItem { Id = 20, Name = "Hyper-V" }, new ServerFeatureItem { Id = 33, Name = "Failover Clustering" }],
+                SqlInstances = [], ClusterName = "HVCLUSTER01", HyperVHost = true,
+                VirtualMachines = ServerVms.Where(vm => HostOf(vm) == name).Select(vm => new HostedVmItem
+                {
+                    Name = vm, BiosUuid = "{" + Uuid(vm) + "}", VirtualCpus = vm.StartsWith("SRV-SQL", StringComparison.Ordinal) ? 8 : 4, Running = true,
+                }).ToList(),
+            };
+        }
+        if (ServerVms.Contains(name))
+        {
+            data.Manufacturer = "Microsoft Corporation";
+            data.Model = "Virtual Machine";
+            data.OsName = "Microsoft Windows Server 2022 Standard";
+            data.OsVersion = "10.0.20348.2700";
+            data.OsRelease = "21H2";
+            data.CpuName = "Intel(R) Xeon(R) Gold 6326 CPU @ 2.90GHz";
+            var cores = name.StartsWith("SRV-SQL", StringComparison.Ordinal) ? 8 : 4;
+            data.CpuCores = cores;
+            data.CpuLogicalProcessors = cores;
+            var features = new List<ServerFeatureItem>();
+            if (name == "SRV-RDS01")
+                features.Add(new ServerFeatureItem { Id = 130, Name = "Remote Desktop Session Host" });
+            return new LicensingInfo
+            {
+                CpuSockets = 1, CpuCoresPerSocket = cores, BiosUuid = Uuid(name), HypervisorPresent = true, HyperVGuest = true,
+                ReportedHostName = HostOf(name).ToLowerInvariant() + ".corp.example", ClusterName = "", HyperVHost = false,
+                OsSku = 7, OsProductType = name == "SRV-DC01" ? 2 : 3, OsEdition = "ServerStandard", LicenseChannel = LicenseChannels.VolumeGvlk,
+                ServerFeatures = features,
+                SqlInstances = name switch
+                {
+                    "SRV-SQL01" => [new SqlInstanceItem { Name = "MSSQLSERVER", InstanceId = "MSSQL16.MSSQLSERVER", Edition = "Standard Edition (64-bit)", Version = "16.0.4135.4", PatchLevel = "16.0.4135.4" }],
+                    "SRV-SQL02" =>
+                    [
+                        new SqlInstanceItem { Name = "MSSQLSERVER", InstanceId = "MSSQL16.MSSQLSERVER", Edition = "Enterprise Edition: Core-based Licensing (64-bit)", Version = "16.0.4135.4", PatchLevel = "16.0.4135.4" },
+                        new SqlInstanceItem { Name = "DEV", InstanceId = "MSSQL16.DEV", Edition = "Developer Edition (64-bit)", Version = "16.0.4135.4", PatchLevel = "16.0.4135.4" },
+                    ],
+                    _ => [],
+                },
+            };
+        }
+        var pro = (data.OsName ?? "").Contains("Pro", StringComparison.Ordinal);
+        return new LicensingInfo
+        {
+            CpuSockets = 1, CpuCoresPerSocket = data.CpuCores, BiosUuid = Uuid(name), HypervisorPresent = false, HyperVGuest = false,
+            OsSku = pro ? 48 : 4, OsProductType = 1, OsEdition = pro ? "Professional" : "Enterprise",
+            LicenseChannel = pro ? (random.Next(4) == 0 ? LicenseChannels.Retail : LicenseChannels.OemDm) : random.Next(6) == 0 ? LicenseChannels.VolumeGvlk : LicenseChannels.VolumeMak,
+            SqlInstances = [], ClusterName = "", HyperVHost = false,
+        };
     }
 
     internal static uint StableHash(string value)

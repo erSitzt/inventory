@@ -872,6 +872,9 @@
   <data name="closes {0}" xml:space="preserve">
     <value>schließt {0}</value>
   </data>
+  <data name="Cluster" xml:space="preserve">
+    <value>Cluster</value>
+  </data>
   <data name="Collapse everything" xml:space="preserve">
     <value>Alles zuklappen</value>
   </data>
@@ -1529,6 +1532,9 @@
   <data name="Edit" xml:space="preserve">
     <value>Bearbeiten</value>
   </data>
+  <data name="Edition" xml:space="preserve">
+    <value>Edition</value>
+  </data>
   <data name="EDR block mode" xml:space="preserve">
     <value>EDR-Blockmodus</value>
   </data>
@@ -1907,6 +1913,9 @@
   <data name="Home and other networks" xml:space="preserve">
     <value>Heim- und Fremdnetze</value>
   </data>
+  <data name="Host" xml:space="preserve">
+    <value>Host</value>
+  </data>
   <data name="Hotfix" xml:space="preserve">
     <value>Hotfix</value>
   </data>
@@ -2075,6 +2084,9 @@
   <data name="Installs .NET Framework 4.8 from the offline installer of Microsoft on {0} computers. It takes 5 to 30 minutes per computer and usually needs a restart, which Inventory does not trigger. Computers that already have it are left alone." xml:space="preserve">
     <value>Installiert .NET Framework 4.8 mit dem Offline-Installer von Microsoft auf {0} Rechnern. Das dauert je Rechner 5 bis 30 Minuten und braucht meist einen Neustart, den Inventory nicht auslöst. Rechner, die es schon haben, bleiben unberührt.</value>
   </data>
+  <data name="Instance" xml:space="preserve">
+    <value>Instanz</value>
+  </data>
   <data name="Interval (hours)" xml:space="preserve">
     <value>Intervall (Stunden)</value>
   </data>
@@ -2083,6 +2095,9 @@
   </data>
   <data name="Invalid addresses: {0}" xml:space="preserve">
     <value>Ungültige Adressen: {0}</value>
+  </data>
+  <data name="Inventoried as" xml:space="preserve">
+    <value>Inventarisiert als</value>
   </data>
   <data name="Inventory is up to date (checked {0}, source: github.com/{1})." xml:space="preserve">
     <value>Inventory ist aktuell (geprüft {0}, Quelle: github.com/{1}).</value>
@@ -2258,6 +2273,12 @@
   <data name="Licence changed" xml:space="preserve">
     <value>Lizenz geändert</value>
   </data>
+  <data name="Licence channel" xml:space="preserve">
+    <value>Lizenzkanal</value>
+  </data>
+  <data name="Licence channel (e.g. OEM:DM, Volume:MAK)" xml:space="preserve">
+    <value>Lizenzkanal (z. B. OEM:DM, Volume:MAK)</value>
+  </data>
   <data name="Licence created" xml:space="preserve">
     <value>Lizenz angelegt</value>
   </data>
@@ -2281,6 +2302,9 @@
   </data>
   <data name="License: {0}" xml:space="preserve">
     <value>Lizenz: {0}</value>
+  </data>
+  <data name="Licensing" xml:space="preserve">
+    <value>Lizenzierung</value>
   </data>
   <data name="Light" xml:space="preserve">
     <value>Hell</value>
@@ -2392,6 +2416,9 @@
   </data>
   <data name='Marked computers appear in the computer list under the filter "Not (anymore) in AD" and can be used in dynamic collections via the rule field "Not (anymore) in Active Directory", e.g. to exclude them from schedules.' xml:space="preserve">
     <value>Gekennzeichnete Rechner stehen in der Rechnerliste unter dem Filter „Nicht (mehr) im AD“ und lassen sich über das Regelfeld „Nicht (mehr) im Active Directory“ in dynamischen Sammlungen verwenden, etwa um sie von Zeitplänen auszunehmen.</value>
+  </data>
+  <data name="matched by BIOS UUID" xml:space="preserve">
+    <value>über die BIOS-UUID zugeordnet</value>
   </data>
   <data name="Matches {0} programs: {1}" xml:space="preserve">
     <value>Trifft {0} Programme: {1}</value>
@@ -2804,6 +2831,9 @@
   <data name="Not captured yet. Hardware details are read with the next scan; computers with an agent need the current agent version first." xml:space="preserve">
     <value>Noch nicht erfasst. Hardware-Details werden mit dem nächsten Scan gelesen; Rechner mit Agent brauchen dafür zuerst die aktuelle Agent-Version.</value>
   </data>
+  <data name="Not captured yet. Licensing details are read with the next scan; computers with an agent need the current agent version first." xml:space="preserve">
+    <value>Noch nicht erfasst. Die Lizenzangaben werden beim nächsten Scan gelesen; Rechner mit Agent brauchen dafür zuerst die aktuelle Agent-Version.</value>
+  </data>
   <data name="Not captured yet. Profiles are read with the next scan." xml:space="preserve">
     <value>Noch nicht erfasst. Die Profile werden mit dem nächsten Scan gelesen.</value>
   </data>
@@ -2875,6 +2905,12 @@
   </data>
   <data name="Number" xml:space="preserve">
     <value>Nummer</value>
+  </data>
+  <data name="OEM (key in the firmware)" xml:space="preserve">
+    <value>OEM (Schlüssel in der Firmware)</value>
+  </data>
+  <data name="OEM (pre-installed)" xml:space="preserve">
+    <value>OEM (vorinstalliert)</value>
   </data>
   <data name="of {0}" xml:space="preserve">
     <value>von {0}</value>
@@ -3284,6 +3320,12 @@
   <data name="Phased rollout: {0} computers wait for the pilot group ({1} computers, {2} failed, at most {3} % allowed)." xml:space="preserve">
     <value>Gestufter Rollout: {0} Rechner warten auf die Pilotgruppe ({1} Rechner, {2} fehlgeschlagen, höchstens {3} % zulässig).</value>
   </data>
+  <data name="Physical cores" xml:space="preserve">
+    <value>Physische Kerne</value>
+  </data>
+  <data name="Physical cores per socket" xml:space="preserve">
+    <value>Physische Kerne je Sockel</value>
+  </data>
   <data name="Physical disk" xml:space="preserve">
     <value>Physischer Datenträger</value>
   </data>
@@ -3409,6 +3451,9 @@
   </data>
   <data name="Processor" xml:space="preserve">
     <value>Prozessor</value>
+  </data>
+  <data name="Processor sockets" xml:space="preserve">
+    <value>Prozessorsockel</value>
   </data>
   <data name="Profile loaded during the scan" xml:space="preserve">
     <value>Profil beim Scan geladen</value>
@@ -3692,6 +3737,9 @@
   <data name="Report {0} not found" xml:space="preserve">
     <value>Bericht {0} nicht gefunden</value>
   </data>
+  <data name="reported by the guest" xml:space="preserve">
+    <value>vom Gast gemeldet</value>
+  </data>
   <data name="Reported name" xml:space="preserve">
     <value>Gemeldeter Name</value>
   </data>
@@ -3754,6 +3802,9 @@
   </data>
   <data name="Result" xml:space="preserve">
     <value>Ergebnis</value>
+  </data>
+  <data name="Retail" xml:space="preserve">
+    <value>Einzelhandel (Retail)</value>
   </data>
   <data name="Retries and preparation" xml:space="preserve">
     <value>Wiederholungen und Vorbereitung</value>
@@ -3859,6 +3910,9 @@
   </data>
   <data name="Runs in the session of the logged-on user; nothing runs without a logged-on user." xml:space="preserve">
     <value>Läuft in der Sitzung des angemeldeten Benutzers; ohne Anmeldung wird nichts ausgeführt.</value>
+  </data>
+  <data name="Runs on host" xml:space="preserve">
+    <value>Läuft auf Host</value>
   </data>
   <data name="Runs on the target computer as Local System." xml:space="preserve">
     <value>Läuft auf dem Zielrechner als Lokales System.</value>
@@ -4115,6 +4169,15 @@
   <data name="Server management" xml:space="preserve">
     <value>Server-Verwaltung</value>
   </data>
+  <data name="Server role" xml:space="preserve">
+    <value>Serverrolle</value>
+  </data>
+  <data name="Server role or feature" xml:space="preserve">
+    <value>Serverrolle oder -feature</value>
+  </data>
+  <data name="Server roles and features" xml:space="preserve">
+    <value>Serverrollen und -features</value>
+  </data>
   <data name="Server-wide options: transport, Active Directory, agents, maintenance window, updates and backup." xml:space="preserve">
     <value>Serverweite Einstellungen: Transport, Active Directory, Agenten, Wartungsfenster, Updates und Sicherung.</value>
   </data>
@@ -4298,6 +4361,9 @@
   <data name="So that Remote Assistance, shadowing and Remote Desktop open with one click, your PC needs the launcher once: download it, put it in a fixed place (e.g. C:\Tools) and double-click it once. It registers itself for your user account as the handler for inventory:// links; admin rights are not needed. On the first click the browser asks whether it may open the launcher." xml:space="preserve">
     <value>Damit sich Remoteunterstützung, Spiegelung und Remotedesktop per Klick öffnen, braucht dein PC einmalig den Starter: herunterladen, an einem festen Ort ablegen (z. B. C:\Tools) und einmal doppelklicken. Er trägt sich für dein Benutzerkonto als Ziel für inventory://-Links ein; Adminrechte sind dafür nicht nötig. Beim ersten Klick fragt der Browser, ob er den Starter öffnen darf.</value>
   </data>
+  <data name="Sockets × cores" xml:space="preserve">
+    <value>Sockel × Kerne</value>
+  </data>
   <data name="Software" xml:space="preserve">
     <value>Software</value>
   </data>
@@ -4327,6 +4393,15 @@
   </data>
   <data name="Source: {0}" xml:space="preserve">
     <value>Quelle: {0}</value>
+  </data>
+  <data name="SQL Server" xml:space="preserve">
+    <value>SQL Server</value>
+  </data>
+  <data name="SQL Server instance or edition" xml:space="preserve">
+    <value>SQL-Server-Instanz oder -Edition</value>
+  </data>
+  <data name="SQL Server instances" xml:space="preserve">
+    <value>SQL-Server-Instanzen</value>
   </data>
   <data name="SSH banner" xml:space="preserve">
     <value>SSH-Banner</value>
@@ -5222,8 +5297,20 @@
   <data name="Virtual machine" xml:space="preserve">
     <value>Virtuelle Maschine</value>
   </data>
+  <data name="Virtual machines on this host" xml:space="preserve">
+    <value>Virtuelle Maschinen auf diesem Host</value>
+  </data>
+  <data name="Virtual processors" xml:space="preserve">
+    <value>Virtuelle Prozessoren</value>
+  </data>
   <data name="Virus definitions are out of date." xml:space="preserve">
     <value>Die Virendefinitionen sind veraltet.</value>
+  </data>
+  <data name="Volume licence (KMS / Active Directory)" xml:space="preserve">
+    <value>Volumenlizenz (KMS / Active Directory)</value>
+  </data>
+  <data name="Volume licence (MAK)" xml:space="preserve">
+    <value>Volumenlizenz (MAK)</value>
   </data>
   <data name="Wait" xml:space="preserve">
     <value>Warten</value>
@@ -5396,6 +5483,12 @@
   <data name="Windows computers that are not inventoried yet; already listed ones are only linked" xml:space="preserve">
     <value>Windows-Rechner, die noch nicht inventarisiert sind; bereits vorhandene werden nur verknüpft</value>
   </data>
+  <data name="Windows edition" xml:space="preserve">
+    <value>Windows-Edition</value>
+  </data>
+  <data name="Windows edition (e.g. ServerStandard)" xml:space="preserve">
+    <value>Windows-Edition (z. B. ServerStandard)</value>
+  </data>
   <data name="Windows edition and feature update, the oldest first" xml:space="preserve">
     <value>Windows-Edition und Funktionsupdate, die ältesten zuerst</value>
   </data>
@@ -5506,6 +5599,9 @@
   </data>
   <data name="{0} (copy)" xml:space="preserve">
     <value>{0} (Kopie)</value>
+  </data>
+  <data name="{0} (not inventoried)" xml:space="preserve">
+    <value>{0} (nicht inventarisiert)</value>
   </data>
   <data name="{0} ({1}), allowed for {2}." xml:space="preserve">
     <value>{0} ({1}), erlaubt für {2}.</value>

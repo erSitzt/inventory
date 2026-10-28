@@ -92,6 +92,13 @@ public static class CollectionEvaluator
         RuleField.InCollection => context is not null && context.InCollection(rule, computer, depth),
         RuleField.LocalAdmin => AnyOrNone(rule, computer.LocalAdmins.Select(a => a.Name)),
         RuleField.App => AnyOrNone(rule, computer.Apps.SelectMany(a => a.DisplayName is null ? [a.Name] : new[] { a.Name, a.DisplayName })),
+        // Erst wenn ein Scan Lizenzangaben geliefert hat, ist "keine VM" eine Aussage.
+        RuleField.IsVirtual => Known(rule, computer.LicensingScanUtc is null && !computer.IsVirtual ? null : computer.IsVirtual),
+        RuleField.LicenseChannel => Text(rule, computer.LicenseChannel),
+        RuleField.OsEdition => Text(rule, computer.OsEdition),
+        RuleField.SqlInstance => AnyOrNone(rule, computer.SqlInstances.SelectMany(i => new[] { i.Name, i.Edition ?? "" })),
+        RuleField.ServerFeature => AnyOrNone(rule, computer.ServerFeatures.Select(f => f.Name)),
+        RuleField.CpuSockets => Number(rule, computer.CpuSockets),
         _ => false,
     };
 
@@ -199,6 +206,8 @@ public static class CollectionEvaluator
         RuleField.Service => [nameof(Computer.Services)],
         RuleField.DiskFreeGb => [nameof(Computer.Disks)],
         RuleField.DiskHealthProblem => [nameof(Computer.PhysicalDisks)],
+        RuleField.SqlInstance => [nameof(Computer.SqlInstances)],
+        RuleField.ServerFeature => [nameof(Computer.ServerFeatures)],
         _ => [],
     };
 

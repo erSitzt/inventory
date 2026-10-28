@@ -38,6 +38,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
                            .Include(c => c.Software).Include(c => c.Hotfixes).Include(c => c.Disks).Include(c => c.NetworkAdapters)
                            .Include(c => c.Services).Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
                            .Include(c => c.MemoryModules).Include(c => c.PhysicalDisks).Include(c => c.Volumes).Include(c => c.Monitors).Include(c => c.Printers)
+                           .Include(c => c.ServerFeatures).Include(c => c.SqlInstances).Include(c => c.VirtualMachines)
                            .FirstOrDefaultAsync(c => c.Id == computerId, ct)
                        ?? throw new KeyNotFoundException(L["Computer {0} not found", computerId]);
 
@@ -238,9 +239,65 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             }));
         }
 
+        if (data.Licensing is { } licensing)
+            await SaveLicensingAsync(db, computer, licensing, now, ct);
+
         await db.SaveChangesAsync(ct);
+        await VirtualHosts.ResolveAsync(db, computer.Id, ct);
         await transaction.CommitAsync(ct);
         return computer.NameMismatch;
+    }
+
+    /// <summary>
+    /// Angaben für die Lizenzberechnung. Ein Wert, der sich diesmal nicht lesen ließ, bleibt wie bisher; eine Liste, die
+    /// fehlt (null), ebenso. Eine leere Liste heißt dagegen: nichts davon vorhanden.
+    /// </summary>
+    private static async Task SaveLicensingAsync(InventoryDbContext db, Computer computer, LicensingInfo licensing, DateTime now, CancellationToken ct)
+    {
+        var computerId = computer.Id;
+        computer.LicensingScanUtc = now;
+        computer.CpuSockets = licensing.CpuSockets ?? computer.CpuSockets;
+        computer.CpuCoresPerSocket = licensing.CpuCoresPerSocket ?? computer.CpuCoresPerSocket;
+        computer.BiosUuid = BiosUuids.Normalize(licensing.BiosUuid) ?? computer.BiosUuid;
+        computer.HypervisorPresent = licensing.HypervisorPresent ?? computer.HypervisorPresent;
+        computer.HyperVGuest = licensing.HyperVGuest ?? computer.HyperVGuest;
+        // Ohne Gastdienste gibt es keinen gemeldeten Host mehr (z. B. nach einer Migration zu einem anderen Hypervisor);
+        // ließ sich der Name nur diesmal nicht lesen, bleibt der bisherige.
+        computer.ReportedHostName = licensing.HyperVGuest == false ? null : licensing.ReportedHostName ?? computer.ReportedHostName;
+        computer.OsSku = licensing.OsSku ?? computer.OsSku;
+        computer.OsProductType = licensing.OsProductType ?? computer.OsProductType;
+        computer.OsEdition = licensing.OsEdition ?? computer.OsEdition;
+        computer.LicenseChannel = licensing.LicenseChannel ?? computer.LicenseChannel;
+        // Leer = in keinem Cluster, null = nicht lesbar.
+        computer.ClusterName = licensing.ClusterName is null ? computer.ClusterName : licensing.ClusterName.Length == 0 ? null : licensing.ClusterName;
+
+        if (licensing.ServerFeatures is { } features)
+        {
+            await db.ServerFeatures.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            db.ServerFeatures.AddRange(features.Select(f => new ComputerServerFeature { ComputerId = computerId, FeatureId = f.Id, Name = f.Name }));
+        }
+        else if (licensing.OsProductType == 1)
+        {
+            // Ein Arbeitsplatzsystem hat keine Serverrollen (etwa nach einer Neuinstallation auf derselben Hardware).
+            await db.ServerFeatures.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+        }
+        if (licensing.SqlInstances is { } instances)
+        {
+            await db.SqlInstances.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            db.SqlInstances.AddRange(instances.Select(i => new ComputerSqlInstance
+            {
+                ComputerId = computerId, Name = i.Name, InstanceId = i.InstanceId, Edition = i.Edition, Version = i.Version, PatchLevel = i.PatchLevel, Clustered = i.Clustered,
+            }));
+        }
+        // Die VM-Liste wird ersetzt, wenn sie gelesen wurde, und geleert, wenn der Rechner sicher kein Host (mehr) ist.
+        // Ließ sie sich nur nicht lesen, bleibt der bisherige Stand.
+        if (licensing.VirtualMachines is not null || licensing.HyperVHost == false)
+            await db.HostedVirtualMachines.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+        if (licensing.VirtualMachines is { } machines)
+            db.HostedVirtualMachines.AddRange(machines.Select(v => new HostedVirtualMachine
+            {
+                ComputerId = computerId, Name = v.Name, BiosUuid = BiosUuids.Normalize(v.BiosUuid), VirtualCpus = v.VirtualCpus, Running = v.Running,
+            }));
     }
 
     /// <summary>Über diesen Zeitraum wird beobachtet, wer ein Gerät nutzt.</summary>

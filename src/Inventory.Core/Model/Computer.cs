@@ -201,6 +201,37 @@ public class Computer
     /// <summary>BitLocker-Schutz des Systemlaufwerks; null = nicht ermittelt.</summary>
     public bool? SystemDriveProtected { get; set; }
 
+    // Angaben für die Lizenzberechnung aus dem letzten Scan; null = nicht ermittelt
+    /// <summary>Wann zuletzt ein Scan diese Angaben geliefert hat; null = noch nie (älterer Runner oder nicht gescannt).</summary>
+    public DateTime? LicensingScanUtc { get; set; }
+    public int? CpuSockets { get; set; }
+    /// <summary>Physische Kerne des größten Prozessors.</summary>
+    public int? CpuCoresPerSocket { get; set; }
+    /// <summary>SMBIOS-UUID, normalisiert (siehe <see cref="BiosUuids"/>); verbindet eine VM mit dem Eintrag auf ihrem Host.</summary>
+    public string? BiosUuid { get; set; }
+    public bool? HypervisorPresent { get; set; }
+    /// <summary>Der Rechner meldet sich als Hyper-V-Gast.</summary>
+    public bool? HyperVGuest { get; set; }
+    /// <summary>Der Hyper-V-Host laut Gastdiensten.</summary>
+    public string? ReportedHostName { get; set; }
+    /// <summary>Win32_OperatingSystem.OperatingSystemSKU.</summary>
+    public int? OsSku { get; set; }
+    /// <summary>1 = Arbeitsplatz, 2 = Domänencontroller, 3 = Server.</summary>
+    public int? OsProductType { get; set; }
+    /// <summary>EditionID, z. B. ServerDatacenter, Professional.</summary>
+    public string? OsEdition { get; set; }
+    /// <summary>Lizenzkanal von Windows, siehe <see cref="Contracts.LicenseChannels"/>.</summary>
+    public string? LicenseChannel { get; set; }
+    /// <summary>Failover-Cluster, dem der Rechner angehört.</summary>
+    public string? ClusterName { get; set; }
+    /// <summary>Der Host, auf dem diese VM läuft; null = keine VM oder Host nicht gefunden.</summary>
+    public int? HostComputerId { get; set; }
+    /// <summary>Woran der Host erkannt wurde, siehe <see cref="HostSources"/>.</summary>
+    public string? HostSource { get; set; }
+
+    /// <summary>Virtuelle Maschine: Hyper-V-Gast oder an Hersteller und Modell als VM erkennbar.</summary>
+    public bool IsVirtual => HyperVGuest == true || Chassis.Kind(ChassisType, Model) == ChassisKind.VirtualMachine;
+
     // Fernzugriff, aus dem letzten Scan
     /// <summary>Sitzungsnummer des beim Scan angemeldeten Benutzers, für die RDP-Spiegelung.</summary>
     public int? SessionId { get; set; }
@@ -233,6 +264,10 @@ public class Computer
     public List<ComputerMonitor> Monitors { get; set; } = [];
     public List<ComputerPrinter> Printers { get; set; } = [];
     public List<ComputerApp> Apps { get; set; } = [];
+    public List<ComputerServerFeature> ServerFeatures { get; set; } = [];
+    public List<ComputerSqlInstance> SqlInstances { get; set; } = [];
+    /// <summary>Auf diesem Hyper-V-Host gefundene virtuelle Maschinen.</summary>
+    public List<HostedVirtualMachine> VirtualMachines { get; set; } = [];
 
     /// <summary>Statische Sammlungen, denen der Rechner fest zugeordnet ist.</summary>
     public List<Collection> Collections { get; set; } = [];

@@ -140,6 +140,18 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         return gb >= 10 ? $"{gb:N0} GB" : $"{gb:N1} GB";
     }
 
+    /// <summary>Lizenzkanal von Windows in Worten, z. B. "OEM (pre-installed)" für OEM:DM.</summary>
+    public string? LicenseChannel(string? channel) => channel switch
+    {
+        null => null,
+        Contracts.LicenseChannels.OemDm => T("OEM (key in the firmware)"),
+        Contracts.LicenseChannels.OemSlp or Contracts.LicenseChannels.OemNonSlp or Contracts.LicenseChannels.Oem => T("OEM (pre-installed)"),
+        Contracts.LicenseChannels.Retail => T("Retail"),
+        Contracts.LicenseChannels.VolumeMak => T("Volume licence (MAK)"),
+        Contracts.LicenseChannels.VolumeGvlk => T("Volume licence (KMS / Active Directory)"),
+        _ => channel,
+    };
+
     public string Os(Computer c) =>
         c.OsName is null ? "–" : $"{c.OsName.Replace("Microsoft ", "")} {c.OsRelease}".Trim();
 
@@ -209,6 +221,12 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.MemoryGb => T("Memory (GB)"),
         RuleField.Software => T("Software"),
         RuleField.App => T("App (MSIX/Store)"),
+        RuleField.IsVirtual => T("Virtual machine"),
+        RuleField.LicenseChannel => T("Licence channel (e.g. OEM:DM, Volume:MAK)"),
+        RuleField.OsEdition => T("Windows edition (e.g. ServerStandard)"),
+        RuleField.SqlInstance => T("SQL Server instance or edition"),
+        RuleField.ServerFeature => T("Server role or feature"),
+        RuleField.CpuSockets => T("Processor sockets"),
         _ => field.ToString(),
     };
 
@@ -231,9 +249,11 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
             or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
             or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
             or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
-            or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem => [RuleOperator.Equals],
+            or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem
+            or RuleField.IsVirtual => [RuleOperator.Equals],
         RuleField.InCollection or RuleField.DeviceType => [RuleOperator.Equals, RuleOperator.NotEquals],
         RuleField.DiskFreeGb or RuleField.BatteryHealthPercent or RuleField.DaysSinceBoot or RuleField.ScanAgeDays => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
+        RuleField.CpuSockets => [RuleOperator.Equals, RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
         RuleField.Service => [RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains],
         RuleField.IpAddress => [RuleOperator.StartsWith, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains],
         RuleField.PendingUpdates or RuleField.PendingSecurityUpdates or RuleField.DaysSinceUpdate or RuleField.BuiltinAdminPasswordAgeDays
@@ -244,7 +264,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.WarrantyDaysLeft => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
         RuleField.Tag => [RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains, RuleOperator.NotContains],
         RuleField.PendingUpdate => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals],
-        RuleField.Software or RuleField.LocalAdmin => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
+        RuleField.Software or RuleField.LocalAdmin or RuleField.SqlInstance or RuleField.ServerFeature => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
         _ => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
     };
 
@@ -444,7 +464,8 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         or RuleField.FirewallOff or RuleField.AntivirusProblem or RuleField.RebootRequired
         or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
         or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
-        or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem;
+        or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem
+        or RuleField.IsVirtual;
 
     /// <summary>Der Wert einer Regel, wie er in Listen erscheint: Namen statt Kennungen, übersetzte feste Werte.</summary>
     public string RuleValue(CollectionRule rule, Func<int, string?> collectionName) => rule.Field switch

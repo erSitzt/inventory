@@ -51,6 +51,9 @@ namespace Inventory.Contracts
         /// <summary>Hardware-Details und Plattformsicherheit; null bei Runnern, die das noch nicht erfassen.</summary>
         public HardwareInfo? Hardware { get; set; }
 
+        /// <summary>Angaben für die Berechnung des Lizenzbedarfs; null bei Runnern, die das noch nicht erfassen.</summary>
+        public LicensingInfo? Licensing { get; set; }
+
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
         /// <summary>
@@ -359,5 +362,77 @@ namespace Inventory.Contracts
         public string? Port { get; set; }
         public bool Network { get; set; }
         public bool Shared { get; set; }
+    }
+
+    /// <summary>
+    /// Was die Lizenzberechnung über den Rechner wissen muss: Sockel und Kerne, ob er virtuell ist und wo er läuft, Edition und
+    /// Lizenzkanal, Serverrollen, SQL-Server-Instanzen und, auf einem Hyper-V-Host, seine virtuellen Maschinen.
+    /// Jeder Wert ist null, wenn er sich nicht lesen ließ.
+    /// </summary>
+    public sealed class LicensingInfo
+    {
+        /// <summary>Anzahl der Prozessorsockel (Instanzen von Win32_Processor).</summary>
+        public int? CpuSockets { get; set; }
+        /// <summary>Physische Kerne des größten Prozessors; Hyperthreading zählt nicht.</summary>
+        public int? CpuCoresPerSocket { get; set; }
+        /// <summary>UUID aus dem SMBIOS (Win32_ComputerSystemProduct); bei einer VM dieselbe, die der Hypervisor für sie führt.</summary>
+        public string? BiosUuid { get; set; }
+        /// <summary>Win32_ComputerSystem.HypervisorPresent: auf einer VM und auf einem Host mit aktivem Hypervisor true.</summary>
+        public bool? HypervisorPresent { get; set; }
+        /// <summary>true, wenn der Rechner sich als Hyper-V-Gast zu erkennen gibt (Gastdienste mit Host-Angaben).</summary>
+        public bool? HyperVGuest { get; set; }
+        /// <summary>Der Hyper-V-Host laut Gastdiensten (PhysicalHostNameFullyQualified, sonst PhysicalHostName).</summary>
+        public string? ReportedHostName { get; set; }
+        /// <summary>Win32_OperatingSystem.OperatingSystemSKU, z. B. 7 = Server Standard, 8 = Server Datacenter.</summary>
+        public int? OsSku { get; set; }
+        /// <summary>Win32_OperatingSystem.ProductType: 1 = Arbeitsplatz, 2 = Domänencontroller, 3 = Server.</summary>
+        public int? OsProductType { get; set; }
+        /// <summary>EditionID aus der Registry, z. B. ServerDatacenter, Professional, EnterpriseS.</summary>
+        public string? OsEdition { get; set; }
+        /// <summary>
+        /// Lizenzkanal der aktiven Windows-Lizenz, z. B. OEM:DM, OEM:SLP, Retail, Volume:MAK, Volume:GVLK;
+        /// auf älteren Systemen aus der Beschreibung abgeleitet (OEM, Retail, Volume:MAK, Volume:KMS).
+        /// </summary>
+        public string? LicenseChannel { get; set; }
+        /// <summary>Installierte Serverrollen und -features (Win32_ServerFeature); null auf Arbeitsplatzsystemen.</summary>
+        public List<ServerFeatureItem>? ServerFeatures { get; set; }
+        /// <summary>SQL-Server-Instanzen laut Registry.</summary>
+        public List<SqlInstanceItem>? SqlInstances { get; set; }
+        /// <summary>Name des Failover-Clusters, dem der Rechner angehört; leer = keinem, null = nicht lesbar.</summary>
+        public string? ClusterName { get; set; }
+        /// <summary>false, wenn der Rechner sicher kein Hyper-V-Host ist (kein Namensraum root\virtualization\v2); null = unbekannt.</summary>
+        public bool? HyperVHost { get; set; }
+        /// <summary>Virtuelle Maschinen eines Hyper-V-Hosts; null, wenn er keiner ist oder die Liste nicht lesbar war.</summary>
+        public List<HostedVmItem>? VirtualMachines { get; set; }
+    }
+
+    public sealed class ServerFeatureItem
+    {
+        /// <summary>ID laut Win32_ServerFeature, z. B. 20 = Hyper-V, 130 = Remote Desktop Session Host.</summary>
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+    }
+
+    public sealed class SqlInstanceItem
+    {
+        /// <summary>Name der Instanz, z. B. MSSQLSERVER oder SQLEXPRESS.</summary>
+        public string Name { get; set; } = "";
+        /// <summary>Interner Schlüssel, z. B. MSSQL16.MSSQLSERVER.</summary>
+        public string? InstanceId { get; set; }
+        /// <summary>Edition laut Setup, z. B. "Enterprise Edition: Core-based Licensing (64-bit)".</summary>
+        public string? Edition { get; set; }
+        public string? Version { get; set; }
+        public string? PatchLevel { get; set; }
+        /// <summary>Die Instanz ist eine Failover-Cluster-Instanz.</summary>
+        public bool Clustered { get; set; }
+    }
+
+    public sealed class HostedVmItem
+    {
+        public string Name { get; set; } = "";
+        /// <summary>BIOS-GUID der VM, wie sie der Gast als SMBIOS-UUID meldet.</summary>
+        public string? BiosUuid { get; set; }
+        public int? VirtualCpus { get; set; }
+        public bool Running { get; set; }
     }
 }

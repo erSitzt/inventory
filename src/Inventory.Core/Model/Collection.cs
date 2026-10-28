@@ -101,6 +101,17 @@ public enum RuleField
     App = 151,
     /// <summary>Weder Anmeldung an der Domäne noch Sichtung durch das Inventory seit der eingestellten Frist.</summary>
     DirectoryInactive = 152,
+    /// <summary>Virtuelle Maschine (Hyper-V-Gast oder an Hersteller/Modell erkennbar).</summary>
+    IsVirtual = 153,
+    /// <summary>Lizenzkanal von Windows, z. B. OEM:DM, Retail, Volume:MAK, Volume:GVLK.</summary>
+    LicenseChannel = 154,
+    /// <summary>EditionID von Windows, z. B. ServerDatacenter, Professional.</summary>
+    OsEdition = 155,
+    /// <summary>SQL-Server-Instanz, verglichen mit Name und Edition; verneint = keine passende Instanz.</summary>
+    SqlInstance = 156,
+    /// <summary>Installierte Serverrolle oder -funktion; verneint = nicht installiert.</summary>
+    ServerFeature = 157,
+    CpuSockets = 158,
     Online = 1,
     Scanned,
     OsName,

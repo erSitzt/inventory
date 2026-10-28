@@ -64,6 +64,13 @@ Konten, Dienste und geplante Aufgaben zählen nie. Der Reiter *Profile* listet d
 TPM, BitLocker je Laufwerk, Grafik, Speichermodule und freie Steckplätze, physische Datenträger mit Typ und Zustand,
 Akkuzustand, Monitore und Drucker.
 
+**Lizenzangaben** (Reiter *Lizenzierung*): Prozessorsockel und physische Kerne je Sockel, Windows-Edition und
+Lizenzkanal (OEM, Retail, MAK, KMS), Serverrollen und -features, SQL-Server-Instanzen mit Edition und Version und bei
+virtuellen Maschinen der Host, auf dem sie laufen. Ein Hyper-V-Host listet seine virtuellen Maschinen; jede wird über
+die BIOS-UUID dem inventarisierten Gast zugeordnet, sonst über den Hostnamen, den die Integrationsdienste des Gasts
+melden, und der Failover-Cluster wird festgehalten. Alles wird nur gelesen; was sich nicht lesen lässt, bleibt vom
+vorigen Scan erhalten. Die Felder stehen auch in dynamischen Sammlungen und im Rechnerbericht zur Verfügung.
+
 ### Sicherheit und Konfiguration
 
 ![Sicherheit](docs/screenshots/de/security.png)
