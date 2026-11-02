@@ -1,0 +1,14 @@
+@inject ComputerService Computers
+
+@if (_computer is not null)
+{
+    <MudText Typo="Typo.body2">Tab from the sample plugin for <b>@_computer.Name</b>: @(_computer.OsName ?? "operating system unknown"), @(_computer.IpAddress ?? "no IP address").</MudText>
+}
+
+@code {
+    [Parameter] public int ComputerId { get; set; }
+
+    private Inventory.Core.Model.Computer? _computer;
+
+    protected override async Task OnParametersSetAsync() => _computer = await Computers.GetAsync(ComputerId);
+}

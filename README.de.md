@@ -1101,6 +1101,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 | Berichte | Rechner und Software als CSV oder JSON |
 | Protokoll | Einträge als JSON (`/api/audit`) oder CSV (`/api/audit/export.csv`), gefiltert nach Benutzer, Aktion, Zeitraum und Text – Operatoren und Administratoren |
 | MCP | `/mcp` für KI-Assistenten, siehe [KI-Assistenten (MCP)](#ki-assistenten-mcp) |
+| Plugins | installierte Plugins (Administratoren), Aktionen der Plugins: auflisten und ausführen |
 
 Das Protokoll zwischen Agent und Server (`/api/agent/…`) ist nicht Teil der dokumentierten API.
 
@@ -1144,6 +1145,41 @@ claude mcp add --transport http inventory https://<server>/mcp --header "Authori
 
 Die Einstellungsseite zeigt die Adresse des eigenen Servers und den Eintrag für VS Code (`.vscode/mcp.json`). Andere
 Clients nehmen dieselbe Adresse und denselben Header in ihrem eigenen Konfigurationsformat.
+
+### Plugins
+
+Plugins erweitern Inventory um Dinge, die nicht ins Produkt gehören: eine Seite für ein hauseigenes System, einen
+Reiter auf der Rechnerseite, eine Aktion wie „Ticket anlegen“ oder „In OU verschieben“, einen regelmäßigen Abgleich mit
+einem anderen System oder Werkzeuge für [KI-Assistenten](#ki-assistenten-mcp). Ein Plugin ist eine .NET-10-Klassenbibliothek
+(eine Razor-Klassenbibliothek, wenn es Seiten oder Reiter mitbringt), gebaut gegen das Paket `Inventory.Plugins`, das
+jedem Release beiliegt.
+
+| Erweiterungspunkt | Was er ergänzt |
+|---|---|
+| `PluginNavItem` + Komponente mit `@page` | eine Seite mit eigenem Menüeintrag |
+| `PluginComputerTab` | einen Reiter auf der Rechnerseite (bekommt `ComputerId`) |
+| `PluginSettingsSection` | einen Abschnitt unter *Einstellungen* |
+| `IComputerAction` | eine Aktion für ausgewählte Rechner: im Menü *Aktionen* der Liste, auf der Rechnerseite, über `POST /api/plugins/actions/{id}` und das MCP-Werkzeug `run_plugin_action` |
+| `IPeriodicJob` | regelmäßige Arbeit, z. B. ein Abgleich; läuft nie doppelt, Fehler stehen auf der Plugin-Seite und können einen Alarm auslösen |
+| `PluginMcpTools` | MCP-Werkzeuge, nach Rolle gefiltert wie die eingebauten |
+
+Einstieg ist eine Klasse mit `IInventoryPlugin`, gekennzeichnet mit `[assembly: InventoryPlugin(typeof(MeinPlugin), ApiVersion = "1.0")]`.
+In `ConfigureServices` meldet sie ihre Beiträge und Dienste an; sie kann Dienste des Servers wie `ComputerService`,
+`CollectionService`, `SettingsService` oder `AuditService` nutzen (dazu `Inventory.Core.dll`/`Inventory.Data.dll` aus der
+Installation mit `Private=false` referenzieren; das ist keine stabile Schnittstelle und kann sich mit Updates ändern).
+Aktionen beachten eine Mindestrolle und die Operator-Bereiche und stehen im Protokoll. Ein vollständiges Beispiel
+liegt im Repository unter `samples/Inventory.Plugin.Sample`.
+
+**Installieren:** die Build-Ausgabe in einen eigenen Ordner unter `C:\ProgramData\Inventory\plugins\` kopieren – die
+Haupt-DLL heißt wie der Ordner, z. B. `plugins\Contoso.Tickets\Contoso.Tickets.dll` –, unter *Plugins* einschalten
+(Administratoren) und den Dienst neu starten. Assemblies, die der Server selbst hat (ASP.NET Core, MudBlazor, Inventory.*),
+kommen immer vom Server; nur zusätzliche Abhängigkeiten aus dem Plugin-Ordner. Die Plugin-Seite zeigt Zustand, Beiträge,
+Aufträge, den Herausgeber einer signierten DLL und eine SHA-256-Prüfsumme über alle DLLs des Plugins.
+
+**Kompatibilität und Sicherheit:** Der Server lädt ein Plugin nur, wenn seine API-Version dieselbe Hauptversion und
+höchstens die Nebenversion des Servers hat; sonst zeigt er den Grund. Ein Plugin läuft mit allen Rechten des
+Inventory-Dienstes. Schalten Sie nur Plugins ein, denen Sie vertrauen: Ändert sich eine seiner DLLs, bleibt das Plugin
+aus, bis ein Administrator es erneut einschaltet. Fehler beim Laden oder in einem Auftrag betreffen nur dieses Plugin.
 
 ## Umzug auf einen anderen Server (Export und Import)
 

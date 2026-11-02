@@ -1,6 +1,8 @@
 @inject BrowserTime BrowserTime
+@inject Inventory.Server.Plugins.PluginCatalog Plugins
 
-<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+@* Seiten der geladenen Plugins gehören mit zum Routing. *@
+<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="Plugins.Assemblies" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         @* Prüft die [Authorize]-Angaben der Seiten auch bei der Navigation innerhalb der laufenden Sitzung. *@
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">

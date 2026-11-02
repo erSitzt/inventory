@@ -99,6 +99,7 @@
                 <MudDivider />
                 <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(_selected.Count == 0)" OnClick="DeleteAsync">@L["Delete"]</MudMenuItem>
             </AdminOnly>
+            <PluginActionItems Divider="true" Disabled="@(_selected.Count == 0)" Targets="@(() => _selected.Select(c => c.Id).ToList())" />
         </MudMenu>
     </OperatorOnly>
 </MudStack>

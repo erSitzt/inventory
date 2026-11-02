@@ -1,0 +1,16 @@
+@inject IStringLocalizer<SharedResource> L
+
+@* Komponente eines Plugins; ein Fehler darin bleibt auf diesen Bereich beschränkt. *@
+<ErrorBoundary>
+    <ChildContent>
+        <DynamicComponent Type="Component" Parameters="Parameters" />
+    </ChildContent>
+    <ErrorContent Context="error">
+        <MudAlert Severity="Severity.Error" Dense="true">@L["The plugin component failed: {0}", error.Message]</MudAlert>
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    [Parameter, EditorRequired] public Type Component { get; set; } = default!;
+    [Parameter] public IDictionary<string, object>? Parameters { get; set; }
+}

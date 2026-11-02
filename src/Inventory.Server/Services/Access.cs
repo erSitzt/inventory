@@ -47,7 +47,7 @@ public sealed class Access(AuthenticationStateProvider authentication, IAuthoriz
     public async Task<HashSet<int>?> AllowedComputersForDisplayAsync() =>
         await scope.AllowedAsync((await authentication.GetAuthenticationStateAsync()).User, forDisplay: true);
 
-    private async Task<bool> HasAsync(string policy) =>
+    public async Task<bool> HasAsync(string policy) =>
         (await authorization.AuthorizeAsync((await authentication.GetAuthenticationStateAsync()).User, policy)).Succeeded;
 
     private async Task<bool> DemandAsync(string policy)

@@ -1,0 +1,9 @@
+@inject IEnumerable<Inventory.Plugins.PluginNavItem> Items
+
+@* Menüeinträge der Plugins, jeweils ab ihrer Mindestrolle. *@
+@foreach (var item in Items.OrderBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase))
+{
+    <AuthorizeView Policy="@Inventory.Server.Plugins.PluginActions.Policy(item.MinRole)">
+        <MudNavLink Href="@item.Href" Icon="@(string.IsNullOrEmpty(item.Icon) ? Icons.Material.Filled.Extension : item.Icon)">@item.Title</MudNavLink>
+    </AuthorizeView>
+}

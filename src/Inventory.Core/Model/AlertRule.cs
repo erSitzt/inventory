@@ -23,6 +23,8 @@ public enum AlertKind
     LicenseExceeded = 9,
     /// <summary>Der Gerätescan hat eine Adresse gefunden, die vorher nicht bekannt war.</summary>
     NewDevice = 10,
+    /// <summary>Ein regelmäßiger Auftrag eines Plugins ist fehlgeschlagen.</summary>
+    PluginFailed = 11,
 }
 
 /// <summary>Eine Regel, die bei einem Ereignis oder Zustand eine Nachricht über die Benachrichtigungskanäle schickt.</summary>

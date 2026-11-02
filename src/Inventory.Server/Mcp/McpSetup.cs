@@ -24,7 +24,8 @@ public static class McpSetup
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public static void AddInventoryMcp(this IServiceCollection services)
+    /// <param name="pluginTools">Werkzeugklassen der geladenen Plugins.</param>
+    public static void AddInventoryMcp(this IServiceCollection services, IEnumerable<Type>? pluginTools = null)
     {
         services.AddHttpContextAccessor();
         services.AddScoped<McpCaller>();
@@ -39,7 +40,9 @@ public static class McpSetup
             .AddAuthorizationFilters()
             .WithTools<InventoryTools>(Json)
             .WithTools<NetworkTools>(Json)
-            .WithTools<OperatorTools>(Json);
+            .WithTools<OperatorTools>(Json)
+            .WithTools<PluginTools>(Json)
+            .WithTools(pluginTools ?? [], Json);
     }
 
     /// <summary>

@@ -1,0 +1,25 @@
+@inject SettingsService Settings
+
+<MudText Typo="Typo.body2" Class="mb-2">Settings of a plugin are stored like the server's own, here under the key Plugins.inventory.sample.Greeting.</MudText>
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+    <MudTextField @bind-Value="_greeting" Label="Greeting" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    <MudButton Variant="Variant.Outlined" OnClick="SaveAsync">Save</MudButton>
+    @if (_saved)
+    {
+        <MudText Typo="Typo.caption">Saved.</MudText>
+    }
+</MudStack>
+
+@code {
+    private const string Key = "Plugins.inventory.sample.Greeting";
+    private string? _greeting;
+    private bool _saved;
+
+    protected override async Task OnInitializedAsync() => _greeting = await Settings.GetAsync(Key);
+
+    private async Task SaveAsync()
+    {
+        await Settings.SetAsync(Key, string.IsNullOrWhiteSpace(_greeting) ? null : _greeting.Trim());
+        _saved = true;
+    }
+}

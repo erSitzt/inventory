@@ -9,6 +9,7 @@ using Inventory.Remoting.WinRm;
 using Inventory.Server;
 using Inventory.Server.Api;
 using Inventory.Server.Mcp;
+using Inventory.Server.Plugins;
 using Inventory.Server.Components;
 using Inventory.Server.Services;
 using System.Globalization;
@@ -128,7 +129,6 @@ builder.Services.AddSingleton<LicenseService>();
 builder.Services.AddSingleton<DeviceService>();
 builder.Services.AddSingleton<NetworkMapService>();
 builder.Services.AddSingleton<IpAddressService>();
-builder.Services.AddInventoryMcp();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<SignInLog>();
 builder.Services.AddSingleton(sp => new DataTransferService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), sp.GetRequiredService<ISecretProtector>(), dataDirectory, TimeProvider.System));
@@ -220,6 +220,13 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddMudServices(config => config.SnackbarConfiguration.PositionClass = MudBlazor.Defaults.Classes.Position.BottomRight);
 
+// Plugins zuletzt: sie können Dienste des Servers nutzen und bringen eigene Seiten, Aktionen, Aufträge und MCP-Werkzeuge mit.
+var plugins = PluginLoader.Load(dataDirectory, builder.Services, builder.Configuration, AppVersion.Current);
+builder.Services.AddSingleton(plugins);
+builder.Services.AddScoped<PluginActions>();
+builder.Services.AddHostedService<PluginJobWorker>();
+builder.Services.AddInventoryMcp(plugins.McpToolTypes);
+
 var app = builder.Build();
 
 if (importedOver is not null)
@@ -232,6 +239,7 @@ await app.Services.GetRequiredService<ExampleData>().SeedSchedulesAsync();
 await app.Services.GetRequiredService<ExampleData>().SeedReportsAsync();
 await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();
 await app.Services.GetRequiredService<UpdateService>().ReportPreviousAsync(startup: true);
+await PluginLoader.StartAsync(plugins, app.Services, app.Logger, app.Lifetime.ApplicationStopping);
 
 app.Logger.LogInformation("Inventory {Version}. Data directory: {DataDirectory}, simulation: {Simulate}, sign-in: {Authentication}",
     AppVersion.Current, dataDirectory, options.ResolveSimulate(), string.Join(" + ", new[]
@@ -271,6 +279,7 @@ app.MapIpAddressEndpoints();
 app.MapManagementEndpoints();
 app.MapAgentEndpoints();
 app.MapTransferEndpoints();
+app.MapPluginEndpoints();
 app.MapInventoryMcp();
 // Dokumentation unter /api/docs, Beschreibung unter /api/openapi.json; gleiche Anmeldung wie die übrige API.
 app.MapOpenApi("/api/openapi.json");
@@ -289,7 +298,8 @@ app.MapGet("/language/{code}", (string code, HttpContext http) =>
     return Results.LocalRedirect(Uri.TryCreate(back, UriKind.Absolute, out var uri) && uri.Host == http.Request.Host.Host ? uri.PathAndQuery : "/");
 }).AllowAnonymous().ExcludeFromDescription();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(plugins.Assemblies);
 
 app.Run();
 return 0;

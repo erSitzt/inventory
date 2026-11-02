@@ -1059,6 +1059,7 @@ addresses require the same sign-in as the rest of the API.
 | Reports | computers and software as CSV or JSON |
 | Audit log | entries as JSON (`/api/audit`) or CSV (`/api/audit/export.csv`), filtered by user, action, period and text – operators and administrators |
 | MCP | `/mcp` for AI assistants, see [AI assistants (MCP)](#ai-assistants-mcp) |
+| Plugins | installed plugins (administrators), plugin actions: list and run |
 
 The protocol between agent and server (`/api/agent/…`) is not part of the documented API.
 
@@ -1100,6 +1101,40 @@ claude mcp add --transport http inventory https://<server>/mcp --header "Authori
 
 The settings page shows the address of the own server and the entry for VS Code (`.vscode/mcp.json`). Other clients take
 the same URL and header in their own configuration format.
+
+### Plugins
+
+Plugins extend Inventory for things that don't belong in the product: a page for an in-house system, a tab on the
+computer page, an action such as "create ticket" or "move to OU", a regular sync with another system, or tools for
+[AI assistants](#ai-assistants-mcp). A plugin is a .NET 10 class library (a Razor class library if it brings pages or
+tabs) built against the `Inventory.Plugins` package attached to every release.
+
+| Extension point | What it adds |
+|---|---|
+| `PluginNavItem` + a component with `@page` | a page with its own menu entry |
+| `PluginComputerTab` | a tab on the computer page (gets `ComputerId`) |
+| `PluginSettingsSection` | a section under *Settings* |
+| `IComputerAction` | an action for selected computers: in the list's *Actions* menu, on the computer page, via `POST /api/plugins/actions/{id}` and the MCP tool `run_plugin_action` |
+| `IPeriodicJob` | regular work, e.g. a sync; never runs twice at once, errors appear on the plugins page and can raise an alert |
+| `PluginMcpTools` | MCP tools, filtered by role like the built-in ones |
+
+The entry point is a class implementing `IInventoryPlugin`, marked with `[assembly: InventoryPlugin(typeof(MyPlugin), ApiVersion = "1.0")]`.
+In `ConfigureServices` it registers its contributions and services; it can use the server's services such as
+`ComputerService`, `CollectionService`, `SettingsService` or `AuditService` (reference `Inventory.Core.dll`/`Inventory.Data.dll`
+from the installation with `Private=false`; these are not a stable interface and may change with updates). Actions
+respect a minimum role and the operator scopes and are logged in the audit log. The repository contains a complete
+example in `samples/Inventory.Plugin.Sample`.
+
+**Installing:** copy the build output into its own folder under `C:\ProgramData\Inventory\plugins\` – the main DLL
+named like the folder, e.g. `plugins\Contoso.Tickets\Contoso.Tickets.dll` – then switch it on under *Plugins*
+(administrators) and restart the service. Assemblies the server already has (ASP.NET Core, MudBlazor, Inventory.*)
+always come from the server; only additional dependencies come from the plugin folder. The plugins page shows the
+state, what each plugin contributes, its jobs, the publisher of a signed DLL and a SHA-256 over all its DLLs.
+
+**Compatibility and safety:** the server loads a plugin only if its API version has the same major version and at
+most the server's minor version; otherwise it shows why. A plugin runs with the full rights of the Inventory service.
+Only switch on plugins you trust: if any of its DLLs changes, the plugin stays off until an administrator switches it
+on again. Errors while loading or in a job affect only that plugin.
 
 ## Moving to another server (export and import)
 
