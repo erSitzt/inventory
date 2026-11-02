@@ -1138,7 +1138,9 @@ Ein Administrator schaltet ihn unter *Einstellungen → KI-Assistenten (MCP)* ei
 heißen `MCP: …`, sind als von einem KI-Assistenten angelegt gekennzeichnet und nie freigegeben. Der Assistent kann
 ihnen Dateien hinzufügen – vom Server von einer Adresse geladen (auf Wunsch gegen eine SHA-256 geprüft), direkt als
 Base64 bis 10 MB oder hochgeladen mit `PUT /api/packages/{id}/files/<Pfad>` – und nur seine eigenen Pakete ändern, nie
-die von Menschen. Will er ein nicht freigegebenes Paket verteilen, entsteht stattdessen eine Anfrage: unter
+die von Menschen. Downloads (bis 2 GB) erreichen nur öffentliche Adressen; interne Server wie ein Artefakt-Server der
+Builds müssen unter *Einstellungen → KI-Assistenten (MCP) → Interne Download-Hosts* eingetragen sein, und Loopback- und
+Link-Local-Adressen (Cloud-Metadaten) sind immer gesperrt, auch nach Weiterleitungen. Will er ein nicht freigegebenes Paket verteilen, entsteht stattdessen eine Anfrage: unter
 *Deployments → Warten auf Freigabe* sieht ein in der Oberfläche angemeldeter Administrator die Schritte mit ihren
 Skripten, die Dateien und die Zielrechner und wählt *Freigeben und starten* oder *Ablehnen*; was sich inzwischen
 geändert hat, wird nicht ungesehen freigegeben. Über die API lassen sich solche Pakete nicht freigeben, auch nicht mit

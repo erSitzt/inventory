@@ -3,6 +3,7 @@
 @inject IDialogService Dialogs
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
+@implements IDisposable
 
 @* Anfragen von KI-Assistenten, die auf eine Freigabe warten; entscheiden dürfen nur Administratoren. *@
 @if (_pending.Count > 0)
@@ -43,7 +44,20 @@
     private List<DeploymentRequest> _pending = [];
     private Dictionary<int, string> _names = [];
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        // Neue Anfragen erscheinen sofort, auch während die Seite offen ist.
+        Requests.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Requests.Changed -= OnChanged;
 
     public async Task LoadAsync()
     {

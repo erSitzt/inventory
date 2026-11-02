@@ -153,6 +153,21 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Gibt frei, aber nur den Stand, den der Freigebende gesehen hat: in einem Schritt geprüft und geschrieben, damit eine
+    /// Änderung dazwischen nicht ungesehen mit freigegeben wird.
+    /// </summary>
+    /// <returns>false, wenn sich das Paket seit <paramref name="reviewedModifiedUtc"/> geändert hat.</returns>
+    public async Task<bool> ApproveIfUnchangedAsync(int id, string user, DateTime reviewedModifiedUtc, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (!await db.PackageSteps.AnyAsync(s => s.PackageId == id, ct))
+            throw new InvalidOperationException(L["The package contains no steps."]);
+        var now = DateTime.UtcNow;
+        return await db.Packages.Where(p => p.Id == id && p.ModifiedUtc == reviewedModifiedUtc)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.ApprovedBy, user).SetProperty(p => p.ApprovedUtc, now), ct) == 1;
+    }
+
     /// <summary>Hebt die Freigabe auf, z. B. weil sich Dateien des Pakets geändert haben.</summary>
     public async Task RevokeApprovalAsync(int id, CancellationToken ct = default)
     {

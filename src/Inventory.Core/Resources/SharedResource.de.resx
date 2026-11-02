@@ -803,6 +803,9 @@
   <data name="Asset list" xml:space="preserve">
     <value>Bestandsliste</value>
   </data>
+  <data name="Assistants can have package files downloaded from public addresses. Internal servers (private networks), e.g. your build artifact server, only if listed here: host names, addresses or networks (CIDR), one per line." xml:space="preserve">
+    <value>Assistenten können Paketdateien von öffentlichen Adressen laden lassen. Interne Server (private Netze), etwa Ihr Artefakt-Server der Builds, nur wenn sie hier stehen: Hostnamen, Adressen oder Netze (CIDR), je Zeile einer.</value>
+  </data>
   <data name="Assumed as /24 – no subnet mask known" xml:space="preserve">
     <value>Als /24 angenommen – keine Subnetzmaske bekannt</value>
   </data>
@@ -2635,6 +2638,9 @@
   </data>
   <data name="Instance" xml:space="preserve">
     <value>Instanz</value>
+  </data>
+  <data name="Internal download hosts" xml:space="preserve">
+    <value>Interne Download-Hosts</value>
   </data>
   <data name="Interval (hours)" xml:space="preserve">
     <value>Intervall (Stunden)</value>

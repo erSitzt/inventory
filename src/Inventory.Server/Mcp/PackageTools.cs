@@ -15,13 +15,13 @@ namespace Inventory.Server.Mcp;
 /// nachdem ein angemeldeter Administrator es in der Oberfläche freigegeben hat (wartende Anfrage unter Deployments).
 /// </summary>
 [McpServerToolType, Authorize(Policy = AccessControl.OperatorPolicy)]
-public sealed class PackageTools(McpCaller caller, PackageService packages, DeploymentRequestService requests, CollectionService collections, IHttpContextAccessor http)
+public sealed class PackageTools(McpCaller caller, PackageService packages, DeploymentRequestService requests, CollectionService collections, IHttpContextAccessor http,
+    SettingsService settings)
 {
-    /// <summary>Größe einer Datei, die der Server von einer Adresse lädt.</summary>
-    public const long MaxDownloadBytes = 4L * 1024 * 1024 * 1024;
+    /// <summary>Größe einer Datei, die der Server von einer Adresse lädt; größere über die Upload-Adresse.</summary>
+    public const long MaxDownloadBytes = 2L * 1024 * 1024 * 1024;
     /// <summary>Größe einer Datei, die direkt im Aufruf (Base64) mitkommt.</summary>
     public const int MaxInlineBytes = 10 * 1024 * 1024;
-    private static readonly HttpClient Downloads = new() { Timeout = TimeSpan.FromMinutes(30) };
 
     private string Actor => caller.User.Identity?.Name ?? "MCP";
 
@@ -71,7 +71,7 @@ public sealed class PackageTools(McpCaller caller, PackageService packages, Depl
     [McpServerTool(Name = "add_package_file", Title = "Add a file to a package", Destructive = false, Idempotent = true, OpenWorld = true)]
     [Description("Puts a file into a package created by an AI assistant: either the server downloads it from url (http/https, optionally checked "
         + "against sha256), or the content comes as contentBase64 (up to 10 MB). Larger local files: HTTP PUT to the package's uploadUrl. "
-        + "Withdraws an approval.")]
+        + "Internal servers (private addresses) only if an administrator allowed them under Settings. Withdraws an approval.")]
     public async Task<object> AddPackageFile(
         [Description("Package name or id.")] string package,
         [Description("File name or relative path in the package, e.g. setup.msi or config/app.json.")] string path,
@@ -99,6 +99,8 @@ public sealed class PackageTools(McpCaller caller, PackageService packages, Depl
             {
                 await DownloadAsync(target.Id, path, url!, sha256, ct);
             }
+            // Noch einmal nach dem Schreiben: ein Administrator, der den Stand während des Schreibens gesehen hat, gibt sonst ungesehenen Inhalt frei.
+            await packages.RevokeApprovalAsync(target.Id, ct);
         }
         catch (FormatException)
         {
@@ -111,7 +113,7 @@ public sealed class PackageTools(McpCaller caller, PackageService packages, Depl
         // Die Ablage nennt Pfade mit Backslash, wie sie das Setup auf dem Zielrechner sieht.
         var stored = path.Replace('/', '\\').TrimStart('\\');
         var file = packages.Repository.List(target.Id).FirstOrDefault(f => f.RelativePath.Equals(stored, StringComparison.OrdinalIgnoreCase));
-        await caller.LogAsync("Package file added via MCP", $"{target.Name}: {path}{(url is null ? "" : $" from {url}")}", ct);
+        await caller.LogAsync("Package file added via MCP", $"{target.Name}: {path}{(url is null ? "" : $" from {SafeDownloads.Redact(new Uri(url))}")}", ct);
         return new { package = target.Name, path, size = file?.Size };
     }
 
@@ -119,15 +121,18 @@ public sealed class PackageTools(McpCaller caller, PackageService packages, Depl
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
             throw new McpException("url must be an http or https address.");
+        var allowed = McpSetup.DownloadHosts(await settings.GetAsync(Inventory.Core.Model.SettingKeys.McpDownloadHosts, ct));
+        using var client = SafeDownloads.Create(() => allowed);
         var temp = Path.GetTempFileName();
         try
         {
-            using (var response = await Downloads.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct))
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            using (var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct))
             {
                 if (!response.IsSuccessStatusCode)
                     throw new McpException($"Download failed: HTTP {(int)response.StatusCode}.");
                 if (response.Content.Headers.ContentLength > MaxDownloadBytes)
-                    throw new McpException("The file is too large (more than 4 GB).");
+                    throw new McpException("The file is too large (more than 2 GB); upload it to the package's uploadUrl instead.");
                 await using var source = await response.Content.ReadAsStreamAsync(ct);
                 await using var target = File.Create(temp);
                 var buffer = new byte[81920];
@@ -136,14 +141,15 @@ public sealed class PackageTools(McpCaller caller, PackageService packages, Depl
                 while ((read = await source.ReadAsync(buffer, ct)) > 0)
                 {
                     if ((total += read) > MaxDownloadBytes)
-                        throw new McpException("The file is too large (more than 4 GB).");
+                        throw new McpException("The file is too large (more than 2 GB); upload it to the package's uploadUrl instead.");
+                    // Die Prüfsumme gleich beim Kopieren, ohne die Datei ein zweites Mal zu lesen.
+                    hash.AppendData(buffer, 0, read);
                     await target.WriteAsync(buffer.AsMemory(0, read), ct);
                 }
             }
             if (!string.IsNullOrWhiteSpace(sha256))
             {
-                await using var check = File.OpenRead(temp);
-                var actual = Convert.ToHexString(await SHA256.HashDataAsync(check, ct));
+                var actual = Convert.ToHexString(hash.GetHashAndReset());
                 if (!actual.Equals(sha256.Trim(), StringComparison.OrdinalIgnoreCase))
                     throw new McpException($"SHA-256 mismatch: expected {sha256.Trim()}, got {actual}. The file was not stored.");
             }

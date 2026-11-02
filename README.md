@@ -1092,8 +1092,11 @@ and the token's role decides what the assistant may do:
 
 **Packages from an assistant need a person.** Packages created over MCP (`create_package`, `deploy_script`) are named
 `MCP: …`, marked as created by an AI assistant and never approved. The assistant can add files to them – downloaded by
-the server from a URL (optionally checked against a SHA-256), inline as Base64 up to 10 MB, or uploaded with
-`PUT /api/packages/{id}/files/<path>` – and change only its own packages, never ones created by people. Deploying a
+the server from a URL (optionally checked against a SHA-256, up to 2 GB), inline as Base64 up to 10 MB, or uploaded
+with `PUT /api/packages/{id}/files/<path>` – and change only its own packages, never ones created by people. Downloads
+only reach public addresses; internal servers such as a build artifact server have to be listed under *Settings → AI
+assistants (MCP) → Internal download hosts*, and loopback and link-local addresses (cloud metadata) are always blocked,
+also after redirects. Deploying a
 package that is not approved creates a request instead: under *Deployments → Waiting for approval* an administrator
 signed in to the web interface sees the steps with their scripts, the files and the target computers and chooses
 *Approve and start* or *Reject*; nothing changed in the meantime gets approved unseen. Such packages cannot be

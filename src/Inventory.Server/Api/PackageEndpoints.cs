@@ -44,6 +44,8 @@ public static class PackageEndpoints
                 // damit kein gleichzeitig gestartetes Deployment die neue Datei mit der alten Freigabe mitnimmt.
                 await packages.RevokeApprovalAsync(id, ct);
                 await packages.Repository.SaveAsync(id, path, http.Request.Body, ct);
+                // Und danach: ein während des Hochladens angesehener Stand darf nicht mit der neuen Datei freigegeben werden.
+                await packages.RevokeApprovalAsync(id, ct);
             }
             catch (ArgumentException ex)
             {

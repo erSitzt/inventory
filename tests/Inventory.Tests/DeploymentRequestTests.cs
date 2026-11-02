@@ -78,6 +78,8 @@ public sealed class DeploymentRequestTests : IDisposable
         await _requests.SetStepsAsync(package.Id, [Script with { Script = "Stop-Computer -Force" }]);
         await Assert.ThrowsAsync<InvalidOperationException>(() => _requests.ApproveAsync(request.Id, "admin", reviewed));
         Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+        // Die gescheiterte Freigabe gibt die Anfrage wieder frei.
+        Assert.Equal(DeploymentRequestStatus.Pending, (await _requests.GetAsync(request.Id))!.Status);
 
         var current = (await _packages.GetAsync(package.Id))!.ModifiedUtc;
         var deployment = await _requests.ApproveAsync(request.Id, "admin", current);
@@ -91,6 +93,46 @@ public sealed class DeploymentRequestTests : IDisposable
         // Jede spätere Änderung zieht die Freigabe zurück.
         await _requests.SetStepsAsync(package.Id, [Script]);
         Assert.False((await _packages.GetAsync(package.Id))!.IsApproved);
+    }
+
+    [Fact]
+    public async Task Two_administrators_approving_at_once_start_one_deployment()
+    {
+        var computers = await _computers.ImportAsync("srv-01");
+        var package = await _requests.CreatePackageAsync("Spooler fix", null, null, [Script], "build");
+        var request = await _requests.RequestAsync(package.Id, [computers[0].Id], "build", null);
+        var reviewed = (await _packages.GetAsync(package.Id))!.ModifiedUtc;
+
+        var attempts = await Task.WhenAll(Enumerable.Range(0, 4).Select(async _ =>
+        {
+            try
+            {
+                await _requests.ApproveAsync(request.Id, "admin", reviewed);
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        }));
+        Assert.Single(attempts, a => a);
+        Assert.Single(await _deployments.ListAsync());
+        // Eine Ablehnung danach überschreibt die Freigabe nicht.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _requests.RejectAsync(request.Id, "other", null));
+        Assert.Equal(DeploymentRequestStatus.Started, (await _requests.GetAsync(request.Id))!.Status);
+    }
+
+    [Fact]
+    public async Task Asking_again_for_the_same_deployment_keeps_one_request()
+    {
+        var computers = await _computers.ImportAsync("srv-01 srv-02");
+        var package = await _requests.CreatePackageAsync("Spooler fix", null, null, [Script], "build");
+        var first = await _requests.RequestAsync(package.Id, [computers[0].Id, computers[1].Id], "build", null);
+        var again = await _requests.RequestAsync(package.Id, [computers[1].Id, computers[0].Id, computers[0].Id], "build", "retry");
+        Assert.Equal(first.Id, again.Id);
+        Assert.Single(_alerts);
+        // Andere Zielrechner sind eine andere Anfrage.
+        Assert.NotEqual(first.Id, (await _requests.RequestAsync(package.Id, [computers[0].Id], "build", null)).Id);
     }
 
     [Fact]

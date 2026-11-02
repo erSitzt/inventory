@@ -72,6 +72,10 @@ public static class McpSetup
     public static void MapInventoryMcp(this WebApplication app) =>
         app.MapMcp(Path).RequireAuthorization(AccessControl.ViewerPolicy).ExcludeFromDescription();
 
+    /// <summary>Die erlaubten internen Download-Hosts aus der Einstellung (Zeilen, Komma oder Leerzeichen getrennt).</summary>
+    public static IReadOnlyList<string> DownloadHosts(string? setting) =>
+        (setting ?? "").Split(['\n', '\r', ',', ';', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     public static async Task<bool> EnabledAsync(SettingsService settings, CancellationToken ct = default) =>
         await settings.GetAsync(SettingKeys.McpEnabled, ct) == bool.TrueString;
 }

@@ -30,6 +30,9 @@ public sealed class DeploymentRequestService(IDbContextFactory<InventoryDbContex
 
     private DateTime Now => _clock.GetUtcNow().UtcDateTime;
 
+    /// <summary>Eine Anfrage kam hinzu oder wurde entschieden; die Oberfläche lädt dann neu.</summary>
+    public event Action? Changed;
+
     /// <summary>Legt ein gekennzeichnetes, nicht freigegebenes Paket an; den Namen bekommt es mit dem Präfix "MCP: ".</summary>
     /// <exception cref="ArgumentException">Ungültige Schritte.</exception>
     /// <exception cref="InvalidOperationException">Ein Paket dieses Namens gibt es schon.</exception>
@@ -105,6 +108,11 @@ public sealed class DeploymentRequestService(IDbContextFactory<InventoryDbContex
             throw new ArgumentException(L["No computers to deploy to."]);
         var package = await packages.GetAsync(packageId, ct) ?? throw new KeyNotFoundException(L["Package {0} not found", packageId]);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        // Fragt ein Assistent dasselbe noch einmal an (z. B. nach einem Zeitüberlauf), bleibt es bei der offenen Anfrage und einem Alarm.
+        var targets = computerIds.Distinct().Order().ToList();
+        var open = await db.DeploymentRequests.AsNoTracking().Where(r => r.PackageId == packageId && r.Status == DeploymentRequestStatus.Pending).ToListAsync(ct);
+        if (open.FirstOrDefault(r => r.ComputerIds.Order().SequenceEqual(targets)) is { } existing)
+            return existing;
         var request = new DeploymentRequest
         {
             PackageId = packageId, ComputerIds = [.. computerIds.Distinct()], RequestedBy = requestedBy, RequestedUtc = Now,
@@ -112,6 +120,7 @@ public sealed class DeploymentRequestService(IDbContextFactory<InventoryDbContex
         };
         db.DeploymentRequests.Add(request);
         await db.SaveChangesAsync(ct);
+        Changed?.Invoke();
         alerts?.Raise(new AlertEvent(AlertKind.ApprovalRequested, L["Deployment waiting for approval"],
             L["{0} wants to deploy \"{1}\" to {2} computers.", requestedBy, package.Name, request.ComputerIds.Count], "deployments"));
         return request;
@@ -132,39 +141,57 @@ public sealed class DeploymentRequestService(IDbContextFactory<InventoryDbContex
     }
 
     /// <summary>
-    /// Gibt das Paket frei und startet das Deployment. <paramref name="reviewedModifiedUtc"/> ist der Stand, den der
-    /// Administrator gesehen hat: hat sich das Paket seither geändert, wird nichts freigegeben.
+    /// Gibt das Paket frei und startet das Deployment. Die Anfrage wird zuerst in einem Schritt übernommen (nur wenn sie noch
+    /// offen ist), dann das Paket nur in dem Stand freigegeben, den der Administrator gesehen hat
+    /// (<paramref name="reviewedModifiedUtc"/>). Scheitert etwas danach, ist die Anfrage wieder offen.
     /// </summary>
-    /// <exception cref="InvalidOperationException">Nicht mehr offen, oder das Paket hat sich seit dem Ansehen geändert.</exception>
+    /// <exception cref="InvalidOperationException">Schon entschieden, oder das Paket hat sich seit dem Ansehen geändert.</exception>
     public async Task<Deployment> ApproveAsync(int id, string user, DateTime reviewedModifiedUtc, CancellationToken ct = default)
     {
         DeploymentRequest request;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
-            request = await db.DeploymentRequests.Include(r => r.Package).FirstOrDefaultAsync(r => r.Id == id, ct) ?? throw new KeyNotFoundException(L["Request {0} not found", id]);
-            if (request.Status != DeploymentRequestStatus.Pending)
+            request = await db.DeploymentRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct) ?? throw new KeyNotFoundException(L["Request {0} not found", id]);
+            // Wer zuerst kommt: zwei Administratoren (oder zwei Fenster) starten nie zwei Deployments.
+            if (!await ClaimAsync(db, id, DeploymentRequestStatus.Started, user, null, ct))
                 throw new InvalidOperationException(L["The request has already been decided."]);
-            if (request.Package!.ModifiedUtc != reviewedModifiedUtc)
-                throw new InvalidOperationException(L["The package has changed since you opened it. Please review it again."]);
         }
-        if (!request.Package.IsApproved)
-            await packages.ApproveAsync(request.PackageId, user, ct);
-        var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds,
-            new DeploymentOptions(request.ScanAfter, request.RetryOffline, request.RespectWindow) { RequireApproved = true }, ct);
-        await using (var db = await dbFactory.CreateDbContextAsync(ct))
-            await db.DeploymentRequests.Where(r => r.Id == id).ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.Status, DeploymentRequestStatus.Started).SetProperty(r => r.DecidedBy, user)
-                .SetProperty(r => r.DecidedUtc, Now).SetProperty(r => r.DeploymentId, deployment.Id), ct);
-        return deployment;
+        try
+        {
+            if (!await packages.ApproveIfUnchangedAsync(request.PackageId, user, reviewedModifiedUtc, ct))
+                throw new InvalidOperationException(L["The package has changed since you opened it. Please review it again."]);
+            var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds,
+                new DeploymentOptions(request.ScanAfter, request.RetryOffline, request.RespectWindow) { RequireApproved = true }, ct);
+            await using (var db = await dbFactory.CreateDbContextAsync(ct))
+                await db.DeploymentRequests.Where(r => r.Id == id).ExecuteUpdateAsync(s => s.SetProperty(r => r.DeploymentId, deployment.Id), ct);
+            Changed?.Invoke();
+            return deployment;
+        }
+        catch
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(CancellationToken.None);
+            await db.DeploymentRequests.Where(r => r.Id == id).ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, DeploymentRequestStatus.Pending)
+                .SetProperty(r => r.DecidedBy, (string?)null).SetProperty(r => r.DecidedUtc, (DateTime?)null), CancellationToken.None);
+            throw;
+        }
     }
 
+    /// <exception cref="InvalidOperationException">Schon entschieden.</exception>
     public async Task RejectAsync(int id, string user, string? note, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var request = await db.DeploymentRequests.FirstOrDefaultAsync(r => r.Id == id, ct) ?? throw new KeyNotFoundException(L["Request {0} not found", id]);
-        if (request.Status != DeploymentRequestStatus.Pending)
+        if (!await db.DeploymentRequests.AnyAsync(r => r.Id == id, ct))
+            throw new KeyNotFoundException(L["Request {0} not found", id]);
+        if (!await ClaimAsync(db, id, DeploymentRequestStatus.Rejected, user, string.IsNullOrWhiteSpace(note) ? null : note.Trim(), ct))
             throw new InvalidOperationException(L["The request has already been decided."]);
-        (request.Status, request.DecidedBy, request.DecidedUtc, request.Note) = (DeploymentRequestStatus.Rejected, user, Now, string.IsNullOrWhiteSpace(note) ? null : note.Trim());
-        await db.SaveChangesAsync(ct);
+        Changed?.Invoke();
+    }
+
+    /// <summary>Entscheidet eine noch offene Anfrage in einem Schritt; false, wenn sie schon entschieden war.</summary>
+    private async Task<bool> ClaimAsync(InventoryDbContext db, int id, DeploymentRequestStatus status, string user, string? note, CancellationToken ct)
+    {
+        var now = Now;
+        return await db.DeploymentRequests.Where(r => r.Id == id && r.Status == DeploymentRequestStatus.Pending)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, status).SetProperty(r => r.DecidedBy, user).SetProperty(r => r.DecidedUtc, now).SetProperty(r => r.Note, note), ct) == 1;
     }
 }
