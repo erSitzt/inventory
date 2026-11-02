@@ -6,7 +6,8 @@ namespace Inventory.Plugins;
 /// <summary>Version der Plugin-Schnittstelle. Gleiche Hauptversion, Nebenversion höchstens die des Servers: das Plugin passt.</summary>
 public static class PluginApi
 {
-    public static readonly Version Version = new(1, 0);
+    /// <summary>1.1: eigene Inventarfelder (<see cref="CustomField"/>, <see cref="InventoryScript"/>, <see cref="ICustomFieldStore"/>).</summary>
+    public static readonly Version Version = new(1, 1);
 
     /// <summary>null, wenn ein Plugin mit dieser Schnittstellenversion geladen werden kann; sonst der Grund.</summary>
     public static string? Incompatibility(string? apiVersion)

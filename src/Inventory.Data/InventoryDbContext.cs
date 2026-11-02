@@ -54,6 +54,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<DeviceSupply> DeviceSupplies => Set<DeviceSupply>();
     public DbSet<NetworkTrace> NetworkTraces => Set<NetworkTrace>();
     public DbSet<IpSubnet> IpSubnets => Set<IpSubnet>();
+    public DbSet<ComputerCustomValue> CustomValues => Set<ComputerCustomValue>();
+    public DbSet<ComputerCustomScriptRun> CustomScriptRuns => Set<ComputerCustomScriptRun>();
     public DbSet<IpObservation> IpObservations => Set<IpObservation>();
     public DbSet<IpReservation> IpReservations => Set<IpReservation>();
 
@@ -178,6 +180,19 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         });
         modelBuilder.Entity<DeviceSupply>().Ignore(s => s.Percent);
         modelBuilder.Entity<NetworkTrace>().Ignore(t => t.HopList);
+
+        // Werte eigener Inventarfelder verschwinden mit dem Rechner.
+        modelBuilder.Entity<ComputerCustomValue>(e =>
+        {
+            e.HasIndex(v => new { v.ComputerId, v.Key }).IsUnique();
+            e.HasIndex(v => v.Key);
+            e.HasOne<Computer>().WithMany(c => c.CustomValues).HasForeignKey(v => v.ComputerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<ComputerCustomScriptRun>(e =>
+        {
+            e.HasIndex(r => new { r.ComputerId, r.Script }).IsUnique();
+            e.HasOne<Computer>().WithMany().HasForeignKey(r => r.ComputerId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<IpSubnet>(e =>
         {

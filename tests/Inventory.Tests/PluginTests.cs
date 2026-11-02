@@ -29,6 +29,19 @@ public sealed class ThrowingPlugin : IInventoryPlugin
     }
 }
 
+/// <summary>Meldet ein gültiges und ein falsch benanntes Feld an.</summary>
+public sealed class FieldPlugin : IInventoryPlugin
+{
+    public string Id => "tests.fields";
+    public string Name => "Fields";
+
+    public void ConfigureServices(IServiceCollection services, PluginContext context)
+    {
+        services.AddSingleton(new CustomField("tests.fields.good", "Good"));
+        services.AddSingleton(new CustomField("someone.else.field", "Wrong prefix"));
+    }
+}
+
 /// <summary>Laden der Plugins: eingeschaltet, aus, geändert, kaputt, inkompatibel; geteilte Typen mit dem Server.</summary>
 public class PluginLoaderTests : IDisposable
 {
@@ -74,7 +87,7 @@ public class PluginLoaderTests : IDisposable
         var catalog = Load(services);
 
         var plugin = Assert.Single(catalog.Plugins);
-        Assert.Equal((PluginState.Loaded, "inventory.sample", "1.0"), (plugin.State, plugin.Id, plugin.ApiVersion));
+        Assert.Equal((PluginState.Loaded, "inventory.sample", "1.1"), (plugin.State, plugin.Id, plugin.ApiVersion));
         Assert.Contains("1 action", plugin.Contributions);
         Assert.Single(catalog.McpToolTypes);
         Assert.True(Directory.Exists(Path.Combine(_data, "plugins-data", "inventory.sample")));
@@ -84,6 +97,11 @@ public class PluginLoaderTests : IDisposable
         Assert.True(tab.Component.IsAssignableTo(typeof(ComponentBase)));
         Assert.Same(catalog.Owner(tab.Component), plugin);
         Assert.Contains(services, d => d.ServiceType == typeof(IComputerAction));
+
+        // Eigene Inventarfelder und das Skript, mit dem Plugin als Quelle.
+        Assert.Equal(["inventory.sample.executionPolicy", "inventory.sample.nameLength"], catalog.Fields.Select(f => f.Key).Order());
+        Assert.All(catalog.Fields, f => Assert.Equal("Sample plugin", f.Source));
+        Assert.Equal(("inventory.sample/execution-policy", "inventory.sample."), (Assert.Single(catalog.Scripts).Id, catalog.Scripts[0].KeyPrefix));
     }
 
     [Fact]
@@ -123,6 +141,16 @@ public class PluginLoaderTests : IDisposable
         PluginLoader.Initialize(info, typeof(ThrowingPlugin).Assembly, new PluginCatalog(_data, [info]), services, new ConfigurationBuilder().Build(), _data, "1.2.3");
         Assert.Equal((PluginState.Failed, "broken on purpose"), (info.State, info.Error));
         Assert.Empty(services);
+    }
+
+    [Fact]
+    public void Field_keys_must_carry_the_plugin_id()
+    {
+        var info = new PluginInfo { Folder = "Fields", MainFile = "", Sha256 = "x", State = PluginState.Loaded };
+        var catalog = new PluginCatalog(_data, [info]);
+        PluginLoader.Initialize(info, typeof(FieldPlugin).Assembly, catalog, new ServiceCollection(), new ConfigurationBuilder().Build(), _data, "1.2.3", typeof(FieldPlugin));
+        Assert.Equal(["tests.fields.good"], catalog.Fields.Select(f => f.Key));
+        Assert.Contains("must start with 'tests.fields.'", info.Error);
     }
 
     [Fact]
@@ -177,7 +205,8 @@ public class PluginLoaderTests : IDisposable
 
     [Theory]
     [InlineData("1.0", null)]
-    [InlineData("1.1", "needs API 1.1")]
+    [InlineData("1.1", null)]
+    [InlineData("1.2", "needs API 1.2")]
     [InlineData("2.0", "built for API 2.x")]
     [InlineData("0.9", "built for API 0.x")]
     [InlineData("one", "invalid API version")]

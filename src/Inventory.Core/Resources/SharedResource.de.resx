@@ -1370,6 +1370,15 @@
   <data name='Custom communities are stored. Enter new ones to replace them, or leave empty to go back to "public".' xml:space="preserve">
     <value>Eigene Communities sind gespeichert. Neue eingeben, um sie zu ersetzen, oder leer lassen, um zu „public“ zurückzukehren.</value>
   </data>
+  <data name="Custom data" xml:space="preserve">
+    <value>Eigene Daten</value>
+  </data>
+  <data name="Custom field (plugin)" xml:space="preserve">
+    <value>Eigenes Feld (Plugin)</value>
+  </data>
+  <data name="Custom fields" xml:space="preserve">
+    <value>Eigene Felder</value>
+  </data>
   <data name="Daily" xml:space="preserve">
     <value>Täglich</value>
   </data>
@@ -4997,6 +5006,9 @@
   <data name="Script" xml:space="preserve">
     <value>Skript</value>
   </data>
+  <data name="Script {0}: {1}" xml:space="preserve">
+    <value>Skript {0}: {1}</value>
+  </data>
   <data name="Scripts run without a window; parameters are passed unchanged." xml:space="preserve">
     <value>Skripte laufen ohne Fenster; Parameter werden unverändert übergeben.</value>
   </data>
@@ -5965,6 +5977,12 @@
   </data>
   <data name="The scan returned no data" xml:space="preserve">
     <value>Der Scan lieferte keine Daten</value>
+  </data>
+  <data name="The script did not run" xml:space="preserve">
+    <value>Das Skript ist nicht gelaufen</value>
+  </data>
+  <data name="The script failed (exit code {0})" xml:space="preserve">
+    <value>Das Skript ist fehlgeschlagen (Exitcode {0})</value>
   </data>
   <data name="The sender is not a valid e-mail address." xml:space="preserve">
     <value>Der Absender ist keine gültige E-Mail-Adresse.</value>
@@ -7258,6 +7276,9 @@
   </data>
   <data name="{0} seconds" xml:space="preserve">
     <value>{0} Sekunden</value>
+  </data>
+  <data name="{0} shown" xml:space="preserve">
+    <value>{0} angezeigt</value>
   </data>
   <data name="{0} skipped due to name anomaly" xml:space="preserve">
     <value>{0} wegen Namensauffälligkeit übersprungen</value>

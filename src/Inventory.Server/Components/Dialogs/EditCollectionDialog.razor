@@ -1,3 +1,4 @@
+@inject CustomValueService CustomValues
 @inject CollectionService CollectionService
 @inject MaintenanceService Maintenance
 @inject Display Display
@@ -38,6 +39,16 @@
                                 <MudSelectItem T="RuleOperator" Value="op">@Display.Operator(op)</MudSelectItem>
                             }
                         </MudSelect>
+                        @if (rule.Field == RuleField.CustomField)
+                        {
+                            @* Welches eigene Feld; der Wert wird wie Text verglichen (kleiner/größer auch als Zahl oder Datum yyyy-MM-dd). *@
+                            <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" T="string" @bind-Value="rule.Value2" Label="@L["Field"]" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                @foreach (var field in CustomValues.Fields)
+                                {
+                                    <MudSelectItem T="string" Value="@field.Key">@field.Source: @field.Title</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
                         @if (Display.IsFlag(rule.Field))
                         {
                             <MudSelect RelativeWidth="DropdownWidth.Adaptive" PopoverClass="rule-select" T="string" @bind-Value="rule.Value" Label="@L["Value"]" Variant="Variant.Outlined" Margin="Margin.Dense">
@@ -115,7 +126,9 @@
     private List<Collection> _others = [];
 
     /// <summary>Nach Bezeichnung geordnet: bei dieser Zahl von Feldern findet man sie sonst nicht.</summary>
-    private IEnumerable<RuleField> Fields => Enum.GetValues<RuleField>().OrderBy(f => Display.Field(f), StringComparer.CurrentCultureIgnoreCase);
+    private IEnumerable<RuleField> Fields => Enum.GetValues<RuleField>()
+        .Where(f => f != RuleField.CustomField || CustomValues.Fields.Count > 0)
+        .OrderBy(f => Display.Field(f), StringComparer.CurrentCultureIgnoreCase);
 
     protected override async Task OnInitializedAsync() =>
         _others = (await CollectionService.ListAsync()).Select(s => s.Collection).Where(c => c.Id != Collection?.Id).ToList();

@@ -268,6 +268,8 @@ public class Computer
     public List<ComputerApp> Apps { get; set; } = [];
     public List<ComputerServerFeature> ServerFeatures { get; set; } = [];
     public List<ComputerSqlInstance> SqlInstances { get; set; } = [];
+    /// <summary>Werte eigener Inventarfelder aus Plugins.</summary>
+    public List<ComputerCustomValue> CustomValues { get; set; } = [];
     /// <summary>Auf diesem Hyper-V-Host gefundene virtuelle Maschinen.</summary>
     public List<HostedVirtualMachine> VirtualMachines { get; set; } = [];
 

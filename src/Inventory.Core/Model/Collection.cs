@@ -112,6 +112,8 @@ public enum RuleField
     /// <summary>Installierte Serverrolle oder -funktion; verneint = nicht installiert.</summary>
     ServerFeature = 157,
     CpuSockets = 158,
+    /// <summary>Eigenes Inventarfeld eines Plugins; <see cref="CollectionRule.Value2"/> nennt den Schlüssel des Felds.</summary>
+    CustomField = 159,
     Online = 1,
     Scanned,
     OsName,

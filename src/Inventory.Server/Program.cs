@@ -223,6 +223,9 @@ builder.Services.AddMudServices(config => config.SnackbarConfiguration.PositionC
 // Plugins zuletzt: sie können Dienste des Servers nutzen und bringen eigene Seiten, Aktionen, Aufträge und MCP-Werkzeuge mit.
 var plugins = PluginLoader.Load(dataDirectory, builder.Services, builder.Configuration, AppVersion.Current);
 builder.Services.AddSingleton(plugins);
+builder.Services.AddSingleton<Inventory.Core.Abstractions.ICustomFieldCatalog>(plugins);
+builder.Services.AddSingleton<CustomValueService>();
+builder.Services.AddSingleton<Inventory.Plugins.ICustomFieldStore, CustomFieldStore>();
 builder.Services.AddSingleton<PluginInstances>();
 builder.Services.AddScoped<PluginActions>();
 builder.Services.AddHostedService<PluginJobWorker>();

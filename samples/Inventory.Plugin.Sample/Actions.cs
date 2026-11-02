@@ -20,16 +20,22 @@ public sealed class ListAddressesAction(ComputerService computers) : IComputerAc
     }
 }
 
-/// <summary>Zählt jede Stunde die Rechner und schreibt die Zahl in den Datenordner des Plugins.</summary>
-public sealed class CountJob(ComputerService computers, SampleState state) : IPeriodicJob
+/// <summary>
+/// Zählt jede Stunde die Rechner, schreibt die Zahl in den Datenordner des Plugins und setzt je Rechner ein eigenes Feld –
+/// so, wie ein Abgleich Werte aus einem anderen System übernehmen würde.
+/// </summary>
+public sealed class CountJob(ComputerService computers, ICustomFieldStore fields, SampleState state) : IPeriodicJob
 {
     public string Name => "count";
     public TimeSpan Interval => TimeSpan.FromHours(1);
 
     public async Task RunAsync(CancellationToken ct)
     {
-        state.LastCount = (await computers.ListAsync(ct)).Count;
+        var list = await computers.ListAsync(ct);
+        state.LastCount = list.Count;
         await File.WriteAllTextAsync(state.File, $"{DateTime.UtcNow:O} {state.LastCount}", ct);
+        foreach (var computer in list)
+            await fields.SetAsync(computer.Id, SamplePlugin.NameLength, computer.Name.Length.ToString(), ct);
     }
 }
 

@@ -22,6 +22,7 @@ public static class CollectionEvaluator
     public static bool Matches(CollectionRule rule, Computer computer, RuleContext? context = null, int depth = 0) => rule.Field switch
     {
         RuleField.ComputerName => Text(rule, computer.Name),
+        RuleField.CustomField => Text(rule, computer.CustomValues.FirstOrDefault(v => v.Key.Equals(rule.Value2, StringComparison.OrdinalIgnoreCase))?.Value),
         RuleField.NameMismatch => Flag(rule, computer.NameMismatch),
         RuleField.MissingInDirectory => Flag(rule, computer.MissingInDirectory),
         RuleField.DirectoryInactive => Flag(rule, computer.DirectoryInactive),
@@ -208,6 +209,7 @@ public static class CollectionEvaluator
         RuleField.DiskHealthProblem => [nameof(Computer.PhysicalDisks)],
         RuleField.SqlInstance => [nameof(Computer.SqlInstances)],
         RuleField.ServerFeature => [nameof(Computer.ServerFeatures)],
+        RuleField.CustomField => [nameof(Computer.CustomValues)],
         _ => [],
     };
 

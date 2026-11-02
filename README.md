@@ -1117,6 +1117,7 @@ tabs) built against the `Inventory.Plugins` package attached to every release.
 | `IComputerAction` | an action for selected computers: in the list's *Actions* menu, on the computer page, via `POST /api/plugins/actions/{id}` and the MCP tool `run_plugin_action` |
 | `IPeriodicJob` | regular work, e.g. a sync; never runs twice at once, errors appear on the plugins page and can raise an alert |
 | `PluginMcpTools` | MCP tools, filtered by role like the built-in ones |
+| `CustomField` + `InventoryScript` / `ICustomFieldStore` | own inventory data per computer, see below |
 
 The entry point is a class implementing `IInventoryPlugin`, marked with `[assembly: InventoryPlugin(typeof(MyPlugin), ApiVersion = "1.0")]`.
 In `ConfigureServices` it registers its contributions and services; it can use the server's services such as
@@ -1124,6 +1125,19 @@ In `ConfigureServices` it registers its contributions and services; it can use t
 from the installation with `Private=false`; these are not a stable interface and may change with updates). Actions
 respect a minimum role and the operator scopes and are logged in the audit log. The repository contains a complete
 example in `samples/Inventory.Plugin.Sample`.
+
+**Own inventory data.** A plugin registers fields (`CustomField`: key `<plugin id>.<name>`, title, type text, number,
+date or yes/no) and fills them in one of two ways:
+- an `InventoryScript`: PowerShell that runs on the computer after every successful scan (as a second job over the same
+  transport, with the same target-name check, only if the computer answered under its own name) and prints one JSON
+  object, e.g. `@{ version = '1.2' } | ConvertTo-Json -Compress`. Invalid output keeps the previous values; the last run
+  and any error appear on the computer;
+- `ICustomFieldStore.SetAsync` from the plugin's own code, e.g. a job that syncs from a CMDB.
+
+The values appear on the computer page under *Custom data*, as optional columns and in the search of the computer list,
+in collection rules (*Custom field*), as report columns, in the computer's change history (category = plugin name), in
+`GET /api/computers/{id}` (`customValues`) and in the MCP tools `get_computer` and `search_computers`. They are deleted
+with the computer and are part of the export.
 
 **Installing:** copy the build output into its own folder under `C:\ProgramData\Inventory\plugins\` – the main DLL
 named like the folder, e.g. `plugins\Contoso.Tickets\Contoso.Tickets.dll` – then switch it on under *Plugins*
