@@ -299,6 +299,9 @@
   <data name="account-for-agentless-access" xml:space="preserve">
     <value>konto-für-den-agentenlosen-zugriff</value>
   </data>
+  <data name="Accounts for agentless access to the computers, stored encrypted." xml:space="preserve">
+    <value>Konten für den agentenlosen Zugriff auf die Rechner, verschlüsselt gespeichert.</value>
+  </data>
   <data name="Accounts the server uses for agentless access to the computers." xml:space="preserve">
     <value>Konten, mit denen der Server agentenlos auf die Rechner zugreift.</value>
   </data>
@@ -323,8 +326,8 @@
   <data name="Active Directory synchronization failed" xml:space="preserve">
     <value>Active-Directory-Abgleich fehlgeschlagen</value>
   </data>
-  <data name="Active Directory, agents, transport, maintenance window, server updates and backup." xml:space="preserve">
-    <value>Active Directory, Agenten, Transport, Wartungsfenster, Server-Updates und Sicherung.</value>
+  <data name="Active Directory, agents, transport, maintenance window, AI assistants (MCP), export and import, server updates and backup." xml:space="preserve">
+    <value>Active Directory, Agenten, Übertragungsweg, Wartungsfenster, KI-Assistenten (MCP), Export und Import, Server-Updates und Sicherung.</value>
   </data>
   <data name="Active: {0}" xml:space="preserve">
     <value>Aktiv: {0}</value>
@@ -646,6 +649,9 @@
   </data>
   <data name="An estimate from the inventory data, not a binding statement for an audit." xml:space="preserve">
     <value>Eine Schätzung aus den Inventardaten, keine verbindliche Aussage für ein Audit.</value>
+  </data>
+  <data name="An estimate of the Windows Server and SQL Server licences needed per host and cluster, against the licences you own." xml:space="preserve">
+    <value>Eine Schätzung der nötigen Windows-Server- und SQL-Server-Lizenzen je Host und Cluster, gegen die vorhandenen Lizenzen.</value>
   </data>
   <data name="An import from {0} (exported {1}, version {2}) is ready. It replaces the current state with the next start of Inventory." xml:space="preserve">
     <value>Ein Import von {0} (exportiert {1}, Version {2}) liegt bereit. Er ersetzt den jetzigen Stand beim nächsten Start von Inventory.</value>
@@ -2045,6 +2051,9 @@
   <data name="Export of {0} from {1}, version {2}: {3} computers, {4} packages, {5} credentials." xml:space="preserve">
     <value>Export von {0} vom {1}, Version {2}: {3} Rechner, {4} Pakete, {5} Anmeldedaten.</value>
   </data>
+  <data name="Extensions with their own pages, actions, jobs and inventory data, switched on here by an administrator." xml:space="preserve">
+    <value>Erweiterungen mit eigenen Seiten, Aktionen, Aufträgen und Inventardaten, hier von einem Administrator eingeschaltet.</value>
+  </data>
   <data name="failed" xml:space="preserve">
     <value>fehlgeschlagen</value>
   </data>
@@ -2383,6 +2392,9 @@
   </data>
   <data name="Hyper-V hosts appear after their inventory scan; VMware and XCP-ng hosts after a synchronization (Settings, read-only account)." xml:space="preserve">
     <value>Hyper-V-Hosts erscheinen nach ihrem Inventar-Scan, VMware- und XCP-ng-Hosts nach einem Abgleich (Einstellungen, Konto mit Leserechten).</value>
+  </data>
+  <data name="Hyper-V, vCenter and XCP-ng hosts with their virtual machines, matched to the inventoried computers." xml:space="preserve">
+    <value>Hyper-V-, vCenter- und XCP-ng-Hosts mit ihren virtuellen Maschinen, zugeordnet zu den inventarisierten Rechnern.</value>
   </data>
   <data name="Hypervisor" xml:space="preserve">
     <value>Hypervisor</value>
@@ -3059,6 +3071,9 @@
   <data name="Message for logged-on users" xml:space="preserve">
     <value>Hinweis für angemeldete Benutzer</value>
   </data>
+  <data name="Messages by mail or webhook (Teams, Slack …) when something happens – a failed deployment, a new device, a full licence." xml:space="preserve">
+    <value>Nachrichten per Mail oder Webhook (Teams, Slack …), wenn etwas passiert – ein fehlgeschlagenes Deployment, ein neues Gerät, eine ausgeschöpfte Lizenz.</value>
+  </data>
   <data name="Microsoft documents" xml:space="preserve">
     <value>Dokumente von Microsoft</value>
   </data>
@@ -3079,6 +3094,9 @@
   </data>
   <data name="Missing on {0} computers" xml:space="preserve">
     <value>Fehlt auf {0} Rechnern</value>
+  </data>
+  <data name="Missing Windows updates across all computers, security updates first – installed with one click or on a schedule." xml:space="preserve">
+    <value>Fehlende Windows-Updates über alle Rechner, Sicherheitsupdates zuerst – per Klick oder per Zeitplan installiert.</value>
   </data>
   <data name="Mode" xml:space="preserve">
     <value>Betriebsart</value>
@@ -5363,9 +5381,6 @@
   <data name="Software installation" xml:space="preserve">
     <value>Softwareinstallation</value>
   </data>
-  <data name="Software, licences, updates, changes" xml:space="preserve">
-    <value>Software, Lizenzen, Updates, Änderungen</value>
-  </data>
   <data name="software-and-apps" xml:space="preserve">
     <value>software-und-apps</value>
   </data>
@@ -5855,6 +5870,9 @@
   <data name="The library is empty or unreachable. Source: {0}" xml:space="preserve">
     <value>Die Bibliothek ist leer oder nicht erreichbar. Quelle: {0}</value>
   </data>
+  <data name="The licences you own against the installations found – which are used up or exceeded." xml:space="preserve">
+    <value>Die vorhandenen Lizenzen gegen die gefundenen Installationen – welche aufgebraucht oder überschritten sind.</value>
+  </data>
   <data name="The list comes from the scans; computers that were not scanned recently may be out of date." xml:space="preserve">
     <value>Die Liste stammt aus den Scans; Rechner, die länger nicht gescannt wurden, können veraltet sein.</value>
   </data>
@@ -6212,6 +6230,9 @@
   <data name="Token revoked." xml:space="preserve">
     <value>Token widerrufen.</value>
   </data>
+  <data name="Tokens for scripts, the REST API and AI assistants (MCP), each with its own role." xml:space="preserve">
+    <value>Tokens für Skripte, die REST-API und KI-Assistenten (MCP), jedes mit eigener Rolle.</value>
+  </data>
   <data name="Too many failed: the deployment stops." xml:space="preserve">
     <value>Zu viele fehlgeschlagen: das Deployment hält an.</value>
   </data>
@@ -6430,6 +6451,9 @@
   </data>
   <data name="Use the general communities again" xml:space="preserve">
     <value>Wieder die allgemeinen Communities verwenden</value>
+  </data>
+  <data name="Used and free addresses per subnet, from ping, ARP, DNS and the inventory. Finds free IPs – also as a contiguous block – and reserves them." xml:space="preserve">
+    <value>Belegte und freie Adressen je Subnetz, aus Ping, ARP, DNS und dem Inventar. Findet freie IPs – auch als zusammenhängenden Block – und reserviert sie.</value>
   </data>
   <data name="Used and free addresses per subnet: from ping, the ARP table, the DNS zones in Active Directory and everything the inventory knows. Old reverse entries without a matching forward record count as stale, not as used." xml:space="preserve">
     <value>Belegte und freie Adressen je Subnetz: aus Ping, der ARP-Tabelle, den DNS-Zonen im Active Directory und allem, was das Inventar kennt. Alte Reverse-Einträge ohne passenden Forward-Eintrag gelten als veraltet, nicht als belegt.</value>
@@ -6704,6 +6728,9 @@
   <data name="Welcome to Inventory" xml:space="preserve">
     <value>Willkommen bei Inventory</value>
   </data>
+  <data name="What changed between scans: software, hardware, services, local administrators and more." xml:space="preserve">
+    <value>Was sich zwischen den Scans geändert hat: Software, Hardware, Dienste, lokale Administratoren und mehr.</value>
+  </data>
   <data name="What changed between two scans: software, hotfixes, services, local administrators, hardware and configuration." xml:space="preserve">
     <value>Was sich zwischen zwei Scans geändert hat: Software, Hotfixes, Dienste, lokale Administratoren, Hardware und Konfiguration.</value>
   </data>
@@ -6715,9 +6742,6 @@
   </data>
   <data name='What happens to such computers is set under "Active Directory" in the settings.' xml:space="preserve">
     <value>Was mit solchen Rechnern geschieht, legen die Einstellungen unter „Active Directory“ fest.</value>
-  </data>
-  <data name="What is installed, which licences are used up, which updates are missing and what changed since the last scan." xml:space="preserve">
-    <value>Was installiert ist, welche Lizenzen aufgebraucht sind, welche Updates fehlen und was sich seit dem letzten Scan geändert hat.</value>
   </data>
   <data name="What the device reports" xml:space="preserve">
     <value>Was das Gerät meldet</value>
@@ -6740,8 +6764,14 @@
   <data name="Which" xml:space="preserve">
     <value>Welcher</value>
   </data>
+  <data name="Which programs and versions are installed where, including Store apps." xml:space="preserve">
+    <value>Welche Programme und Versionen wo installiert sind, einschließlich Store-Apps.</value>
+  </data>
   <data name="While the page is open, everyone who can reach this server can download the setup with the enrollment secret and register a computer – also under the name of an existing one, which would then receive that computer's jobs. Open it only as long as you need it, keep an eye on &quot;Agent enrolled&quot; in the audit log, and renew the secret afterwards if in doubt." xml:space="preserve">
     <value>Solange die Seite offen ist, kann jeder, der diesen Server erreicht, das Setup mit dem Anmeldegeheimnis herunterladen und einen Rechner anmelden – auch unter dem Namen eines vorhandenen, der dann dessen Jobs bekäme. Nur so lange öffnen wie nötig, im Protokoll auf „Agent enrolled“ achten und das Geheimnis im Zweifel danach erneuern.</value>
+  </data>
+  <data name="Who did what and when – in the web interface, through the API or an AI assistant." xml:space="preserve">
+    <value>Wer wann was getan hat – in der Oberfläche, über die API oder einen KI-Assistenten.</value>
   </data>
   <data name="Who signed in, ran something or changed something – with role and source." xml:space="preserve">
     <value>Wer sich angemeldet, etwas ausgeführt oder geändert hat – mit Rolle und Herkunft.</value>
