@@ -114,10 +114,10 @@ else
             </AdminOnly>
             <MudDataGrid T="LicenseEntitlement" Items="_entitlements" Dense="true" Hover="true" SortMode="SortMode.Single">
                 <Columns>
-                    <TemplateColumn Title="@L["Product"]" SortBy="e => e.Product"><CellTemplate>@ProductName(context.Item.Product)</CellTemplate></TemplateColumn>
+                    <TemplateColumn Sortable="true" Title="@L["Product"]" SortBy="e => e.Product"><CellTemplate>@ProductName(context.Item.Product)</CellTemplate></TemplateColumn>
                     <PropertyColumn Property="e => e.Quantity" Title="@L["Quantity"]" CellStyle="text-align: right" />
                     <PropertyColumn Property="e => e.Version" Title="@L["Version"]" />
-                    <TemplateColumn Title="@L["SA until"]" SortBy="e => e.SoftwareAssuranceUntil">
+                    <TemplateColumn Sortable="true" Title="@L["SA until"]" SortBy="e => e.SoftwareAssuranceUntil">
                         <CellTemplate>
                             @if (context.Item.SoftwareAssuranceUntil is { } until)
                             {

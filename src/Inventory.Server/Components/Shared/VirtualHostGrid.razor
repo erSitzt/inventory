@@ -4,7 +4,7 @@
 <MudDataGrid T="VirtualHostView" Items="Items" Dense="true" Hover="true" SortMode="SortMode.Single" Groupable="false">
     <Columns>
         <HierarchyColumn T="VirtualHostView" />
-        <TemplateColumn Title="@L["Host"]" SortBy="h => h.Name">
+        <TemplateColumn Sortable="true" Title="@L["Host"]" SortBy="h => h.Name">
             <CellTemplate>
                 @if (context.Item.ComputerId is { } computerId)
                 {
@@ -18,13 +18,13 @@
             </CellTemplate>
         </TemplateColumn>
         <PropertyColumn Property="h => h.Cluster" Title="@L["Cluster"]" />
-        <TemplateColumn Title="@L["Sockets / cores"]" SortBy="h => h.CpuCores ?? 0" CellStyle="text-align: right">
+        <TemplateColumn Sortable="true" Title="@L["Sockets / cores"]" SortBy="h => h.CpuCores ?? 0" CellStyle="text-align: right">
             <CellTemplate>@(context.Item.CpuSockets is null && context.Item.CpuCores is null ? "–" : $"{context.Item.CpuSockets?.ToString() ?? "?"} / {context.Item.CpuCores?.ToString() ?? "?"}")</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Virtual machines"]" SortBy="h => h.VirtualMachines.Count" CellStyle="text-align: right">
+        <TemplateColumn Sortable="true" Title="@L["Virtual machines"]" SortBy="h => h.VirtualMachines.Count" CellStyle="text-align: right">
             <CellTemplate>@context.Item.VirtualMachines.Count</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Inventoried"]" SortBy="h => h.VirtualMachines.Count(v => v.GuestComputerId is not null)" CellStyle="text-align: right">
+        <TemplateColumn Sortable="true" Title="@L["Inventoried"]" SortBy="h => h.VirtualMachines.Count(v => v.GuestComputerId is not null)" CellStyle="text-align: right">
             <CellTemplate>@context.Item.VirtualMachines.Count(v => v.GuestComputerId is not null)</CellTemplate>
         </TemplateColumn>
     </Columns>

@@ -7,7 +7,7 @@
 <MudDataGrid T="HostLicensing" Items="Items" Dense="true" Hover="true" SortMode="SortMode.Single">
     <Columns>
         <HierarchyColumn T="HostLicensing" />
-        <TemplateColumn Title="@HostTitle" SortBy="h => h.Host.Name">
+        <TemplateColumn Sortable="true" Title="@HostTitle" SortBy="h => h.Host.Name">
             <CellTemplate>
                 @if (context.Item.Host.ComputerId is { } id)
                 {
@@ -19,9 +19,9 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Cluster"]" SortBy="h => h.Host.Cluster"><CellTemplate>@context.Item.Host.Cluster</CellTemplate></TemplateColumn>
-        <TemplateColumn Title="@L["Source"]" SortBy="h => h.Host.Source"><CellTemplate>@SourceName(context.Item.Host.Source)</CellTemplate></TemplateColumn>
-        <TemplateColumn Title="@VmTitle" SortBy="h => h.VmsOnHost" CellStyle="text-align: right">
+        <TemplateColumn Sortable="true" Title="@L["Cluster"]" SortBy="h => h.Host.Cluster"><CellTemplate>@context.Item.Host.Cluster</CellTemplate></TemplateColumn>
+        <TemplateColumn Sortable="true" Title="@L["Source"]" SortBy="h => h.Host.Source"><CellTemplate>@SourceName(context.Item.Host.Source)</CellTemplate></TemplateColumn>
+        <TemplateColumn Sortable="true" Title="@VmTitle" SortBy="h => h.VmsOnHost" CellStyle="text-align: right">
             <CellTemplate>
                 @context.Item.VmsOnHost
                 @if (context.Item.WindowsVms != context.Item.VmsOnHost)
@@ -32,7 +32,7 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Licensed with"]" SortBy="h => h.Chosen == null ? null : h.Chosen.Product">
+        <TemplateColumn Sortable="true" Title="@L["Licensed with"]" SortBy="h => h.Chosen == null ? null : h.Chosen.Product">
             <CellTemplate>
                 @if (context.Item.Chosen is { } chosen)
                 {
@@ -44,10 +44,10 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Cost"]" SortBy="h => h.Chosen == null ? 0 : h.Chosen.Cost" CellStyle="text-align: right">
+        <TemplateColumn Sortable="true" Title="@L["Cost"]" SortBy="h => h.Chosen == null ? 0 : h.Chosen.Cost" CellStyle="text-align: right">
             <CellTemplate>@(context.Item.Chosen?.Cost.ToString("N0"))</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Still to buy"]" SortBy="h => h.AdditionalCost ?? 0" CellStyle="text-align: right">
+        <TemplateColumn Sortable="true" Title="@L["Still to buy"]" SortBy="h => h.AdditionalCost ?? 0" CellStyle="text-align: right">
             <CellTemplate>@(context.Item.AdditionalCost?.ToString("N0"))</CellTemplate>
         </TemplateColumn>
     </Columns>

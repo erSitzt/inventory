@@ -76,10 +76,10 @@ else if (_view is { } view)
                           Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 420px" />
         </ToolBarContent>
         <Columns>
-            <TemplateColumn Title="@L["IP address"]" SortBy="e => e.Value" HeaderStyle="white-space: nowrap">
+            <TemplateColumn Sortable="true" Title="@L["IP address"]" SortBy="e => e.Value" HeaderStyle="white-space: nowrap">
                 <CellTemplate>@context.Item.Address</CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="@L["Status"]" SortBy="e => e.Status">
+            <TemplateColumn Sortable="true" Title="@L["Status"]" SortBy="e => e.Status">
                 <CellTemplate>
                     <span style="@($"display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: {Display.IpStatusColor(context.Item.Status)}")"></span>@Display.IpStatus(context.Item.Status)
                 </CellTemplate>

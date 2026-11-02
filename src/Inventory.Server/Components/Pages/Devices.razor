@@ -65,7 +65,7 @@
             </ToolBarContent>
             <Columns>
                 <SelectColumn T="NetworkDevice" />
-                <TemplateColumn Title="@L["Type"]" SortBy="d => Display.DeviceKind(d.Kind)">
+                <TemplateColumn Sortable="true" Title="@L["Type"]" SortBy="d => Display.DeviceKind(d.Kind)">
                     <CellTemplate>
                         <MudTooltip Text="@(context.Item.KindReason is { } reason ? L["Detected by: {0}", reason] : null)" Disabled="@(context.Item.KindReason is null || context.Item.KindOverride is not null)">
                             <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
@@ -75,13 +75,13 @@
                         </MudTooltip>
                     </CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="@L["Name"]" SortBy="d => d.DisplayName">
+                <TemplateColumn Sortable="true" Title="@L["Name"]" SortBy="d => d.DisplayName">
                     <CellTemplate><MudLink Href="@($"devices/{context.Item.Id}")">@context.Item.DisplayName</MudLink></CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="@L["IP address"]" SortBy="d => IpRanges.SortKey(d.IpAddress)">
+                <TemplateColumn Sortable="true" Title="@L["IP address"]" SortBy="d => IpRanges.SortKey(d.IpAddress)">
                     <CellTemplate>@context.Item.IpAddress</CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="@L["Manufacturer / model"]" SortBy="d => (d.Manufacturer ?? d.MacVendor) + d.Model">
+                <TemplateColumn Sortable="true" Title="@L["Manufacturer / model"]" SortBy="d => (d.Manufacturer ?? d.MacVendor) + d.Model">
                     <CellTemplate>
                         @MakeAndModel(context.Item)
                     </CellTemplate>
@@ -109,7 +109,7 @@
                         }
                     </CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="@L["Last seen"]" SortBy="d => d.LastSeenUtc">
+                <TemplateColumn Sortable="true" Title="@L["Last seen"]" SortBy="d => d.LastSeenUtc">
                     <CellTemplate>
                         <span style="@(Stale(context.Item) ? "color: var(--mud-palette-text-disabled)" : null)">@Display.LocalTime(context.Item.LastSeenUtc)</span>
                     </CellTemplate>

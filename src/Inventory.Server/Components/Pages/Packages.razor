@@ -20,20 +20,20 @@
 
 <MudDataGrid T="Package" Items="_packages" Dense="true" Hover="true" SortMode="SortMode.Single">
     <Columns>
-        <TemplateColumn Title="@L["Name"]" SortBy="p => p.Name">
+        <TemplateColumn Sortable="true" Title="@L["Name"]" SortBy="p => p.Name">
             <CellTemplate><MudLink Href="@($"packages/{context.Item.Id}")">@context.Item.Name</MudLink></CellTemplate>
         </TemplateColumn>
         <PropertyColumn Property="p => p.Version" Title="@L["Version"]" />
-        <TemplateColumn Title="@L["Steps"]" SortBy="p => p.Steps.Count">
+        <TemplateColumn Sortable="true" Title="@L["Steps"]" SortBy="p => p.Steps.Count">
             <CellTemplate>@context.Item.Steps.Count</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Approval"]" SortBy="p => p.IsApproved">
+        <TemplateColumn Sortable="true" Title="@L["Approval"]" SortBy="p => p.IsApproved">
             <CellTemplate>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.Item.IsApproved ? Color.Success : Color.Warning)">@(context.Item.IsApproved ? L["approved"] : L["not approved"])</MudChip>
             </CellTemplate>
         </TemplateColumn>
         <PropertyColumn Property="p => p.Description" Title="@L["Description"]" />
-        <TemplateColumn Title="@L["Modified"]" SortBy="p => p.ModifiedUtc">
+        <TemplateColumn Sortable="true" Title="@L["Modified"]" SortBy="p => p.ModifiedUtc">
             <CellTemplate>@Display.LocalTime(context.Item.ModifiedUtc)</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">

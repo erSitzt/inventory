@@ -38,7 +38,7 @@
              QuickFilter="@(i => string.IsNullOrWhiteSpace(_search) || i.Entry.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (i.Entry.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) || i.Entry.Tags.Any(t => t.Contains(_search, StringComparison.OrdinalIgnoreCase)))">
     <Columns>
         <HierarchyColumn T="CatalogItem" />
-        <TemplateColumn Title="@L["Program"]" SortBy="i => i.Entry.Name" CellStyle="min-width: 300px">
+        <TemplateColumn Sortable="true" Title="@L["Program"]" SortBy="i => i.Entry.Name" CellStyle="min-width: 300px">
             <CellTemplate>
                 <MudText Typo="Typo.body2">
                     <b>@context.Item.Entry.Name</b>
@@ -50,18 +50,18 @@
                 <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">@context.Item.Entry.Description</MudText>
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Publisher"]" SortBy="i => i.Entry.Publisher">
+        <TemplateColumn Sortable="true" Title="@L["Publisher"]" SortBy="i => i.Entry.Publisher">
             <CellTemplate>@context.Item.Entry.Publisher</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Version"]" Sortable="false">
             <CellTemplate>@context.Item.Entry.Version</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Setup" SortBy="i => Display.InstallerFormat(i.Entry.InstallerType) + i.Entry.InstallerType" CellStyle="white-space: nowrap">
+        <TemplateColumn Sortable="true" Title="Setup" SortBy="i => Display.InstallerFormat(i.Entry.InstallerType) + i.Entry.InstallerType" CellStyle="white-space: nowrap">
             <CellTemplate>
                 <CatalogSetupCell Entry="context.Item.Entry" />
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Status"]" SortBy="i => i.Package == null ? 2 : i.UpdateAvailable ? 0 : 1">
+        <TemplateColumn Sortable="true" Title="@L["Status"]" SortBy="i => i.Package == null ? 2 : i.UpdateAvailable ? 0 : 1">
             <CellTemplate>
                 @if (context.Item.Package is null)
                 {
