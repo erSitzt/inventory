@@ -11,7 +11,7 @@
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap" Class="px-1">
         <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
                       Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Style="max-width: 260px" />
-        @if (Suggested.Count > 0)
+        @if (_suggested.Count > 0)
         {
             <MudSwitch T="bool" @bind-Value="_showAll" Color="Color.Primary" Label="@L["Show all computers"]" />
         }
@@ -43,10 +43,14 @@
 
     private string? _search;
     private bool _showAll;
+    /// <summary>Als Menge, damit die Liste auch bei Tausenden Rechnern nicht jede Zeile linear sucht.</summary>
+    private HashSet<int> _suggested = [];
+
+    protected override void OnParametersSet() => _suggested = [.. Suggested];
 
     /// <summary>Was die Liste zeigt: vorgeschlagene (oder alle), dazu immer die gerade ausgewählten, gefiltert nach der Suche.</summary>
     private IEnumerable<Computer> Visible => Computers
-        .Where(c => _showAll || Suggested.Count == 0 || Suggested.Contains(c.Id) || Selected.Contains(c.Id))
+        .Where(c => _showAll || _suggested.Count == 0 || _suggested.Contains(c.Id) || Selected.Contains(c.Id))
         .Where(c => string.IsNullOrWhiteSpace(_search) || c.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
 
     private Task ToggleAsync(int id, bool on)
