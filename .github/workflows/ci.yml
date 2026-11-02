@@ -1,8 +1,8 @@
 name: CI
 
+# Nur für Pull Requests: main ändert sich ausschließlich über geprüfte PRs, ein zweiter Lauf nach dem Merge
+# brächte nichts Neues. Releases baut release.yml beim Versions-Tag.
 on:
-  push:
-    branches: [main]
   pull_request:
 
 permissions:
