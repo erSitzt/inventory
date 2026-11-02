@@ -26,14 +26,7 @@
                     <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
                 }
             </MudSelect>
-            <MudSelect T="Computer" MultiSelection="true" @bind-SelectedValues="_targets" Label="@L["Target computers"]" Variant="Variant.Outlined"
-                       ToStringFunc="@(c => c?.Name ?? "")" MultiSelectionTextFunc="@(names => L["{0} computers selected", names.Count])"
-                       SelectAll="true" SelectAllText="@L["Select all"]">
-                @foreach (var computer in _computers)
-                {
-                    <MudSelectItem T="Computer" Value="computer">@computer.Name@(computer.IsOnline ? "" : $" ({L["offline"]})")</MudSelectItem>
-                }
-            </MudSelect>
+            <ComputerChecklist Computers="_computers" @bind-Selected="_selected" Suggested="ComputerIds" />
             <MudCheckBox T="bool" @bind-Value="_scanAfter" Label="@L["Rescan inventory afterwards"]" Dense="true" />
             <MudCheckBox T="bool" @bind-Value="_retryOffline" Label="@L["Retry offline computers once they are reachable (up to 3 days)"]" Dense="true" />
             <MudCheckBox T="bool" @bind-Value="_wake" Label="@L["Wake computers that are switched off (Wake-on-LAN); they are retried for up to 3 days"]" Dense="true" />
@@ -69,7 +62,8 @@
     private List<Package> _packages = [];
     private List<Computer> _computers = [];
     private List<CollectionSummary> _collections = [];
-    private IReadOnlyCollection<Computer> _targets = [];
+    private HashSet<int> _selected = [];
+    private List<Computer> _targets => [.. _computers.Where(c => _selected.Contains(c.Id))];
     private int? _packageId;
     private int? _collectionId;
     private bool _scanAfter = true;
@@ -99,7 +93,7 @@
             _packages = all.Where(p => p.Steps.Count > 0 && (_isAdmin || p.IsApproved)).ToList();
         _computers = await ComputerService.ListAsync();
         _collections = await CollectionService.ListAsync();
-        _targets = _computers.Where(c => ComputerIds.Contains(c.Id)).ToList();
+        _selected = [.. _computers.Where(c => ComputerIds.Contains(c.Id)).Select(c => c.Id)];
     }
 
     private async Task SelectCollectionAsync(int? id)
@@ -108,7 +102,7 @@
         if (id is null)
             return;
         var members = await CollectionService.GetMemberIdsAsync(id.Value);
-        _targets = _computers.Where(c => members.Contains(c.Id)).ToList();
+        _selected = [.. _computers.Where(c => members.Contains(c.Id)).Select(c => c.Id)];
     }
 
     private async Task StartAsync()
