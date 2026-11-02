@@ -5,7 +5,7 @@ using Inventory.Core.Abstractions;
 namespace Inventory.Core;
 
 /// <summary>Werte eigener Inventarfelder: nach Typ normalisieren und die Ausgabe von Inventarskripten lesen.</summary>
-public static class CustomValues
+public static partial class CustomValues
 {
     public const int MaxLength = 1000;
 
@@ -21,9 +21,19 @@ public static class CustomValues
                     return number.ToString(CultureInfo.InvariantCulture);
                 throw new FormatException($"'{text}' is not a number.");
             case CustomFieldKind.Date:
-                // Windows PowerShell 5.1 gibt Datumswerte in ConvertTo-Json als \/Date(Millisekunden)\/ aus.
-                if (text.StartsWith("/Date(", StringComparison.Ordinal) && long.TryParse(text[6..].TrimEnd(')', '/').Split('+', '-')[0], out var ms))
-                    return DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                // Windows PowerShell 5.1 gibt Datumswerte in ConvertTo-Json als \/Date(Millisekunden[+-hhmm])\/ aus, vor 1970 negativ.
+                if (PowerShellDate().Match(text) is { Success: true } match)
+                {
+                    try
+                    {
+                        return DateTimeOffset.FromUnixTimeMilliseconds(long.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture))
+                            .UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    }
+                    catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
+                    {
+                        throw new FormatException($"'{text}' is not a valid date.", ex);
+                    }
+                }
                 if (DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date))
                     return date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
                 throw new FormatException($"'{text}' is not a date.");
@@ -47,9 +57,9 @@ public static class CustomValues
     /// <exception cref="FormatException">Kein lesbares JSON-Objekt in der Ausgabe.</exception>
     public static Dictionary<string, string?> ParseOutput(string? output)
     {
-        var end = output?.LastIndexOf('}') ?? -1;
-        if (output is null || end < 0)
+        if (output is null)
             throw new FormatException("The script printed no JSON object.");
+        var end = output.Length;
         // Anfänge von Objekten am Zeilenanfang, das letzte zuerst; eingerückte innere Objekte zählen nicht.
         var starts = new List<int>();
         var lineStart = 0;
@@ -65,7 +75,7 @@ public static class CustomValues
         {
             try
             {
-                return Read(output[start..(end + 1)]);
+                return Read(output[start..]);
             }
             catch (JsonException ex)
             {
@@ -75,9 +85,14 @@ public static class CustomValues
         throw new FormatException(last is null ? "The script printed no JSON object." : $"The script output is not valid JSON: {last.Message}", last);
     }
 
+    [System.Text.RegularExpressions.GeneratedRegex(@"^/Date\((-?\d+)(?:[+-]\d{4})?\)/$")]
+    private static partial System.Text.RegularExpressions.Regex PowerShellDate();
+
+    /// <summary>Liest genau ein JSON-Objekt ab dem Anfang; was danach folgt (weitere Meldungen), bleibt unbeachtet.</summary>
     private static Dictionary<string, string?> Read(string json)
     {
-        using var document = JsonDocument.Parse(json);
+        var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(json));
+        using var document = JsonDocument.ParseValue(ref reader);
         if (document.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("not an object");
         var result = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);

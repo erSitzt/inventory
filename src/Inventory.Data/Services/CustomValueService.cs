@@ -17,6 +17,8 @@ public sealed class CustomValueService(IDbContextFactory<InventoryDbContext> dbF
 {
     private readonly ICustomFieldCatalog _fields = fields ?? EmptyCustomFieldCatalog.Instance;
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
+    /// <summary>Schreiben nacheinander: ein Skript und ein Abgleich dürfen nicht beide denselben neuen Wert anlegen (eindeutiger Index).</summary>
+    private readonly SemaphoreSlim _writes = new(1, 1);
 
     public IReadOnlyList<CustomFieldInfo> Fields => _fields.Fields;
 
@@ -56,6 +58,19 @@ public sealed class CustomValueService(IDbContextFactory<InventoryDbContext> dbF
         if (normalized.Count == 0)
             return (0, warnings);
 
+        await _writes.WaitAsync(ct);
+        try
+        {
+            return (await StoreAsync(computerId, normalized, ct), warnings);
+        }
+        finally
+        {
+            _writes.Release();
+        }
+    }
+
+    private async Task<int> StoreAsync(int computerId, Dictionary<CustomFieldInfo, string?> normalized, CancellationToken ct)
+    {
         var now = _clock.GetUtcNow().UtcDateTime;
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (!await db.Computers.AnyAsync(c => c.Id == computerId, ct))
@@ -88,7 +103,7 @@ public sealed class CustomValueService(IDbContextFactory<InventoryDbContext> dbF
             stored++;
         }
         await db.SaveChangesAsync(ct);
-        return (stored, warnings);
+        return stored;
     }
 
     public async Task<List<ComputerCustomValue>> GetAsync(int computerId, CancellationToken ct = default)
@@ -140,13 +155,21 @@ public sealed class CustomValueService(IDbContextFactory<InventoryDbContext> dbF
             }
         }
 
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var run = await db.CustomScriptRuns.FirstOrDefaultAsync(r => r.ComputerId == computerId && r.Script == script.Id, ct);
-        if (run is null)
-            db.CustomScriptRuns.Add(run = new ComputerCustomScriptRun { ComputerId = computerId, Script = script.Id });
-        run.RunUtc = _clock.GetUtcNow().UtcDateTime;
-        run.Error = warnings.Count == 0 ? null : string.Join(" ", warnings);
-        await db.SaveChangesAsync(ct);
+        await _writes.WaitAsync(ct);
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+            var run = await db.CustomScriptRuns.FirstOrDefaultAsync(r => r.ComputerId == computerId && r.Script == script.Id, ct);
+            if (run is null)
+                db.CustomScriptRuns.Add(run = new ComputerCustomScriptRun { ComputerId = computerId, Script = script.Id });
+            run.RunUtc = _clock.GetUtcNow().UtcDateTime;
+            run.Error = warnings.Count == 0 ? null : string.Join(" ", warnings);
+            await db.SaveChangesAsync(ct);
+        }
+        finally
+        {
+            _writes.Release();
+        }
         return new CustomScriptOutcome(script.Id, stored, warnings);
     }
 }

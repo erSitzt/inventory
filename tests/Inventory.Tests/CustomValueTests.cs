@@ -30,6 +30,8 @@ public class CustomValueTests
     [InlineData(CustomFieldKind.Number, "-3e2", "-300")]
     [InlineData(CustomFieldKind.Date, "2026-11-02T10:15:00", "2026-11-02")]
     [InlineData(CustomFieldKind.Date, "/Date(1767225600000)/", "2026-01-01")]
+    [InlineData(CustomFieldKind.Date, "/Date(1767225600000+0100)/", "2026-01-01")]
+    [InlineData(CustomFieldKind.Date, "/Date(-86400000)/", "1969-12-31")]
     [InlineData(CustomFieldKind.Bool, "True", "true")]
     [InlineData(CustomFieldKind.Bool, "0", "false")]
     public void Values_are_normalized_by_type(CustomFieldKind kind, string input, string expected) =>
@@ -39,6 +41,7 @@ public class CustomValueTests
     [InlineData(CustomFieldKind.Number, "many")]
     [InlineData(CustomFieldKind.Date, "soon")]
     [InlineData(CustomFieldKind.Bool, "maybe")]
+    [InlineData(CustomFieldKind.Date, "/Date(99999999999999999)/")]
     public void Values_that_do_not_fit_the_type_are_rejected(CustomFieldKind kind, string input) =>
         Assert.Throws<FormatException>(() => CustomValues.Normalize(kind, input));
 
@@ -55,6 +58,8 @@ public class CustomValueTests
         Assert.Null(values["gone"]);
 
         Assert.Equal("3", CustomValues.ParseOutput("{\"version\":\"3\"}")["version"]);
+        // Folgt dem Objekt noch eine Meldung mit Klammern, gilt trotzdem das Objekt davor.
+        Assert.Equal("5", CustomValues.ParseOutput("{\"version\":\"5\"}\n{not json} at the end }")["version"]);
         Assert.Throws<FormatException>(() => CustomValues.ParseOutput("nothing here"));
         Assert.Throws<FormatException>(() => CustomValues.ParseOutput("{ broken"));
         Assert.Throws<FormatException>(() => CustomValues.ParseOutput(null));
@@ -85,6 +90,10 @@ public class CustomValueTests
         await Assert.ThrowsAsync<ArgumentException>(() => service.SetAsync(computer.Id, "contoso.lob.unknown", "x"));
         await Assert.ThrowsAsync<ArgumentException>(() => service.SetAsync(computer.Id, "contoso.lob.seats", "lots"));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.SetAsync(999, "contoso.lob.version", "1"));
+
+        // Skript und Abgleich gleichzeitig: kein doppelter Eintrag, kein Fehler am eindeutigen Index.
+        await Task.WhenAll(Enumerable.Range(0, 10).Select(i => service.SetAsync(computer.Id, "contoso.lob.seats", i.ToString())));
+        Assert.Single(await service.GetAsync(computer.Id), v => v.Key == "contoso.lob.seats");
 
         // Ohne strict werden unbrauchbare Einträge gemeldet, die übrigen gespeichert.
         var (stored, warnings) = await service.SetManyAsync(computer.Id, new Dictionary<string, string?>
