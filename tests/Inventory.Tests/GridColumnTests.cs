@@ -18,7 +18,7 @@ public class GridColumnTests
         var tag = new Regex(@"<TemplateColumn\b[^>]*>", RegexOptions.Compiled);
         var missing = Directory.EnumerateFiles(components, "*.razor", SearchOption.AllDirectories)
             .SelectMany(f => tag.Matches(File.ReadAllText(f)).Select(m => (File: Path.GetFileName(f), Tag: m.Value)))
-            .Where(t => t.Tag.Contains("SortBy=") && !t.Tag.Contains("Sortable="))
+            .Where(t => t.Tag.Contains("SortBy=") && !t.Tag.Contains("Sortable=\"true\""))
             .Select(t => $"{t.File}: {t.Tag}").ToList();
         Assert.True(missing.Count == 0, "SortBy ohne Sortable=\"true\":\n" + string.Join("\n", missing));
     }
