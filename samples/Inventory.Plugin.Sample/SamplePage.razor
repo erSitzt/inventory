@@ -1,4 +1,6 @@
 @page "/sample"
+@* Der Menüeintrag allein schützt die Seite nicht; die Rolle gehört an die Seite selbst. *@
+@attribute [Authorize(Policy = PluginPolicies.Viewer)]
 @inject SampleState State
 @inject ComputerService Computers
 

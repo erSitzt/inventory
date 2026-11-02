@@ -1111,7 +1111,7 @@ tabs) built against the `Inventory.Plugins` package attached to every release.
 
 | Extension point | What it adds |
 |---|---|
-| `PluginNavItem` + a component with `@page` | a page with its own menu entry |
+| `PluginNavItem` + a component with `@page` | a page with its own menu entry; `MinRole` only hides the menu entry, so protect the page itself with `@attribute [Authorize(Policy = PluginPolicies.Operator)]` |
 | `PluginComputerTab` | a tab on the computer page (gets `ComputerId`) |
 | `PluginSettingsSection` | a section under *Settings* |
 | `IComputerAction` | an action for selected computers: in the list's *Actions* menu, on the computer page, via `POST /api/plugins/actions/{id}` and the MCP tool `run_plugin_action` |
@@ -1129,11 +1129,12 @@ example in `samples/Inventory.Plugin.Sample`.
 named like the folder, e.g. `plugins\Contoso.Tickets\Contoso.Tickets.dll` – then switch it on under *Plugins*
 (administrators) and restart the service. Assemblies the server already has (ASP.NET Core, MudBlazor, Inventory.*)
 always come from the server; only additional dependencies come from the plugin folder. The plugins page shows the
-state, what each plugin contributes, its jobs, the publisher of a signed DLL and a SHA-256 over all its DLLs.
+state, what each plugin contributes, its jobs, the publisher named in the certificate of a signed DLL (not verified
+against the file) and a SHA-256 over all files of the plugin folder.
 
 **Compatibility and safety:** the server loads a plugin only if its API version has the same major version and at
 most the server's minor version; otherwise it shows why. A plugin runs with the full rights of the Inventory service.
-Only switch on plugins you trust: if any of its DLLs changes, the plugin stays off until an administrator switches it
+Only switch on plugins you trust: if any of its files changes, the plugin stays off until an administrator switches it
 on again. Errors while loading or in a job affect only that plugin.
 
 ## Moving to another server (export and import)

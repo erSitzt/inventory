@@ -30,10 +30,10 @@ public sealed class PluginInfo
     /// <summary>Name des Ordners unter plugins und zugleich der Haupt-DLL.</summary>
     public required string Folder { get; init; }
     public required string MainFile { get; init; }
-    /// <summary>Prüfsumme über alle DLLs des Ordners; ändert sie sich, wird das Plugin nicht mehr geladen.</summary>
+    /// <summary>Prüfsumme über alle Dateien des Ordners; ändert sie sich, wird das Plugin nicht mehr geladen.</summary>
     public required string Sha256 { get; init; }
     public string? FileVersion { get; init; }
-    /// <summary>Unterzeichner der Haupt-DLL (Authenticode), ohne Prüfung der Vertrauenskette.</summary>
+    /// <summary>Unterzeichner laut eingebettetem Zertifikat der Haupt-DLL (Authenticode); nicht geprüft, ob die Signatur noch zum Inhalt passt.</summary>
     public string? Publisher { get; init; }
     public PluginState State { get; set; }
     public string? Error { get; set; }
@@ -46,6 +46,9 @@ public sealed class PluginInfo
     /// <summary>Kurzbeschreibung der Beiträge, z. B. "2 pages, 1 action".</summary>
     public List<string> Contributions { get; } = [];
     public List<PluginJobStatus> Jobs { get; } = [];
+    /// <summary>Anmeldungen der Aktionen und Aufträge; der Server erzeugt sie je Plugin einzeln (<see cref="PluginInstances"/>).</summary>
+    public List<ServiceDescriptor> ActionDescriptors { get; } = [];
+    public List<ServiceDescriptor> JobDescriptors { get; } = [];
 
     public string DisplayName => Name ?? Folder;
 }
@@ -62,6 +65,9 @@ public sealed class PluginCatalog(string directory, IReadOnlyList<PluginInfo> pl
 
     /// <summary>Für den Router: Seiten in Plugin-Assemblies.</summary>
     public Assembly[] Assemblies => [.. Loaded.Select(p => p.Assembly!)];
+
+    /// <summary>Gesetzt, wenn plugins/enabled.json nicht lesbar war; dann ist beim Start nichts eingeschaltet.</summary>
+    public string? EnabledFileError { get; set; }
 
     /// <summary>Werkzeugklassen der Plugins für den MCP-Server.</summary>
     public List<Type> McpToolTypes { get; } = [];

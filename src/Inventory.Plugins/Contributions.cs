@@ -1,6 +1,10 @@
 namespace Inventory.Plugins;
 
-/// <summary>Eintrag im Menü des Servers; die Seite selbst ist eine Komponente mit <c>@page</c> in der Plugin-Assembly.</summary>
+/// <summary>
+/// Eintrag im Menü des Servers; die Seite selbst ist eine Komponente mit <c>@page</c> in der Plugin-Assembly.
+/// <see cref="MinRole"/> blendet nur den Menüeintrag aus: die Seite selbst schützt <c>@attribute [Authorize(Policy = PluginPolicies.Operator)]</c>,
+/// sonst kann jeder angemeldete Benutzer sie über ihre Adresse öffnen.
+/// </summary>
 /// <param name="Href">Relativ, ohne führenden Schrägstrich, z. B. "contoso/tickets".</param>
 /// <param name="Icon">SVG-Pfad eines MudBlazor-Symbols (z. B. <c>Icons.Material.Filled.Extension</c>); leer = Standardsymbol.</param>
 public sealed record PluginNavItem(string Title, string Href, string? Icon = null, PluginRole MinRole = PluginRole.Viewer);

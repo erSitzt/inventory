@@ -9,7 +9,7 @@ namespace Inventory.Server.Plugins;
 /// Führt die regelmäßigen Aufträge der Plugins aus. Jeder Auftrag läuft für sich (nie zweimal gleichzeitig) und mit eigener
 /// Fehlerbehandlung; wann er zuletzt lief, steht in den Einstellungen und überdauert so einen Neustart.
 /// </summary>
-public sealed class PluginJobWorker(IServiceProvider services, PluginCatalog catalog, SettingsService settings, IAlertSink alerts, ILogger<PluginJobWorker> logger)
+public sealed class PluginJobWorker(PluginInstances instances, PluginCatalog catalog, SettingsService settings, IAlertSink alerts, ILogger<PluginJobWorker> logger)
     : BackgroundService
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
@@ -18,25 +18,22 @@ public sealed class PluginJobWorker(IServiceProvider services, PluginCatalog cat
     {
         if (!catalog.Loaded.Any())
             return;
-        List<(IPeriodicJob Job, PluginInfo Owner, PluginJobStatus Status)> jobs;
-        try
+        // Je Auftrag erzeugt (PluginInstances): einer, der sich nicht erzeugen lässt, hält die anderen nicht auf.
+        var jobs = new List<(IPeriodicJob Job, PluginInfo Owner, PluginJobStatus Status)>();
+        foreach (var (job, owner) in instances.Jobs)
         {
-            jobs = [];
-            foreach (var job in services.GetServices<IPeriodicJob>())
+            try
             {
-                if (catalog.Owner(job.GetType()) is not { } owner)
-                    continue;
                 var status = new PluginJobStatus { Name = job.Name, Interval = job.Interval };
                 status.LastRunUtc = DateTime.TryParse(await settings.GetAsync(Key(owner, job), stoppingToken), null, System.Globalization.DateTimeStyles.RoundtripKind, out var last) ? last : null;
                 owner.Jobs.Add(status);
                 jobs.Add((job, owner, status));
             }
-        }
-        catch (Exception ex)
-        {
-            // Ein Auftrag, der sich nicht einmal erzeugen lässt, darf den Server nicht stören.
-            logger.LogError(ex, "Plugin jobs could not be created");
-            return;
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Plugin {Plugin}: a job could not be prepared", owner.DisplayName);
+                owner.Error = $"A job could not be prepared: {ex.Message}";
+            }
         }
 
         using var timer = new PeriodicTimer(Tick);

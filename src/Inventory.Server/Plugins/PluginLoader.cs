@@ -25,9 +25,18 @@ public static class PluginLoader
     {
         var directory = Path.Combine(dataDirectory, FolderName);
         Directory.CreateDirectory(directory);
-        var enabled = ReadEnabled(directory);
         var plugins = new List<PluginInfo>();
         var catalog = new PluginCatalog(directory, plugins);
+        List<EnabledPlugin> enabled;
+        try
+        {
+            enabled = ReadEnabled(directory);
+        }
+        catch (InvalidOperationException ex)
+        {
+            enabled = [];
+            catalog.EnabledFileError = ex.Message;
+        }
         foreach (var folder in Directory.EnumerateDirectories(directory).Order(StringComparer.OrdinalIgnoreCase))
         {
             var name = Path.GetFileName(folder);
@@ -37,11 +46,21 @@ public static class PluginLoader
                 plugins.Add(new PluginInfo { Folder = name, MainFile = main, Sha256 = "", State = PluginState.Failed, Error = $"{name}.dll not found in the folder." });
                 continue;
             }
-            var info = new PluginInfo
+            PluginInfo info;
+            try
             {
-                Folder = name, MainFile = main, Sha256 = Hash(folder),
-                FileVersion = FileVersionInfo.GetVersionInfo(main).FileVersion, Publisher = Publisher(main),
-            };
+                info = new PluginInfo
+                {
+                    Folder = name, MainFile = main, Sha256 = Hash(folder),
+                    FileVersion = FileVersionInfo.GetVersionInfo(main).FileVersion, Publisher = Publisher(main),
+                };
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Eine gesperrte oder unlesbare Datei legt nur dieses Plugin still, nicht den Start des Servers.
+                plugins.Add(new PluginInfo { Folder = name, MainFile = main, Sha256 = "", State = PluginState.Failed, Error = $"The plugin folder could not be read: {ex.Message}" });
+                continue;
+            }
             plugins.Add(info);
             var wanted = enabled.FirstOrDefault(e => e.Folder.Equals(name, StringComparison.OrdinalIgnoreCase));
             info.State = wanted is null ? PluginState.Disabled
@@ -132,6 +151,8 @@ public static class PluginLoader
         Add(Count(typeof(PluginSettingsSection)), "1 settings section", "settings sections");
         Add(Count(typeof(IComputerAction)), "1 action", "actions");
         Add(Count(typeof(IPeriodicJob)), "1 job", "jobs");
+        info.ActionDescriptors.AddRange(own.Where(d => d.ServiceType == typeof(IComputerAction)));
+        info.JobDescriptors.AddRange(own.Where(d => d.ServiceType == typeof(IPeriodicJob)));
         var tools = own.Where(d => d.ServiceType == typeof(PluginMcpTools)).Select(d => d.ImplementationInstance).OfType<PluginMcpTools>().ToList();
         Add(tools.Count, "1 MCP tool class", "MCP tool classes");
         catalog.McpToolTypes.AddRange(tools.Select(t => t.ToolType));
@@ -157,6 +178,7 @@ public static class PluginLoader
             logger.LogWarning("Plugin {Plugin} not loaded: {Error}", info.DisplayName, info.Error);
     }
 
+    /// <exception cref="InvalidOperationException">Die Datei ist beschädigt; dann wird nichts überschrieben.</exception>
     public static List<EnabledPlugin> ReadEnabled(string directory)
     {
         var file = Path.Combine(directory, EnabledFile);
@@ -164,26 +186,33 @@ public static class PluginLoader
         {
             return File.Exists(file) ? JsonSerializer.Deserialize<List<EnabledPlugin>>(File.ReadAllText(file)) ?? [] : [];
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            return [];
+            throw new InvalidOperationException($"{EnabledFile} cannot be read ({ex.Message}); fix or delete it.", ex);
         }
     }
 
-    /// <summary>Schaltet ein Plugin für den nächsten Start ein oder aus.</summary>
+    /// <summary>Schaltet ein Plugin für den nächsten Start ein oder aus; schreibt über eine temporäre Datei, damit nie eine halbe Liste übrig bleibt.</summary>
+    /// <exception cref="InvalidOperationException">Die vorhandene Liste ist beschädigt.</exception>
     public static void SetEnabled(string directory, string folder, string? sha256)
     {
         var list = ReadEnabled(directory).Where(e => !e.Folder.Equals(folder, StringComparison.OrdinalIgnoreCase)).ToList();
         if (sha256 is not null)
             list.Add(new EnabledPlugin(folder, sha256));
-        File.WriteAllText(Path.Combine(directory, EnabledFile), JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true }));
+        var file = Path.Combine(directory, EnabledFile);
+        var temp = file + ".tmp";
+        File.WriteAllText(temp, JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true }));
+        File.Move(temp, file, overwrite: true);
     }
 
-    /// <summary>Prüfsumme über Namen und Inhalt aller DLLs des Ordners, damit auch eine ausgetauschte Abhängigkeit auffällt.</summary>
+    /// <summary>
+    /// Prüfsumme über Namen und Inhalt aller Dateien des Ordners: auch eine ausgetauschte Abhängigkeit oder eine geänderte
+    /// .deps.json (sie bestimmt, was geladen wird) fällt auf.
+    /// </summary>
     public static string Hash(string folder)
     {
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        foreach (var file in Directory.EnumerateFiles(folder, "*.dll", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase))
+        foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase))
         {
             sha.AppendData(System.Text.Encoding.UTF8.GetBytes(Path.GetRelativePath(folder, file).ToLowerInvariant()));
             sha.AppendData(File.ReadAllBytes(file));

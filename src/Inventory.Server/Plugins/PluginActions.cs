@@ -10,7 +10,7 @@ namespace Inventory.Server.Plugins;
 /// <summary>
 /// Führt Aktionen der Plugins aus, für Oberfläche, API und MCP gleich: Rolle, Operator-Bereich, Protokoll, Fehlerbehandlung.
 /// </summary>
-public sealed class PluginActions(IEnumerable<IComputerAction> actions, PluginCatalog catalog, IAuthorizationService authorization, ComputerScope scope,
+public sealed class PluginActions(PluginInstances instances, IAuthorizationService authorization, ComputerScope scope,
     ComputerService computers, AuditService audit, ILogger<PluginActions> logger)
 {
     public static string Policy(PluginRole role) => role switch
@@ -27,19 +27,19 @@ public sealed class PluginActions(IEnumerable<IComputerAction> actions, PluginCa
     public async Task<List<IComputerAction>> AvailableAsync(ClaimsPrincipal user)
     {
         var result = new List<IComputerAction>();
-        foreach (var action in actions)
-            if (catalog.Owner(action.GetType()) is not null && await AllowedAsync(user, action.MinRole))
+        foreach (var (action, _) in instances.Actions)
+            if (await AllowedAsync(user, action.MinRole))
                 result.Add(action);
         return [.. result.OrderBy(a => a.Title, StringComparer.CurrentCultureIgnoreCase)];
     }
 
-    public string? OwnerName(IComputerAction action) => catalog.Owner(action.GetType())?.DisplayName;
+    public string? OwnerName(IComputerAction action) => instances.Actions.FirstOrDefault(a => a.Action == action).Owner?.DisplayName;
 
     /// <exception cref="KeyNotFoundException">Keine solche Aktion.</exception>
     /// <exception cref="UnauthorizedAccessException">Rolle zu niedrig oder Rechner außerhalb des Operator-Bereichs.</exception>
     public async Task<PluginActionResult> RunAsync(string actionId, IReadOnlyList<int> computerIds, ClaimsPrincipal user, AuditActor actor, CancellationToken ct = default)
     {
-        var action = actions.FirstOrDefault(a => a.Id.Equals(actionId, StringComparison.OrdinalIgnoreCase) && catalog.Owner(a.GetType()) is not null)
+        var action = instances.Actions.Select(a => a.Action).FirstOrDefault(a => a.Id.Equals(actionId, StringComparison.OrdinalIgnoreCase))
             ?? throw new KeyNotFoundException($"No plugin action '{actionId}'.");
         if (!await AllowedAsync(user, action.MinRole))
             throw new UnauthorizedAccessException($"The action '{action.Title}' needs the {action.MinRole} role.");
@@ -57,7 +57,13 @@ public sealed class PluginActions(IEnumerable<IComputerAction> actions, PluginCa
         {
             result = await action.RunAsync(ids, new PluginActionContext(actor.User), ct);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException)
+        {
+            // Bricht der Aufrufer ab, kann die Aktion schon etwas geändert haben: das gehört ins Protokoll.
+            await audit.LogAsync(actor, $"Plugin action: {action.Title}", $"{string.Join(", ", names)} – cancelled", CancellationToken.None);
+            throw;
+        }
+        catch (Exception ex)
         {
             logger.LogError(ex, "Plugin action {Action} failed", action.Id);
             result = PluginActionResult.Failed(ex.Message);

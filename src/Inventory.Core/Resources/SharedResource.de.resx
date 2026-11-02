@@ -2213,6 +2213,9 @@
   <data name="from an earlier scan, user not logged on" xml:space="preserve">
     <value>aus früherem Scan, Benutzer nicht angemeldet</value>
   </data>
+  <data name="from the embedded certificate, not verified against the file" xml:space="preserve">
+    <value>laut eingebettetem Zertifikat, nicht gegen die Datei geprüft</value>
+  </data>
   <data name="From the top" xml:space="preserve">
     <value>Von oben</value>
   </data>
@@ -2902,6 +2905,9 @@
   </data>
   <data name="loaded" xml:space="preserve">
     <value>geladen</value>
+  </data>
+  <data name="loaded with errors" xml:space="preserve">
+    <value>geladen, mit Fehlern</value>
   </data>
   <data name="Loading versions …" xml:space="preserve">
     <value>Versionen werden geladen …</value>
@@ -5839,6 +5845,9 @@
   </data>
   <data name="The list comes from the scans; computers that were not scanned recently may be out of date." xml:space="preserve">
     <value>Die Liste stammt aus den Scans; Rechner, die länger nicht gescannt wurden, können veraltet sein.</value>
+  </data>
+  <data name="The list of switched-on plugins could not be read, so no plugin was loaded: {0}" xml:space="preserve">
+    <value>Die Liste der eingeschalteten Plugins war nicht lesbar, daher wurde kein Plugin geladen: {0}</value>
   </data>
   <data name="The list shows a base selection of common programs; the search additionally finds all other programs from winget." xml:space="preserve">
     <value>Die Liste zeigt eine Grundauswahl gängiger Programme; die Suche findet zusätzlich alle weiteren Programme aus winget.</value>

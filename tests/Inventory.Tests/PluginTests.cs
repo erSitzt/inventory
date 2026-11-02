@@ -125,6 +125,56 @@ public class PluginLoaderTests : IDisposable
         Assert.Empty(services);
     }
 
+    [Fact]
+    public void A_changed_deps_file_also_counts_as_changed()
+    {
+        var folder = InstallSample(_data);
+        var deps = Path.Combine(folder, "Inventory.Plugin.Sample.deps.json");
+        File.AppendAllText(deps, " ");
+        Assert.Equal(PluginState.Changed, Assert.Single(Load(new ServiceCollection()).Plugins).State);
+    }
+
+    [Fact]
+    public void A_damaged_list_of_enabled_plugins_loads_nothing_and_is_never_overwritten()
+    {
+        InstallSample(_data);
+        var file = Path.Combine(_data, PluginLoader.FolderName, PluginLoader.EnabledFile);
+        File.WriteAllText(file, "[{\"Folder\": ");
+        var services = new ServiceCollection();
+        var catalog = Load(services);
+        Assert.NotNull(catalog.EnabledFileError);
+        Assert.Equal(PluginState.Disabled, Assert.Single(catalog.Plugins).State);
+        Assert.Throws<InvalidOperationException>(() => PluginLoader.SetEnabled(Path.Combine(_data, PluginLoader.FolderName), "Other", "AB"));
+        Assert.Equal("[{\"Folder\": ", File.ReadAllText(file));
+    }
+
+    [Fact]
+    public void An_action_whose_constructor_throws_does_not_take_the_others_with_it()
+    {
+        var info = new PluginInfo { Folder = "Mixed", MainFile = "", Sha256 = "x", State = PluginState.Loaded };
+        info.ActionDescriptors.Add(ServiceDescriptor.Singleton<IComputerAction, BrokenAction>());
+        info.ActionDescriptors.Add(ServiceDescriptor.Singleton<IComputerAction>(new GoodAction()));
+        var instances = new PluginInstances(new ServiceCollection().BuildServiceProvider(), new PluginCatalog(_data, [info]),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginInstances>.Instance);
+        Assert.Equal("good", Assert.Single(instances.Actions).Action.Id);
+        Assert.Contains("BrokenAction could not be created", info.Error);
+    }
+
+    private sealed class BrokenAction : IComputerAction
+    {
+        public BrokenAction() => throw new InvalidOperationException("no");
+        public string Id => "broken";
+        public string Title => "Broken";
+        public Task<PluginActionResult> RunAsync(IReadOnlyList<int> computerIds, PluginActionContext context, CancellationToken ct) => throw new NotSupportedException();
+    }
+
+    private sealed class GoodAction : IComputerAction
+    {
+        public string Id => "good";
+        public string Title => "Good";
+        public Task<PluginActionResult> RunAsync(IReadOnlyList<int> computerIds, PluginActionContext context, CancellationToken ct) => Task.FromResult(PluginActionResult.Ok("fine"));
+    }
+
     [Theory]
     [InlineData("1.0", null)]
     [InlineData("1.1", "needs API 1.1")]

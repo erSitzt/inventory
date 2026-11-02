@@ -1156,7 +1156,7 @@ jedem Release beiliegt.
 
 | Erweiterungspunkt | Was er ergänzt |
 |---|---|
-| `PluginNavItem` + Komponente mit `@page` | eine Seite mit eigenem Menüeintrag |
+| `PluginNavItem` + Komponente mit `@page` | eine Seite mit eigenem Menüeintrag; `MinRole` blendet nur den Menüeintrag aus, die Seite selbst schützt `@attribute [Authorize(Policy = PluginPolicies.Operator)]` |
 | `PluginComputerTab` | einen Reiter auf der Rechnerseite (bekommt `ComputerId`) |
 | `PluginSettingsSection` | einen Abschnitt unter *Einstellungen* |
 | `IComputerAction` | eine Aktion für ausgewählte Rechner: im Menü *Aktionen* der Liste, auf der Rechnerseite, über `POST /api/plugins/actions/{id}` und das MCP-Werkzeug `run_plugin_action` |
@@ -1174,11 +1174,12 @@ liegt im Repository unter `samples/Inventory.Plugin.Sample`.
 Haupt-DLL heißt wie der Ordner, z. B. `plugins\Contoso.Tickets\Contoso.Tickets.dll` –, unter *Plugins* einschalten
 (Administratoren) und den Dienst neu starten. Assemblies, die der Server selbst hat (ASP.NET Core, MudBlazor, Inventory.*),
 kommen immer vom Server; nur zusätzliche Abhängigkeiten aus dem Plugin-Ordner. Die Plugin-Seite zeigt Zustand, Beiträge,
-Aufträge, den Herausgeber einer signierten DLL und eine SHA-256-Prüfsumme über alle DLLs des Plugins.
+Aufträge, den Herausgeber laut Zertifikat einer signierten DLL (nicht gegen die Datei geprüft) und eine SHA-256-Prüfsumme
+über alle Dateien des Plugin-Ordners.
 
 **Kompatibilität und Sicherheit:** Der Server lädt ein Plugin nur, wenn seine API-Version dieselbe Hauptversion und
 höchstens die Nebenversion des Servers hat; sonst zeigt er den Grund. Ein Plugin läuft mit allen Rechten des
-Inventory-Dienstes. Schalten Sie nur Plugins ein, denen Sie vertrauen: Ändert sich eine seiner DLLs, bleibt das Plugin
+Inventory-Dienstes. Schalten Sie nur Plugins ein, denen Sie vertrauen: Ändert sich eine seiner Dateien, bleibt das Plugin
 aus, bis ein Administrator es erneut einschaltet. Fehler beim Laden oder in einem Auftrag betreffen nur dieses Plugin.
 
 ## Umzug auf einen anderen Server (Export und Import)
