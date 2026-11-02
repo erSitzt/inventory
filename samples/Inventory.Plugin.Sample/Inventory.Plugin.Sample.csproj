@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Beispiel-Plugin: zeigt jeden Erweiterungspunkt. Die Inventory-Assemblies bringt der Server mit, daher Private=false. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- Sonst kämen Inventory.Core und Inventory.Contracts als Kopie in den Ausgabeordner. -->
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\..\src\Inventory.Plugins\Inventory.Plugins.csproj" Private="false" />
+    <ProjectReference Include="..\..\src\Inventory.Data\Inventory.Data.csproj" Private="false" />
+    <ProjectReference Include="..\..\src\Inventory.Core\Inventory.Core.csproj" Private="false" />
+    <ProjectReference Include="..\..\src\Inventory.Contracts\Inventory.Contracts.csproj" Private="false" />
+    <!-- Nur zum Übersetzen; zur Laufzeit stellt der Server dieselben Assemblies bereit. -->
+    <PackageReference Include="MudBlazor" Version="9.11.0" ExcludeAssets="runtime" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+</Project>

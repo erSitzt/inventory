@@ -227,6 +227,12 @@
   <data name='A range named "{0}" already exists.' xml:space="preserve">
     <value>Ein Bereich namens „{0}“ existiert bereits.</value>
   </data>
+  <data name="A plugin job fails" xml:space="preserve">
+    <value>Ein Auftrag eines Plugins schlägt fehl</value>
+  </data>
+  <data name="A plugin runs with the full rights of the Inventory service and can read and change everything. Only switch on plugins you trust. If its files change, it stays off until it is switched on again." xml:space="preserve">
+    <value>Ein Plugin läuft mit allen Rechten des Inventory-Dienstes und kann alles lesen und ändern. Schalten Sie nur Plugins ein, denen Sie vertrauen. Ändern sich seine Dateien, bleibt es aus, bis es erneut eingeschaltet wird.</value>
+  </data>
   <data name="A record {0}" xml:space="preserve">
     <value>A-Eintrag {0}</value>
   </data>
@@ -692,6 +698,9 @@
   <data name="API tokens" xml:space="preserve">
     <value>API-Tokens</value>
   </data>
+  <data name="API version" xml:space="preserve">
+    <value>API-Version</value>
+  </data>
   <data name="App (MSIX/Store)" xml:space="preserve">
     <value>App (MSIX/Store)</value>
   </data>
@@ -931,6 +940,9 @@
   </data>
   <data name="Changes of the last 7 days" xml:space="preserve">
     <value>Änderungen der letzten 7 Tage</value>
+  </data>
+  <data name="Changes take effect after a restart of the service." xml:space="preserve">
+    <value>Änderungen wirken nach einem Neustart des Dienstes.</value>
   </data>
   <data name="Channel" xml:space="preserve">
     <value>Kanal</value>
@@ -1216,6 +1228,9 @@
   </data>
   <data name="Contract" xml:space="preserve">
     <value>Vertrag</value>
+  </data>
+  <data name="Contributes" xml:space="preserve">
+    <value>Bringt mit</value>
   </data>
   <data name="Copied." xml:space="preserve">
     <value>Kopiert.</value>
@@ -1925,6 +1940,9 @@
   <data name="Every variant is calculated: Standard, Datacenter, per VM; for SQL Server per VM and the whole host. Variants that are not allowed (e.g. Standard where Datacenter is installed, per VM without SA) stay visible with the reason." xml:space="preserve">
     <value>Jede Variante wird gerechnet: Standard, Datacenter, je VM; bei SQL Server je VM und der ganze Host. Nicht zulässige Varianten (z. B. Standard, wo Datacenter installiert ist, je VM ohne SA) bleiben mit Begründung sichtbar.</value>
   </data>
+  <data name="every {0}" xml:space="preserve">
+    <value>alle {0}</value>
+  </data>
   <data name="every {0} hours" xml:space="preserve">
     <value>alle {0} Stunden</value>
   </data>
@@ -2066,6 +2084,9 @@
   <data name="Files" xml:space="preserve">
     <value>Dateien</value>
   </data>
+  <data name="files changed" xml:space="preserve">
+    <value>Dateien geändert</value>
+  </data>
   <data name="Fill from MSI" xml:space="preserve">
     <value>Aus MSI übernehmen</value>
   </data>
@@ -2144,6 +2165,9 @@
   <data name='Fixed version: a separate package "{0}" is created that is never updated automatically. Vendors sometimes remove older setups from their servers; then the download fails. Older versions usually also contain known security vulnerabilities.' xml:space="preserve">
     <value>Feste Version: Es entsteht ein eigenständiges Paket „{0}“, das nicht automatisch aktualisiert wird. Ältere Setups nehmen Hersteller manchmal vom Server; dann schlägt der Download fehl. Ältere Versionen enthalten außerdem meist bekannte Sicherheitslücken.</value>
   </data>
+  <data name="Folder" xml:space="preserve">
+    <value>Ordner</value>
+  </data>
   <data name="For anything you need more than once, build a package instead – it can be scheduled and repeated." xml:space="preserve">
     <value>Für alles, was öfter gebraucht wird, besser ein Paket bauen – es lässt sich planen und wiederholen.</value>
   </data>
@@ -2188,6 +2212,9 @@
   </data>
   <data name="from an earlier scan, user not logged on" xml:space="preserve">
     <value>aus früherem Scan, Benutzer nicht angemeldet</value>
+  </data>
+  <data name="from the embedded certificate, not verified against the file" xml:space="preserve">
+    <value>laut eingebettetem Zertifikat, nicht gegen die Datei geprüft</value>
   </data>
   <data name="From the top" xml:space="preserve">
     <value>Von oben</value>
@@ -2354,6 +2381,9 @@
   <data name='If all conditions entered here apply, the package counts as already installed: the computer is skipped and reported as "already installed". Without detection the package always runs.' xml:space="preserve">
     <value>Treffen alle hier eingetragenen Bedingungen zu, gilt das Paket als bereits installiert: der Rechner wird übersprungen und als „bereits installiert“ gemeldet. Ohne Erkennung läuft das Paket immer.</value>
   </data>
+  <data name="Id" xml:space="preserve">
+    <value>Id</value>
+  </data>
   <data name="If another installation is running (exit code 1618), the step is retried up to three times anyway." xml:space="preserve">
     <value>Läuft gerade eine andere Installation (Exitcode 1618), wird der Schritt ohnehin bis zu dreimal wiederholt.</value>
   </data>
@@ -2446,6 +2476,9 @@
   </data>
   <data name="included" xml:space="preserve">
     <value>einbezogen</value>
+  </data>
+  <data name="incompatible" xml:space="preserve">
+    <value>inkompatibel</value>
   </data>
   <data name="Install" xml:space="preserve">
     <value>Installieren</value>
@@ -2624,6 +2657,9 @@
   <data name="Item" xml:space="preserve">
     <value>Eintrag</value>
   </data>
+  <data name="Job {0}" xml:space="preserve">
+    <value>Auftrag {0}</value>
+  </data>
   <data name="keep" xml:space="preserve">
     <value>behalten</value>
   </data>
@@ -2701,6 +2737,9 @@
   </data>
   <data name="Last run" xml:space="preserve">
     <value>Letzter Lauf</value>
+  </data>
+  <data name="last run {0}" xml:space="preserve">
+    <value>zuletzt {0}</value>
   </data>
   <data name="Last run {0}: {1}" xml:space="preserve">
     <value>Letzter Lauf {0}: {1}</value>
@@ -2863,6 +2902,12 @@
   </data>
   <data name="Load file" xml:space="preserve">
     <value>Datei laden</value>
+  </data>
+  <data name="loaded" xml:space="preserve">
+    <value>geladen</value>
+  </data>
+  <data name="loaded with errors" xml:space="preserve">
+    <value>geladen, mit Fehlern</value>
   </data>
   <data name="Loading versions …" xml:space="preserve">
     <value>Versionen werden geladen …</value>
@@ -3344,6 +3389,9 @@
   <data name="No pending updates recorded. Details are captured with the next scan of each computer." xml:space="preserve">
     <value>Keine ausstehenden Updates erfasst. Die Einzelheiten werden mit dem nächsten Scan jedes Rechners gelesen.</value>
   </data>
+  <data name="No plugins installed." xml:space="preserve">
+    <value>Keine Plugins installiert.</value>
+  </data>
   <data name="No prerequisites" xml:space="preserve">
     <value>Keine Voraussetzungen</value>
   </data>
@@ -3500,6 +3548,9 @@
   <data name="Not retried: too little disk space or a program that cannot be closed." xml:space="preserve">
     <value>Nicht wiederholt wird bei zu wenig Speicherplatz oder wenn sich ein Programm nicht schließen lässt.</value>
   </data>
+  <data name="not run yet" xml:space="preserve">
+    <value>noch nicht gelaufen</value>
+  </data>
   <data name="not running" xml:space="preserve">
     <value>läuft nicht</value>
   </data>
@@ -3508,6 +3559,9 @@
   </data>
   <data name="Not scanned yet" xml:space="preserve">
     <value>Noch nicht gescannt</value>
+  </data>
+  <data name="not signed" xml:space="preserve">
+    <value>nicht signiert</value>
   </data>
   <data name="Note" xml:space="preserve">
     <value>Hinweis</value>
@@ -4105,6 +4159,18 @@
   </data>
   <data name="Please save your work. The installation starts when you choose OK, at the latest in {0} minutes." xml:space="preserve">
     <value>Bitte speichern Sie Ihre Arbeit. Die Installation beginnt, sobald Sie OK wählen, spätestens in {0} Minuten.</value>
+  </data>
+  <data name="Plugin switched off" xml:space="preserve">
+    <value>Plugin ausgeschaltet</value>
+  </data>
+  <data name="Plugin switched on" xml:space="preserve">
+    <value>Plugin eingeschaltet</value>
+  </data>
+  <data name="Plugins" xml:space="preserve">
+    <value>Plugins</value>
+  </data>
+  <data name="Plugins add pages, computer tabs, settings, actions, regular jobs and MCP tools. Copy a plugin into its own folder under {0} (the main DLL named like the folder), switch it on here and restart the service." xml:space="preserve">
+    <value>Plugins ergänzen Seiten, Reiter auf der Rechnerseite, Einstellungen, Aktionen, regelmäßige Aufträge und MCP-Werkzeuge. Kopieren Sie ein Plugin in einen eigenen Ordner unter {0} (die Haupt-DLL heißt wie der Ordner), schalten Sie es hier ein und starten Sie den Dienst neu.</value>
   </data>
   <data name="Plus {0} VMs on other hosts of cluster {1}, which may move here." xml:space="preserve">
     <value>Dazu {0} VMs auf anderen Hosts von Cluster {1}, die hierher wandern können.</value>
@@ -5093,6 +5159,9 @@
   <data name="Service Packs" xml:space="preserve">
     <value>Service Packs</value>
   </data>
+  <data name="Service restarted" xml:space="preserve">
+    <value>Dienst neu gestartet</value>
+  </data>
   <data name="Services" xml:space="preserve">
     <value>Dienste</value>
   </data>
@@ -5507,8 +5576,20 @@
   <data name="Switch" xml:space="preserve">
     <value>Switch</value>
   </data>
+  <data name="Switch on" xml:space="preserve">
+    <value>Einschalten</value>
+  </data>
+  <data name="Switch on &quot;{0}&quot;? It will run with the full rights of the Inventory service after the next restart." xml:space="preserve">
+    <value>„{0}“ einschalten? Es läuft nach dem nächsten Neustart mit allen Rechten des Inventory-Dienstes.</value>
+  </data>
+  <data name="Switch on plugin" xml:space="preserve">
+    <value>Plugin einschalten</value>
+  </data>
   <data name="switched off" xml:space="preserve">
     <value>ausgeschaltet</value>
+  </data>
+  <data name="switched on" xml:space="preserve">
+    <value>eingeschaltet</value>
   </data>
   <data name="Synchronize now" xml:space="preserve">
     <value>Jetzt synchronisieren</value>
@@ -5765,6 +5846,9 @@
   <data name="The list comes from the scans; computers that were not scanned recently may be out of date." xml:space="preserve">
     <value>Die Liste stammt aus den Scans; Rechner, die länger nicht gescannt wurden, können veraltet sein.</value>
   </data>
+  <data name="The list of switched-on plugins could not be read, so no plugin was loaded: {0}" xml:space="preserve">
+    <value>Die Liste der eingeschalteten Plugins war nicht lesbar, daher wurde kein Plugin geladen: {0}</value>
+  </data>
   <data name="The list shows a base selection of common programs; the search additionally finds all other programs from winget." xml:space="preserve">
     <value>Die Liste zeigt eine Grundauswahl gängiger Programme; die Suche findet zusätzlich alle weiteren Programme aus winget.</value>
   </data>
@@ -5834,6 +5918,9 @@
   <data name="The play button runs a schedule once right away." xml:space="preserve">
     <value>Der Abspielknopf führt einen Zeitplan sofort einmal aus.</value>
   </data>
+  <data name="The plugin component failed: {0}" xml:space="preserve">
+    <value>Die Komponente des Plugins ist fehlgeschlagen: {0}</value>
+  </data>
   <data name="The prefix must be between /{0} and /{1}." xml:space="preserve">
     <value>Das Präfix muss zwischen /{0} und /{1} liegen.</value>
   </data>
@@ -5893,6 +5980,9 @@
   </data>
   <data name="The server was stopped during execution" xml:space="preserve">
     <value>Der Server wurde während der Ausführung beendet</value>
+  </data>
+  <data name="The service restarts. Reload the page in a few seconds." xml:space="preserve">
+    <value>Der Dienst startet neu. Laden Sie die Seite in ein paar Sekunden neu.</value>
   </data>
   <data name="The state of all computers at a glance and what needs attention." xml:space="preserve">
     <value>Der Zustand aller Rechner auf einen Blick und was Aufmerksamkeit braucht.</value>

@@ -13,6 +13,9 @@
 @inject Access Access
 @inject UpdateInstaller Updates
 @inject VirtualizationService Virtualization
+@inject IEnumerable<Inventory.Plugins.PluginComputerTab> PluginTabs
+@inject Inventory.Server.Plugins.PluginActions PluginActions
+@inject AuthenticationStateProvider Authentication
 
 <PageTitle>@(_computer?.Name ?? L["Computer"]) – Inventory</PageTitle>
 
@@ -36,6 +39,12 @@
     <OperatorOnly>
         <RemoteAccessMenu Computer="_computer" />
     </OperatorOnly>
+    @if (_pluginActions)
+    {
+        <MudMenu Label="@L["Plugins"]" StartIcon="@Icons.Material.Filled.Extension" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Variant="Variant.Outlined">
+            <PluginActionItems Targets="@(() => [Id])" />
+        </MudMenu>
+    }
     <AdminOnly>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="EditAsync">@L["Edit"]</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">@L["Run command"]</MudButton>
@@ -692,6 +701,12 @@ else if (_computer.ReverseDnsMismatch)
         </MudDataGrid>
     </MudTabPanel>
 
+    @foreach (var tab in _pluginTabs)
+    {
+        <MudTabPanel Text="@tab.Title">
+            <PluginContent Component="tab.Component" Parameters="@(new Dictionary<string, object> { ["ComputerId"] = Id })" />
+        </MudTabPanel>
+    }
     <MudTabPanel Text="@($"{L["History"]} ({_changes.Count})")">
         @if (_changes.Count == 0)
         {
@@ -757,6 +772,17 @@ else if (_computer.ReverseDnsMismatch)
     }
 
     private DateTime? _shownScanUtc;
+
+    private List<Inventory.Plugins.PluginComputerTab> _pluginTabs = [];
+    private bool _pluginActions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        foreach (var tab in PluginTabs)
+            if (await Access.HasAsync(Inventory.Server.Plugins.PluginActions.Policy(tab.MinRole)))
+                _pluginTabs.Add(tab);
+        _pluginActions = (await PluginActions.AvailableAsync((await Authentication.GetAuthenticationStateAsync()).User)).Count > 0;
+    }
 
     protected override async Task OnParametersSetAsync()
     {

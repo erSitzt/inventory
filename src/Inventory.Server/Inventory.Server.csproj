@@ -34,6 +34,7 @@
     <!-- Ohne eigene Eigenschaften, damit dieser Build derselbe ist wie der aus der Solution; sonst bauen beide gleichzeitig ins selbe obj. -->
     <ProjectReference Include="..\Inventory.Runner\Inventory.Runner.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
     <ProjectReference Include="..\Inventory.Launcher\Inventory.Launcher.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
+    <ProjectReference Include="..\Inventory.Plugins\Inventory.Plugins.csproj" />
   </ItemGroup>
 
   <!--
@@ -52,5 +53,9 @@
       <Content Include="@(LauncherFile)" Link="launcher\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventory.Tests" />
+  </ItemGroup>
 
 </Project>

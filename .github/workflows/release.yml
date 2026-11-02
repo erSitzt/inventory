@@ -63,6 +63,10 @@ jobs:
         shell: pwsh
         run: ./installer/sign.ps1 -Files dist/Inventory-Setup-${{ env.VERSION }}.exe
 
+      # Schnittstelle für Plugin-Entwickler, als NuGet-Paket am Release.
+      - name: Plugin-Schnittstelle packen
+        run: dotnet pack src/Inventory.Plugins -c Release -p:Version=${{ env.VERSION }} -o dist
+
       - name: ZIP und Prüfsummen
         shell: pwsh
         run: |

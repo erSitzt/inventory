@@ -1,0 +1,56 @@
+@inject Inventory.Server.Plugins.PluginActions Actions
+@inject AuthenticationStateProvider Authentication
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+
+@* Menüeinträge für die Aktionen der Plugins, die der angemeldete Benutzer ausführen darf. *@
+@if (_actions.Count > 0)
+{
+    @if (Divider)
+    {
+        <MudDivider />
+    }
+    @foreach (var action in _actions)
+    {
+        <MudMenuItem Icon="@(action.Icon ?? Icons.Material.Filled.Extension)" Disabled="@(Disabled || _running)" OnClick="@(() => RunAsync(action))">@action.Title</MudMenuItem>
+    }
+}
+
+@code {
+    /// <summary>Die Rechner, für die eine Aktion gerade gelten würde (in der Liste: die Auswahl).</summary>
+    [Parameter, EditorRequired] public Func<IReadOnlyList<int>> Targets { get; set; } = default!;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Divider { get; set; }
+
+    private List<Inventory.Plugins.IComputerAction> _actions = [];
+    private bool _running;
+
+    protected override async Task OnInitializedAsync() =>
+        _actions = await Actions.AvailableAsync((await Authentication.GetAuthenticationStateAsync()).User);
+
+    private async Task RunAsync(Inventory.Plugins.IComputerAction action)
+    {
+        var ids = Targets();
+        if (ids.Count == 0)
+            return;
+        if (action.Confirm is { } question && await Dialogs.ShowMessageBoxAsync(action.Title, question, yesText: L["Run"], cancelText: L["Cancel"]) != true)
+            return;
+        _running = true;
+        try
+        {
+            var user = (await Authentication.GetAuthenticationStateAsync()).User;
+            var result = await Actions.RunAsync(action.Id, ids, user, await Audit.ActorAsync());
+            Snackbar.Add($"{action.Title}: {result.Message}", result.Success ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or KeyNotFoundException or ArgumentException)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+}

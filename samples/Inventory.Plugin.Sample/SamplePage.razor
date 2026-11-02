@@ -1,0 +1,17 @@
+@page "/sample"
+@* Der Menüeintrag allein schützt die Seite nicht; die Rolle gehört an die Seite selbst. *@
+@attribute [Authorize(Policy = PluginPolicies.Viewer)]
+@inject SampleState State
+@inject ComputerService Computers
+
+<PageTitle>Sample plugin – Inventory</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-2">Sample plugin</MudText>
+<MudText Typo="Typo.body2">This page comes from a plugin. The server knows @_count computers.</MudText>
+<MudText Typo="Typo.body2">Plugin started: @(State.Started?.ToString("u") ?? "–"); last job result: @(State.LastCount?.ToString() ?? "not run yet").</MudText>
+
+@code {
+    private int _count;
+
+    protected override async Task OnInitializedAsync() => _count = (await Computers.ListAsync()).Count;
+}

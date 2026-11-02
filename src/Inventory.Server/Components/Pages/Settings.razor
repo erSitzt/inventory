@@ -1,6 +1,7 @@
 @page "/settings"
 @attribute [Authorize(Policy = AccessControl.AdminPolicy)]
 @using Microsoft.Extensions.Options
+@inject IEnumerable<Inventory.Plugins.PluginSettingsSection> PluginSections
 @inject SettingsService SettingsService
 @inject AdSyncService AdSync
 @inject HeartbeatService Heartbeat
@@ -318,6 +319,14 @@
 <DataTransferSection />
 
 <McpSection />
+
+@foreach (var section in PluginSections)
+{
+    <MudPaper Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+        <MudText Typo="Typo.h6" Class="mb-2">@section.Title</MudText>
+        <PluginContent Component="section.Component" />
+    </MudPaper>
+}
 
 <MudPaper id="updates" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="3">

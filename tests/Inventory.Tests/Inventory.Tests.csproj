@@ -33,6 +33,8 @@
     <ProjectReference Include="..\..\src\Inventory.Remoting\Inventory.Remoting.csproj" />
     <ProjectReference Include="..\..\src\Inventory.Data\Inventory.Data.csproj" />
     <ProjectReference Include="..\..\src\Inventory.Server\Inventory.Server.csproj" />
+    <!-- Nur gebaut, nicht referenziert: die Tests laden das Beispiel-Plugin wie der Server aus seinem Ausgabeordner. -->
+    <ProjectReference Include="..\..\samples\Inventory.Plugin.Sample\Inventory.Plugin.Sample.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

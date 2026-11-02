@@ -1,0 +1,200 @@
+@page "/plugins"
+@attribute [Authorize(Policy = AccessControl.AdminPolicy)]
+@using Inventory.Server.Plugins
+@inject PluginCatalog Catalog
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject Auditor Audit
+@inject Access Access
+@inject Display Display
+@inject ILogger<Plugins> Logger
+@inject IStringLocalizer<SharedResource> L
+
+<PageTitle>@L["Plugins"] – Inventory</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-2">@L["Plugins"]</MudText>
+<MudText Typo="Typo.body2" Class="mb-2">
+    @L["Plugins add pages, computer tabs, settings, actions, regular jobs and MCP tools. Copy a plugin into its own folder under {0} (the main DLL named like the folder), switch it on here and restart the service.", Catalog.Directory]
+</MudText>
+<MudAlert Severity="Severity.Warning" Dense="true" Class="mb-4">
+    @L["A plugin runs with the full rights of the Inventory service and can read and change everything. Only switch on plugins you trust. If its files change, it stays off until it is switched on again."]
+</MudAlert>
+
+@if (Catalog.EnabledFileError is { } enabledError)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@L["The list of switched-on plugins could not be read, so no plugin was loaded: {0}", enabledError]</MudAlert>
+}
+
+@if (_pending)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+            <span>@L["Changes take effect after a restart of the service."]</span>
+            @if (ServiceRestart.Available)
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" OnClick="RestartAsync">@L["Restart now"]</MudButton>
+            }
+        </MudStack>
+    </MudAlert>
+}
+
+@if (Catalog.Plugins.Count == 0)
+{
+    <MudText Typo="Typo.body2">@L["No plugins installed."]</MudText>
+}
+@foreach (var plugin in Catalog.Plugins)
+{
+    var wanted = Wanted(plugin);
+    <MudPaper Outlined="true" Class="pa-4 mb-3" Style="max-width: 900px">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Extension" />
+            <MudText Typo="Typo.h6">@plugin.DisplayName</MudText>
+            @if (plugin.FileVersion is { } version)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@version</MudChip>
+            }
+            <MudChip T="string" Size="Size.Small" Color="@StateColor(plugin)">@StateText(plugin)</MudChip>
+            <MudSpacer />
+            @if (plugin.Sha256.Length > 0)
+            {
+                <MudSwitch T="bool" Value="wanted" ValueChanged="@(on => SetAsync(plugin, on))" Color="Color.Primary" Label="@(wanted ? L["switched on"] : L["switched off"])" />
+            }
+        </MudStack>
+        @if (plugin.Description is { } description)
+        {
+            <MudText Typo="Typo.body2" Class="mt-1">@description</MudText>
+        }
+        @if (plugin.Error is { } error)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@error</MudAlert>
+        }
+        <MudSimpleTable Dense="true" Elevation="0" Class="mt-2">
+            <tbody>
+                <tr><td style="width: 180px">@L["Folder"]</td><td>@plugin.Folder</td></tr>
+                @if (plugin.Id is { } id)
+                {
+                    <tr><td>@L["Id"]</td><td>@id</td></tr>
+                }
+                @if (plugin.ApiVersion is { } api)
+                {
+                    <tr><td>@L["API version"]</td><td>@api</td></tr>
+                }
+                <tr>
+                    <td>@L["Publisher"]</td>
+                    <td>
+                        @if (plugin.Publisher is { } publisher)
+                        {
+                            @publisher <MudText Typo="Typo.caption" Inline="true">(@L["from the embedded certificate, not verified against the file"])</MudText>
+                        }
+                        else
+                        {
+                            @L["not signed"]
+                        }
+                    </td>
+                </tr>
+                @if (plugin.Sha256.Length > 0)
+                {
+                    <tr><td>SHA-256</td><td style="word-break: break-all; font-family: monospace; font-size: 12px">@plugin.Sha256</td></tr>
+                }
+                @if (plugin.Contributions.Count > 0)
+                {
+                    <tr><td>@L["Contributes"]</td><td>@string.Join(", ", plugin.Contributions)</td></tr>
+                }
+                @foreach (var job in plugin.Jobs)
+                {
+                    <tr>
+                        <td>@L["Job {0}", job.Name]</td>
+                        <td>
+                            @L["every {0}", Interval(job.Interval)] –
+                            @(job.Running ? L["running"] : job.LastRunUtc is { } last ? L["last run {0}", Display.LocalTime(last)] : L["not run yet"])
+                            @if (job.LastError is { } jobError)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Error">@jobError</MudText>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    private List<PluginLoader.EnabledPlugin> _enabled = [];
+    private bool _pending;
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload()
+    {
+        try
+        {
+            _enabled = PluginLoader.ReadEnabled(Catalog.Directory);
+        }
+        catch (InvalidOperationException)
+        {
+            _enabled = [];
+        }
+        // Weicht die Einstellung vom geladenen Stand ab, wirkt sie erst nach einem Neustart.
+        _pending = Catalog.Plugins.Any(p => Wanted(p) != (p.State == PluginState.Loaded) && !(Wanted(p) && p.State is PluginState.Failed or PluginState.Incompatible));
+    }
+
+    private bool Wanted(PluginInfo plugin) =>
+        _enabled.Any(e => e.Folder.Equals(plugin.Folder, StringComparison.OrdinalIgnoreCase) && e.Sha256 == plugin.Sha256);
+
+    private async Task SetAsync(PluginInfo plugin, bool on)
+    {
+        // Entscheidet, was mit allen Rechten des Dienstes läuft: auch hier prüfen, nicht nur beim Anzeigen der Seite.
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (on && await Dialogs.ShowMessageBoxAsync(L["Switch on plugin"],
+                L["Switch on \"{0}\"? It will run with the full rights of the Inventory service after the next restart.", plugin.DisplayName],
+                yesText: L["Switch on"], cancelText: L["Cancel"]) != true)
+            return;
+        try
+        {
+            PluginLoader.SetEnabled(Catalog.Directory, plugin.Folder, on ? plugin.Sha256 : null);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+        await Audit.LogAsync(on ? L["Plugin switched on"] : L["Plugin switched off"], $"{plugin.DisplayName} ({plugin.Folder}, SHA-256 {plugin.Sha256[..12]}…)");
+        Reload();
+    }
+
+    private async Task RestartAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await Audit.LogAsync(L["Service restarted"], L["Plugins"]);
+        Snackbar.Add(L["The service restarts. Reload the page in a few seconds."], Severity.Info);
+        ServiceRestart.Schedule(Logger);
+    }
+
+    private static string Interval(TimeSpan interval) =>
+        interval.TotalDays >= 1 && interval.TotalDays % 1 == 0 ? $"{interval.TotalDays:0} d"
+        : interval.TotalHours >= 1 && interval.TotalHours % 1 == 0 ? $"{interval.TotalHours:0} h"
+        : $"{Math.Max(1, interval.TotalMinutes):0} min";
+
+    private string StateText(PluginInfo plugin) => plugin.State switch
+    {
+        // Läuft, aber mit Fehler (StartAsync, ein Auftrag oder eine Aktion ließ sich nicht erzeugen).
+        PluginState.Loaded when plugin.Error is not null => L["loaded with errors"],
+        PluginState.Loaded => L["loaded"],
+        PluginState.Disabled => L["off"],
+        PluginState.Changed => L["files changed"],
+        PluginState.Incompatible => L["incompatible"],
+        _ => L["failed"],
+    };
+
+    private static Color StateColor(PluginInfo plugin) => plugin.State switch
+    {
+        PluginState.Loaded when plugin.Error is not null => Color.Warning,
+        PluginState.Loaded => Color.Success,
+        PluginState.Disabled => Color.Default,
+        PluginState.Changed => Color.Warning,
+        _ => Color.Error,
+    };
+}
