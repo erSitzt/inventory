@@ -26,6 +26,8 @@ public enum AuditSource
     Agent = 4,
     /// <summary>Hintergrundläufe des Servers (Zeitplaner, AD-Synchronisation, Updates).</summary>
     System = 5,
+    /// <summary>Ein KI-Assistent über den MCP-Server, angemeldet mit einem API-Token.</summary>
+    Mcp = 6,
 }
 
 /// <summary>Wer einen Protokolleintrag auslöst. Ein bloßer Name genügt, wo Rolle und Herkunft nicht bekannt sind.</summary>

@@ -1058,6 +1058,7 @@ addresses require the same sign-in as the rest of the API.
 | IP addresses | subnets with the status of every address, find free addresses (checked by ping), reserve and release – reserving for operators and administrators |
 | Reports | computers and software as CSV or JSON |
 | Audit log | entries as JSON (`/api/audit`) or CSV (`/api/audit/export.csv`), filtered by user, action, period and text – operators and administrators |
+| MCP | `/mcp` for AI assistants, see [AI assistants (MCP)](#ai-assistants-mcp) |
 
 The protocol between agent and server (`/api/agent/…`) is not part of the documented API.
 
@@ -1071,6 +1072,34 @@ After the backup the server removes what has outlived its retention – audit en
 (*Settings*, 730 days each by default, 0 = keep everything), inventory changes after two years – and tidies the
 database; if a large share of the file has become free, it is rewritten once no deployment is running. Deployments
 of required schedules stay, because the schedule recognises by them where the package already is.
+
+### AI assistants (MCP)
+
+Inventory has a built-in [MCP](https://modelcontextprotocol.io) server, so AI assistants such as Claude (Claude Code,
+Claude Desktop), GitHub Copilot in VS Code or other MCP clients can work with the inventory directly. Ask, for example,
+"which servers are missing security updates", "who still has Java 8", "give me three contiguous free IPs in Servers and
+reserve them for the new SQL cluster", or "scan PC-0815".
+
+An administrator switches it on under *Settings → AI assistants (MCP)*; it is off until then. The endpoint is
+`https://<server>/mcp` (Streamable HTTP). Clients sign in with an [API token](#api) (`Authorization: Bearer inv_…`),
+and the token's role decides what the assistant may do:
+
+| Role | Tools |
+|---|---|
+| Viewer | search computers and their details, software on a computer, find software and who has it, missing updates, collections, packages, deployments, network devices, IP subnets and their addresses, Microsoft licensing |
+| Operator | additionally: scan, check reachability, wake computers; deploy approved packages and cancel deployments; find free IPs, reserve and release them; start the IP and device scans; read the audit log |
+
+Administrator actions (changing packages, remote commands, credentials, settings, deleting computers) are not offered,
+not even with an administrator token. Operator scopes apply as in the API. Every action of an assistant is logged in
+the audit log with the source *MCP*, and the MCP hints mark which tools change something, so clients ask before using
+them. Claude Code, for example:
+
+```
+claude mcp add --transport http inventory https://<server>/mcp --header "Authorization: Bearer inv_…"
+```
+
+The settings page shows the address of the own server and the entry for VS Code (`.vscode/mcp.json`). Other clients take
+the same URL and header in their own configuration format.
 
 ## Moving to another server (export and import)
 

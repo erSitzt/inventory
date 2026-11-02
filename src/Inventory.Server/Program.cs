@@ -8,6 +8,7 @@ using Inventory.Remoting.Smb;
 using Inventory.Remoting.WinRm;
 using Inventory.Server;
 using Inventory.Server.Api;
+using Inventory.Server.Mcp;
 using Inventory.Server.Components;
 using Inventory.Server.Services;
 using System.Globalization;
@@ -127,6 +128,7 @@ builder.Services.AddSingleton<LicenseService>();
 builder.Services.AddSingleton<DeviceService>();
 builder.Services.AddSingleton<NetworkMapService>();
 builder.Services.AddSingleton<IpAddressService>();
+builder.Services.AddInventoryMcp();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<SignInLog>();
 builder.Services.AddSingleton(sp => new DataTransferService(sp.GetRequiredService<IDbContextFactory<InventoryDbContext>>(), sp.GetRequiredService<ISecretProtector>(), dataDirectory, TimeProvider.System));
@@ -250,10 +252,11 @@ if (options.AuthenticationEnabled)
     app.UseAuthentication();
 if (options.ResolveWindowsAuthentication())
     app.UseMiddleware<WindowsSignInAuditMiddleware>();
+app.UseInventoryMcpGate(options);
 app.UseAuthorization();
 // Nur für die Oberfläche: API-Aufrufer (Skripte, Agenten) brauchen den echten Statuscode. Der Agent meldet sich
 // z. B. bei 401 neu an; die Fehlerseite würde daraus bei POST-Anfragen ein 400 machen.
-app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"),
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api") && !context.Request.Path.StartsWithSegments(McpSetup.Path),
     branch => branch.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true));
 
 app.UseAntiforgery();
@@ -268,6 +271,7 @@ app.MapIpAddressEndpoints();
 app.MapManagementEndpoints();
 app.MapAgentEndpoints();
 app.MapTransferEndpoints();
+app.MapInventoryMcp();
 // Dokumentation unter /api/docs, Beschreibung unter /api/openapi.json; gleiche Anmeldung wie die übrige API.
 app.MapOpenApi("/api/openapi.json");
 app.MapScalarApiReference("/api/docs", o => o.WithTitle("Inventory API").DisableDefaultFonts().WithOpenApiRoutePattern("/api/openapi.json").WithDefaultHttpClient(ScalarTarget.Shell, ScalarClient.Curl));
@@ -289,3 +293,6 @@ app.MapRazorComponents<App>()
 
 app.Run();
 return 0;
+
+// Für WebApplicationFactory in den Tests.
+public partial class Program;

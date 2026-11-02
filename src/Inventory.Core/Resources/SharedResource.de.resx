@@ -170,6 +170,9 @@
   <data name='A collection can carry a maintenance window; deployments with "only within the maintenance window" respect it.' xml:space="preserve">
     <value>Eine Sammlung kann ein Wartungsfenster tragen; Deployments mit „Nur im Wartungsfenster“ halten es ein.</value>
   </data>
+  <data name=": Viewer for questions only, Operator to let the assistant act as well." xml:space="preserve">
+    <value> an: Betrachter nur für Fragen, Operator, wenn der Assistent auch handeln soll.</value>
+  </data>
   <data name="A collection cannot refer to itself." xml:space="preserve">
     <value>Eine Sammlung kann nicht auf sich selbst verweisen.</value>
   </data>
@@ -487,6 +490,12 @@
   </data>
   <data name="Agents" xml:space="preserve">
     <value>Agenten</value>
+  </data>
+  <data name="AI assistants (MCP)" xml:space="preserve">
+    <value>KI-Assistenten (MCP)</value>
+  </data>
+  <data name="AI assistants such as Claude, GitHub Copilot in VS Code or other MCP clients can query the inventory and, with an operator token, scan computers, roll out approved packages and reserve IP addresses. They sign in with an API token; its role decides what they may do. Administrator actions are not offered." xml:space="preserve">
+    <value>KI-Assistenten wie Claude, GitHub Copilot in VS Code oder andere MCP-Clients können das Inventar abfragen und mit einem Operator-Token auch Rechner scannen, freigegebene Pakete verteilen und IP-Adressen reservieren. Sie melden sich mit einem API-Token an; dessen Rolle bestimmt, was sie dürfen. Administrator-Aktionen werden nicht angeboten.</value>
   </data>
   <data name="Alert rule changed" xml:space="preserve">
     <value>Alarmregel geändert</value>
@@ -1109,6 +1118,9 @@
   <data name="Computer renamed" xml:space="preserve">
     <value>Rechner umbenannt</value>
   </data>
+  <data name="Computer scan started via MCP" xml:space="preserve">
+    <value>Rechner-Scan über MCP gestartet</value>
+  </data>
   <data name="Computer unreachable – wake-up sent, will be retried as soon as it is online" xml:space="preserve">
     <value>Rechner nicht erreichbar – Wecksignal gesendet, wird nachgeholt, sobald er online ist</value>
   </data>
@@ -1205,6 +1217,9 @@
   <data name="Contract" xml:space="preserve">
     <value>Vertrag</value>
   </data>
+  <data name="Copied." xml:space="preserve">
+    <value>Kopiert.</value>
+  </data>
   <data name="Copy" xml:space="preserve">
     <value>Kopieren</value>
   </data>
@@ -1270,6 +1285,9 @@
   </data>
   <data name='Create dynamic collection "{0} outdated" (computers with an older version)' xml:space="preserve">
     <value>Dynamische Sammlung „{0} veraltet“ anlegen (Rechner mit älterer Version)</value>
+  </data>
+  <data name="Create a token under" xml:space="preserve">
+    <value>Ein Token legen Sie unter</value>
   </data>
   <data name="Create export" xml:space="preserve">
     <value>Export erstellen</value>
@@ -1538,6 +1556,9 @@
   <data name="Deployment cancelled" xml:space="preserve">
     <value>Deployment abgebrochen</value>
   </data>
+  <data name="Deployment cancelled via MCP" xml:space="preserve">
+    <value>Deployment über MCP abgebrochen</value>
+  </data>
   <data name="Deployment released after the pilot group" xml:space="preserve">
     <value>Deployment nach der Pilotgruppe freigegeben</value>
   </data>
@@ -1549,6 +1570,9 @@
   </data>
   <data name="Deployment started via API" xml:space="preserve">
     <value>Deployment über API gestartet</value>
+  </data>
+  <data name="Deployment started via MCP" xml:space="preserve">
+    <value>Deployment über MCP gestartet</value>
   </data>
   <data name="Deployments" xml:space="preserve">
     <value>Deployments</value>
@@ -1624,6 +1648,9 @@
   </data>
   <data name="Device scan started" xml:space="preserve">
     <value>Gerätescan gestartet</value>
+  </data>
+  <data name="Device scan started via MCP" xml:space="preserve">
+    <value>Gerätescan über MCP gestartet</value>
   </data>
   <data name="Device type" xml:space="preserve">
     <value>Gerätetyp</value>
@@ -2144,6 +2171,9 @@
   <data name="Free editions" xml:space="preserve">
     <value>Kostenlose Editionen</value>
   </data>
+  <data name="Free IP addresses searched via MCP" xml:space="preserve">
+    <value>Freie IP-Adressen über MCP gesucht</value>
+  </data>
   <data name="Free IPs in {0}" xml:space="preserve">
     <value>Freie IPs in {0}</value>
   </data>
@@ -2555,6 +2585,9 @@
   <data name="IP address scan started" xml:space="preserve">
     <value>IP-Scan gestartet</value>
   </data>
+  <data name="IP address scan started via MCP" xml:space="preserve">
+    <value>IP-Scan über MCP gestartet</value>
+  </data>
   <data name="IP addresses" xml:space="preserve">
     <value>IP-Adressen</value>
   </data>
@@ -2563,6 +2596,9 @@
   </data>
   <data name="IP addresses reserved via API" xml:space="preserve">
     <value>IP-Adressen über die API reserviert</value>
+  </data>
+  <data name="IP addresses reserved via MCP" xml:space="preserve">
+    <value>IP-Adressen über MCP reserviert</value>
   </data>
   <data name="IP phone" xml:space="preserve">
     <value>IP-Telefon</value>
@@ -2575,6 +2611,9 @@
   </data>
   <data name="IP reservation released via API" xml:space="preserve">
     <value>IP-Reservierung über die API aufgehoben</value>
+  </data>
+  <data name="IP reservation released via MCP" xml:space="preserve">
+    <value>IP-Reservierung über MCP aufgehoben</value>
   </data>
   <data name="is {0}" xml:space="preserve">
     <value>ist {0}</value>
@@ -2923,6 +2962,15 @@
   </data>
   <data name="Matches {0} programs: {1}" xml:space="preserve">
     <value>Trifft {0} Programme: {1}</value>
+  </data>
+  <data name="MCP server on" xml:space="preserve">
+    <value>MCP-Server eingeschaltet</value>
+  </data>
+  <data name="MCP server switched off" xml:space="preserve">
+    <value>MCP-Server ausgeschaltet</value>
+  </data>
+  <data name="MCP server switched on" xml:space="preserve">
+    <value>MCP-Server eingeschaltet</value>
   </data>
   <data name="Member" xml:space="preserve">
     <value>Mitglied</value>
@@ -4241,6 +4289,9 @@
   <data name="Re-captures the computer's hardware and software, e.g. after an installation." xml:space="preserve">
     <value>Erfasst Hard- und Software des Rechners neu, z. B. nach einer Installation.</value>
   </data>
+  <data name="Reachability checked via MCP" xml:space="preserve">
+    <value>Erreichbarkeit über MCP geprüft</value>
+  </data>
   <data name="Reads hosts, clusters and virtual machines from the vCenter, read-only, and matches the virtual machines to the inventoried computers. The licence calculation needs this for virtual machines on VMware." xml:space="preserve">
     <value>Liest Hosts, Cluster und virtuelle Maschinen aus dem vCenter, nur lesend, und ordnet die virtuellen Maschinen den inventarisierten Rechnern zu. Die Lizenzberechnung braucht das für virtuelle Maschinen auf VMware.</value>
   </data>
@@ -4465,6 +4516,9 @@
   </data>
   <data name="Repeat passphrase" xml:space="preserve">
     <value>Passphrase wiederholen</value>
+  </data>
+  <data name="Replace inv_… with the token. Every action of an assistant appears in the audit log with the source MCP." xml:space="preserve">
+    <value>inv_… durch das Token ersetzen. Jede Aktion eines Assistenten steht im Protokoll mit der Herkunft MCP.</value>
   </data>
   <data name="Replace logo" xml:space="preserve">
     <value>Logo ersetzen</value>
@@ -6425,6 +6479,9 @@
   <data name="Volume licence (MAK)" xml:space="preserve">
     <value>Volumenlizenz (MAK)</value>
   </data>
+  <data name="VS Code (.vscode/mcp.json)" xml:space="preserve">
+    <value>VS Code (.vscode/mcp.json)</value>
+  </data>
   <data name="vSphere DRS is on in cluster {0}: VMs move between the hosts on their own." xml:space="preserve">
     <value>In Cluster {0} ist vSphere DRS eingeschaltet: VMs wandern selbsttätig zwischen den Hosts.</value>
   </data>
@@ -6490,6 +6547,9 @@
   </data>
   <data name='Wake-up sent to {0}. Whether the computer starts shows after about two minutes under "Check reachability".' xml:space="preserve">
     <value>Wecksignal an {0} gesendet. Ob der Rechner startet, zeigt sich nach etwa zwei Minuten unter „Erreichbarkeit prüfen“.</value>
+  </data>
+  <data name="Wake-up sent via MCP" xml:space="preserve">
+    <value>Aufwecken über MCP gesendet</value>
   </data>
   <data name="Warn users before (seconds)" xml:space="preserve">
     <value>Benutzer vorher warnen (Sekunden)</value>

@@ -408,6 +408,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         AuditSource.ApiToken => T("API token"),
         AuditSource.Agent => T("Agent"),
         AuditSource.System => T("Server"),
+        AuditSource.Mcp => "MCP",
         _ => "",
     };
 
