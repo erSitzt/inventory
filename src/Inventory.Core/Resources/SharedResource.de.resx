@@ -5693,6 +5693,9 @@
   <data name="The interval must be between 1 and 168 hours." xml:space="preserve">
     <value>Das Intervall muss zwischen 1 und 168 Stunden liegen.</value>
   </data>
+  <data name="The IP address scan failed: {0}" xml:space="preserve">
+    <value>Der IP-Scan ist fehlgeschlagen: {0}</value>
+  </data>
   <data name="The key must start with HKLM, HKCU, HKU or HKCR and name a path below it." xml:space="preserve">
     <value>Der Schlüssel muss mit HKLM, HKCU, HKU oder HKCR beginnen und einen Pfad darunter nennen.</value>
   </data>

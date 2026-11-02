@@ -34,12 +34,11 @@ public sealed class IpAddressService(IDbContextFactory<InventoryDbContext> dbFac
     public const int MaxPrefix = 30;
     public const int MaxPick = 256;
     private const int MaxParallel = 64;
-    /// <summary>So oft wird nachgelegt, wenn bei der Nachprüfung Kandidaten antworten.</summary>
-    private const int PickRounds = 4;
     private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
     private readonly SemaphoreSlim _scanning = new(1, 1);
     private readonly SemaphoreSlim _reserving = new(1, 1);
+    private readonly SemaphoreSlim _subnetWrites = new(1, 1);
 
     /// <summary>Subnetz, das gerade geprüft wird; null = keins.</summary>
     public IpScanProgress? Current { get; private set; }
@@ -88,41 +87,53 @@ public sealed class IpAddressService(IDbContextFactory<InventoryDbContext> dbFac
         if (scanIntervalHours is < 1 or > 168)
             throw new ArgumentException(L["The interval must be between 1 and 168 hours."], nameof(scanIntervalHours));
 
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        IpSubnet subnet;
-        if (id is null)
+        // Prüfen und Speichern hintereinander, damit zwei gleichzeitige Änderungen keine überlappenden Netze anlegen.
+        await _subnetWrites.WaitAsync(ct);
+        try
         {
-            subnet = new IpSubnet { Name = name.Trim(), Cidr = network, CreatedUtc = Now };
-            db.IpSubnets.Add(subnet);
-        }
-        else
-        {
-            subnet = await db.IpSubnets.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException(L["Subnet {0} not found", id]);
-            if (subnet.Cidr != network)
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+            var others = await db.IpSubnets.AsNoTracking().Where(s => s.Id != id).ToListAsync(ct);
+            if (others.FirstOrDefault(s => s.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)) is not null)
+                throw new InvalidOperationException(L["A subnet named \"{0}\" already exists.", name.Trim()]);
+            if (others.FirstOrDefault(s => IpRanges.Overlaps(s.Cidr, network)) is { } overlapping)
+                throw new InvalidOperationException(L["The network overlaps with \"{0}\" ({1}).", overlapping.Name, overlapping.Cidr]);
+
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            IpSubnet subnet;
+            if (id is null)
             {
-                // Ein anderes Netz: alte Beobachtungen gelten nicht mehr, Reservierungen nur, soweit sie im neuen liegen.
-                await db.IpObservations.Where(o => o.SubnetId == subnet.Id).ExecuteDeleteAsync(ct);
-                var outside = (await db.IpReservations.Where(r => r.SubnetId == subnet.Id).ToListAsync(ct)).Where(r => !IpRanges.Contains(network, r.Address));
-                db.IpReservations.RemoveRange(outside);
-                subnet.LastScanUtc = null;
-                subnet.LastResult = null;
+                subnet = new IpSubnet { Name = name.Trim(), Cidr = network, CreatedUtc = Now };
+                db.IpSubnets.Add(subnet);
             }
-            subnet.Name = name.Trim();
-            subnet.Cidr = network;
+            else
+            {
+                subnet = await db.IpSubnets.FindAsync([id.Value], ct) ?? throw new KeyNotFoundException(L["Subnet {0} not found", id]);
+                if (subnet.Cidr != network)
+                {
+                    // Ein anderes Netz: alte Beobachtungen gelten nicht mehr, Reservierungen nur, soweit sie im neuen liegen.
+                    await db.IpObservations.Where(o => o.SubnetId == subnet.Id).ExecuteDeleteAsync(ct);
+                    var outside = (await db.IpReservations.Where(r => r.SubnetId == subnet.Id).ToListAsync(ct)).Where(r => !IpRanges.Contains(network, r.Address));
+                    db.IpReservations.RemoveRange(outside);
+                    subnet.LastScanUtc = null;
+                    subnet.LastResult = null;
+                }
+                subnet.Name = name.Trim();
+                subnet.Cidr = network;
+            }
+            subnet.Vlan = vlan;
+            subnet.Gateway = gateway;
+            subnet.Excluded = excluded;
+            subnet.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+            subnet.ScanEnabled = scanEnabled;
+            subnet.ScanIntervalHours = scanIntervalHours;
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return subnet;
         }
-        var others = await db.IpSubnets.AsNoTracking().Where(s => s.Id != subnet.Id).ToListAsync(ct);
-        if (others.FirstOrDefault(s => s.Name.Equals(subnet.Name, StringComparison.OrdinalIgnoreCase)) is not null)
-            throw new InvalidOperationException(L["A subnet named \"{0}\" already exists.", subnet.Name]);
-        if (others.FirstOrDefault(s => IpRanges.Overlaps(s.Cidr, network)) is { } overlapping)
-            throw new InvalidOperationException(L["The network overlaps with \"{0}\" ({1}).", overlapping.Name, overlapping.Cidr]);
-        subnet.Vlan = vlan;
-        subnet.Gateway = gateway;
-        subnet.Excluded = excluded;
-        subnet.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
-        subnet.ScanEnabled = scanEnabled;
-        subnet.ScanIntervalHours = scanIntervalHours;
-        await db.SaveChangesAsync(ct);
-        return subnet;
+        finally
+        {
+            _subnetWrites.Release();
+        }
     }
 
     public async Task DeleteSubnetAsync(int id, CancellationToken ct = default)
@@ -284,12 +295,12 @@ public sealed class IpAddressService(IDbContextFactory<InventoryDbContext> dbFac
 
     private static string[] Split(string? text) => (text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    /// <summary>Prüft ein Subnetz oder alle mit eingeschalteter Prüfung. Läuft schon eine Prüfung, wird nichts gestartet.</summary>
+    /// <summary>Prüft ein Subnetz oder alle (auch die ohne regelmäßige Prüfung). Läuft schon eine Prüfung, wird nichts gestartet.</summary>
     public async Task<string> ScanAsync(int? subnetId = null, CancellationToken ct = default)
     {
         List<IpSubnet> subnets;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
-            subnets = await db.IpSubnets.AsNoTracking().Where(s => subnetId == null ? s.ScanEnabled : s.Id == subnetId).ToListAsync(ct);
+            subnets = await db.IpSubnets.AsNoTracking().Where(s => subnetId == null || s.Id == subnetId).ToListAsync(ct);
         return subnets.Count == 0 ? L["No subnets to scan."] : await RunAsync(subnets, ct);
     }
 
@@ -444,7 +455,8 @@ public sealed class IpAddressService(IDbContextFactory<InventoryDbContext> dbFac
         var view = await GetViewAsync(subnetId, ct) ?? throw new KeyNotFoundException(L["Subnet {0} not found", subnetId]);
         var candidates = view.Addresses.Where(a => a.Status == IpAddressStatus.Free || (includeStale && a.Status == IpAddressStatus.Stale)).Select(a => a.Value).ToList();
         var answered = new List<string>();
-        for (var round = 0; round < PickRounds; round++)
+        // Wer antwortet, fällt heraus; gesucht wird, bis ein Ergebnis steht oder keine Kandidaten mehr übrig sind.
+        while (true)
         {
             var picked = IpAddressRules.Pick(candidates, count, contiguous, fromTop);
             if (picked.Count == 0)

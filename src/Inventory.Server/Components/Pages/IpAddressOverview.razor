@@ -120,7 +120,17 @@ else
         // Die Prüfung läuft unabhängig von der Seite weiter.
         _ = Task.Run(async () =>
         {
-            var result = await IpAddresses.ScanAsync(subnet?.Id, CancellationToken.None);
+            string result;
+            var severity = Severity.Info;
+            try
+            {
+                result = await IpAddresses.ScanAsync(subnet?.Id, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // Sonst bliebe der Fortschritt stehen und die Schaltflächen gesperrt.
+                (result, severity) = (L["The IP address scan failed: {0}", ex.Message], Severity.Error);
+            }
             try
             {
                 await InvokeAsync(async () =>
@@ -128,7 +138,7 @@ else
                     _progress = IpAddresses.Current;
                     await LoadAsync();
                     StateHasChanged();
-                    Snackbar.Add(result, Severity.Info);
+                    Snackbar.Add(result, severity);
                 });
             }
             catch (ObjectDisposedException)

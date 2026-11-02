@@ -33,7 +33,8 @@ public static class IpAddressEndpoints
 
         group.MapGet("{id:int}/free", async (int id, int? count, bool? contiguous, bool? includeStale, IpAddressService service, CancellationToken ct) =>
             (await service.FindFreeAsync(id, count ?? 1, contiguous ?? false, includeStale ?? false, fromTop: false, ct)).Addresses)
-            .WithSummary("Find free addresses").WithDescription("Free addresses, checked again by ping before they are returned. Empty when not enough are free. Does not reserve them.");
+            .RequireOperator()
+            .WithSummary("Find free addresses").WithDescription("Free addresses, checked again by ping before they are returned; candidates that answer are recorded as in use. Empty when not enough are free. Does not reserve them. Operators and administrators.");
 
         group.MapPost("{id:int}/reservations", async (int id, IpReserveRequest request, IpAddressService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {

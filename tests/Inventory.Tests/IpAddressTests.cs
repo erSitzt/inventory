@@ -283,6 +283,60 @@ public class IpAddressTests
         Assert.DoesNotContain(probe.Pinged, a => a.StartsWith("10.0.11."));
     }
 
+    [Fact]
+    public async Task A_rejected_edit_keeps_observations_and_reservations()
+    {
+        using var db = new TestDb();
+        var service = Service(db, new FakeProbe(), new FakeZones(new DnsZoneData([], [], 0)));
+        var office = await service.SaveSubnetAsync(null, "Office", "10.0.12.0/24", null, null, null, null, true, 12);
+        await service.SaveSubnetAsync(null, "Lab", "10.0.13.0/24", null, null, null, null, true, 12);
+        await service.ReserveAsync(office.Id, ["10.0.12.200"], null, null, "anna");
+        await using (var context = db.CreateDbContext())
+        {
+            context.IpObservations.Add(new IpObservation { SubnetId = office.Id, Address = "10.0.12.10", FirstSeenUtc = Now, LastReplyUtc = Now });
+            await context.SaveChangesAsync();
+        }
+
+        // 10.0.12.0/23 überschneidet sich mit Lab: abgelehnt, und nichts ist verloren.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveSubnetAsync(office.Id, "Office", "10.0.12.0/23", null, null, null, null, true, 12));
+        await using (var context = db.CreateDbContext())
+        {
+            Assert.Single(await context.IpObservations.ToListAsync());
+            Assert.Single(await context.IpReservations.ToListAsync());
+            Assert.Equal("10.0.12.0/24", (await context.IpSubnets.FindAsync(office.Id))!.Cidr);
+        }
+    }
+
+    [Fact]
+    public async Task The_free_search_goes_on_until_the_candidates_run_out()
+    {
+        using var db = new TestDb();
+        var probe = new FakeProbe();
+        var service = Service(db, probe, new FakeZones(new DnsZoneData([], [], 0)));
+        var subnet = await service.SaveSubnetAsync(null, "Busy", "10.0.14.0/29", null, null, null, null, true, 12);
+        await service.ScanAsync(subnet.Id);
+
+        // Seit dem Scan sind .1 bis .5 in Betrieb gegangen; nur .6 ist wirklich frei.
+        foreach (var octet in Enumerable.Range(1, 5))
+            probe.Answering.Add($"10.0.14.{octet}");
+        var free = await service.FindFreeAsync(subnet.Id, 1, contiguous: false, includeStale: false, fromTop: false);
+        Assert.Equal(["10.0.14.6"], free.Addresses);
+        Assert.Equal(5, free.Answered.Count);
+    }
+
+    [Fact]
+    public async Task Scanning_all_subnets_on_demand_includes_those_without_regular_scans()
+    {
+        using var db = new TestDb();
+        var probe = new FakeProbe();
+        var service = Service(db, probe, new FakeZones(new DnsZoneData([], [], 0)));
+        await service.SaveSubnetAsync(null, "A", "10.0.15.0/30", null, null, null, null, true, 12);
+        await service.SaveSubnetAsync(null, "B", "10.0.16.0/30", null, null, null, null, false, 12);
+
+        await service.ScanAsync();
+        Assert.Contains(probe.Pinged, a => a.StartsWith("10.0.16."));
+    }
+
     private static IpAddressService Service(TestDb db, IAddressProbe probe, IDnsZoneSource zones, TimeProvider? clock = null) =>
         new(db, probe, zones, new SettingsService(db), new CredentialService(db, new ReversingProtector()), clock ?? new Clock(Now));
 
