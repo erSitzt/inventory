@@ -58,6 +58,8 @@ public static class SettingKeys
     public const string HeartbeatLastResult = "Heartbeat.LastResult";
     /// <summary>MCP-Server unter /mcp eingeschaltet (bool); aus, solange nicht gesetzt.</summary>
     public const string McpEnabled = "Mcp.Enabled";
+    /// <summary>Interne Hosts (Namen, Adressen, CIDR), von denen KI-Assistenten Paketdateien laden lassen dürfen; je Zeile einer.</summary>
+    public const string McpDownloadHosts = "Mcp.DownloadHosts";
     public const string AdSyncEnabled = "AdSync.Enabled";
     public const string AdSyncServer = "AdSync.Server";
     public const string AdSyncBaseDns = "AdSync.BaseDns";

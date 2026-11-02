@@ -1132,10 +1132,24 @@ Ein Administrator schaltet ihn unter *Einstellungen → KI-Assistenten (MCP)* ei
 | Rolle | Werkzeuge |
 |---|---|
 | Betrachter | Rechner suchen und Details, Software eines Rechners, Software finden und wer sie hat, fehlende Updates, Sammlungen, Pakete, Deployments, Netzwerkgeräte, IP-Subnetze und ihre Adressen, Microsoft-Lizenzierung |
-| Operator | zusätzlich: Rechner scannen, Erreichbarkeit prüfen, aufwecken; freigegebene Pakete verteilen und Deployments abbrechen; freie IPs suchen, reservieren und freigeben; IP- und Gerätescan starten; Protokoll lesen |
+| Operator | zusätzlich: Rechner scannen, Erreichbarkeit prüfen, aufwecken; Pakete verteilen und Deployments abbrechen; Pakete anlegen und Dateien hinzufügen; ein Skript auf Rechnern ausführen (`deploy_script`); freie IPs suchen, reservieren und freigeben; IP- und Gerätescan starten; Protokoll lesen |
 
-Administrator-Aktionen (Pakete ändern, Fernbefehle, Zugangsdaten, Einstellungen, Rechner löschen) werden nicht
-angeboten, auch nicht mit einem Administrator-Token. Operator-Bereiche gelten wie in der API. Jede Aktion eines
+**Pakete eines Assistenten brauchen einen Menschen.** Über MCP angelegte Pakete (`create_package`, `deploy_script`)
+heißen `MCP: …`, sind als von einem KI-Assistenten angelegt gekennzeichnet und nie freigegeben. Der Assistent kann
+ihnen Dateien hinzufügen – vom Server von einer Adresse geladen (auf Wunsch gegen eine SHA-256 geprüft), direkt als
+Base64 bis 10 MB oder hochgeladen mit `PUT /api/packages/{id}/files/<Pfad>` – und nur seine eigenen Pakete ändern, nie
+die von Menschen. Downloads (bis 2 GB) erreichen nur öffentliche Adressen; interne Server wie ein Artefakt-Server der
+Builds müssen unter *Einstellungen → KI-Assistenten (MCP) → Interne Download-Hosts* eingetragen sein, und Loopback- und
+Link-Local-Adressen (Cloud-Metadaten) sind immer gesperrt, auch nach Weiterleitungen. Will er ein nicht freigegebenes Paket verteilen, entsteht stattdessen eine Anfrage: unter
+*Deployments → Warten auf Freigabe* sieht ein in der Oberfläche angemeldeter Administrator die Schritte mit ihren
+Skripten, die Dateien und die Zielrechner und wählt *Freigeben und starten* oder *Ablehnen*; was sich inzwischen
+geändert hat, wird nicht ungesehen freigegeben. Über die API lassen sich solche Pakete nicht freigeben, auch nicht mit
+einem Administrator-Token. Freigegeben und unverändert verteilt der Assistent das Paket danach selbst; jede Änderung
+zieht die Freigabe zurück. Neue Anfragen können einen Alarm auslösen (*Ein Deployment wartet auf Freigabe*), etwa per
+Mail oder an Teams.
+
+Andere Administrator-Aktionen (von Menschen angelegte Pakete ändern, Fernbefehle, Zugangsdaten, Einstellungen, Rechner
+löschen) werden nicht angeboten, auch nicht mit einem Administrator-Token. Operator-Bereiche gelten wie in der API. Jede Aktion eines
 Assistenten steht im Protokoll mit der Herkunft *MCP*, und die MCP-Hinweise kennzeichnen, welche Werkzeuge etwas
 ändern, sodass Clients vorher nachfragen. Für Claude Code zum Beispiel:
 

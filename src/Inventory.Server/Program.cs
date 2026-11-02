@@ -116,6 +116,7 @@ builder.Services.AddSingleton(new PackageRepository(Path.Combine(dataDirectory, 
 builder.Services.AddSingleton<PackageService>();
 builder.Services.AddSingleton<WakeService>();
 builder.Services.AddSingleton<DeploymentService>();
+builder.Services.AddSingleton<DeploymentRequestService>();
 builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddSingleton<AdSyncService>();
 builder.Services.AddSingleton<HypervisorSyncService>();

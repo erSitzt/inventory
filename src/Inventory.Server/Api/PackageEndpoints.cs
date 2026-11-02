@@ -28,27 +28,34 @@ public static class PackageEndpoints
             .WithTags("Packages").WithSummary("All packages");
 
         // Rohdaten im Body, damit sich große Installer per Skript (curl -T) ohne Browser hochladen lassen.
-        app.MapPut("/api/packages/{id:int}/files/{**path}", async (int id, string path, HttpContext http, PackageService packages, CancellationToken ct) =>
+        app.MapPut("/api/packages/{id:int}/files/{**path}", async (int id, string path, HttpContext http, PackageService packages, IAuthorizationService authorization, CancellationToken ct) =>
         {
-            if (await packages.GetAsync(id, ct) is null)
+            if (await packages.GetAsync(id, ct) is not { } package)
                 return Results.NotFound();
-            http.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = null;
+            // Operatoren nur in Pakete, die ein KI-Assistent angelegt hat (sie warten ohnehin auf eine Freigabe in der Oberfläche).
+            if (!package.IsAiGenerated && !(await authorization.AuthorizeAsync(http.User, Inventory.Server.Services.AccessControl.AdminPolicy)).Succeeded)
+                return Results.Problem("Operators can only upload files to packages created by an AI assistant.", statusCode: StatusCodes.Status403Forbidden);
+            // Große Installer: ohne Größengrenze (wo der Server sie überhaupt anbietet und noch ändern lässt).
+            if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+                limit.MaxRequestBodySize = null;
             try
             {
                 // Andere Dateien als die freigegebenen: die Freigabe gilt nicht mehr. Zuerst zurückziehen, dann ändern,
                 // damit kein gleichzeitig gestartetes Deployment die neue Datei mit der alten Freigabe mitnimmt.
                 await packages.RevokeApprovalAsync(id, ct);
                 await packages.Repository.SaveAsync(id, path, http.Request.Body, ct);
+                // Und danach: ein während des Hochladens angesehener Stand darf nicht mit der neuen Datei freigegeben werden.
+                await packages.RevokeApprovalAsync(id, ct);
             }
             catch (ArgumentException ex)
             {
                 return Results.BadRequest(ex.Message);
             }
             return Results.NoContent();
-        }).RequireAdmin().WithTags("Packages").WithSummary("Upload file").WithDescription("Stores the file under the given path in the package; the body is the raw file content (e.g. curl -T setup.msi). Existing files are replaced.")
+        }).RequireOperator().WithTags("Packages").WithSummary("Upload file").WithDescription("Stores the file under the given path in the package; the body is the raw file content (e.g. curl -T setup.msi). Existing files are replaced and the approval is withdrawn. Administrators; operators only for packages created by an AI assistant.")
             .Accepts<byte[]>("application/octet-stream").Produces(204).Produces(404).Produces(400);
 
-        app.MapPost("/api/deployments", async (DeployRequest request, DeploymentService deployments, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L,
+        app.MapPost("/api/deployments", async (DeployRequest request, DeploymentService deployments, PackageService packages, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L,
             IAuthorizationService authorization, CancellationToken ct) =>
         {
             if (await Inventory.Server.Services.ComputerScope.ForbiddenAsync(http, request.ComputerIds) is { } forbidden)
@@ -56,7 +63,9 @@ public static class PackageEndpoints
             try
             {
                 // Nur Administratoren dürfen ein noch nicht freigegebenes Paket verteilen.
-                var admin = (await authorization.AuthorizeAsync(http.User, Inventory.Server.Services.AccessControl.AdminPolicy)).Succeeded;
+                // Ein Paket eines KI-Assistenten läuft nie ohne Freigabe in der Oberfläche, auch nicht mit Administrator-Token.
+                var admin = (await authorization.AuthorizeAsync(http.User, Inventory.Server.Services.AccessControl.AdminPolicy)).Succeeded
+                    && (await packages.GetAsync(request.PackageId, ct))?.IsAiGenerated != true;
                 var deployment = await deployments.StartAsync(request.PackageId, request.ComputerIds, new DeploymentOptions(request.ScanAfter, request.RetryOffline, request.RespectMaintenanceWindow,
                     request.MaxFailures, request.MaxFailurePercent, request.MaxParallel) {
                     RequireApproved = !admin, Wake = request.WakeTargets,
@@ -77,8 +86,22 @@ public static class PackageEndpoints
             await deployments.GetAsync(id, ct) is { } deployment ? Results.Ok(ToDto(deployment)) : Results.NotFound())
             .WithTags("Deployments").WithSummary("One deployment").WithDescription("Status per computer: Queued, Running, Succeeded, AlreadyInstalled, Failed, Cancelled, WaitingOffline, WaitingReboot, WaitingWindow or WaitingPilot, WaitingUser (the logged-on user postponed the start).").Produces<DeploymentDto>().Produces(404);
 
+        app.MapGet("/api/deployment-requests", async (DeploymentRequestService requests, bool? pendingOnly, CancellationToken ct) =>
+            (await requests.ListAsync(pendingOnly ?? false, 100, ct)).Select(ToDto))
+            .WithTags("Deployments").WithSummary("Deployment requests").WithDescription("Deployments that AI assistants (MCP) asked for and that wait for, or got, a decision in the web interface. Newest first.");
+
+        app.MapGet("/api/deployment-requests/{id:int}", async (int id, DeploymentRequestService requests, CancellationToken ct) =>
+            await requests.GetAsync(id, ct) is { } request ? Results.Ok(ToDto(request)) : Results.NotFound())
+            .WithTags("Deployments").WithSummary("One deployment request").WithDescription("status: Pending, Started (deploymentId set) or Rejected (note = reason).");
+
         return app;
     }
+
+    public sealed record DeploymentRequestDto(int Id, int PackageId, string? PackageName, IReadOnlyList<int> ComputerIds, string RequestedBy, DateTime RequestedUtc, string? Reason,
+        DeploymentRequestStatus Status, string? DecidedBy, DateTime? DecidedUtc, string? Note, int? DeploymentId);
+
+    internal static DeploymentRequestDto ToDto(DeploymentRequest r) => new(r.Id, r.PackageId, r.Package?.Name, r.ComputerIds, r.RequestedBy,
+        DateTime.SpecifyKind(r.RequestedUtc, DateTimeKind.Utc), r.Reason, r.Status, r.DecidedBy, r.DecidedUtc is { } d ? DateTime.SpecifyKind(d, DateTimeKind.Utc) : null, r.Note, r.DeploymentId);
 
     internal static DeploymentDto ToDto(Deployment d) => new(d.Id, d.PackageId, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc,
         d.Targets.Select(t => new TargetDto(t.Id, t.ComputerId, t.ComputerName, t.Status, t.Error, t.StartedUtc, t.FinishedUtc, t.Steps, t.Pilot)), d.StopReason);

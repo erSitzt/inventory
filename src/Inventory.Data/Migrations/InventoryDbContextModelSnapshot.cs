@@ -1380,6 +1380,62 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Deployments");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.DeploymentRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ComputerIds")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DecidedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DecidedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DeploymentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PackageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RequestedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RequestedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("RespectWindow")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("RetryOffline")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("ScanAfter")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PackageId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("DeploymentRequests");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.DeploymentTarget", b =>
                 {
                     b.Property<int>("Id")
@@ -2146,6 +2202,9 @@ namespace Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AiCreatedBy")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ApprovedBy")
                         .HasColumnType("TEXT");
 
@@ -2725,6 +2784,17 @@ namespace Inventory.Data.Migrations
                         .WithMany()
                         .HasForeignKey("ScheduleId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.DeploymentRequest", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Package", "Package")
+                        .WithMany()
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Package");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.DeploymentTarget", b =>

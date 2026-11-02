@@ -25,6 +25,8 @@ public enum AlertKind
     NewDevice = 10,
     /// <summary>Ein regelmäßiger Auftrag eines Plugins ist fehlgeschlagen.</summary>
     PluginFailed = 11,
+    /// <summary>Ein KI-Assistent möchte ein noch nicht freigegebenes Paket verteilen.</summary>
+    ApprovalRequested = 12,
 }
 
 /// <summary>Eine Regel, die bei einem Ereignis oder Zustand eine Nachricht über die Benachrichtigungskanäle schickt.</summary>

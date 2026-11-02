@@ -15,6 +15,8 @@
     </OperatorOnly>
 </MudStack>
 
+<DeploymentRequestsPanel Decided="LoadAsync" />
+
 <MudDataGrid T="Deployment" Items="_deployments" Dense="true" Hover="true" SortMode="SortMode.None">
     <Columns>
         <TemplateColumn Title="@L["Package"]">
@@ -85,6 +87,8 @@
         _deployments = await DeploymentService.ListAsync();
         StateHasChanged();
     });
+
+    private async Task LoadAsync() => _deployments = await DeploymentService.ListAsync();
 
     private Task DeployAsync() =>
         Dialogs.ShowAsync<DeployDialog>(L["Deploy package"], new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });

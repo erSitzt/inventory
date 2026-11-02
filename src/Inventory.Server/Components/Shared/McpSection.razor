@@ -28,6 +28,9 @@
             <pre style="@SnippetStyle">@JsonConfig</pre>
             <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="@(() => CopyAsync(JsonConfig))" Style="align-self: flex-start">@L["Copy"]</MudButton>
             <MudText Typo="Typo.caption">@L["Replace inv_… with the token. Every action of an assistant appears in the audit log with the source MCP."]</MudText>
+            <MudTextField @bind-Value="_downloadHosts" Label="@L["Internal download hosts"]" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto" MaxLines="8"
+                          HelperText="@L["Assistants can have package files downloaded from public addresses. Internal servers (private networks), e.g. your build artifact server, only if listed here: host names, addresses or networks (CIDR), one per line."]" />
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Style="align-self: flex-start" OnClick="SaveHostsAsync">@L["Save"]</MudButton>
         }
     </MudStack>
 </MudPaper>
@@ -53,8 +56,21 @@
         }
         """;
 
+    private string? _downloadHosts;
+
+    private async Task SaveHostsAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var hosts = Inventory.Server.Mcp.McpSetup.DownloadHosts(_downloadHosts);
+        await Settings.SetAsync(SettingKeys.McpDownloadHosts, hosts.Count == 0 ? null : string.Join("\n", hosts));
+        await Audit.LogAsync(L["Setting changed"], $"{L["Internal download hosts"]}: {(hosts.Count == 0 ? "–" : string.Join(", ", hosts))}");
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
     protected override async Task OnInitializedAsync()
     {
+        _downloadHosts = await Settings.GetAsync(SettingKeys.McpDownloadHosts);
         _enabled = await Inventory.Server.Mcp.McpSetup.EnabledAsync(Settings);
         _loading = false;
     }

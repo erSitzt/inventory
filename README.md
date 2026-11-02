@@ -1088,10 +1088,24 @@ and the token's role decides what the assistant may do:
 | Role | Tools |
 |---|---|
 | Viewer | search computers and their details, software on a computer, find software and who has it, missing updates, collections, packages, deployments, network devices, IP subnets and their addresses, Microsoft licensing |
-| Operator | additionally: scan, check reachability, wake computers; deploy approved packages and cancel deployments; find free IPs, reserve and release them; start the IP and device scans; read the audit log |
+| Operator | additionally: scan, check reachability, wake computers; deploy packages and cancel deployments; create packages and add files to them; run a script on computers (`deploy_script`); find free IPs, reserve and release them; start the IP and device scans; read the audit log |
 
-Administrator actions (changing packages, remote commands, credentials, settings, deleting computers) are not offered,
-not even with an administrator token. Operator scopes apply as in the API. Every action of an assistant is logged in
+**Packages from an assistant need a person.** Packages created over MCP (`create_package`, `deploy_script`) are named
+`MCP: …`, marked as created by an AI assistant and never approved. The assistant can add files to them – downloaded by
+the server from a URL (optionally checked against a SHA-256, up to 2 GB), inline as Base64 up to 10 MB, or uploaded
+with `PUT /api/packages/{id}/files/<path>` – and change only its own packages, never ones created by people. Downloads
+only reach public addresses; internal servers such as a build artifact server have to be listed under *Settings → AI
+assistants (MCP) → Internal download hosts*, and loopback and link-local addresses (cloud metadata) are always blocked,
+also after redirects. Deploying a
+package that is not approved creates a request instead: under *Deployments → Waiting for approval* an administrator
+signed in to the web interface sees the steps with their scripts, the files and the target computers and chooses
+*Approve and start* or *Reject*; nothing changed in the meantime gets approved unseen. Such packages cannot be
+approved over the API, not even with an administrator token. Once approved and unchanged, the assistant deploys the
+package directly; any change withdraws the approval. New requests can raise an alert (*A deployment waits for
+approval*), e.g. by mail or to Teams.
+
+Other administrator actions (changing packages made by people, remote commands, credentials, settings, deleting
+computers) are not offered, not even with an administrator token. Operator scopes apply as in the API. Every action of an assistant is logged in
 the audit log with the source *MCP*, and the MCP hints mark which tools change something, so clients ask before using
 them. Claude Code, for example:
 

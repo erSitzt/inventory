@@ -29,6 +29,8 @@ public static class McpSetup
     {
         services.AddHttpContextAccessor();
         services.AddScoped<McpCaller>();
+        // Auch als Helfer der übrigen Werkzeuge (Zielrechner aus Namen oder Sammlung).
+        services.AddScoped<PackageTools>();
         services.AddMcpServer(options =>
             {
                 options.ServerInfo = new Implementation { Name = "inventory", Title = "Inventory", Version = AppVersion.Current };
@@ -41,6 +43,7 @@ public static class McpSetup
             .WithTools<InventoryTools>(Json)
             .WithTools<NetworkTools>(Json)
             .WithTools<OperatorTools>(Json)
+            .WithTools<PackageTools>(Json)
             .WithTools<PluginTools>(Json)
             .WithTools(pluginTools ?? [], Json);
     }
@@ -68,6 +71,10 @@ public static class McpSetup
 
     public static void MapInventoryMcp(this WebApplication app) =>
         app.MapMcp(Path).RequireAuthorization(AccessControl.ViewerPolicy).ExcludeFromDescription();
+
+    /// <summary>Die erlaubten internen Download-Hosts aus der Einstellung (Zeilen, Komma oder Leerzeichen getrennt).</summary>
+    public static IReadOnlyList<string> DownloadHosts(string? setting) =>
+        (setting ?? "").Split(['\n', '\r', ',', ';', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     public static async Task<bool> EnabledAsync(SettingsService settings, CancellationToken ct = default) =>
         await settings.GetAsync(SettingKeys.McpEnabled, ct) == bool.TrueString;
