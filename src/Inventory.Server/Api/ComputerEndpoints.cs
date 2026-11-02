@@ -13,7 +13,8 @@ public static class ComputerEndpoints
         DateTime? LastSeenUtc, DateTime? LastScanUtc, string? LastScanError, TransportKind? Transport, int? CredentialId,
         string? ReportedName, string? ReverseDnsName, bool NameMismatch, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser,
         string? PrimaryUser = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
-        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string? WakeMac = null, string? DnsName = null);
+        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string? WakeMac = null, string? DnsName = null,
+        IReadOnlyDictionary<string, string>? CustomValues = null);
 
     public sealed record WakeDto(bool Sent, IReadOnlyList<string> Macs, int Packets, IReadOnlyList<string> Relays);
 
@@ -76,9 +77,11 @@ public static class ComputerEndpoints
             (await computers.ListAsync(ct)).Select(ToDto))
             .WithSummary("All computers").WithDescription("Master data, status and the most important inventory values of all computers.");
 
-        group.MapGet("{id:int}", async (int id, ComputerService computers, CancellationToken ct) =>
-            await computers.GetAsync(id, ct) is { } computer ? Results.Ok(ToDto(computer)) : Results.NotFound())
-            .WithSummary("One computer").Produces<ComputerDto>().Produces(404);
+        group.MapGet("{id:int}", async (int id, ComputerService computers, CustomValueService custom, CancellationToken ct) =>
+            await computers.GetAsync(id, ct) is { } computer
+                ? Results.Ok(ToDto(computer) with { CustomValues = (await custom.GetAsync(id, ct)).ToDictionary(v => v.Key, v => v.Value) })
+                : Results.NotFound())
+            .WithSummary("One computer").WithDescription("customValues: values of the inventory fields that plugins add, by field key.").Produces<ComputerDto>().Produces(404);
 
         group.MapPost("", async (ImportRequest request, ComputerService computers, CancellationToken ct) =>
             (await computers.ImportAsync(request.Names, ct)).Select(ToDto))

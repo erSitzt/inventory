@@ -64,7 +64,10 @@ public sealed partial class ReportService
         {
             case ReportSource.Computers:
             {
-                var computers = await db.Computers.AsNoTracking().Where(c => members == null || members.Contains(c.Id)).OrderBy(c => c.Name).ToListAsync(ct);
+                var computerQuery = db.Computers.AsNoTracking().Where(c => members == null || members.Contains(c.Id));
+                if (customValues is { Fields.Count: > 0 })
+                    computerQuery = computerQuery.Include(c => c.CustomValues);
+                var computers = await computerQuery.OrderBy(c => c.Name).ToListAsync(ct);
                 // Der Host einer VM muss nicht in derselben Sammlung sein.
                 var hostIds = computers.Select(c => c.HostComputerId).OfType<int>().Distinct().ToList();
                 var names = await db.Computers.Where(c => hostIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Name, ct);
@@ -171,6 +174,14 @@ public sealed partial class ReportService
     /// <param name="names">Rechnernamen nach Kennung, für die Spalte Host; ohne sie bleibt sie leer.</param>
     /// <param name="esx">ESXi-Hosts aus dem vCenter nach Kennung (Name, Cluster).</param>
     private List<Column<Computer>> ComputerColumns(TimeZoneInfo zone, IReadOnlyDictionary<int, string>? names = null, IReadOnlyDictionary<int, (string Name, string? Cluster)>? esx = null) =>
+        [.. BuiltInComputerColumns(zone, names, esx), .. CustomComputerColumns()];
+
+    /// <summary>Eigene Inventarfelder der Plugins, Schlüssel "custom:&lt;Feld&gt;"; gespeicherte Berichte behalten sie über den Schlüssel.</summary>
+    private IEnumerable<Column<Computer>> CustomComputerColumns() =>
+        (customValues?.Fields ?? []).Select(f => new Column<Computer>($"custom:{f.Key}", $"{f.Source}: {f.Title}",
+            c => c.CustomValues.FirstOrDefault(v => v.Key.Equals(f.Key, StringComparison.OrdinalIgnoreCase))?.Value, f.Kind == Inventory.Core.Abstractions.CustomFieldKind.Number));
+
+    private List<Column<Computer>> BuiltInComputerColumns(TimeZoneInfo zone, IReadOnlyDictionary<int, string>? names, IReadOnlyDictionary<int, (string Name, string? Cluster)>? esx) =>
     [
         new("name", L["Name"], c => c.Name),
         new("reportedName", L["Reported name"], c => c.ReportedName),

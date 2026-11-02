@@ -13,7 +13,7 @@ namespace Inventory.Server.Mcp;
 
 /// <summary>Lesende Werkzeuge zu Rechnern, Software, Updates, Paketen und Deployments; für jede Rolle.</summary>
 [McpServerToolType, Authorize(Policy = AccessControl.ViewerPolicy)]
-public sealed class InventoryTools(McpCaller caller, IDbContextFactory<InventoryDbContext> dbFactory, ComputerService computerService, CollectionService collections, ReportService reports, PackageService packages,
+public sealed class InventoryTools(McpCaller caller, IDbContextFactory<InventoryDbContext> dbFactory, CustomValueService customValues, ComputerService computerService, CollectionService collections, ReportService reports, PackageService packages,
     DeploymentService deployments)
 {
     public sealed record ComputerSummary(int Id, string Name, bool IsOnline, string? OsName, string? OsVersion, string? IpAddress, string? LoggedOnUser,
@@ -24,7 +24,7 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
 
     [McpServerTool(Name = "search_computers", Title = "Search computers", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description("Lists inventoried computers with status, operating system, IP, logged-on user, model, last scan and pending updates. "
-        + "query matches name, IP, operating system, model, user, owner, location or tags (substring, case-insensitive).")]
+        + "query matches name, IP, operating system, model, user, owner, location, tags or the values of plugin inventory fields (substring, case-insensitive).")]
     public async Task<object> SearchComputers(
         [Description("Text to search for; empty = all computers.")] string? query = null,
         [Description("true = only reachable computers, false = only unreachable ones.")] bool? online = null,
@@ -43,7 +43,9 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
         if (!string.IsNullOrWhiteSpace(query))
         {
             var q = query.Trim();
+            var custom = customValues.Fields.Count > 0 ? await customValues.AllAsync(ct) : [];
             list = list.Where(c => new[] { c.Name, c.DnsName, c.IpAddress, c.OsName, c.OsVersion, c.Model, c.Manufacturer, c.LoggedOnUser, c.PrimaryUser, c.Owner, c.Location, c.Tags, c.Description }
+                .Concat(custom.TryGetValue(c.Id, out var values) ? values.Values : Enumerable.Empty<string>())
                 .Any(t => t?.Contains(q, StringComparison.OrdinalIgnoreCase) == true));
         }
         return McpCaller.Page(list.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).Select(Summary));
@@ -68,6 +70,10 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
             disks = c.Disks.Select(d => new { d.Drive, d.SizeBytes, d.FreeBytes }),
             network = c.NetworkAdapters.Select(a => new { a.Name, a.MacAddress, a.IpAddresses, a.Gateways, a.DhcpEnabled }),
             agent = new { c.AgentVersion, c.AgentLastSeenUtc },
+            customFields = (await customValues.GetAsync(c.Id, ct)).Select(v => new
+            {
+                key = v.Key, title = customValues.Fields.FirstOrDefault(f => f.Key.Equals(v.Key, StringComparison.OrdinalIgnoreCase))?.Title, value = v.Value, v.UpdatedUtc,
+            }),
         };
     }
 

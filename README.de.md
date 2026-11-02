@@ -1162,6 +1162,7 @@ jedem Release beiliegt.
 | `IComputerAction` | eine Aktion für ausgewählte Rechner: im Menü *Aktionen* der Liste, auf der Rechnerseite, über `POST /api/plugins/actions/{id}` und das MCP-Werkzeug `run_plugin_action` |
 | `IPeriodicJob` | regelmäßige Arbeit, z. B. ein Abgleich; läuft nie doppelt, Fehler stehen auf der Plugin-Seite und können einen Alarm auslösen |
 | `PluginMcpTools` | MCP-Werkzeuge, nach Rolle gefiltert wie die eingebauten |
+| `CustomField` + `InventoryScript` / `ICustomFieldStore` | eigene Inventardaten je Rechner, siehe unten |
 
 Einstieg ist eine Klasse mit `IInventoryPlugin`, gekennzeichnet mit `[assembly: InventoryPlugin(typeof(MeinPlugin), ApiVersion = "1.0")]`.
 In `ConfigureServices` meldet sie ihre Beiträge und Dienste an; sie kann Dienste des Servers wie `ComputerService`,
@@ -1169,6 +1170,19 @@ In `ConfigureServices` meldet sie ihre Beiträge und Dienste an; sie kann Dienst
 Installation mit `Private=false` referenzieren; das ist keine stabile Schnittstelle und kann sich mit Updates ändern).
 Aktionen beachten eine Mindestrolle und die Operator-Bereiche und stehen im Protokoll. Ein vollständiges Beispiel
 liegt im Repository unter `samples/Inventory.Plugin.Sample`.
+
+**Eigene Inventardaten.** Ein Plugin meldet Felder an (`CustomField`: Schlüssel `<Plugin-Id>.<Name>`, Titel, Typ Text,
+Zahl, Datum oder Ja/Nein) und füllt sie auf einem von zwei Wegen:
+- mit einem `InventoryScript`: PowerShell, das nach jedem erfolgreichen Scan auf dem Rechner läuft (als zweiter Auftrag
+  über denselben Weg, mit derselben Prüfung des Zielnamens, nur wenn der Rechner unter seinem eigenen Namen geantwortet
+  hat) und ein JSON-Objekt ausgibt, z. B. `@{ version = '1.2' } | ConvertTo-Json -Compress`. Eine unbrauchbare Ausgabe
+  lässt die bisherigen Werte stehen; letzter Lauf und Fehler stehen beim Rechner;
+- mit `ICustomFieldStore.SetAsync` aus dem eigenen Code des Plugins, etwa aus einem Auftrag, der eine CMDB abgleicht.
+
+Die Werte erscheinen auf der Rechnerseite unter *Eigene Daten*, als zuschaltbare Spalten und in der Suche der
+Rechnerliste, in Sammlungsregeln (*Eigenes Feld*), als Berichtsspalten, im Änderungsverlauf des Rechners (Kategorie =
+Name des Plugins), in `GET /api/computers/{id}` (`customValues`) und in den MCP-Werkzeugen `get_computer` und
+`search_computers`. Sie werden mit dem Rechner gelöscht und sind Teil des Exports.
 
 **Installieren:** die Build-Ausgabe in einen eigenen Ordner unter `C:\ProgramData\Inventory\plugins\` kopieren – die
 Haupt-DLL heißt wie der Ordner, z. B. `plugins\Contoso.Tickets\Contoso.Tickets.dll` –, unter *Plugins* einschalten

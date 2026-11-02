@@ -612,6 +612,63 @@ namespace Inventory.Data.Migrations
                     b.ToTable("Apps");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerCustomScriptRun", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RunUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Script")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId", "Script")
+                        .IsUnique();
+
+                    b.ToTable("CustomScriptRuns");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerCustomValue", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key");
+
+                    b.HasIndex("ComputerId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("CustomValues");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerDisk", b =>
                 {
                     b.Property<int>("Id")
@@ -2486,6 +2543,24 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerCustomScriptRun", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany()
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerCustomValue", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("CustomValues")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerDisk", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -2864,6 +2939,8 @@ namespace Inventory.Data.Migrations
             modelBuilder.Entity("Inventory.Core.Model.Computer", b =>
                 {
                     b.Navigation("Apps");
+
+                    b.Navigation("CustomValues");
 
                     b.Navigation("Disks");
 

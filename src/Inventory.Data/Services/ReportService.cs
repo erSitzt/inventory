@@ -70,7 +70,8 @@ public sealed class DashboardStats
     public int AttentionItems => FirewallOff + AntivirusProblems + RebootRequired + WithPendingUpdates + ScanErrors + NameMismatch + MissingInDirectory + DirectoryInactive;
 }
 
-public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> dbFactory, IStringLocalizer<SharedResource>? localizer = null, CollectionService? collectionService = null)
+public sealed partial class ReportService(IDbContextFactory<InventoryDbContext> dbFactory, IStringLocalizer<SharedResource>? localizer = null, CollectionService? collectionService = null,
+    CustomValueService? customValues = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 

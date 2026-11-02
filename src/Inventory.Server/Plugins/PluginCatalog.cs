@@ -1,4 +1,5 @@
 using System.Reflection;
+using Inventory.Core.Abstractions;
 using Inventory.Plugins;
 
 namespace Inventory.Server.Plugins;
@@ -54,8 +55,17 @@ public sealed class PluginInfo
 }
 
 /// <summary>Alle beim Start gefundenen Plugins; welche geladen sind und was sie beitragen.</summary>
-public sealed class PluginCatalog(string directory, IReadOnlyList<PluginInfo> plugins)
+public sealed class PluginCatalog(string directory, IReadOnlyList<PluginInfo> plugins) : ICustomFieldCatalog
 {
+    /// <summary>Eigene Inventarfelder der geladenen Plugins.</summary>
+    public List<CustomFieldInfo> Fields { get; } = [];
+
+    /// <summary>Inventarskripte der geladenen Plugins; laufen nach jedem erfolgreichen Scan.</summary>
+    public List<CustomScriptInfo> Scripts { get; } = [];
+
+    IReadOnlyList<CustomFieldInfo> ICustomFieldCatalog.Fields => Fields;
+    IReadOnlyList<CustomScriptInfo> ICustomFieldCatalog.Scripts => Scripts;
+
     /// <summary>Ordner, in dem Plugins liegen (je Plugin ein Unterordner).</summary>
     public string Directory { get; } = directory;
 

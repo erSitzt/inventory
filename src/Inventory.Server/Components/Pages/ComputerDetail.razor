@@ -14,6 +14,7 @@
 @inject UpdateInstaller Updates
 @inject VirtualizationService Virtualization
 @inject IEnumerable<Inventory.Plugins.PluginComputerTab> PluginTabs
+@inject CustomValueService CustomValues
 @inject Inventory.Server.Plugins.PluginActions PluginActions
 @inject AuthenticationStateProvider Authentication
 
@@ -701,6 +702,34 @@ else if (_computer.ReverseDnsMismatch)
         </MudDataGrid>
     </MudTabPanel>
 
+    @if (CustomValues.Fields.Count > 0)
+    {
+        <MudTabPanel Text="@L["Custom data"]">
+            @foreach (var group in CustomValues.Fields.GroupBy(f => f.Source))
+            {
+                <MudText Typo="Typo.subtitle1" Class="mt-2">@group.Key</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0" Class="mb-2">
+                    <tbody>
+                        @foreach (var field in group)
+                        {
+                            var value = _customValues.FirstOrDefault(v => v.Key.Equals(field.Key, StringComparison.OrdinalIgnoreCase));
+                            <tr>
+                                <td style="width: 40%">@field.Title</td>
+                                <td>@(value is null ? "–" : Display.CustomValue(field.Kind, value.Value))</td>
+                                <td style="width: 1%; white-space: nowrap"><MudText Typo="Typo.caption">@(value is null ? "" : Display.LocalTime(value.UpdatedUtc))</MudText></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            @foreach (var run in _customRuns)
+            {
+                <MudText Typo="Typo.caption" Class="d-block" Color="@(run.Error is null ? Color.Default : Color.Error)">
+                    @L["Script {0}: {1}", run.Script, run.Error is null ? L["last run {0}", Display.LocalTime(run.RunUtc)] : $"{Display.LocalTime(run.RunUtc)} – {run.Error}"]
+                </MudText>
+            }
+        </MudTabPanel>
+    }
     @foreach (var tab in _pluginTabs)
     {
         <MudTabPanel Text="@tab.Title">
@@ -784,8 +813,20 @@ else if (_computer.ReverseDnsMismatch)
         _pluginActions = (await PluginActions.AvailableAsync((await Authentication.GetAuthenticationStateAsync()).User)).Count > 0;
     }
 
+    private List<ComputerCustomValue> _customValues = [];
+    private List<ComputerCustomScriptRun> _customRuns = [];
+
+    private async Task LoadCustomAsync()
+    {
+        if (CustomValues.Fields.Count == 0)
+            return;
+        _customValues = await CustomValues.GetAsync(Id);
+        _customRuns = await CustomValues.RunsAsync(Id);
+    }
+
     protected override async Task OnParametersSetAsync()
     {
+        await LoadCustomAsync();
         _computer = await ComputerService.GetDetailAsync(Id);
         _changes = await Store.ChangesAsync(Id);
         await LoadLinksAsync();
@@ -801,6 +842,7 @@ else if (_computer.ReverseDnsMismatch)
         _computer = await ComputerService.GetDetailAsync(Id);
         _changes = await Store.ChangesAsync(Id);
         await LoadLinksAsync();
+        await LoadCustomAsync();
         _shownScanUtc = _computer?.LastScanUtc;
     }
 
@@ -834,6 +876,7 @@ else if (_computer.ReverseDnsMismatch)
             var outcome = await ScanService.ScanAsync(Id);
             Snackbar.Add(outcome.Success ? L["Scan completed."] : L["Scan failed: {0}", outcome.Error], outcome.Success ? Severity.Success : Severity.Error);
             _computer = await ComputerService.GetDetailAsync(Id);
+            await LoadCustomAsync();
             _changes = await Store.ChangesAsync(Id);
             await LoadLinksAsync();
         }

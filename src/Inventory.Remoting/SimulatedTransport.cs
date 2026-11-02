@@ -59,11 +59,14 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
             }
 
             progress?.Report(new ProgressEvent { Kind = ProgressKind.StepStarted, Step = i, Text = step.Name });
-            var lines = new[]
+            var lines = new List<string>
             {
                 $"[Simulation] {target.Host} via {kind} as {target.Credential?.UserName ?? "service account"}",
                 $"[Simulation] {step.Type}{(step.RunAs == StepRunAs.LoggedOnUser ? " as logged-on user" : "")}: {Describe(step)}",
             };
+            // Ein Skript kann seine Antwort für die Simulation vorgeben ("# simulate: <Ausgabe>"), etwa das JSON eines Inventarskripts.
+            if (step.Type == StepType.PowerShell && step.Script.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.StartsWith("# simulate:", StringComparison.OrdinalIgnoreCase)) is { } simulated)
+                lines.Add(simulated["# simulate:".Length..].Trim());
             foreach (var line in lines)
             {
                 await Task.Delay(300, ct);

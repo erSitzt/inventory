@@ -1,16 +1,19 @@
 using Inventory.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 
-[assembly: InventoryPlugin(typeof(Inventory.Plugin.Sample.SamplePlugin), ApiVersion = "1.0")]
+[assembly: InventoryPlugin(typeof(Inventory.Plugin.Sample.SamplePlugin), ApiVersion = "1.1")]
 
 namespace Inventory.Plugin.Sample;
 
 /// <summary>Beispiel für jeden Erweiterungspunkt: Seite, Rechner-Reiter, Einstellungen, Aktion, Auftrag und MCP-Werkzeug.</summary>
 public sealed class SamplePlugin : IInventoryPlugin
 {
+    public const string ExecutionPolicy = "inventory.sample.executionPolicy";
+    public const string NameLength = "inventory.sample.nameLength";
+
     public string Id => "inventory.sample";
     public string Name => "Sample plugin";
-    public string? Description => "Shows every extension point: a page, a computer tab, a settings section, an action, a job and an MCP tool.";
+    public string? Description => "Shows every extension point: a page, a computer tab, a settings section, an action, a job, an MCP tool and two inventory fields.";
 
     public void ConfigureServices(IServiceCollection services, PluginContext context)
     {
@@ -21,6 +24,14 @@ public sealed class SamplePlugin : IInventoryPlugin
         services.AddSingleton<IComputerAction, ListAddressesAction>();
         services.AddSingleton<IPeriodicJob, CountJob>();
         services.AddSingleton(new PluginMcpTools(typeof(SampleTools)));
+
+        // Eigene Inventarfelder: eines kommt von einem Skript auf dem Rechner, das andere aus dem Auftrag oben (wie aus einem anderen System).
+        services.AddSingleton(new CustomField(ExecutionPolicy, "PowerShell execution policy"));
+        services.AddSingleton(new CustomField(NameLength, "Length of the computer name", CustomFieldType.Number));
+        services.AddSingleton(new InventoryScript("execution-policy", """
+            # simulate: {"executionPolicy":"RemoteSigned"}
+            @{ executionPolicy = [string](Get-ExecutionPolicy -Scope LocalMachine) } | ConvertTo-Json -Compress
+            """));
     }
 
     public Task StartAsync(IServiceProvider services, CancellationToken ct)

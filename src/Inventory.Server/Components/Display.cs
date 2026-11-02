@@ -81,6 +81,17 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     };
 
     /// <summary>Der Auslöser einer Regel samt Sammlung und Schwelle.</summary>
+    /// <summary>Wert eines eigenen Inventarfelds zur Anzeige: Ja/Nein, Datum in der Schreibweise der Sprache, Zahl mit Trennzeichen.</summary>
+    public string CustomValue(Inventory.Core.Abstractions.CustomFieldKind kind, string? value) => value is null ? "" : kind switch
+    {
+        Inventory.Core.Abstractions.CustomFieldKind.Bool => value == "true" ? T("yes") : T("no"),
+        Inventory.Core.Abstractions.CustomFieldKind.Date when DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            => date.ToString("d", CultureInfo.CurrentCulture),
+        Inventory.Core.Abstractions.CustomFieldKind.Number when decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+            => number.ToString("#,##0.########", CultureInfo.CurrentCulture),
+        _ => value,
+    };
+
     public string IpStatus(IpAddressStatus status) => status switch
     {
         IpAddressStatus.Free => T("Free"),
@@ -258,6 +269,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.LoggedOnUser => T("Logged-on user"),
         RuleField.MemoryGb => T("Memory (GB)"),
         RuleField.Software => T("Software"),
+        RuleField.CustomField => T("Custom field (plugin)"),
         RuleField.App => T("App (MSIX/Store)"),
         RuleField.IsVirtual => T("Virtual machine"),
         RuleField.LicenseChannel => T("Licence channel (e.g. OEM:DM, Volume:MAK)"),

@@ -4,6 +4,7 @@ using System.Runtime.Loader;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
+using Inventory.Core.Abstractions;
 using Inventory.Plugins;
 
 namespace Inventory.Server.Plugins;
@@ -88,7 +89,9 @@ public static class PluginLoader
     }
 
     /// <summary>Einstiegstyp finden, Version prüfen, Dienste anmelden; jeder Fehler legt nur dieses Plugin still.</summary>
-    internal static void Initialize(PluginInfo info, Assembly assembly, PluginCatalog catalog, IServiceCollection services, IConfiguration configuration, string dataDirectory, string hostVersion)
+    /// <param name="entryType">Nur für Tests: anderer Einstiegstyp als der im Attribut.</param>
+    internal static void Initialize(PluginInfo info, Assembly assembly, PluginCatalog catalog, IServiceCollection services, IConfiguration configuration, string dataDirectory, string hostVersion,
+        Type? entryType = null)
     {
         try
         {
@@ -104,7 +107,7 @@ public static class PluginLoader
                 Fail(info, PluginState.Incompatible, reason);
                 return;
             }
-            if (Activator.CreateInstance(attribute.EntryType) is not IInventoryPlugin plugin)
+            if (Activator.CreateInstance(entryType ?? attribute.EntryType) is not IInventoryPlugin plugin)
             {
                 Fail(info, PluginState.Failed, $"{attribute.EntryType.FullName} does not implement IInventoryPlugin.");
                 return;
@@ -156,6 +159,23 @@ public static class PluginLoader
         var tools = own.Where(d => d.ServiceType == typeof(PluginMcpTools)).Select(d => d.ImplementationInstance).OfType<PluginMcpTools>().ToList();
         Add(tools.Count, "1 MCP tool class", "MCP tool classes");
         catalog.McpToolTypes.AddRange(tools.Select(t => t.ToolType));
+
+        // Eigene Felder müssen mit der Id des Plugins beginnen, damit sich zwei Plugins nie ins Gehege kommen.
+        var prefix = info.Id + ".";
+        var fields = own.Select(d => d.ImplementationInstance).OfType<CustomField>().ToList();
+        foreach (var field in fields)
+        {
+            if (!field.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || field.Key.Length == prefix.Length)
+                info.Error = $"Field '{field.Key}' ignored: its key must start with '{prefix}'.";
+            else if (catalog.Fields.Any(f => f.Key.Equals(field.Key, StringComparison.OrdinalIgnoreCase)))
+                info.Error = $"Field '{field.Key}' ignored: registered twice.";
+            else
+                catalog.Fields.Add(new CustomFieldInfo(field.Key, field.Title, (CustomFieldKind)field.Type, info.DisplayName));
+        }
+        var scripts = own.Select(d => d.ImplementationInstance).OfType<InventoryScript>().ToList();
+        catalog.Scripts.AddRange(scripts.Select(s => new CustomScriptInfo($"{info.Id}/{s.Name}", s.Name, s.PowerShell, Math.Clamp(s.TimeoutSeconds, 10, 1800), prefix, info.DisplayName)));
+        Add(fields.Count, "1 inventory field", "inventory fields");
+        Add(scripts.Count, "1 inventory script", "inventory scripts");
     }
 
     /// <summary>Nach dem Start: StartAsync jedes geladenen Plugins; ein Fehler legt nur dieses still.</summary>

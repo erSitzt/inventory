@@ -1,5 +1,6 @@
 @page "/computers"
 @inject ComputerService ComputerService
+@inject CustomValueService CustomValues
 @inject CredentialService CredentialService
 @inject CollectionService CollectionService
 @inject ScanService ScanService
@@ -50,6 +51,17 @@
     </MudSelect>
     <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" Immediate="true"
                   AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 240px" />
+    @if (CustomValues.Fields.Count > 0)
+    {
+        @* Eigene Inventarfelder der Plugins als zusätzliche Spalten. *@
+        <MudSelect T="string" MultiSelection="true" @bind-SelectedValues="_customColumns" Label="@L["Custom fields"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                   Dense="true" Style="max-width: 240px" Clearable="true" MultiSelectionTextFunc="@(keys => keys.Count == 0 ? "" : L["{0} shown", keys.Count])">
+            @foreach (var field in CustomValues.Fields)
+            {
+                <MudSelectItem T="string" Value="@field.Key">@field.Source: @field.Title</MudSelectItem>
+            }
+        </MudSelect>
+    }
     <AdminOnly>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddAsync">@L["Add"]</MudButton>
         <MudTooltip Text="@L["Import asset data (CSV)"]">
@@ -212,6 +224,13 @@
         <PropertyColumn Property="c => c.Model" Title="@L["Model"]" />
         <PropertyColumn Property="c => c.LoggedOnUser" Title="@L["User"]" />
         <PropertyColumn Property="c => c.IpAddress" Title="@L["IP address"]" />
+        @* Immer angelegt und nur ein- oder ausgeblendet: später hinzugefügte Spalten landeten sonst hinter der Aktionsspalte. *@
+        @foreach (var field in CustomValues.Fields)
+        {
+            <TemplateColumn Sortable="true" Title="@field.Title" SortBy="@(c => CustomSortKey(c, field))" Hidden="@(!_customColumns.Contains(field.Key))">
+                <CellTemplate>@Display.CustomValue(field.Kind, CustomValue(context.Item, field.Key))</CellTemplate>
+            </TemplateColumn>
+        }
         <TemplateColumn Sortable="true" Title="@L["Last scan"]" SortBy="c => c.LastScanUtc">
             <CellTemplate>
                 @if (context.Item.LastScanError is not null)
@@ -338,6 +357,8 @@
         _collections = await CollectionService.ListAsync();
         _activeCollection = _collections.FirstOrDefault(c => c.Collection.Id == CollectionId)?.Collection;
         _all = await ComputerService.ListAsync();
+        if (CustomValues.Fields.Count > 0)
+            _customValues = await CustomValues.AllAsync();
         if (_activeCollection is not null)
         {
             var members = await CollectionService.GetMemberIdsAsync(_activeCollection.Id);
@@ -358,7 +379,19 @@
         || new[] { c.Name, c.ReportedName, c.IpAddress, c.Description, c.OsName, c.Model, c.LoggedOnUser, c.SerialNumber,
                 c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.Tags, c.PrimaryUser, c.Notes,
                 c.PurchaseDate?.ToString("yyyy-MM-dd"), c.WarrantyUntil?.ToString("yyyy-MM-dd") }
+            .Concat(_customValues.TryGetValue(c.Id, out var custom) ? custom.Values : Enumerable.Empty<string>())
             .Any(v => v?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+
+    private IReadOnlyCollection<string> _customColumns = [];
+    private Dictionary<int, Dictionary<string, string>> _customValues = [];
+
+    private string? CustomValue(Computer c, string key) => _customValues.GetValueOrDefault(c.Id)?.GetValueOrDefault(key);
+
+    /// <summary>Zahlen nach Wert, alles andere als Text (Datum ist als yyyy-MM-dd ohnehin sortierbar).</summary>
+    private object CustomSortKey(Computer c, Inventory.Core.Abstractions.CustomFieldInfo field) =>
+        field.Kind == Inventory.Core.Abstractions.CustomFieldKind.Number
+            ? decimal.TryParse(CustomValue(c, field.Key), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var number) ? number : decimal.MinValue
+            : CustomValue(c, field.Key) ?? "";
 
     /// <summary>Die Auswahl, sonst alle gerade angezeigten Rechner.</summary>
     private string NameOf(int id) => _computers.FirstOrDefault(c => c.Id == id)?.Name ?? $"#{id}";
