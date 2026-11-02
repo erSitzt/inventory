@@ -3329,6 +3329,9 @@
   <data name='No computers yet. Use "Add" to enter names one by one or as a list.' xml:space="preserve">
     <value>Noch keine Rechner vorhanden. Über „Hinzufügen“ lassen sich Namen einzeln oder als Liste anlegen.</value>
   </data>
+  <data name="No computers match." xml:space="preserve">
+    <value>Keine passenden Rechner.</value>
+  </data>
   <data name="No credentials stored yet." xml:space="preserve">
     <value>Noch keine Zugangsdaten hinterlegt.</value>
   </data>
@@ -5114,6 +5117,9 @@
   <data name='Select them in the list and choose "Scan"; the inventory fills from the first scan on.' xml:space="preserve">
     <value>Sie in der Liste auswählen und „Scannen“ wählen; das Inventar füllt sich ab dem ersten Scan.</value>
   </data>
+  <data name="Select none" xml:space="preserve">
+    <value>Keine auswählen</value>
+  </data>
   <data name="Selects all computers of the collection (as of now)." xml:space="preserve">
     <value>Wählt alle Rechner der Sammlung aus (Stand jetzt).</value>
   </data>
@@ -5251,6 +5257,9 @@
   </data>
   <data name="shortfall" xml:space="preserve">
     <value>Unterdeckung</value>
+  </data>
+  <data name="Show all computers" xml:space="preserve">
+    <value>Alle Rechner zeigen</value>
   </data>
   <data name="Show computers individually" xml:space="preserve">
     <value>Rechner einzeln zeigen</value>
@@ -5668,6 +5677,9 @@
   </data>
   <data name="Target computers" xml:space="preserve">
     <value>Zielrechner</value>
+  </data>
+  <data name="Target computers ({0} of {1} selected)" xml:space="preserve">
+    <value>Zielrechner ({0} von {1} ausgewählt)</value>
   </data>
   <data name="TCP port" xml:space="preserve">
     <value>Port</value>

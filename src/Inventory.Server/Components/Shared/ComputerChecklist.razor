@@ -1,0 +1,77 @@
+@inject IStringLocalizer<SharedResource> L
+
+@* Zielrechner als Liste mit Häkchen: alle oder keine auf einmal, Suche, und auf Wunsch nur die vorgeschlagenen Rechner. *@
+<MudPaper Outlined="true" Class="pa-2">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.subtitle2" Class="ml-1">@L["Target computers ({0} of {1} selected)", Selected.Count, Computers.Count]</MudText>
+        <MudSpacer />
+        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckBox" OnClick="SelectAllAsync">@L["Select all"]</MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckBoxOutlineBlank" OnClick="SelectNoneAsync">@L["Select none"]</MudButton>
+    </MudStack>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap" Class="px-1">
+        <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Style="max-width: 260px" />
+        @if (_suggested.Count > 0)
+        {
+            <MudSwitch T="bool" @bind-Value="_showAll" Color="Color.Primary" Label="@L["Show all computers"]" />
+        }
+    </MudStack>
+    <div style="max-height: 280px; overflow-y: auto" class="mt-1">
+        @foreach (var computer in Visible)
+        {
+            <MudCheckBox T="bool" Value="@Selected.Contains(computer.Id)" ValueChanged="@(on => ToggleAsync(computer.Id, on))" Dense="true" Size="Size.Small">
+                @computer.Name
+                @if (!computer.IsOnline)
+                {
+                    <MudText Typo="Typo.caption" Inline="true" Class="ml-1">(@L["offline"])</MudText>
+                }
+            </MudCheckBox>
+        }
+        @if (!Visible.Any())
+        {
+            <MudText Typo="Typo.body2" Class="pa-2">@L["No computers match."]</MudText>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Computer> Computers { get; set; } = [];
+    [Parameter] public HashSet<int> Selected { get; set; } = [];
+    [Parameter] public EventCallback<HashSet<int>> SelectedChanged { get; set; }
+    /// <summary>Die vorgeschlagenen Rechner (z. B. die Auswahl der Liste); ohne "Alle Rechner zeigen" stehen nur sie in der Liste.</summary>
+    [Parameter] public IReadOnlyCollection<int> Suggested { get; set; } = [];
+
+    private string? _search;
+    private bool _showAll;
+    /// <summary>Als Menge, damit die Liste auch bei Tausenden Rechnern nicht jede Zeile linear sucht.</summary>
+    private HashSet<int> _suggested = [];
+
+    protected override void OnParametersSet() => _suggested = [.. Suggested];
+
+    /// <summary>Was die Liste zeigt: vorgeschlagene (oder alle), dazu immer die gerade ausgewählten, gefiltert nach der Suche.</summary>
+    private IEnumerable<Computer> Visible => Computers
+        .Where(c => _showAll || _suggested.Count == 0 || _suggested.Contains(c.Id) || Selected.Contains(c.Id))
+        .Where(c => string.IsNullOrWhiteSpace(_search) || c.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private Task ToggleAsync(int id, bool on)
+    {
+        if (on)
+            Selected.Add(id);
+        else
+            Selected.Remove(id);
+        return SelectedChanged.InvokeAsync(Selected);
+    }
+
+    /// <summary>Wirkt auf die gerade sichtbaren Rechner, also auch mit Suche nur auf die Treffer.</summary>
+    private Task SelectAllAsync()
+    {
+        Selected.UnionWith(Visible.Select(c => c.Id));
+        return SelectedChanged.InvokeAsync(Selected);
+    }
+
+    private Task SelectNoneAsync()
+    {
+        Selected.ExceptWith(Visible.Select(c => c.Id).ToList());
+        return SelectedChanged.InvokeAsync(Selected);
+    }
+}
