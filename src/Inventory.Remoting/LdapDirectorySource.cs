@@ -1,5 +1,4 @@
 using System.DirectoryServices.Protocols;
-using System.Net.NetworkInformation;
 using Inventory.Core.Abstractions;
 
 namespace Inventory.Remoting;
@@ -17,29 +16,15 @@ public sealed class LdapDirectorySource : IDirectorySource
 
     private static List<DirectoryComputer> Search(DirectoryQuery query, CancellationToken ct)
     {
-        var server = string.IsNullOrWhiteSpace(query.Server) ? IPGlobalProperties.GetIPGlobalProperties().DomainName : query.Server.Trim();
-        if (string.IsNullOrWhiteSpace(server))
-            throw new RemoteException("No domain controller specified, and the server is not a member of a domain.");
-
+        var server = LdapConnector.Server(query.Server);
         try
         {
-            using var connection = new LdapConnection(new LdapDirectoryIdentifier(server));
-            connection.AuthType = AuthType.Negotiate;
-            connection.SessionOptions.ProtocolVersion = 3;
-            connection.Timeout = TimeSpan.FromSeconds(30);
-            if (OperatingSystem.IsWindows())
-            {
-                // Schützt die Abfrage auch ohne LDAPS; viele Domänen verlangen das inzwischen.
-                connection.SessionOptions.Signing = true;
-                connection.SessionOptions.Sealing = true;
-            }
-            if (query.Credential is not null)
-                connection.Credential = query.Credential;
-            connection.Bind();
+            using var connection = LdapConnector.Connect(server, query.Credential);
 
             var baseDns = query.BaseDns.Where(b => !string.IsNullOrWhiteSpace(b)).Select(b => b.Trim()).ToList();
             if (baseDns.Count == 0)
-                baseDns.Add(DefaultNamingContext(connection));
+                baseDns.Add(LdapConnector.RootValue(connection, "defaultNamingContext")
+                    ?? throw new RemoteException("The domain could not be determined; please specify a search root (OU)."));
 
             var result = new Dictionary<string, DirectoryComputer>(StringComparer.OrdinalIgnoreCase);
             foreach (var baseDn in baseDns)
@@ -73,14 +58,6 @@ public sealed class LdapDirectorySource : IDirectorySource
         {
             throw new RemoteException($"LDAP query to {server} rejected: {ex.Message}", ex);
         }
-    }
-
-    private static string DefaultNamingContext(LdapConnection connection)
-    {
-        var response = (SearchResponse)connection.SendRequest(new SearchRequest("", "(objectClass=*)", SearchScope.Base, "defaultNamingContext"));
-        return response.Entries.Count > 0 && Value(response.Entries[0], "defaultNamingContext") is { } context
-            ? context
-            : throw new RemoteException("The domain could not be determined; please specify a search root (OU).");
     }
 
     private static IEnumerable<string> Values(SearchResultEntry entry, string attribute) =>

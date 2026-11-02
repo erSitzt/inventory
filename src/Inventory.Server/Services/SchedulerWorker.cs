@@ -2,8 +2,8 @@ using Inventory.Data.Services;
 
 namespace Inventory.Server.Services;
 
-/// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, Heartbeat, AD-, vCenter- und XCP-ng-Abgleich, Datensicherung.</summary>
-public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, HypervisorSyncService hypervisors, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, AuditService audit, SettingsService settings, UpdateService updates, CatalogService catalog, TrendService trends, AgentService agents, Inventory.Core.Abstractions.IAlertSink alertSink, ILogger<SchedulerWorker> logger) : BackgroundService
+/// <summary>Takt für alles Zeitgesteuerte: fällige Zeitpläne, Nachholen von Offline-Rechnern, Heartbeat, AD-, vCenter- und XCP-ng-Abgleich, IP-Subnetze, Datensicherung.</summary>
+public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService deployments, AdSyncService adSync, HypervisorSyncService hypervisors, IpAddressService ipAddresses, HeartbeatService heartbeat, BackupService backups, InventoryStore inventory, AuditService audit, SettingsService settings, UpdateService updates, CatalogService catalog, TrendService trends, AgentService agents, Inventory.Core.Abstractions.IAlertSink alertSink, ILogger<SchedulerWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(5);
@@ -33,6 +33,11 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                 foreach (var (manager, synced) in await hypervisors.SyncDueAsync(stoppingToken))
                     await audit.LogAsync(Inventory.Core.Model.AuditActor.System("(automatic)"), $"{HypervisorSyncService.Name(manager.Kind)} synchronized",
                         $"{manager.Name}: {synced.Hosts} hosts, {synced.VirtualMachines} virtual machines, {synced.Matched} matched", stoppingToken);
+                // Die Prüfung der Subnetze kann eine Weile dauern und läuft deshalb neben dem Takt.
+                if (ipAddresses.Current is null)
+                    _ = Task.Run(() => ScanSubnetsAsync(stoppingToken), CancellationToken.None);
+                foreach (var expired in await ipAddresses.CleanupReservationsAsync(stoppingToken))
+                    await audit.LogAsync(Inventory.Core.Model.AuditActor.System("(automatic)"), "IP reservation expired", $"{expired.Address}{(expired.Note is null ? "" : $": {expired.Note}")}", stoppingToken);
                 await updates.CheckAsync(force: false, stoppingToken);
                 await updates.ReportPreviousAsync(startup: false, stoppingToken);
                 await updates.ApplyIfDueAsync(stoppingToken);
@@ -75,5 +80,17 @@ public sealed class SchedulerWorker(ScheduleService schedules, DeploymentService
                 logger.LogError(ex, "Error in the scheduler");
             }
         } while (await timer.WaitForNextTickAsync(stoppingToken).AsTask().ContinueWith(t => t.IsCompletedSuccessfully && t.Result, TaskScheduler.Default));
+    }
+
+    private async Task ScanSubnetsAsync(CancellationToken ct)
+    {
+        try
+        {
+            await ipAddresses.ScanDueAsync(ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "IP address scan failed");
+        }
     }
 }

@@ -111,7 +111,9 @@ public sealed partial class DeviceProbe : IDeviceProbe
         }
     }
 
-    public IReadOnlyDictionary<string, string> LocalNeighbors()
+    public IReadOnlyDictionary<string, string> LocalNeighbors() => Neighbors();
+
+    internal static IReadOnlyDictionary<string, string> Neighbors()
     {
         try
         {
@@ -123,7 +125,7 @@ public sealed partial class DeviceProbe : IDeviceProbe
         }
     }
 
-    private static async Task<bool> PingAsync(IPAddress address)
+    internal static async Task<bool> PingAsync(IPAddress address)
     {
         try
         {
@@ -246,7 +248,7 @@ public sealed partial class DeviceProbe : IDeviceProbe
         return Encoding.UTF8.GetString(buffer, 0, total);
     }
 
-    private static async Task<string?> ReverseLookupAsync(IPAddress address, CancellationToken ct)
+    internal static async Task<string?> ReverseLookupAsync(IPAddress address, CancellationToken ct)
     {
         try
         {

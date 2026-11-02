@@ -16,7 +16,7 @@ Every feature below comes with a picture of the page that belongs to it. The pic
 - [Overview and trends](#overview-and-trends) · [Computer list](#computer-list) ·
   [Inventory per computer](#inventory-per-computer) · [Security and configuration](#security-and-configuration) ·
   [Updates and patch status](#updates-and-patch-status) · [Software and apps](#software-and-apps) ·
-  [Change history](#change-history) · [Network devices](#network-devices) · [Network map](#network-map) · [Virtualization](#virtualization-and-vcenter)
+  [Change history](#change-history) · [Network devices](#network-devices) · [Network map](#network-map) · [IP addresses](#ip-addresses) · [Virtualization](#virtualization-and-vcenter)
 - [Collections and maintenance windows](#collections-and-maintenance-windows) · [Packages and steps](#packages-and-steps) ·
   [Detection, prerequisites and user notice](#detection-prerequisites-and-user-notice) ·
   [Ready-made packages](#ready-made-packages)
@@ -176,6 +176,41 @@ organisation (CIDR of any size or `192.168.10.x`, e.g. the company network and t
 those; the home networks of notebooks are only counted under "Home and other networks", and traceroute and the gateway
 check stay inside these networks. A gateway that serves several subnets is simply called "Gateway"; operators can name it with a click. The diagram uses [Cytoscape.js](https://js.cytoscape.org/) (MIT licence), which
 ships with the server.
+
+### IP addresses
+
+![IP addresses](docs/screenshots/en/ip-addresses.png)
+
+![One subnet with its address map](docs/screenshots/en/ip-subnet.png)
+
+Used and free addresses per subnet, for the moment a new server needs an IP. Administrators add the subnets
+(/20 to /30) with name, VLAN, gateway and excluded ranges such as the DHCP pool; the dialog suggests the networks the
+inventory already knows from the computers' network adapters, the network map and the device scan ranges. Every
+subnet is checked regularly (every 12 hours by default, or with *Scan now*): ping, the server's ARP table, and the
+A and PTR records of the DNS zones stored in Active Directory, read over LDAP with the domain controller and
+credentials of the [Active Directory synchronization](#active-directory) – read-only. If the directory cannot be read,
+the server's resolver supplies the reverse names instead. Added to that is everything the inventory knows: all
+addresses of the computers' network adapters, the network devices and the interfaces of routers.
+
+Each address gets one status, and the evidence behind it is listed next to it:
+
+| Status | Meaning |
+|---|---|
+| In use | answered ping or appeared in the ARP table within the last 30 days, is the gateway, or a computer or device seen within 30 days has it |
+| DNS only | an A record (or a PTR whose name points back here) exists, but nothing answered – switched off, or ping is blocked as on Windows by default |
+| Stale | only old traces: a PTR whose name no longer resolves to this address (the typical leftover in reverse zones), a dynamic DNS record not refreshed for 30 days, a last answer or inventory sighting older than 30 days |
+| Free | nothing at all |
+| Excluded range / Reserved | in an excluded range, or reserved by someone |
+
+The subnet page shows the addresses as a coloured map (a click finds the address in the list below) and as a list with
+filters by status. *Find free IPs* picks one or more free addresses – optionally a contiguous block, from the bottom
+or the top, and on request also stale ones – and pings every candidate once more right before it is shown; whoever
+answers is skipped and marked as in use. The result can be copied or reserved with a note (e.g. "new SQL server,
+ticket 4711") and an optional end date; reserved addresses are never offered and are released automatically after
+that date. Operators scan and reserve, administrators manage the subnets.
+
+Scripts get the same through the API: `GET /api/subnets/<id>/free?count=3&contiguous=true` returns free addresses,
+`POST /api/subnets/<id>/reservations` with `{"count": 1, "note": "web01"}` finds and reserves them in one step.
 
 ### Virtualization and vCenter
 
@@ -1020,6 +1055,7 @@ addresses require the same sign-in as the rest of the API.
 | Schedules | list, create, change, delete, run now |
 | API tokens | list, create with a role (the secret is shown once), delete – administrators only |
 | Credentials | list (never with the password), create, change (e.g. rotate the password), make default, delete – administrators only |
+| IP addresses | subnets with the status of every address, find free addresses (checked by ping), reserve and release – reserving for operators and administrators |
 | Reports | computers and software as CSV or JSON |
 | Audit log | entries as JSON (`/api/audit`) or CSV (`/api/audit/export.csv`), filtered by user, action, period and text – operators and administrators |
 

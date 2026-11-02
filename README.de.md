@@ -16,7 +16,7 @@ Zu jeder Funktion gehört unten ein Bild der passenden Seite. Die Bilder stammen
 - [Übersicht und Verläufe](#übersicht-und-verläufe) · [Rechnerliste](#rechnerliste) ·
   [Inventar je Rechner](#inventar-je-rechner) · [Sicherheit und Konfiguration](#sicherheit-und-konfiguration) ·
   [Updates und Patch-Stand](#updates-und-patch-stand) · [Software und Apps](#software-und-apps) ·
-  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte) · [Netzwerkkarte](#netzwerkkarte) · [Virtualisierung](#virtualisierung-und-vcenter)
+  [Änderungsverlauf](#änderungsverlauf) · [Netzwerkgeräte](#netzwerkgeräte) · [Netzwerkkarte](#netzwerkkarte) · [IP-Adressen](#ip-adressen) · [Virtualisierung](#virtualisierung-und-vcenter)
 - [Sammlungen und Wartungsfenster](#sammlungen-und-wartungsfenster) · [Pakete und Schritte](#pakete-und-schritte) ·
   [Erkennung, Voraussetzungen und Hinweis an den Benutzer](#erkennung-voraussetzungen-und-hinweis-an-den-benutzer) ·
   [Fertige Pakete](#fertige-pakete)
@@ -179,6 +179,42 @@ Unter „Relevante Netze“ legen Administratoren fest, welche Netze zum Unterne
 oder `192.168.10.x`, etwa das Firmennetz und die VPN-Pools). Die Karte zeichnet dann nur diese; die Heimnetze der Notebooks
 zählen gesammelt unter „Heim- und Fremdnetze“, und Traceroute und Gateway-Prüfung bleiben innerhalb dieser Netze. Ein Gateway mehrerer Subnetze heißt einfach „Gateway“; Operatoren können ihm per Klick einen Namen geben.
 Das Diagramm nutzt [Cytoscape.js](https://js.cytoscape.org/) (MIT-Lizenz), das mit dem Server ausgeliefert wird.
+
+### IP-Adressen
+
+![IP-Adressen](docs/screenshots/de/ip-addresses.png)
+
+![Ein Subnetz mit seiner Adresskarte](docs/screenshots/de/ip-subnet.png)
+
+Belegte und freie Adressen je Subnetz, für den Moment, in dem ein neuer Server eine IP braucht. Administratoren legen
+die Subnetze an (/20 bis /30), mit Name, VLAN, Gateway und ausgenommenen Bereichen wie dem DHCP-Pool; der Dialog
+schlägt die Netze vor, die das Inventar schon kennt – aus den Netzwerkkarten der Rechner, der Netzwerkkarte und den
+Bereichen des Gerätescans. Jedes Subnetz wird regelmäßig geprüft (standardmäßig alle 12 Stunden, oder mit *Jetzt
+scannen*): Ping, die ARP-Tabelle des Servers und die A- und PTR-Einträge der DNS-Zonen im Active Directory, per LDAP
+gelesen mit Domänencontroller und Zugangsdaten des [AD-Abgleichs](#active-directory) – nur lesend. Ist das Verzeichnis
+nicht lesbar, liefert der Resolver des Servers die Reverse-Namen. Dazu kommt alles, was das Inventar weiß: alle
+Adressen der Netzwerkkarten der Rechner, die Netzwerkgeräte und die Schnittstellen der Router.
+
+Jede Adresse bekommt einen Zustand, die Hinweise dahinter stehen daneben:
+
+| Zustand | Bedeutung |
+|---|---|
+| Belegt | hat in den letzten 30 Tagen auf Ping geantwortet oder stand in der ARP-Tabelle, ist das Gateway, oder ein in 30 Tagen gesehener Rechner bzw. ein Gerät hat sie |
+| Nur DNS | es gibt einen A-Eintrag (oder einen PTR, dessen Name wieder hierher zeigt), geantwortet hat aber niemand – ausgeschaltet, oder Ping ist gesperrt wie unter Windows üblich |
+| Veraltet | nur alte Spuren: ein PTR, dessen Name nicht mehr auf diese Adresse auflöst (der typische Rest in Reverse-Zonen), ein dynamischer DNS-Eintrag, der seit 30 Tagen nicht aufgefrischt wurde, eine letzte Antwort oder Sichtung im Inventar vor mehr als 30 Tagen |
+| Frei | gar nichts |
+| Ausgenommener Bereich / Reserviert | liegt in einem ausgenommenen Bereich oder ist reserviert |
+
+Die Seite eines Subnetzes zeigt die Adressen als farbige Karte (ein Klick sucht die Adresse in der Liste darunter) und
+als Liste mit Filtern nach Zustand. *Freie IPs suchen* wählt eine oder mehrere freie Adressen – auf Wunsch als
+zusammenhängenden Block, von unten oder von oben, und auf Wunsch auch veraltete – und pingt jeden Kandidaten direkt vor
+der Anzeige noch einmal an; wer antwortet, wird übersprungen und als belegt vermerkt. Das Ergebnis lässt sich kopieren
+oder mit einer Notiz (z. B. „neuer SQL-Server, Ticket 4711“) und optionalem Enddatum reservieren; reservierte Adressen
+werden nie angeboten und nach dem Datum von selbst freigegeben. Operatoren prüfen und reservieren, Administratoren
+verwalten die Subnetze.
+
+Skripte bekommen dasselbe über die API: `GET /api/subnets/<id>/free?count=3&contiguous=true` liefert freie Adressen,
+`POST /api/subnets/<id>/reservations` mit `{"count": 1, "note": "web01"}` sucht und reserviert sie in einem Schritt.
 
 ### Virtualisierung und vCenter
 
@@ -1061,6 +1097,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 | Zeitpläne | auflisten, anlegen, ändern, löschen, sofort ausführen |
 | API-Tokens | auflisten, mit einer Rolle anlegen (das Geheimnis wird einmal gezeigt), löschen – nur Administratoren |
 | Zugangsdaten | auflisten (nie mit Passwort), anlegen, ändern (z. B. das Passwort wechseln), als Standard setzen, löschen – nur Administratoren |
+| IP-Adressen | Subnetze mit dem Zustand jeder Adresse, freie Adressen suchen (per Ping nachgeprüft), reservieren und freigeben – Reservieren für Operatoren und Administratoren |
 | Berichte | Rechner und Software als CSV oder JSON |
 | Protokoll | Einträge als JSON (`/api/audit`) oder CSV (`/api/audit/export.csv`), gefiltert nach Benutzer, Aktion, Zeitraum und Text – Operatoren und Administratoren |
 

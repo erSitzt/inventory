@@ -1,0 +1,32 @@
+@inject Display Display
+
+@* Belegung eines Subnetzes als gestapelter Balken; mit Legende darunter, wenn gewünscht. *@
+<div style="display: flex; height: 10px; border-radius: 5px; overflow: hidden; min-width: 120px; background: var(--mud-palette-lines-default)"
+     title="@string.Join(" · ", Parts.Select(p => $"{Display.IpStatus(p.Status)}: {p.Count}"))">
+    @foreach (var (status, count) in Parts)
+    {
+        <div style="@($"flex: {count} 0 0; background: {Display.IpStatusColor(status)}")"></div>
+    }
+</div>
+@if (Legend)
+{
+    <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap" Class="mt-1">
+        @foreach (var (status, count) in Parts)
+        {
+            <MudText Typo="Typo.caption">
+                <span style="@($"display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: {Display.IpStatusColor(status)}")"></span>@Display.IpStatus(status): @count
+            </MudText>
+        }
+    </MudStack>
+}
+
+@code {
+    [Parameter, EditorRequired] public IpSubnetView View { get; set; } = default!;
+    [Parameter] public bool Legend { get; set; }
+
+    /// <summary>Belegt zuerst, frei zuletzt; leere Anteile fallen weg.</summary>
+    private static readonly IpAddressStatus[] Order = [IpAddressStatus.InUse, IpAddressStatus.DnsOnly, IpAddressStatus.Reserved, IpAddressStatus.Stale, IpAddressStatus.Excluded, IpAddressStatus.Free];
+
+    private IEnumerable<(IpAddressStatus Status, int Count)> Parts =>
+        Order.Select(s => (s, View.Count(s))).Where(p => p.Item2 > 0);
+}

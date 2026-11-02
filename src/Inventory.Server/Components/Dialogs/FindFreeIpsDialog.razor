@@ -1,0 +1,108 @@
+@inject IpAddressService IpAddresses
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject IJSRuntime Js
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                <MudNumericField T="int" @bind-Value="_count" Label="@L["How many"]" Variant="Variant.Outlined" Min="1" Max="@IpAddressService.MaxPick" Style="max-width: 140px" />
+                <MudCheckBox T="bool" @bind-Value="_contiguous" Label="@L["Contiguous"]" Dense="true" />
+                <MudCheckBox T="bool" @bind-Value="_fromTop" Label="@L["From the top"]" Dense="true" />
+            </MudStack>
+            <MudCheckBox T="bool" @bind-Value="_includeStale" Dense="true"
+                         Label="@L["Also offer stale addresses (only old DNS entries or not seen for 30 days)"]" />
+            <MudText Typo="Typo.caption">@L["Reserved and excluded addresses are never offered. Every candidate is pinged again right before it is shown."]</MudText>
+            @if (_searching)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (_result is { } result)
+            {
+                @if (result.Addresses.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Warning">@(_contiguous ? L["No block of {0} contiguous free addresses.", _count] : L["Not enough free addresses in this subnet."])</MudAlert>
+                }
+                else
+                {
+                    <MudPaper Outlined="true" Class="pa-3">
+                        <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+                            @foreach (var address in result.Addresses)
+                            {
+                                <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">@address</MudChip>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                }
+                @if (result.Answered.Count > 0)
+                {
+                    <MudText Typo="Typo.caption">@L["Skipped because they answered right now: {0}", string.Join(", ", result.Answered)]</MudText>
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Close"]</MudButton>
+        @if (_result is { Addresses.Count: > 0 })
+        {
+            <MudButton StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="CopyAsync">@L["Copy"]</MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Lock" Variant="Variant.Outlined" Color="Color.Primary" OnClick="ReserveAsync">@L["Reserve …"]</MudButton>
+        }
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_searching" OnClick="FindAsync">@L["Find"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public IpSubnet Subnet { get; set; } = default!;
+
+    private int _count = 1;
+    private bool _contiguous;
+    private bool _fromTop;
+    private bool _includeStale;
+    private bool _searching;
+    private IpFreeResult? _result;
+
+    private async Task FindAsync()
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        _searching = true;
+        try
+        {
+            _result = await IpAddresses.FindFreeAsync(Subnet.Id, Math.Clamp(_count, 1, IpAddressService.MaxPick), _contiguous, _includeStale, _fromTop);
+        }
+        catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _searching = false;
+        }
+    }
+
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", string.Join(Environment.NewLine, _result!.Addresses));
+            Snackbar.Add(L["Addresses copied."], Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add(L["The browser does not allow copying here."], Severity.Warning);
+        }
+    }
+
+    private async Task ReserveAsync()
+    {
+        var parameters = new DialogParameters<ReserveIpDialog> { { d => d.Subnet, Subnet }, { d => d.Addresses, _result!.Addresses } };
+        var dialog = await Dialogs.ShowAsync<ReserveIpDialog>(L["Reserve addresses"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            MudDialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -1,0 +1,188 @@
+@page "/ip-addresses"
+@implements IDisposable
+@inject IpAddressService IpAddresses
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<PageTitle>@L["IP addresses"] – Inventory</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5">@L["IP addresses"]</MudText>
+    <MudSpacer />
+    <OperatorOnly>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Radar" Disabled="@(_progress is not null || _views.Count == 0)" OnClick="@(() => ScanAsync(null))">@L["Scan all subnets"]</MudButton>
+    </OperatorOnly>
+    <AdminOnly>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditAsync(null))">@L["Add subnet"]</MudButton>
+    </AdminOnly>
+</MudStack>
+<MudText Typo="Typo.body2" Class="mb-4">@L["Used and free addresses per subnet: from ping, the ARP table, the DNS zones in Active Directory and everything the inventory knows. Old reverse entries without a matching forward record count as stale, not as used."]</MudText>
+
+<IpScanProgressPanel Progress="_progress" />
+
+@if (_loaded && _views.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@L["No subnets yet. Add one; the inventory suggests the networks it already knows."]</MudAlert>
+}
+else
+{
+    <MudDataGrid T="IpSubnetView" Items="_views" Dense="true" Hover="true" SortMode="SortMode.Single" Loading="!_loaded">
+        <Columns>
+            <TemplateColumn Title="@L["Name"]" SortBy="v => v.Subnet.Name">
+                <CellTemplate><MudLink Href="@($"ip-addresses/{context.Item.Subnet.Id}")">@context.Item.Subnet.Name</MudLink></CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="@L["Network"]" SortBy="v => IpRanges.SortKey(v.Subnet.Cidr.Split('/')[0])">
+                <CellTemplate>
+                    <span>@context.Item.Subnet.Cidr</span>
+                    @if (context.Item.Subnet.Vlan is { } vlan)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ml-2">VLAN @vlan</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="@L["Usage"]" Sortable="false" CellStyle="min-width: 200px">
+                <CellTemplate><IpUsageBar View="context.Item" /></CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="@L["Free"]" SortBy="v => v.Count(IpAddressStatus.Free)" CellStyle="white-space: nowrap">
+                <CellTemplate>@context.Item.Count(IpAddressStatus.Free) / @context.Item.Addresses.Count</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="@L["Last scan"]" SortBy="v => v.Subnet.LastScanUtc">
+                <CellTemplate>
+                    @if (context.Item.Subnet.LastScanUtc is not null)
+                    {
+                        <div>@Display.LocalTime(context.Item.Subnet.LastScanUtc)</div>
+                        <MudText Typo="Typo.caption">@context.Item.Subnet.LastResult</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption">@L["Not scanned yet"]</MudText>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn CellStyle="width: 1%; white-space: nowrap" Sortable="false">
+                <CellTemplate>
+                    <OperatorOnly>
+                        <MudTooltip Text="@L["Find free IPs"]"><MudIconButton Icon="@Icons.Material.Filled.ManageSearch" Size="Size.Small" aria-label="@L["Find free IPs"]" OnClick="@(() => FindFreeAsync(context.Item.Subnet))" /></MudTooltip>
+                        <MudTooltip Text="@L["Scan now"]"><MudIconButton Icon="@Icons.Material.Filled.Radar" Size="Size.Small" aria-label="@L["Scan now"]" Disabled="@(_progress is not null)" OnClick="@(() => ScanAsync(context.Item.Subnet))" /></MudTooltip>
+                    </OperatorOnly>
+                    <AdminOnly>
+                        <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item.Subnet))" /></MudTooltip>
+                        <MudTooltip Text="@L["Delete"]"><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="@L["Delete"]" OnClick="@(() => DeleteAsync(context.Item.Subnet))" /></MudTooltip>
+                    </AdminOnly>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+}
+
+@code {
+    private List<IpSubnetView> _views = [];
+    private bool _loaded;
+    private IpScanProgress? _progress;
+    private DateTime _lastRefresh;
+
+    protected override async Task OnInitializedAsync()
+    {
+        IpAddresses.ProgressChanged += OnProgress;
+        _progress = IpAddresses.Current;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _views = await IpAddresses.GetViewsAsync();
+        _loaded = true;
+    }
+
+    private void OnProgress() => _ = InvokeAsync(async () =>
+    {
+        var finished = _progress is not null && IpAddresses.Current is null;
+        _progress = IpAddresses.Current;
+        if (finished || DateTime.UtcNow - _lastRefresh > TimeSpan.FromSeconds(1))
+        {
+            _lastRefresh = DateTime.UtcNow;
+            if (finished)
+                await LoadAsync();
+            StateHasChanged();
+        }
+    });
+
+    private async Task ScanAsync(IpSubnet? subnet)
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        await Audit.LogAsync(L["IP address scan started"], subnet?.Name);
+        _progress = new IpScanProgress(subnet?.Name ?? "", 0, 0, 0);
+        // Die Prüfung läuft unabhängig von der Seite weiter.
+        _ = Task.Run(async () =>
+        {
+            string result;
+            var severity = Severity.Info;
+            try
+            {
+                result = await IpAddresses.ScanAsync(subnet?.Id, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // Sonst bliebe der Fortschritt stehen und die Schaltflächen gesperrt.
+                (result, severity) = (L["The IP address scan failed: {0}", ex.Message], Severity.Error);
+            }
+            try
+            {
+                await InvokeAsync(async () =>
+                {
+                    _progress = IpAddresses.Current;
+                    await LoadAsync();
+                    StateHasChanged();
+                    Snackbar.Add(result, severity);
+                });
+            }
+            catch (ObjectDisposedException)
+            {
+                // Seite inzwischen geschlossen.
+            }
+        });
+    }
+
+    private async Task EditAsync(IpSubnet? subnet)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var parameters = new DialogParameters<EditSubnetDialog> { { d => d.Subnet, subnet } };
+        var dialog = await Dialogs.ShowAsync<EditSubnetDialog>(subnet?.Name ?? L["Add subnet"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false, Data: IpSubnet saved })
+        {
+            await LoadAsync();
+            // Ein neues Subnetz gleich prüfen, damit die Übersicht etwas zeigt.
+            if (subnet is null && saved.ScanEnabled && _progress is null)
+                await ScanAsync(saved);
+        }
+    }
+
+    private async Task DeleteAsync(IpSubnet subnet)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (await Dialogs.ShowMessageBoxAsync(L["Delete subnet"], L["Really delete \"{0}\"? Its reservations are deleted too.", subnet.Name], yesText: L["Delete"], cancelText: L["Cancel"]) != true)
+            return;
+        await IpAddresses.DeleteSubnetAsync(subnet.Id);
+        await Audit.LogAsync(L["Subnet deleted"], $"{subnet.Name} ({subnet.Cidr})");
+        await LoadAsync();
+    }
+
+    private async Task FindFreeAsync(IpSubnet subnet)
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        var parameters = new DialogParameters<FindFreeIpsDialog> { { d => d.Subnet, subnet } };
+        var dialog = await Dialogs.ShowAsync<FindFreeIpsDialog>(L["Free IPs in {0}", subnet.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        await dialog.Result;
+        await LoadAsync();
+    }
+
+    public void Dispose() => IpAddresses.ProgressChanged -= OnProgress;
+}

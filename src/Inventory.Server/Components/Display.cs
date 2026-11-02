@@ -80,6 +80,43 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     };
 
     /// <summary>Der Auslöser einer Regel samt Sammlung und Schwelle.</summary>
+    public string IpStatus(IpAddressStatus status) => status switch
+    {
+        IpAddressStatus.Free => T("Free"),
+        IpAddressStatus.Stale => T("Stale"),
+        IpAddressStatus.DnsOnly => T("DNS only"),
+        IpAddressStatus.InUse => T("In use"),
+        IpAddressStatus.Excluded => T("Excluded range"),
+        IpAddressStatus.Reserved => T("Reserved"),
+        _ => status.ToString(),
+    };
+
+    /// <summary>Farbe einer Adresse in der Adresskarte und im Belegungsbalken (CSS-Variablen von MudBlazor, passen sich dem Dunkelmodus an).</summary>
+    public static string IpStatusColor(IpAddressStatus status) => status switch
+    {
+        IpAddressStatus.InUse => "var(--mud-palette-error)",
+        IpAddressStatus.DnsOnly => "var(--mud-palette-warning)",
+        IpAddressStatus.Stale => "var(--mud-palette-info)",
+        IpAddressStatus.Reserved => "var(--mud-palette-primary)",
+        IpAddressStatus.Excluded => "var(--mud-palette-gray-default)",
+        _ => "var(--mud-palette-success)",
+    };
+
+    public string IpEvidence(IpEvidence e) => e.Kind switch
+    {
+        IpEvidenceKind.Ping => T("Ping reply"),
+        IpEvidenceKind.Arp => T("MAC {0}", e.Text ?? ""),
+        IpEvidenceKind.Gateway => T("Gateway"),
+        IpEvidenceKind.Computer => T("Computer {0}", e.Text ?? ""),
+        IpEvidenceKind.Device => T("Device {0}", e.Text ?? ""),
+        IpEvidenceKind.RouterInterface => T("Router interface of {0}", e.Text ?? ""),
+        IpEvidenceKind.ARecord => e.Status == IpAddressStatus.Stale ? T("A record {0} (outdated)", e.Text ?? "") : T("A record {0}", e.Text ?? ""),
+        IpEvidenceKind.PtrRecord => e.Status == IpAddressStatus.Stale ? T("PTR {0} (outdated)", e.Text ?? "") : T("PTR {0}", e.Text ?? ""),
+        IpEvidenceKind.Excluded => T("Excluded range"),
+        IpEvidenceKind.Reservation => T("Reserved"),
+        _ => e.Kind.ToString(),
+    };
+
     public string Alert(AlertRule rule)
     {
         var text = AlertKind(rule.Kind);

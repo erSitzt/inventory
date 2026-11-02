@@ -177,6 +177,12 @@ public static class IpRanges
         return true;
     }
 
+    /// <summary>Die Adresse als Zahl (für Nachbarschaft und Lücken); null, wenn es keine IPv4-Adresse ist.</summary>
+    public static uint? ValueOf(string? address) => TryValue(address, out var value) ? value : null;
+
+    /// <summary>Die Zahl aus <see cref="ValueOf"/> wieder als Adresse.</summary>
+    public static string FromValue(uint value) => ToAddress(value).ToString();
+
     /// <summary>Sortierschlüssel für Adressen in Listen (10.0.0.9 vor 10.0.0.10).</summary>
     public static long SortKey(string? address) =>
         IPAddress.TryParse(address, out var ip) && ip.AddressFamily == AddressFamily.InterNetwork
