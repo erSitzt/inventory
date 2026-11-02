@@ -1656,6 +1656,143 @@ namespace Inventory.Data.Migrations
                     b.ToTable("InventoryChanges");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.IpObservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ARecords")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ARefreshedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("FirstSeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastReplyUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MacAddress")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("MacSeenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("PtrConfirmed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PtrName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PtrRefreshedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SubnetId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubnetId", "Address")
+                        .IsUnique();
+
+                    b.ToTable("IpObservations");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.IpReservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExpiresUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReservedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SubnetId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Address")
+                        .IsUnique();
+
+                    b.HasIndex("SubnetId");
+
+                    b.ToTable("IpReservations");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.IpSubnet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Cidr")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Excluded")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Gateway")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastResult")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastScanUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("ScanEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ScanIntervalHours")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Vlan")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Cidr")
+                        .IsUnique();
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("IpSubnets");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.LicenseEntitlement", b =>
                 {
                     b.Property<int>("Id")
@@ -2593,6 +2730,24 @@ namespace Inventory.Data.Migrations
                     b.HasOne("Inventory.Core.Model.Computer", null)
                         .WithMany()
                         .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.IpObservation", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.IpSubnet", null)
+                        .WithMany()
+                        .HasForeignKey("SubnetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.IpReservation", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.IpSubnet", null)
+                        .WithMany()
+                        .HasForeignKey("SubnetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

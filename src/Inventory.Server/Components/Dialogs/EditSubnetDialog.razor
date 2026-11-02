@@ -1,0 +1,115 @@
+@inject IpAddressService IpAddresses
+@inject Auditor Audit
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (Subnet is null && _suggestions.Count > 0)
+            {
+                <MudSelect T="IpSubnetSuggestion" Value="_suggestion" ValueChanged="Suggest" Label="@L["Known networks"]" Variant="Variant.Outlined" Clearable="true"
+                           ToStringFunc="@(s => s is null ? "" : $"{s.Cidr} – {s.Source}")" HelperText="@L["Networks the inventory already knows, from the network adapters of the computers, the network map and the device scan ranges."]">
+                    @foreach (var s in _suggestions)
+                    {
+                        <MudSelectItem T="IpSubnetSuggestion" Value="s">@s.Cidr – @s.Source (@L["{0} known addresses", s.Hosts])</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            <MudTextField @bind-Value="_name" Label="@L["Name"]" Variant="Variant.Outlined" Required="true" AutoFocus="true" Immediate="true" />
+            <MudTextField @bind-Value="_cidr" Label="@L["Network (CIDR)"]" Variant="Variant.Outlined" Required="true" Immediate="true" Placeholder="10.0.1.0/24"
+                          HelperText="@(_check.Error ?? (_check.Count > 0 ? L["{0} usable addresses", _check.Count] : L["From /20 (4094 addresses) to /30."]))" Error="@(_check.Error is not null)" />
+            <MudStack Row="true" Spacing="3">
+                <MudNumericField T="int?" @bind-Value="_vlan" Label="@L["VLAN"]" Variant="Variant.Outlined" Min="1" Max="4094" Clearable="true" Style="max-width: 160px" />
+                <MudTextField @bind-Value="_gateway" Label="@L["Gateway"]" Variant="Variant.Outlined" Placeholder="10.0.1.1" />
+            </MudStack>
+            <MudTextField @bind-Value="_excluded" Label="@L["Excluded addresses"]" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto" MaxLines="8"
+                          HelperText="@L["Never offered as free, e.g. the DHCP pool: 10.0.1.100-199, single addresses or CIDR, separated by commas or lines."]" />
+            <MudTextField @bind-Value="_notes" Label="@L["Notes"]" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto" MaxLines="8" />
+            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+                <MudSwitch T="bool" @bind-Value="_scanEnabled" Color="Color.Primary" Label="@L["Scan regularly"]" />
+                <MudNumericField T="int" @bind-Value="_interval" Label="@L["Every … hours"]" Variant="Variant.Outlined" Min="1" Max="168" Disabled="@(!_scanEnabled)" Style="max-width: 160px" />
+            </MudStack>
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(string.IsNullOrWhiteSpace(_name) || _check.Count == 0)" OnClick="SaveAsync">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    /// <summary>null = neues Subnetz anlegen.</summary>
+    [Parameter] public IpSubnet? Subnet { get; set; }
+
+    private List<IpSubnetSuggestion> _suggestions = [];
+    private IpSubnetSuggestion? _suggestion;
+    private string _name = "";
+    private string _cidr = "";
+    private int? _vlan;
+    private string? _gateway;
+    private string? _excluded;
+    private string? _notes;
+    private bool _scanEnabled = true;
+    private int _interval = 12;
+    private string? _error;
+
+    private (int Count, string? Error) _check
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_cidr))
+                return (0, null);
+            try
+            {
+                return (IpRanges.Expand(IpAddresses.NormalizeCidr(_cidr)).Count, null);
+            }
+            catch (ArgumentException ex)
+            {
+                return (0, ex.Message);
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Subnet is null)
+        {
+            _suggestions = await IpAddresses.SuggestSubnetsAsync();
+            return;
+        }
+        (_name, _cidr, _vlan, _gateway, _excluded, _notes, _scanEnabled, _interval) =
+            (Subnet.Name, Subnet.Cidr, Subnet.Vlan, Subnet.Gateway, Subnet.Excluded, Subnet.Notes, Subnet.ScanEnabled, Subnet.ScanIntervalHours);
+    }
+
+    private void Suggest(IpSubnetSuggestion? suggestion)
+    {
+        _suggestion = suggestion;
+        if (suggestion is null)
+            return;
+        _cidr = suggestion.Cidr;
+        if (string.IsNullOrWhiteSpace(_name))
+            _name = suggestion.Cidr;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        try
+        {
+            var saved = await IpAddresses.SaveSubnetAsync(Subnet?.Id, _name, _cidr, _vlan, _gateway, _excluded, _notes, _scanEnabled, _interval);
+            await Audit.LogAsync(Subnet is null ? L["Subnet created"] : L["Subnet changed"], $"{saved.Name} ({saved.Cidr})");
+            MudDialog.Close(DialogResult.Ok(saved));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

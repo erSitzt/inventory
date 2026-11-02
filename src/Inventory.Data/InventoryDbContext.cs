@@ -53,6 +53,9 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<NetworkDevice> NetworkDevices => Set<NetworkDevice>();
     public DbSet<DeviceSupply> DeviceSupplies => Set<DeviceSupply>();
     public DbSet<NetworkTrace> NetworkTraces => Set<NetworkTrace>();
+    public DbSet<IpSubnet> IpSubnets => Set<IpSubnet>();
+    public DbSet<IpObservation> IpObservations => Set<IpObservation>();
+    public DbSet<IpReservation> IpReservations => Set<IpReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -175,6 +178,24 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         });
         modelBuilder.Entity<DeviceSupply>().Ignore(s => s.Percent);
         modelBuilder.Entity<NetworkTrace>().Ignore(t => t.HopList);
+
+        modelBuilder.Entity<IpSubnet>(e =>
+        {
+            e.Property(s => s.Name).UseCollation("NOCASE").HasMaxLength(200);
+            e.HasIndex(s => s.Name).IsUnique();
+            e.HasIndex(s => s.Cidr).IsUnique();
+        });
+        // Mit dem Subnetz verschwinden seine Beobachtungen und Reservierungen.
+        modelBuilder.Entity<IpObservation>(e =>
+        {
+            e.HasIndex(o => new { o.SubnetId, o.Address }).IsUnique();
+            e.HasOne<IpSubnet>().WithMany().HasForeignKey(o => o.SubnetId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<IpReservation>(e =>
+        {
+            e.HasIndex(r => r.Address).IsUnique();
+            e.HasOne<IpSubnet>().WithMany().HasForeignKey(r => r.SubnetId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<Report>(e =>
         {

@@ -1,0 +1,13 @@
+@inject IStringLocalizer<SharedResource> L
+
+@if (Progress is { } progress)
+{
+    <MudPaper Outlined="true" Class="pa-3 mb-4">
+        <MudText Typo="Typo.body2">@L["Scanning \"{0}\": {1} of {2} addresses, {3} answered", progress.Subnet, progress.Done, progress.Total, progress.Answered]</MudText>
+        <MudProgressLinear Color="Color.Primary" Indeterminate="@(progress.Total == 0)" Value="@(progress.Total == 0 ? 0 : progress.Done * 100.0 / progress.Total)" Class="mt-2" />
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public IpScanProgress? Progress { get; set; }
+}

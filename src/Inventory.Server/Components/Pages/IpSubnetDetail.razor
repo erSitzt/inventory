@@ -1,0 +1,267 @@
+@page "/ip-addresses/{Id:int}"
+@implements IDisposable
+@inject IpAddressService IpAddresses
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject Auditor Audit
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<PageTitle>@(_view?.Subnet.Name ?? L["IP addresses"]) – Inventory</PageTitle>
+
+@if (_loaded && _view is null)
+{
+    <MudAlert Severity="Severity.Warning">@L["Subnet {0} not found", Id]</MudAlert>
+}
+else if (_view is { } view)
+{
+    var subnet = view.Subnet;
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+        <MudTooltip Text="@L["Back to the list"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="ip-addresses" aria-label="@L["Back to the list"]" /></MudTooltip>
+        <MudText Typo="Typo.h5">@subnet.Name</MudText>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@subnet.Cidr</MudChip>
+        @if (subnet.Vlan is { } vlan)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">VLAN @vlan</MudChip>
+        }
+        @if (subnet.Gateway is { } gateway)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@L["Gateway"] @gateway</MudChip>
+        }
+        <MudSpacer />
+        <OperatorOnly>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Radar" Disabled="@(_progress is not null)" OnClick="ScanAsync">@L["Scan now"]</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ManageSearch" OnClick="FindFreeAsync">@L["Find free IPs"]</MudButton>
+        </OperatorOnly>
+        <AdminOnly>
+            <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" aria-label="@L["Edit"]" OnClick="EditAsync" /></MudTooltip>
+        </AdminOnly>
+    </MudStack>
+    @if (subnet.Notes is { } notes)
+    {
+        <MudText Typo="Typo.body2" Class="mb-2" Style="white-space: pre-line">@notes</MudText>
+    }
+    <MudText Typo="Typo.caption" Class="mb-3 d-block">
+        @(subnet.LastScanUtc is null ? L["Not scanned yet"] : $"{L["Last scan"]}: {Display.LocalTime(subnet.LastScanUtc)} – {subnet.LastResult}")
+    </MudText>
+
+    <IpScanProgressPanel Progress="_progress" />
+
+    <MudPaper Outlined="true" Class="pa-3 mb-4">
+        <IpUsageBar View="view" Legend="true" />
+        @* Eine Zelle je Adresse; ein Klick sucht sie in der Liste darunter. *@
+        <div class="mt-3" style="@($"display: grid; grid-template-columns: repeat({Columns(view)}, minmax(0, 1fr)); gap: 2px; max-width: {Columns(view) * 30}px")">
+            @foreach (var entry in view.Addresses)
+            {
+                <div title="@CellTitle(entry)" @onclick="@(() => _search = entry.Address)"
+                     style="@($"aspect-ratio: 1; border-radius: 3px; cursor: pointer; background: {Display.IpStatusColor(entry.Status)}; opacity: {(entry.Status == IpAddressStatus.Free ? "0.45" : "1")}; font-size: 9px; color: var(--mud-palette-white); display: flex; align-items: center; justify-content: center; overflow: hidden")">
+                    @(view.Addresses.Count <= 256 ? entry.Address.Split('.')[3] : null)
+                </div>
+            }
+        </div>
+    </MudPaper>
+
+    <MudChipSet T="IpAddressStatus?" @bind-SelectedValue="_status" SelectionMode="SelectionMode.ToggleSelection" Class="mb-2">
+        @foreach (var status in Enum.GetValues<IpAddressStatus>().Where(s => view.Count(s) > 0))
+        {
+            <MudChip T="IpAddressStatus?" Value="@status" Size="Size.Small" Variant="Variant.Outlined">
+                <span style="@($"display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: {Display.IpStatusColor(status)}")"></span>@Display.IpStatus(status): @view.Count(status)
+            </MudChip>
+        }
+    </MudChipSet>
+    <MudDataGrid T="IpAddressEntry" Items="@Filtered" Dense="true" Hover="true" SortMode="SortMode.Single" QuickFilter="QuickFilter" Filterable="false">
+        <ToolBarContent>
+            <MudTextField @bind-Value="_search" Placeholder="@L["Search address, name, MAC, note …"]" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 420px" />
+        </ToolBarContent>
+        <Columns>
+            <TemplateColumn Title="@L["IP address"]" SortBy="e => e.Value" HeaderStyle="white-space: nowrap">
+                <CellTemplate>@context.Item.Address</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="@L["Status"]" SortBy="e => e.Status">
+                <CellTemplate>
+                    <span style="@($"display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: {Display.IpStatusColor(context.Item.Status)}")"></span>@Display.IpStatus(context.Item.Status)
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="@L["Evidence"]" Sortable="false">
+                <CellTemplate>
+                    @foreach (var e in context.Item.Evidence.Where(e => e.Kind is not (IpEvidenceKind.Reservation or IpEvidenceKind.Excluded)))
+                    {
+                        <MudTooltip Text="@(e.TimeUtc is { } time ? Display.LocalTime(time) : null)" Disabled="@(e.TimeUtc is null)">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Href="@Link(e)"
+                                     Style="@(e.Status == IpAddressStatus.Stale ? "opacity: 0.6; text-decoration: line-through" : null)">@Display.IpEvidence(e)</MudChip>
+                        </MudTooltip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="@L["Reservation"]" Sortable="false">
+                <CellTemplate>
+                    @if (context.Item.Reservation is { } r)
+                    {
+                        <div>@(r.Note ?? L["Reserved"])</div>
+                        <MudText Typo="Typo.caption">
+                            @r.ReservedBy, @Display.LocalTime(r.CreatedUtc)@(r.ExpiresUtc is { } until ? $" – {L["until {0}", Display.LocalTime(until)]}" : "")
+                        </MudText>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn CellStyle="width: 1%; white-space: nowrap" Sortable="false">
+                <CellTemplate>
+                    <OperatorOnly>
+                        @if (context.Item.Reservation is { } r)
+                        {
+                            <MudTooltip Text="@L["Release"]"><MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" aria-label="@L["Release"]" OnClick="@(() => ReleaseAsync(r))" /></MudTooltip>
+                        }
+                        else if (context.Item.Status != IpAddressStatus.Excluded)
+                        {
+                            <MudTooltip Text="@L["Reserve"]"><MudIconButton Icon="@Icons.Material.Filled.Lock" Size="Size.Small" aria-label="@L["Reserve"]" OnClick="@(() => ReserveAsync(context.Item))" /></MudTooltip>
+                        }
+                    </OperatorOnly>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent><MudDataGridPager T="IpAddressEntry" PageSizeOptions="@(new[] { 64, 128, 256 })" /></PagerContent>
+    </MudDataGrid>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private IpSubnetView? _view;
+    private bool _loaded;
+    private IpScanProgress? _progress;
+    private IpAddressStatus? _status;
+    private string? _search;
+    private DateTime _lastRefresh;
+
+    private IEnumerable<IpAddressEntry> Filtered => _view is null ? [] : _status is { } status ? _view.Addresses.Where(a => a.Status == status) : _view.Addresses;
+
+    private static int Columns(IpSubnetView view) => view.Addresses.Count <= 64 ? 8 : view.Addresses.Count <= 256 ? 16 : 32;
+
+    private string CellTitle(IpAddressEntry entry) =>
+        string.Join("\n", new[] { $"{entry.Address} – {Display.IpStatus(entry.Status)}" }
+            .Concat(entry.Evidence.Where(e => e.Kind != IpEvidenceKind.Excluded).Select(e => e.Kind == IpEvidenceKind.Reservation ? $"{L["Reserved"]}: {e.Text}" : Display.IpEvidence(e))));
+
+    private static string? Link(IpEvidence e) => e.Kind switch
+    {
+        IpEvidenceKind.Computer => $"computers/{e.LinkId}",
+        IpEvidenceKind.Device or IpEvidenceKind.RouterInterface => $"devices/{e.LinkId}",
+        _ => null,
+    };
+
+    private bool QuickFilter(IpAddressEntry e)
+    {
+        var term = _search?.Trim();
+        if (string.IsNullOrEmpty(term))
+            return true;
+        // Eine vollständige Adresse (etwa aus der Adresskarte) trifft genau, nicht auch .10 bis .19.
+        if (IpRanges.ValueOf(term) is not null)
+            return e.Address == term;
+        return e.Address.Contains(term, StringComparison.Ordinal)
+            || e.Evidence.Any(x => x.Text?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)
+            || e.Reservation?.ReservedBy?.Contains(term, StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        IpAddresses.ProgressChanged += OnProgress;
+        _progress = IpAddresses.Current;
+        await LoadAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_view is not null && _view.Subnet.Id != Id)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _view = await IpAddresses.GetViewAsync(Id);
+        _loaded = true;
+    }
+
+    private void OnProgress() => _ = InvokeAsync(async () =>
+    {
+        var finished = _progress is not null && IpAddresses.Current is null;
+        _progress = IpAddresses.Current;
+        if (finished || DateTime.UtcNow - _lastRefresh > TimeSpan.FromSeconds(1))
+        {
+            _lastRefresh = DateTime.UtcNow;
+            if (finished)
+                await LoadAsync();
+            StateHasChanged();
+        }
+    });
+
+    private async Task ScanAsync()
+    {
+        if (_view is null || !await Access.DemandOperatorAsync())
+            return;
+        var subnet = _view.Subnet;
+        await Audit.LogAsync(L["IP address scan started"], subnet.Name);
+        _progress = new IpScanProgress(subnet.Name, 0, 0, 0);
+        _ = Task.Run(async () =>
+        {
+            var result = await IpAddresses.ScanAsync(subnet.Id, CancellationToken.None);
+            try
+            {
+                await InvokeAsync(async () =>
+                {
+                    _progress = IpAddresses.Current;
+                    await LoadAsync();
+                    StateHasChanged();
+                    Snackbar.Add(result, Severity.Info);
+                });
+            }
+            catch (ObjectDisposedException)
+            {
+                // Seite inzwischen geschlossen.
+            }
+        });
+    }
+
+    private async Task FindFreeAsync()
+    {
+        if (_view is null || !await Access.DemandOperatorAsync())
+            return;
+        var parameters = new DialogParameters<FindFreeIpsDialog> { { d => d.Subnet, _view.Subnet } };
+        var dialog = await Dialogs.ShowAsync<FindFreeIpsDialog>(L["Free IPs in {0}", _view.Subnet.Name], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        await dialog.Result;
+        await LoadAsync();
+    }
+
+    private async Task ReserveAsync(IpAddressEntry entry)
+    {
+        if (_view is null || !await Access.DemandOperatorAsync())
+            return;
+        var parameters = new DialogParameters<ReserveIpDialog> { { d => d.Subnet, _view.Subnet }, { d => d.Addresses, [entry.Address] }, { d => d.Warning, entry.Status is IpAddressStatus.InUse or IpAddressStatus.DnsOnly } };
+        var dialog = await Dialogs.ShowAsync<ReserveIpDialog>(L["Reserve {0}", entry.Address], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    private async Task ReleaseAsync(IpReservation reservation)
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        if (await Dialogs.ShowMessageBoxAsync(L["Release"], L["Release the reservation of {0}?", reservation.Address], yesText: L["Release"], cancelText: L["Cancel"]) != true)
+            return;
+        if (await IpAddresses.ReleaseAsync(reservation.Id) is { } released)
+            await Audit.LogAsync(L["IP reservation released"], $"{released.Address}{(released.Note is null ? "" : $": {released.Note}")}");
+        await LoadAsync();
+    }
+
+    private async Task EditAsync()
+    {
+        if (_view is null || !await Access.DemandAdminAsync())
+            return;
+        var parameters = new DialogParameters<EditSubnetDialog> { { d => d.Subnet, _view.Subnet } };
+        var dialog = await Dialogs.ShowAsync<EditSubnetDialog>(_view.Subnet.Name, parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    public void Dispose() => IpAddresses.ProgressChanged -= OnProgress;
+}

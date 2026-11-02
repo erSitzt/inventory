@@ -1,0 +1,65 @@
+@inject IpAddressService IpAddresses
+@inject Auditor Audit
+@inject BrowserTime BrowserTime
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> L
+@inject Access Access
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">@string.Join(", ", Addresses)</MudText>
+            @if (Warning)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@L["This address looks used. Reserve it anyway only if you know it is free."]</MudAlert>
+            }
+            <MudTextField @bind-Value="_note" Label="@L["Note"]" Variant="Variant.Outlined" AutoFocus="true" Placeholder="@L["e.g. new SQL server, ticket 4711"]" />
+            <MudDatePicker @bind-Date="_until" Label="@L["Reserved until (optional)"]" Variant="Variant.Outlined" Clearable="true" Editable="true"
+                           MinDate="@BrowserTime.Now.Date" HelperText="@L["Released automatically at the end of this day. Empty = until released by hand."]" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving" OnClick="SaveAsync">@L["Reserve"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public IpSubnet Subnet { get; set; } = default!;
+    [Parameter, EditorRequired] public IReadOnlyList<string> Addresses { get; set; } = [];
+    /// <summary>Die Adresse wirkt belegt (antwortet oder hat einen DNS-Eintrag).</summary>
+    [Parameter] public bool Warning { get; set; }
+
+    private string? _note;
+    private DateTime? _until;
+    private string? _error;
+    private bool _saving;
+
+    private async Task SaveAsync()
+    {
+        if (!await Access.DemandOperatorAsync())
+            return;
+        _saving = true;
+        try
+        {
+            DateTime? expires = _until is { } day ? BrowserTime.StartOfDayUtc(day.Date.AddDays(1)) : null;
+            var reserved = await IpAddresses.ReserveAsync(Subnet.Id, Addresses, _note, expires, await Audit.UserNameAsync());
+            await Audit.LogAsync(L["IP addresses reserved"], $"{string.Join(", ", reserved.Select(r => r.Address))}{(reserved[0].Note is { } note ? $": {note}" : "")}");
+            Snackbar.Add(L["{0} addresses reserved.", reserved.Count], Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}
