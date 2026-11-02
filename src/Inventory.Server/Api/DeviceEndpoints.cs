@@ -41,7 +41,7 @@ public static class DeviceEndpoints
         return app;
     }
 
-    private static DeviceDto ToDto(NetworkDevice d) => new(d.Id, d.IpAddress, d.DisplayName, d.Kind, d.KindReason, d.Manufacturer, d.Model, d.SerialNumber,
+    internal static DeviceDto ToDto(NetworkDevice d) => new(d.Id, d.IpAddress, d.DisplayName, d.Kind, d.KindReason, d.Manufacturer, d.Model, d.SerialNumber,
         d.Firmware, d.OsGuess, d.MacAddress, d.MacVendor, [.. d.Ports], d.SysLocation, d.SysContact, d.PageCount,
         [.. d.Supplies.Select(s => new DeviceSupplyDto(s.Description, s.Percent))], d.ComputerId, d.NetworkRange?.Name, d.FirstSeenUtc, d.LastSeenUtc);
 }

@@ -14,6 +14,9 @@ public static class AuditActors
 
     public static AuditActor Actor(this HttpContext http) => Actor(http.User, AuditSource.Api);
 
+    /// <summary>Für den MCP-Server: der Weg bleibt „MCP“, auch wenn ein API-Token angemeldet ist.</summary>
+    public static AuditActor McpActor(ClaimsPrincipal user) => Actor(user, AuditSource.Api) with { Source = AuditSource.Mcp };
+
     /// <param name="source">Weg der Aktion; ein API-Token wird unabhängig davon als solches vermerkt.</param>
     public static AuditActor Actor(ClaimsPrincipal user, AuditSource source, string? fallbackName = null)
     {

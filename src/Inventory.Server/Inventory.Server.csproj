@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
     <PackageReference Include="MudBlazor" Version="9.11.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.17.14" />
   </ItemGroup>
@@ -40,8 +41,7 @@
     Daneben "runner-net10": derselbe Runner eigenständig mit .NET 10 als eine Datei, für Rechner ohne .NET Framework 4.8.
   -->
   <Target Name="IncludeRunner" AfterTargets="ResolveProjectReferences" BeforeTargets="AssignTargetPaths">
-    <MSBuild Projects="..\Inventory.Runner\Inventory.Runner.csproj" Targets="Publish"
-             Properties="Configuration=$(Configuration);TargetFramework=net10.0-windows;RuntimeIdentifier=win-x64;SelfContained=true;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Runner\bin\$(Configuration)\selfcontained\" />
+    <MSBuild Projects="..\Inventory.Runner\Inventory.Runner.csproj" Targets="Publish" Properties="Configuration=$(Configuration);TargetFramework=net10.0-windows;RuntimeIdentifier=win-x64;SelfContained=true;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Runner\bin\$(Configuration)\selfcontained\" />
     <ItemGroup>
       <RunnerFile Include="..\Inventory.Runner\bin\$(Configuration)\net48\*.exe;..\Inventory.Runner\bin\$(Configuration)\net48\*.dll;..\Inventory.Runner\bin\$(Configuration)\net48\*.config" />
       <Content Include="@(RunnerFile)" Link="runner\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

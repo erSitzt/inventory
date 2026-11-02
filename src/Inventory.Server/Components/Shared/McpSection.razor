@@ -1,0 +1,83 @@
+@inject SettingsService Settings
+@inject NavigationManager Navigation
+@inject Auditor Audit
+@inject Access Access
+@inject ISnackbar Snackbar
+@inject IJSRuntime Js
+@inject IStringLocalizer<SharedResource> L
+
+@* MCP-Server für KI-Assistenten: Schalter, Adresse und fertige Einträge für die gängigen Clients. *@
+<MudPaper id="mcp" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">@L["AI assistants (MCP)"]</MudText>
+        <MudText Typo="Typo.body2">
+            @L["AI assistants such as Claude, GitHub Copilot in VS Code or other MCP clients can query the inventory and, with an operator token, scan computers, roll out approved packages and reserve IP addresses. They sign in with an API token; its role decides what they may do. Administrator actions are not offered."]
+        </MudText>
+        <MudSwitch T="bool" Value="_enabled" ValueChanged="SetAsync" Color="Color.Primary" Disabled="_loading" Label="@L["MCP server on"]" />
+        @if (_enabled)
+        {
+            <MudTextField T="string" Value="@Endpoint" Label="@L["Address"]" Variant="Variant.Outlined" ReadOnly="true"
+                          Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentCopy" OnAdornmentClick="@(() => CopyAsync(Endpoint))" />
+            <MudText Typo="Typo.body2">
+                @L["Create a token under"] <MudLink Href="tokens">@L["API tokens"]</MudLink>@L[": Viewer for questions only, Operator to let the assistant act as well."]
+            </MudText>
+            <MudText Typo="Typo.subtitle2">Claude Code</MudText>
+            <pre style="@SnippetStyle">@ClaudeCode</pre>
+            <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="@(() => CopyAsync(ClaudeCode))" Style="align-self: flex-start">@L["Copy"]</MudButton>
+            <MudText Typo="Typo.subtitle2">@L["VS Code (.vscode/mcp.json)"]</MudText>
+            <pre style="@SnippetStyle">@JsonConfig</pre>
+            <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="@(() => CopyAsync(JsonConfig))" Style="align-self: flex-start">@L["Copy"]</MudButton>
+            <MudText Typo="Typo.caption">@L["Replace inv_… with the token. Every action of an assistant appears in the audit log with the source MCP."]</MudText>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    private const string SnippetStyle = "white-space: pre-wrap; word-break: break-all; font-size: 12px; padding: 8px 12px; margin: 0; border-radius: 4px; background: var(--mud-palette-background-gray)";
+    private bool _enabled;
+    private bool _loading = true;
+
+    private string Endpoint => Navigation.BaseUri.TrimEnd('/') + Inventory.Server.Mcp.McpSetup.Path;
+
+    private string ClaudeCode => $"claude mcp add --transport http inventory {Endpoint} --header \"Authorization: Bearer inv_…\"";
+
+    private string JsonConfig => $$"""
+        {
+          "servers": {
+            "inventory": {
+              "type": "http",
+              "url": "{{Endpoint}}",
+              "headers": { "Authorization": "Bearer inv_…" }
+            }
+          }
+        }
+        """;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _enabled = await Inventory.Server.Mcp.McpSetup.EnabledAsync(Settings);
+        _loading = false;
+    }
+
+    private async Task SetAsync(bool enabled)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        await Settings.SetAsync(SettingKeys.McpEnabled, enabled ? bool.TrueString : null);
+        _enabled = enabled;
+        await Audit.LogAsync(L["Setting changed"], enabled ? L["MCP server switched on"] : L["MCP server switched off"]);
+    }
+
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add(L["Copied."], Severity.Success);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add(L["The browser does not allow copying here."], Severity.Warning);
+        }
+    }
+}

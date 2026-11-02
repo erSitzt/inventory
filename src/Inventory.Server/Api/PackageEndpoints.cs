@@ -80,6 +80,6 @@ public static class PackageEndpoints
         return app;
     }
 
-    private static DeploymentDto ToDto(Deployment d) => new(d.Id, d.PackageId, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc,
+    internal static DeploymentDto ToDto(Deployment d) => new(d.Id, d.PackageId, d.PackageName, d.PackageVersion, d.CreatedUtc, d.FinishedUtc,
         d.Targets.Select(t => new TargetDto(t.Id, t.ComputerId, t.ComputerName, t.Status, t.Error, t.StartedUtc, t.FinishedUtc, t.Steps, t.Pilot)), d.StopReason);
 }

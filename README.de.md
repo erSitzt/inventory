@@ -1100,6 +1100,7 @@ Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die �
 | IP-Adressen | Subnetze mit dem Zustand jeder Adresse, freie Adressen suchen (per Ping nachgeprüft), reservieren und freigeben – Reservieren für Operatoren und Administratoren |
 | Berichte | Rechner und Software als CSV oder JSON |
 | Protokoll | Einträge als JSON (`/api/audit`) oder CSV (`/api/audit/export.csv`), gefiltert nach Benutzer, Aktion, Zeitraum und Text – Operatoren und Administratoren |
+| MCP | `/mcp` für KI-Assistenten, siehe [KI-Assistenten (MCP)](#ki-assistenten-mcp) |
 
 Das Protokoll zwischen Agent und Server (`/api/agent/…`) ist nicht Teil der dokumentierten API.
 
@@ -1115,6 +1116,34 @@ abgeschlossene Deployments (*Einstellungen*, Vorgabe je 730 Tage, 0 = alles beha
 Jahren – und räumt die Datenbank auf; ist ein großer Teil der Datei frei geworden, wird sie neu geschrieben, sobald
 kein Deployment läuft. Deployments von Pflicht-Zeitplänen bleiben, weil der Zeitplan an ihnen erkennt, wo das Paket
 schon ist.
+
+### KI-Assistenten (MCP)
+
+Inventory hat einen eingebauten [MCP](https://modelcontextprotocol.io)-Server: KI-Assistenten wie Claude (Claude Code,
+Claude Desktop), GitHub Copilot in VS Code oder andere MCP-Clients arbeiten damit direkt mit dem Inventar. Zum
+Beispiel: „Welchen Servern fehlen Sicherheitsupdates?“, „Wer hat noch Java 8?“, „Gib mir drei zusammenhängende freie
+IPs in Servers und reserviere sie für den neuen SQL-Cluster“ oder „Scanne PC-0815“.
+
+Ein Administrator schaltet ihn unter *Einstellungen → KI-Assistenten (MCP)* ein; bis dahin ist er aus. Die Adresse ist
+`https://<server>/mcp` (Streamable HTTP). Clients melden sich mit einem [API-Token](#api) an
+(`Authorization: Bearer inv_…`), und dessen Rolle bestimmt, was der Assistent darf:
+
+| Rolle | Werkzeuge |
+|---|---|
+| Betrachter | Rechner suchen und Details, Software eines Rechners, Software finden und wer sie hat, fehlende Updates, Sammlungen, Pakete, Deployments, Netzwerkgeräte, IP-Subnetze und ihre Adressen, Microsoft-Lizenzierung |
+| Operator | zusätzlich: Rechner scannen, Erreichbarkeit prüfen, aufwecken; freigegebene Pakete verteilen und Deployments abbrechen; freie IPs suchen, reservieren und freigeben; IP- und Gerätescan starten; Protokoll lesen |
+
+Administrator-Aktionen (Pakete ändern, Fernbefehle, Zugangsdaten, Einstellungen, Rechner löschen) werden nicht
+angeboten, auch nicht mit einem Administrator-Token. Operator-Bereiche gelten wie in der API. Jede Aktion eines
+Assistenten steht im Protokoll mit der Herkunft *MCP*, und die MCP-Hinweise kennzeichnen, welche Werkzeuge etwas
+ändern, sodass Clients vorher nachfragen. Für Claude Code zum Beispiel:
+
+```
+claude mcp add --transport http inventory https://<server>/mcp --header "Authorization: Bearer inv_…"
+```
+
+Die Einstellungsseite zeigt die Adresse des eigenen Servers und den Eintrag für VS Code (`.vscode/mcp.json`). Andere
+Clients nehmen dieselbe Adresse und denselben Header in ihrem eigenen Konfigurationsformat.
 
 ## Umzug auf einen anderen Server (Export und Import)
 

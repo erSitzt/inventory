@@ -198,7 +198,7 @@ public static class ComputerEndpoints
         return app;
     }
 
-    private static ComputerDto ToDto(Computer c) =>
+    internal static ComputerDto ToDto(Computer c) =>
         new(c.Id, c.Name, c.Description, c.IpAddress, c.IsOnline, c.LastSeenUtc, c.LastScanUtc, c.LastScanError, c.Transport, c.CredentialId,
             c.ReportedName, c.ReverseDnsName, c.NameMismatch, c.OsName, c.OsVersion, c.Manufacturer, c.Model, c.SerialNumber, c.MemoryBytes, c.LoggedOnUser,
             c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate, c.WarrantyUntil, c.Tags, c.Notes, c.WakeMac, c.DnsName);

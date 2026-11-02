@@ -80,12 +80,12 @@ public static class IpAddressEndpoints
         }
     }
 
-    private static SubnetDto ToDto(IpSubnetView v) => new(v.Subnet.Id, v.Subnet.Name, v.Subnet.Cidr, v.Subnet.Vlan, v.Subnet.Gateway, v.Subnet.Excluded, v.Subnet.Notes,
+    internal static SubnetDto ToDto(IpSubnetView v) => new(v.Subnet.Id, v.Subnet.Name, v.Subnet.Cidr, v.Subnet.Vlan, v.Subnet.Gateway, v.Subnet.Excluded, v.Subnet.Notes,
         v.Addresses.Count, v.Count(IpAddressStatus.InUse), v.Count(IpAddressStatus.DnsOnly), v.Count(IpAddressStatus.Stale), v.Count(IpAddressStatus.Free),
         v.Count(IpAddressStatus.Reserved), v.Count(IpAddressStatus.Excluded), v.Subnet.LastScanUtc, v.Subnet.LastResult);
 
-    private static IpAddressDto ToDto(IpAddressEntry e) => new(e.Address, e.Status,
+    internal static IpAddressDto ToDto(IpAddressEntry e) => new(e.Address, e.Status,
         [.. e.Evidence.Select(x => new IpEvidenceDto(x.Kind, x.Text, x.TimeUtc, x.Status))], e.Reservation is { } r ? ToDto(r) : null);
 
-    private static IpReservationDto ToDto(IpReservation r) => new(r.Id, r.Address, r.Note, r.ReservedBy, r.CreatedUtc, r.ExpiresUtc);
+    internal static IpReservationDto ToDto(IpReservation r) => new(r.Id, r.Address, r.Note, r.ReservedBy, r.CreatedUtc, r.ExpiresUtc);
 }
