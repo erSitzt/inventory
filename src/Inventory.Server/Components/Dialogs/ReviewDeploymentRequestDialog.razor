@@ -1,0 +1,149 @@
+@inject DeploymentRequestService Requests
+@inject PackageService Packages
+@inject ComputerService Computers
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject Auditor Audit
+@inject Access Access
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+
+@* Was ein KI-Assistent verteilen möchte, vollständig sichtbar: Schritte mit Skripten, Dateien, Zielrechner. *@
+<MudDialog>
+    <DialogContent>
+        @if (_request is null || _package is null)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudText Typo="Typo.h6">@_package.Name @_package.Version</MudText>
+                    @if (_package.IsAiGenerated)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.SmartToy">@L["created by an AI assistant"]</MudChip>
+                    }
+                    @if (_package.IsApproved)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">@L["approved"]</MudChip>
+                    }
+                </MudStack>
+                <MudText Typo="Typo.body2">@L["Requested by {0} on {1}.", _request.RequestedBy, Display.LocalTime(_request.RequestedUtc)]</MudText>
+                @if (_request.Reason is { } reason)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">@reason</MudAlert>
+                }
+                @if (_package.Description is { } description)
+                {
+                    <MudText Typo="Typo.body2">@description</MudText>
+                }
+
+                <MudText Typo="Typo.subtitle2" Class="mt-2">@L["Steps"]</MudText>
+                @foreach (var step in _package.Steps.OrderBy(s => s.Order))
+                {
+                    <MudPaper Outlined="true" Class="pa-2">
+                        <MudText Typo="Typo.body2"><b>@step.Definition.Name</b> – @Display.Step(step.Definition.Type)@(step.Definition.RunAs == Inventory.Contracts.StepRunAs.LoggedOnUser ? $" ({L["as logged-on user"]})" : "")</MudText>
+                        @if (!string.IsNullOrWhiteSpace(step.Definition.Script))
+                        {
+                            <pre style="white-space: pre-wrap; word-break: break-all; font-size: 12px; margin: 6px 0 0; padding: 8px; border-radius: 4px; background: var(--mud-palette-background-gray); max-height: 300px; overflow: auto">@step.Definition.Script</pre>
+                        }
+                        @if (step.Definition.File is { } file)
+                        {
+                            <MudText Typo="Typo.caption">@L["File"]: @file @step.Definition.Arguments</MudText>
+                        }
+                    </MudPaper>
+                }
+
+                <MudText Typo="Typo.subtitle2" Class="mt-2">@L["Files"]</MudText>
+                @if (_files.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">@L["none"]</MudText>
+                }
+                @foreach (var file in _files)
+                {
+                    <MudText Typo="Typo.body2">@file.RelativePath – @Display.Bytes(file.Size)</MudText>
+                }
+
+                <MudText Typo="Typo.subtitle2" Class="mt-2">@L["Target computers ({0})", _request.ComputerIds.Count]</MudText>
+                <MudText Typo="Typo.body2">@string.Join(", ", _targets)</MudText>
+
+                <MudTextField @bind-Value="_note" Label="@L["Reason for rejecting (optional)"]" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2" />
+                <MudAlert Severity="Severity.Warning" Dense="true">@L["Approving releases the package for deployment and starts it on these computers. The steps run as Local System unless stated otherwise."]</MudAlert>
+                @if (_error is not null)
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">@L["Close"]</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Outlined" Disabled="@(_request is null || _busy)" OnClick="RejectAsync">@L["Reject"]</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_request is null || _busy)" OnClick="ApproveAsync">@L["Approve and start"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public int RequestId { get; set; }
+
+    private DeploymentRequest? _request;
+    private Package? _package;
+    private List<Inventory.Data.RepositoryFile> _files = [];
+    private List<string> _targets = [];
+    private string? _note;
+    private string? _error;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _request = await Requests.GetAsync(RequestId);
+        if (_request is null)
+            return;
+        _package = await Packages.GetAsync(_request.PackageId);
+        _files = Packages.Repository.List(_request.PackageId);
+        var names = (await Computers.ListAsync()).ToDictionary(c => c.Id, c => c.Name);
+        _targets = [.. _request.ComputerIds.Select(id => names.GetValueOrDefault(id, $"#{id}")).Order(StringComparer.OrdinalIgnoreCase)];
+    }
+
+    private async Task ApproveAsync()
+    {
+        if (!await Access.DemandAdminAsync() || _request is null || _package is null)
+            return;
+        _busy = true;
+        try
+        {
+            // Mit dem Stand, der hier zu sehen war: hat sich das Paket inzwischen geändert, wird nichts freigegeben.
+            var deployment = await Requests.ApproveAsync(_request.Id, await Audit.UserNameAsync(), _package.ModifiedUtc);
+            await Audit.LogAsync(L["Deployment request approved"], $"{_package.Name} → #{deployment.Id} ({_request.RequestedBy})");
+            Snackbar.Add(L["Package approved and deployment started."], Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+            Navigation.NavigateTo($"deployments/{deployment.Id}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RejectAsync()
+    {
+        if (!await Access.DemandAdminAsync() || _request is null)
+            return;
+        try
+        {
+            await Requests.RejectAsync(_request.Id, await Audit.UserNameAsync(), _note);
+            await Audit.LogAsync(L["Deployment request rejected"], $"{_package?.Name} ({_request.RequestedBy}){(string.IsNullOrWhiteSpace(_note) ? "" : $": {_note}")}");
+            MudDialog.Close(DialogResult.Ok(false));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

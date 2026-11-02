@@ -86,6 +86,9 @@
   <data name='"{0}" is now being installed on this computer and can no longer be postponed.' xml:space="preserve">
     <value>„{0}“ wird jetzt auf diesem Rechner installiert und lässt sich nicht mehr verschieben.</value>
   </data>
+  <data name="&quot;{0}&quot; was created by a person; AI assistants can only change packages they created themselves." xml:space="preserve">
+    <value>„{0}“ hat ein Mensch angelegt; KI-Assistenten ändern nur Pakete, die sie selbst angelegt haben.</value>
+  </data>
   <data name="#{0} {1} on {2}" xml:space="preserve">
     <value>#{0} {1} auf {2}</value>
   </data>
@@ -197,6 +200,9 @@
   <data name="A deployment finishes with failures" xml:space="preserve">
     <value>Eine Verteilung endet mit Fehlern</value>
   </data>
+  <data name="A deployment waits for approval" xml:space="preserve">
+    <value>Ein Deployment wartet auf Freigabe</value>
+  </data>
   <data name="A device scan is already running." xml:space="preserve">
     <value>Es läuft bereits ein Gerätescan.</value>
   </data>
@@ -277,6 +283,9 @@
   </data>
   <data name="A Windows computer that is not in the inventory. Add it to the computer list to scan it and deploy software." xml:space="preserve">
     <value>Ein Windows-Rechner, der nicht im Inventar steht. Übernimm ihn in die Rechnerliste, um ihn zu scannen und Software zu verteilen.</value>
+  </data>
+  <data name="A {0} step needs a script." xml:space="preserve">
+    <value>Ein {0}-Schritt braucht ein Skript.</value>
   </data>
   <data name="Access denied – the account needs local administrator rights on the target computer (for local accounts additionally LocalAccountTokenFilterPolicy)" xml:space="preserve">
     <value>Zugriff verweigert – das Konto braucht lokale Administratorrechte auf dem Zielrechner (bei lokalen Konten zusätzlich LocalAccountTokenFilterPolicy)</value>
@@ -500,8 +509,14 @@
   <data name="Agents" xml:space="preserve">
     <value>Agenten</value>
   </data>
+  <data name="AI" xml:space="preserve">
+    <value>KI</value>
+  </data>
   <data name="AI assistants (MCP)" xml:space="preserve">
     <value>KI-Assistenten (MCP)</value>
+  </data>
+  <data name="AI assistants asked to deploy these packages. Nothing runs until an administrator has looked at the package and approved it here." xml:space="preserve">
+    <value>KI-Assistenten möchten diese Pakete verteilen. Nichts läuft, bevor ein Administrator das Paket angesehen und hier freigegeben hat.</value>
   </data>
   <data name="AI assistants such as Claude, GitHub Copilot in VS Code or other MCP clients can query the inventory and, with an operator token, scan computers, roll out approved packages and reserve IP addresses. They sign in with an API token; its role decides what they may do. Administrator actions are not offered." xml:space="preserve">
     <value>KI-Assistenten wie Claude, GitHub Copilot in VS Code oder andere MCP-Clients können das Inventar abfragen und mit einem Operator-Token auch Rechner scannen, freigegebene Pakete verteilen und IP-Adressen reservieren. Sie melden sich mit einem API-Token an; dessen Rolle bestimmt, was sie dürfen. Administrator-Aktionen werden nicht angeboten.</value>
@@ -656,6 +671,9 @@
   <data name="An import from {0} (exported {1}, version {2}) is ready. It replaces the current state with the next start of Inventory." xml:space="preserve">
     <value>Ein Import von {0} (exportiert {1}, Version {2}) liegt bereit. Er ersetzt den jetzigen Stand beim nächsten Start von Inventory.</value>
   </data>
+  <data name="An Install step needs a file of the package." xml:space="preserve">
+    <value>Ein Install-Schritt braucht eine Datei des Pakets.</value>
+  </data>
   <data name="An IP address scan is already running." xml:space="preserve">
     <value>Es läuft schon ein IP-Scan.</value>
   </data>
@@ -743,11 +761,17 @@
   <data name="Approve" xml:space="preserve">
     <value>Freigeben</value>
   </data>
+  <data name="Approve and start" xml:space="preserve">
+    <value>Freigeben und starten</value>
+  </data>
   <data name="approved" xml:space="preserve">
     <value>freigegeben</value>
   </data>
   <data name="Approved for deployment by {0} on {1}." xml:space="preserve">
     <value>Zum Verteilen freigegeben von {0} am {1}.</value>
+  </data>
+  <data name="Approving releases the package for deployment and starts it on these computers. The steps run as Local System unless stated otherwise." xml:space="preserve">
+    <value>Die Freigabe gibt das Paket zum Verteilen frei und startet es auf diesen Rechnern. Die Schritte laufen als Lokales System, sofern nicht anders angegeben.</value>
   </data>
   <data name="Apps" xml:space="preserve">
     <value>Apps</value>
@@ -865,6 +889,9 @@
   </data>
   <data name="Between 1 and {0} addresses." xml:space="preserve">
     <value>Zwischen 1 und {0} Adressen.</value>
+  </data>
+  <data name="Between 1 and {0} steps." xml:space="preserve">
+    <value>Zwischen 1 und {0} Schritten.</value>
   </data>
   <data name="BIOS date" xml:space="preserve">
     <value>BIOS-Datum</value>
@@ -1322,6 +1349,15 @@
   <data name="Created by" xml:space="preserve">
     <value>Angelegt von</value>
   </data>
+  <data name="created by an AI assistant" xml:space="preserve">
+    <value>von einem KI-Assistenten angelegt</value>
+  </data>
+  <data name="Created by an AI assistant ({0}). Check the steps and files before you approve it; only an administrator in the web interface can approve it." xml:space="preserve">
+    <value>Von einem KI-Assistenten angelegt ({0}). Prüfen Sie Schritte und Dateien vor der Freigabe; freigeben kann es nur ein Administrator in der Oberfläche.</value>
+  </data>
+  <data name="Created by an AI assistant ({0}); only an administrator in the web interface can approve it." xml:space="preserve">
+    <value>Von einem KI-Assistenten angelegt ({0}); freigeben kann es nur ein Administrator in der Oberfläche.</value>
+  </data>
   <data name="Created with Inventory" xml:space="preserve">
     <value>Erstellt mit Inventory</value>
   </data>
@@ -1592,6 +1628,15 @@
   <data name="Deployment released after the pilot group" xml:space="preserve">
     <value>Deployment nach der Pilotgruppe freigegeben</value>
   </data>
+  <data name="Deployment request approved" xml:space="preserve">
+    <value>Deployment-Anfrage freigegeben</value>
+  </data>
+  <data name="Deployment request rejected" xml:space="preserve">
+    <value>Deployment-Anfrage abgelehnt</value>
+  </data>
+  <data name="Deployment requested via MCP" xml:space="preserve">
+    <value>Deployment über MCP angefragt</value>
+  </data>
   <data name="Deployment retried" xml:space="preserve">
     <value>Deployment wiederholt</value>
   </data>
@@ -1603,6 +1648,9 @@
   </data>
   <data name="Deployment started via MCP" xml:space="preserve">
     <value>Deployment über MCP gestartet</value>
+  </data>
+  <data name="Deployment waiting for approval" xml:space="preserve">
+    <value>Deployment wartet auf Freigabe</value>
   </data>
   <data name="Deployments" xml:space="preserve">
     <value>Deployments</value>
@@ -2083,6 +2131,9 @@
   </data>
   <data name="Field" xml:space="preserve">
     <value>Feld</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>Datei</value>
   </data>
   <data name="File or folder from the package's files" xml:space="preserve">
     <value>Datei oder Ordner aus den Dateien des Pakets</value>
@@ -3332,6 +3383,9 @@
   <data name="No computers match." xml:space="preserve">
     <value>Keine passenden Rechner.</value>
   </data>
+  <data name="No computers to deploy to." xml:space="preserve">
+    <value>Keine Rechner zum Verteilen.</value>
+  </data>
   <data name="No credentials stored yet." xml:space="preserve">
     <value>Noch keine Zugangsdaten hinterlegt.</value>
   </data>
@@ -3908,14 +3962,23 @@
   <data name="Package approved" xml:space="preserve">
     <value>Paket freigegeben</value>
   </data>
+  <data name="Package approved and deployment started." xml:space="preserve">
+    <value>Paket freigegeben und Deployment gestartet.</value>
+  </data>
   <data name="Package auto-update changed" xml:space="preserve">
     <value>Paket-Automatik geändert</value>
   </data>
   <data name="Package changed" xml:space="preserve">
     <value>Paket geändert</value>
   </data>
+  <data name="Package changed via MCP" xml:space="preserve">
+    <value>Paket über MCP geändert</value>
+  </data>
   <data name="Package created" xml:space="preserve">
     <value>Paket angelegt</value>
+  </data>
+  <data name="Package created via MCP" xml:space="preserve">
+    <value>Paket über MCP angelegt</value>
   </data>
   <data name="Package deleted" xml:space="preserve">
     <value>Paket gelöscht</value>
@@ -3925,6 +3988,9 @@
   </data>
   <data name="Package detection changed" xml:space="preserve">
     <value>Paket-Erkennung geändert</value>
+  </data>
+  <data name="Package file added via MCP" xml:space="preserve">
+    <value>Paketdatei über MCP hinzugefügt</value>
   </data>
   <data name="Package file deleted" xml:space="preserve">
     <value>Paketdatei gelöscht</value>
@@ -4442,6 +4508,12 @@
   <data name='Really revoke "{0}"? Scripts using it lose access immediately.' xml:space="preserve">
     <value>„{0}“ wirklich widerrufen? Skripte, die es verwenden, verlieren sofort den Zugriff.</value>
   </data>
+  <data name="Reason" xml:space="preserve">
+    <value>Begründung</value>
+  </data>
+  <data name="Reason for rejecting (optional)" xml:space="preserve">
+    <value>Grund für die Ablehnung (optional)</value>
+  </data>
   <data name="Reboot" xml:space="preserve">
     <value>Neustart</value>
   </data>
@@ -4486,6 +4558,9 @@
   </data>
   <data name="Regular scans, or a package for every member of a collection." xml:space="preserve">
     <value>Regelmäßige Scans oder ein Paket für jedes Mitglied einer Sammlung.</value>
+  </data>
+  <data name="Reject" xml:space="preserve">
+    <value>Ablehnen</value>
   </data>
   <data name="Release" xml:space="preserve">
     <value>Freigeben</value>
@@ -4667,6 +4742,15 @@
   <data name="Reports" xml:space="preserve">
     <value>Berichte</value>
   </data>
+  <data name="Request {0} not found" xml:space="preserve">
+    <value>Anfrage {0} nicht gefunden</value>
+  </data>
+  <data name="Requested by" xml:space="preserve">
+    <value>Angefragt von</value>
+  </data>
+  <data name="Requested by {0} on {1}." xml:space="preserve">
+    <value>Angefragt von {0} am {1}.</value>
+  </data>
   <data name="Required deployments give each member of a collection the package once, including computers that join later." xml:space="preserve">
     <value>Pflicht-Verteilungen geben jedem Mitglied einer Sammlung das Paket einmal, auch Rechnern, die später hinzukommen.</value>
   </data>
@@ -4771,6 +4855,12 @@
   </data>
   <data name="Reverse DNS" xml:space="preserve">
     <value>Reverse-DNS</value>
+  </data>
+  <data name="Review" xml:space="preserve">
+    <value>Prüfen</value>
+  </data>
+  <data name="Review deployment request" xml:space="preserve">
+    <value>Deployment-Anfrage prüfen</value>
   </data>
   <data name="Revoke" xml:space="preserve">
     <value>Widerrufen</value>
@@ -5510,6 +5600,9 @@
   <data name="Step name" xml:space="preserve">
     <value>Name des Schritts</value>
   </data>
+  <data name="Step type {0} cannot be created by an AI assistant; allowed: {1}." xml:space="preserve">
+    <value>Den Schritttyp {0} kann ein KI-Assistent nicht anlegen; erlaubt: {1}.</value>
+  </data>
   <data name="Steps" xml:space="preserve">
     <value>Schritte</value>
   </data>
@@ -5680,6 +5773,9 @@
   </data>
   <data name="Target computers ({0} of {1} selected)" xml:space="preserve">
     <value>Zielrechner ({0} von {1} ausgewählt)</value>
+  </data>
+  <data name="Target computers ({0})" xml:space="preserve">
+    <value>Zielrechner ({0})</value>
   </data>
   <data name="TCP port" xml:space="preserve">
     <value>Port</value>
@@ -5939,6 +6035,9 @@
   <data name='The package has no files yet. Please upload under "Files" first.' xml:space="preserve">
     <value>Das Paket enthält noch keine Dateien. Bitte zuerst unter „Dateien“ hochladen.</value>
   </data>
+  <data name="The package has changed since you opened it. Please review it again." xml:space="preserve">
+    <value>Das Paket hat sich geändert, seit Sie es geöffnet haben. Bitte noch einmal prüfen.</value>
+  </data>
   <data name="The package library has ready-made packages of common programs." xml:space="preserve">
     <value>Die Paketbibliothek hat fertige Pakete gängiger Programme.</value>
   </data>
@@ -5986,6 +6085,9 @@
   </data>
   <data name="The report has no rows." xml:space="preserve">
     <value>Der Bericht hat keine Zeilen.</value>
+  </data>
+  <data name="The request has already been decided." xml:space="preserve">
+    <value>Über die Anfrage wurde schon entschieden.</value>
   </data>
   <data name="The rules follow these documents. They are binding, this page is an estimate; check the current version before buying." xml:space="preserve">
     <value>Die Regeln folgen diesen Dokumenten. Verbindlich sind die Dokumente, diese Seite ist eine Schätzung; vor dem Kauf die aktuelle Fassung prüfen.</value>
@@ -6646,6 +6748,9 @@
   </data>
   <data name="Waiting for a free slot." xml:space="preserve">
     <value>Wartet auf einen freien Platz.</value>
+  </data>
+  <data name="Waiting for approval ({0})" xml:space="preserve">
+    <value>Warten auf Freigabe ({0})</value>
   </data>
   <data name="waiting for computer" xml:space="preserve">
     <value>wartet auf Rechner</value>
@@ -7369,6 +7474,9 @@
   </data>
   <data name="{0} waiting for computers" xml:space="preserve">
     <value>{0} warten auf Rechner</value>
+  </data>
+  <data name="{0} wants to deploy &quot;{1}&quot; to {2} computers." xml:space="preserve">
+    <value>{0} möchte „{1}“ auf {2} Rechnern verteilen.</value>
   </data>
   <data name="{0} would be deleted – conspicuously many at once, so the run would delete nothing." xml:space="preserve">
     <value>Zu löschen wären {0} – auffällig viele auf einmal, der Lauf würde deshalb nichts löschen.</value>

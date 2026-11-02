@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Inventory.Core.Model;
 using Inventory.Data.Services;
@@ -185,6 +186,90 @@ public sealed class McpTests : IClassFixture<McpTests.App>
         var entry = Assert.Single(await _app.Services.GetRequiredService<AuditService>().ListAsync(20, filter: new AuditFilter(Action: "Reachability checked via MCP")));
         Assert.Equal((AuditSource.Mcp, "MCP-PROBE-01"), (entry.Source, entry.Details));
     }
+
+    [Fact]
+    public async Task Packages_from_an_assistant_run_only_after_a_person_approved_them()
+    {
+        await _app.SetEnabledAsync(true);
+        var computers = await _app.Services.GetRequiredService<ComputerService>().ImportAsync("MCP-SRV-01 MCP-SRV-02");
+        await using var client = await ConnectAsync(await _app.TokenAsync(AccessRole.Operator));
+        // Fehler kommen als Text, Ergebnisse als JSON.
+        Json Call(CallToolResult r) => new(r.IsError == true ? default : JsonDocument.Parse(Text(r)).RootElement, r.IsError == true, Text(r));
+
+        var created = Call(await client.CallToolAsync("create_package", new Dictionary<string, object?>
+        {
+            ["name"] = "Spooler fix", ["steps"] = new[] { new { type = "PowerShell", name = "Restart", script = "Restart-Service Spooler" } },
+        }));
+        Assert.False(created.Error, created.Raw);
+        Assert.Equal("MCP: Spooler fix", created.Root.GetProperty("name").GetString());
+        Assert.Contains("/api/packages/", created.Root.GetProperty("uploadUrl").GetString());
+        var packageId = created.Root.GetProperty("id").GetInt32();
+
+        // Nicht freigegeben: statt eines Deployments entsteht eine Anfrage.
+        var requested = Call(await client.CallToolAsync("deploy_package", new Dictionary<string, object?>
+        {
+            ["package"] = "MCP: Spooler fix", ["computers"] = new[] { "MCP-SRV-01", "MCP-SRV-02" }, ["reason"] = "Ticket 4711",
+        }));
+        Assert.True(requested.Root.TryGetProperty("requestId", out var requestId), requested.Raw);
+        var deployments = _app.Services.GetRequiredService<DeploymentService>();
+        Assert.DoesNotContain(await deployments.ListAsync(), d => d.PackageId == packageId);
+
+        // Dateien: inline, und die Freigabe gilt danach nicht mehr.
+        var file = Call(await client.CallToolAsync("add_package_file", new Dictionary<string, object?>
+        {
+            ["package"] = packageId.ToString(), ["path"] = "config/app.json", ["contentBase64"] = Convert.ToBase64String("{}"u8.ToArray()),
+        }));
+        Assert.False(file.Error, file.Raw);
+        Assert.Equal(2, file.Root.GetProperty("size").GetInt32());
+
+        // Per API darf niemand ein KI-Paket freigeben, auch kein Administrator-Token.
+        using (var http = _app.CreateClient())
+        {
+            http.DefaultRequestHeaders.Authorization = new("Bearer", await _app.TokenAsync(AccessRole.Admin));
+            Assert.Equal(HttpStatusCode.Forbidden, (await http.PostAsync($"/api/packages/{packageId}/approve", null)).StatusCode);
+            // Ein Administrator-Token verteilt es auch nicht direkt.
+            var deploy = await http.PostAsJsonAsync("/api/deployments", new { packageId, computerIds = new[] { computers[0].Id }, scanAfter = false });
+            Assert.Equal(HttpStatusCode.BadRequest, deploy.StatusCode);
+        }
+        // Operatoren laden nur in KI-Pakete hoch.
+        using (var http = _app.CreateClient())
+        {
+            http.DefaultRequestHeaders.Authorization = new("Bearer", await _app.TokenAsync(AccessRole.Operator));
+            var human = await _app.Services.GetRequiredService<PackageService>().SaveAsync(null, "Human package", null, null);
+            Assert.Equal(HttpStatusCode.Forbidden, (await http.PutAsync($"/api/packages/{human.Id}/files/x.txt", new ByteArrayContent([1]))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await http.PutAsync($"/api/packages/{packageId}/files/x.txt", new ByteArrayContent([1]))).StatusCode);
+            var change = Call(await client.CallToolAsync("set_package_steps", new Dictionary<string, object?>
+            {
+                ["package"] = "Human package", ["steps"] = new[] { new { type = "Command", script = "whoami" } },
+            }));
+            Assert.True(change.Error);
+            Assert.Contains("created by a person", change.Raw);
+        }
+
+        // Der Mensch in der Oberfläche gibt frei: Paket freigegeben, Deployment läuft.
+        var requests = _app.Services.GetRequiredService<DeploymentRequestService>();
+        var package = (await _app.Services.GetRequiredService<PackageService>().GetAsync(packageId))!;
+        var started = await requests.ApproveAsync(requestId.GetInt32(), "admin", package.ModifiedUtc);
+        Assert.Equal(2, started.Targets.Count);
+
+        // Freigegeben und unverändert: der Assistent verteilt nun selbst.
+        var direct = Call(await client.CallToolAsync("deploy_package", new Dictionary<string, object?> { ["package"] = "MCP: Spooler fix", ["computers"] = new[] { "MCP-SRV-01" } }));
+        Assert.True(direct.Root.TryGetProperty("id", out _), direct.Raw);
+
+        var script = Call(await client.CallToolAsync("deploy_script", new Dictionary<string, object?>
+        {
+            ["name"] = "whoami", ["script"] = "whoami", ["reason"] = "check the account", ["computers"] = new[] { "MCP-SRV-02" },
+        }));
+        Assert.True(script.Root.TryGetProperty("requestId", out _), script.Raw);
+        var pending = Call(await client.CallToolAsync("list_deployment_requests", new Dictionary<string, object?> { ["pendingOnly"] = true }));
+        Assert.Equal(1, pending.Root.GetProperty("total").GetInt32());
+
+        var entries = await _app.Services.GetRequiredService<AuditService>().ListAsync(50, filter: new AuditFilter(Search: "via MCP"));
+        Assert.Contains(entries, e => e.Action == "Package created via MCP" && e.Source == AuditSource.Mcp);
+        Assert.Contains(entries, e => e.Action == "Deployment requested via MCP");
+    }
+
+    private sealed record Json(JsonElement Root, bool Error, string Raw);
 
     private static string Text(CallToolResult result) => string.Concat(result.Content.OfType<TextContentBlock>().Select(c => c.Text));
 }

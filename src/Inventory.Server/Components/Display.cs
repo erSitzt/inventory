@@ -37,6 +37,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         Inventory.Core.Model.AlertKind.ScanErrors => T("Scan errors reach a number of computers"),
         Inventory.Core.Model.AlertKind.LicenseExceeded => T("A licence is exceeded"),
         Inventory.Core.Model.AlertKind.PluginFailed => T("A plugin job fails"),
+        Inventory.Core.Model.AlertKind.ApprovalRequested => T("A deployment waits for approval"),
         _ => kind.ToString(),
     };
 

@@ -157,7 +157,9 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
     public async Task RevokeApprovalAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        await db.Packages.Where(p => p.Id == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.ApprovedBy, (string?)null).SetProperty(p => p.ApprovedUtc, (DateTime?)null), ct);
+        // Auch die Änderungszeit: eine wartende Anfrage erkennt daran, dass sich der Inhalt seit dem Ansehen geändert hat.
+        await db.Packages.Where(p => p.Id == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.ApprovedBy, (string?)null).SetProperty(p => p.ApprovedUtc, (DateTime?)null)
+            .SetProperty(p => p.ModifiedUtc, DateTime.UtcNow), ct);
     }
 
     /// <summary>Legt fest, woran ein bereits installiertes Paket erkannt wird; eine leere Erkennung schaltet sie ab.</summary>

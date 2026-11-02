@@ -30,6 +30,12 @@
         <TemplateColumn Sortable="true" Title="@L["Approval"]" SortBy="p => p.IsApproved">
             <CellTemplate>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.Item.IsApproved ? Color.Success : Color.Warning)">@(context.Item.IsApproved ? L["approved"] : L["not approved"])</MudChip>
+                @if (context.Item.IsAiGenerated)
+                {
+                    <MudTooltip Text="@L["Created by an AI assistant ({0}); only an administrator in the web interface can approve it.", context.Item.AiCreatedBy!]">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning" Icon="@Icons.Material.Filled.SmartToy">@L["AI"]</MudChip>
+                    </MudTooltip>
+                }
             </CellTemplate>
         </TemplateColumn>
         <PropertyColumn Property="p => p.Description" Title="@L["Description"]" />

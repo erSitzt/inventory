@@ -1,0 +1,70 @@
+@inject DeploymentRequestService Requests
+@inject ComputerService Computers
+@inject IDialogService Dialogs
+@inject Display Display
+@inject IStringLocalizer<SharedResource> L
+
+@* Anfragen von KI-Assistenten, die auf eine Freigabe warten; entscheiden dürfen nur Administratoren. *@
+@if (_pending.Count > 0)
+{
+    <MudPaper Outlined="true" Class="pa-3 mb-4" Style="border-color: var(--mud-palette-warning)">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Warning" />
+            <MudText Typo="Typo.h6">@L["Waiting for approval ({0})", _pending.Count]</MudText>
+        </MudStack>
+        <MudText Typo="Typo.body2" Class="mb-2">@L["AI assistants asked to deploy these packages. Nothing runs until an administrator has looked at the package and approved it here."]</MudText>
+        <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+            <thead>
+                <tr><th>@L["Package"]</th><th>@L["Computers"]</th><th>@L["Requested by"]</th><th>@L["Reason"]</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var request in _pending)
+                {
+                    <tr>
+                        <td>@request.Package?.Name @request.Package?.Version</td>
+                        <td>@Names(request)</td>
+                        <td>@request.RequestedBy<br /><MudText Typo="Typo.caption">@Display.LocalTime(request.RequestedUtc)</MudText></td>
+                        <td>@request.Reason</td>
+                        <td style="width: 1%; white-space: nowrap">
+                            <AdminOnly>
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FactCheck" OnClick="@(() => ReviewAsync(request))">@L["Review"]</MudButton>
+                            </AdminOnly>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public EventCallback Decided { get; set; }
+
+    private List<DeploymentRequest> _pending = [];
+    private Dictionary<int, string> _names = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    public async Task LoadAsync()
+    {
+        _pending = await Requests.ListAsync(pendingOnly: true);
+        if (_pending.Count > 0)
+            _names = (await Computers.ListAsync()).ToDictionary(c => c.Id, c => c.Name);
+    }
+
+    private string Names(DeploymentRequest request) =>
+        request.ComputerIds.Count > 5
+            ? L["{0} computers", request.ComputerIds.Count]
+            : string.Join(", ", request.ComputerIds.Select(id => _names.GetValueOrDefault(id, $"#{id}")));
+
+    private async Task ReviewAsync(DeploymentRequest request)
+    {
+        var parameters = new DialogParameters<ReviewDeploymentRequestDialog> { { d => d.RequestId, request.Id } };
+        var dialog = await Dialogs.ShowAsync<ReviewDeploymentRequestDialog>(L["Review deployment request"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+            await Decided.InvokeAsync();
+        }
+    }
+}

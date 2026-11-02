@@ -157,12 +157,15 @@ public static class ManagementEndpoints
 
         packages.MapPost("{id:int}/approve", async (int id, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {
+            // Was ein KI-Assistent angelegt hat, gibt nur ein Mensch frei: angemeldet in der Oberfläche, nicht per API.
+            if (await service.GetAsync(id, ct) is { IsAiGenerated: true })
+                return Results.Problem("This package was created by an AI assistant; only an administrator signed in to the web interface can approve it.", statusCode: StatusCodes.Status403Forbidden);
             await service.ApproveAsync(id, User(http), ct);
             var package = (await service.GetAsync(id, ct))!;
             await audit.LogAsync(http.Actor(), "Package approved via API", $"{package.Name} {package.Version}".Trim(), ct);
             return Results.Ok(ToDetail(package, service));
-        }).WithSummary("Approve package").WithDescription("Releases the package for deployment by operators and schedules. Every later change to steps, detection or files withdraws the approval.")
-            .Produces<PackageDetailDto>().Produces(400).Produces(404);
+        }).WithSummary("Approve package").WithDescription("Releases the package for deployment by operators and schedules. Every later change to steps, detection or files withdraws the approval. Packages created by an AI assistant (MCP) can only be approved in the web interface (403).")
+            .Produces<PackageDetailDto>().Produces(400).Produces(403).Produces(404);
 
         packages.MapDelete("{id:int}/approve", async (int id, PackageService service, AuditService audit, HttpContext http, CancellationToken ct) =>
         {

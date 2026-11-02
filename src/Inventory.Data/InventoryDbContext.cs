@@ -40,6 +40,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<PackageStep> PackageSteps => Set<PackageStep>();
     public DbSet<PackageDependency> PackageDependencies => Set<PackageDependency>();
     public DbSet<Deployment> Deployments => Set<Deployment>();
+    public DbSet<DeploymentRequest> DeploymentRequests => Set<DeploymentRequest>();
     public DbSet<DeploymentTarget> DeploymentTargets => Set<DeploymentTarget>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
@@ -253,6 +254,17 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.Property(p => p.Detection).HasConversion(
                 detection => detection == null ? null : JobJson.Serialize(detection, false),
                 json => json == null ? null : JobJson.Deserialize<StepConditions>(json));
+        });
+
+        // Mit dem Paket verschwinden seine offenen und erledigten Anfragen.
+        modelBuilder.Entity<DeploymentRequest>(e =>
+        {
+            e.HasOne(r => r.Package).WithMany().HasForeignKey(r => r.PackageId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => r.Status);
+            e.Property(r => r.ComputerIds).HasConversion(
+                ids => string.Join(',', ids),
+                text => text.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList(),
+                new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<int>>((a, b) => a!.SequenceEqual(b!), l => l.Aggregate(0, (h, v) => HashCode.Combine(h, v)), l => l.ToList()));
         });
 
         modelBuilder.Entity<PackageDependency>(e =>

@@ -39,6 +39,13 @@ public class Package
     public bool IsApproved => ApprovedUtc is not null;
 
     /// <summary>
+    /// Von einem KI-Assistenten über MCP angelegt (wer, wie im Protokoll); null = von einem Menschen. Solche Pakete gibt nur
+    /// ein angemeldeter Administrator in der Oberfläche frei, kein API- oder MCP-Token.
+    /// </summary>
+    public string? AiCreatedBy { get; set; }
+    public bool IsAiGenerated => AiCreatedBy is not null;
+
+    /// <summary>
     /// Vor dem Start den angemeldeten Benutzer fragen; er darf <see cref="MaxDeferrals"/>-mal um <see cref="DeferMinutes"/>
     /// Minuten verschieben. Ist niemand angemeldet, läuft das Paket sofort.
     /// </summary>

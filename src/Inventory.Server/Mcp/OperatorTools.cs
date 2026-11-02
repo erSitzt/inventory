@@ -16,7 +16,7 @@ namespace Inventory.Server.Mcp;
 /// </summary>
 [McpServerToolType, Authorize(Policy = AccessControl.OperatorPolicy)]
 public sealed class OperatorTools(McpCaller caller, ComputerService computerService, ScanService scans, WakeService wake, CollectionService collections, PackageService packages,
-    DeploymentService deployments, IpAddressService ipAddresses, DeviceService devices, AuditService audit)
+    DeploymentService deployments, IpAddressService ipAddresses, DeviceService devices, AuditService audit, DeploymentRequestService requests, PackageTools packageTools)
 {
     /// <summary>Ein Scan wartet auf jeden Rechner; mehr würde den Aufruf minutenlang blockieren.</summary>
     public const int MaxScan = 20;
@@ -63,39 +63,33 @@ public sealed class OperatorTools(McpCaller caller, ComputerService computerServ
     }
 
     [McpServerTool(Name = "deploy_package", Title = "Deploy a package", Destructive = true, Idempotent = false, OpenWorld = false)]
-    [Description("Installs an approved package on computers (or on all members of a collection) and returns at once; follow the progress with get_deployment. "
-        + "Operators can only deploy approved packages. The computers are scanned again afterwards.")]
+    [Description("Installs a package on computers (or on all members of a collection). An approved package starts at once (follow it with get_deployment); "
+        + "for a package that is not approved, e.g. one created with create_package, this creates a request that an administrator approves in the web "
+        + "interface (follow it with list_deployment_requests). The computers are scanned again afterwards.")]
     public async Task<object> DeployPackage(
         [Description("Package name or id.")] string package,
         [Description("Computer names or ids. Either this or collection.")] string[]? computers = null,
         [Description("Collection name or id; all its current members. Either this or computers.")] string? collection = null,
         [Description("Retry unreachable computers for up to 3 days.")] bool retryOffline = false,
         [Description("Computers outside their maintenance window wait until it opens.")] bool respectMaintenanceWindow = false,
+        [Description("Why, shown to the administrator if the package still needs approval.")] string? reason = null,
         CancellationToken ct = default)
     {
         await caller.RequireOperatorAsync();
-        if (!string.IsNullOrWhiteSpace(collection) && computers is { Length: > 0 })
-            throw new McpException("Give either computers or a collection, not both.");
+        var ids = await packageTools.TargetsAsync(computers, collection, ct);
         var target = McpCaller.Pick(await packages.ListAsync(ct), package, p => p.Id, p => p.Name, "package");
-        List<int> ids;
-        if (!string.IsNullOrWhiteSpace(collection))
-        {
-            var match = McpCaller.Pick(await collections.ListAsync(ct), collection, s => s.Collection.Id, s => s.Collection.Name, "collection");
-            ids = [.. await collections.GetMemberIdsAsync(match.Collection.Id, ct)];
-        }
-        else
-        {
-            ids = [.. (await caller.ComputersAsync(computers ?? [], ct)).Select(c => c.Id)];
-        }
-        if (ids.Count == 0)
-            throw new McpException("No computers to deploy to.");
-        await caller.RequireScopeAsync(ids, ct);
         try
         {
+            // Über MCP läuft nie ein nicht freigegebenes Paket, auch nicht mit Administrator-Token: dann wartet eine Anfrage auf einen Menschen.
+            if (!target.IsApproved)
+            {
+                var request = await requests.RequestAsync(target.Id, ids, caller.User.Identity?.Name ?? "MCP", reason, retryOffline, respectMaintenanceWindow, ct);
+                await caller.LogAsync("Deployment requested via MCP", $"{target.Name} on {ids.Count} computers{(reason is null ? "" : $": {reason}")}", ct);
+                return new { requestId = request.Id, package = target.Name, computers = ids.Count, status = "waiting for approval in the web interface (Deployments)" };
+            }
             var deployment = await deployments.StartAsync(target.Id, ids, new DeploymentOptions(ScanAfter: true, retryOffline, respectMaintenanceWindow)
             {
-                // Wie in der API: nur Administratoren dürfen ein noch nicht freigegebenes Paket verteilen.
-                RequireApproved = !await caller.IsAdminAsync(),
+                RequireApproved = true,
             }, ct);
             await caller.LogAsync("Deployment started via MCP", $"#{deployment.Id} {deployment.PackageName} on {string.Join(", ", deployment.Targets.Select(t => t.ComputerName))}", ct);
             return new { deployment.Id, deployment.PackageName, deployment.PackageVersion, computers = deployment.Targets.Select(t => t.ComputerName) };

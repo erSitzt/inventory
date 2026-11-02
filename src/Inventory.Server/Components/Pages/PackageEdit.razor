@@ -28,6 +28,12 @@
     </OperatorOnly>
 </MudStack>
 
+@if (_package.IsAiGenerated)
+{
+    <MudAlert Severity="Severity.Warning" Dense="true" Icon="@Icons.Material.Filled.SmartToy" Class="mb-2">
+        @L["Created by an AI assistant ({0}). Check the steps and files before you approve it; only an administrator in the web interface can approve it.", _package.AiCreatedBy!]
+    </MudAlert>
+}
 <MudAlert Severity="@(_package.IsApproved ? Severity.Success : Severity.Warning)" Dense="true" Class="mb-4">
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Wrap="Wrap.Wrap">
         @if (_package.IsApproved)
