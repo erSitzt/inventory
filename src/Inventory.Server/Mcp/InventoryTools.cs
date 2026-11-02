@@ -79,8 +79,11 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
         var c = await computerService.GetDetailAsync((await caller.ComputerAsync(computer, ct)).Id, ct) ?? throw new McpException("The computer no longer exists.");
         var list = c.Software.Where(s => string.IsNullOrWhiteSpace(filter) || s.Name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase))
             .OrderBy(s => s.Name).Select(s => new { s.Name, s.Version, s.Publisher, s.InstallDate, s.PerUser });
-        return McpCaller.Page(list, 500);
+        return McpCaller.Page(list);
     }
+
+    /// <summary>Mit Rechnernamen werden höchstens so viele Versionen ausgewertet.</summary>
+    private const int MaxVersionsWithComputers = 50;
 
     [McpServerTool(Name = "find_software", Title = "Find software", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description("Which versions of a program are installed and on how many computers. With computers = true also lists the computer names per version.")]
@@ -91,7 +94,7 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
             .OrderBy(s => s.Name).ThenBy(s => s.Version).ToList();
         if (!computers)
             return McpCaller.Page(matches.Select(s => new { s.Name, s.Version, s.Publisher, s.Computers }));
-        var keys = matches.Take(50).ToList();
+        var keys = matches.Take(MaxVersionsWithComputers).ToList();
         var names = keys.Select(k => k.Name).Distinct().ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var rows = await db.Software.AsNoTracking().Where(x => names.Contains(x.Name))
@@ -101,7 +104,8 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
             s.Name, s.Version, s.Publisher, s.Computers,
             computerNames = rows.Where(r => r.Name == s.Name && r.Version == s.Version).Select(r => r.Computer).Distinct().Order(StringComparer.OrdinalIgnoreCase).ToList(),
         });
-        return McpCaller.Page(result, 50);
+        // total und truncated beziehen sich auf alle Treffer, nicht nur auf die ausgewerteten.
+        return new { total = matches.Count, truncated = matches.Count > keys.Count, items = result };
     }
 
     [McpServerTool(Name = "missing_updates", Title = "Missing updates", ReadOnly = true, Idempotent = true, OpenWorld = false)]

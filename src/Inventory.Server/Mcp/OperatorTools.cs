@@ -42,7 +42,9 @@ public sealed class OperatorTools(McpCaller caller, ComputerService computerServ
     {
         await caller.RequireOperatorAsync();
         var targets = await caller.ComputersAsync(computers, ct);
+        await caller.RequireScopeAsync(targets.Select(c => c.Id), ct);
         await computerService.ProbeAsync(targets.Select(c => c.Id), ct);
+        await caller.LogAsync("Reachability checked via MCP", string.Join(", ", targets.Select(c => c.Name)), ct);
         var ids = targets.Select(c => c.Id).ToHashSet();
         return (await computerService.ListAsync(ct)).Where(c => ids.Contains(c.Id)).Select(c => new { c.Name, c.IsOnline, c.IpAddress, c.LastSeenUtc });
     }
@@ -72,6 +74,8 @@ public sealed class OperatorTools(McpCaller caller, ComputerService computerServ
         CancellationToken ct = default)
     {
         await caller.RequireOperatorAsync();
+        if (!string.IsNullOrWhiteSpace(collection) && computers is { Length: > 0 })
+            throw new McpException("Give either computers or a collection, not both.");
         var target = McpCaller.Pick(await packages.ListAsync(ct), package, p => p.Id, p => p.Name, "package");
         List<int> ids;
         if (!string.IsNullOrWhiteSpace(collection))
@@ -130,6 +134,9 @@ public sealed class OperatorTools(McpCaller caller, ComputerService computerServ
         try
         {
             var result = await ipAddresses.FindFreeAsync(view.Subnet.Id, count, contiguous, includeStale, fromTop, ct);
+            // Die Suche vermerkt Kandidaten, die geantwortet haben, als belegt; deshalb steht sie im Protokoll.
+            await caller.LogAsync("Free IP addresses searched via MCP",
+                $"{view.Subnet.Name}: {(result.Addresses.Count == 0 ? "none" : string.Join(", ", result.Addresses))}{(result.Answered.Count > 0 ? $"; answered: {string.Join(", ", result.Answered)}" : "")}", ct);
             return new { subnet = view.Subnet.Name, view.Subnet.Cidr, addresses = result.Addresses, answeredNow = result.Answered };
         }
         catch (ArgumentException ex)

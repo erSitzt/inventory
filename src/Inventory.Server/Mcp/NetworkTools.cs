@@ -34,16 +34,20 @@ public sealed class NetworkTools(DeviceService devices, IpAddressService ipAddre
 
     [McpServerTool(Name = "list_subnets", Title = "IP subnets", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description("Subnets of the IP address management with the number of addresses per status (in use, DNS only, stale, free, reserved, excluded).")]
-    public async Task<object> ListSubnets(CancellationToken ct = default) => (await ipAddresses.GetViewsAsync(ct)).Select(IpAddressEndpoints.ToDto);
+    public async Task<object> ListSubnets(CancellationToken ct = default) => McpCaller.Page((await ipAddresses.GetViewsAsync(ct)).Select(IpAddressEndpoints.ToDto));
+
+    /// <summary>Ein ganzes /24 passt in eine Antwort; größere Netze lassen sich über status eingrenzen.</summary>
+    public const int MaxAddresses = 256;
 
     [McpServerTool(Name = "subnet_addresses", Title = "Addresses of a subnet", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description("Every address of a subnet with its status and the evidence behind it (ping, ARP, inventory, DNS records, reservation). "
-        + "status: Free, Stale, DnsOnly, InUse, Excluded, Reserved. Stale = only old traces such as an orphaned PTR record.")]
+        + "status: Free, Stale, DnsOnly, InUse, Excluded, Reserved. Stale = only old traces such as an orphaned PTR record. "
+        + "At most 256 addresses per call (total/truncated tell whether more exist); narrow larger subnets with status.")]
     public async Task<object> SubnetAddresses([Description("Subnet name, CIDR or id.")] string subnet,
         [Description("Only addresses with this status.")] IpAddressStatus? status = null, CancellationToken ct = default)
     {
         var view = await ViewAsync(ipAddresses, subnet, ct);
-        return McpCaller.Page(view.Addresses.Where(a => status is null || a.Status == status).Select(IpAddressEndpoints.ToDto), 1024);
+        return McpCaller.Page(view.Addresses.Where(a => status is null || a.Status == status).Select(IpAddressEndpoints.ToDto), MaxAddresses);
     }
 
     internal static async Task<IpSubnetView> ViewAsync(IpAddressService ipAddresses, string subnet, CancellationToken ct)

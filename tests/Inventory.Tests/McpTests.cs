@@ -157,12 +157,33 @@ public sealed class McpTests : IClassFixture<McpTests.App>
         await using var client = await ConnectAsync(await _app.TokenAsync(AccessRole.Viewer));
         var result = await client.CallToolAsync("list_subnets");
         Assert.NotEqual(true, result.IsError);
-        Assert.Equal(JsonValueKind.Array, JsonDocument.Parse(Text(result)).RootElement.ValueKind);
+        var subnets = JsonDocument.Parse(Text(result)).RootElement;
+        Assert.Equal(JsonValueKind.Array, subnets.GetProperty("items").ValueKind);
+        Assert.False(subnets.GetProperty("truncated").GetBoolean());
 
         var devices = await client.CallToolAsync("list_devices", new Dictionary<string, object?> { ["kind"] = "Printer" });
         var root = JsonDocument.Parse(Text(devices)).RootElement;
         Assert.True(root.TryGetProperty("total", out _));
         Assert.All(root.GetProperty("items").EnumerateArray(), d => Assert.Equal("Printer", d.GetProperty("kind").GetString()));
+    }
+
+    [Fact]
+    public async Task Deploying_needs_either_computers_or_a_collection_and_probing_is_logged()
+    {
+        await _app.SetEnabledAsync(true);
+        await using var client = await ConnectAsync(await _app.TokenAsync(AccessRole.Operator));
+        var both = await client.CallToolAsync("deploy_package", new Dictionary<string, object?>
+        {
+            ["package"] = "anything", ["computers"] = new[] { "PC-1" }, ["collection"] = "All",
+        });
+        Assert.True(both.IsError);
+        Assert.Contains("not both", Text(both));
+
+        await _app.Services.GetRequiredService<ComputerService>().ImportAsync("MCP-PROBE-01");
+        var probe = await client.CallToolAsync("check_reachability", new Dictionary<string, object?> { ["computers"] = new[] { "MCP-PROBE-01" } });
+        Assert.NotEqual(true, probe.IsError);
+        var entry = Assert.Single(await _app.Services.GetRequiredService<AuditService>().ListAsync(20, filter: new AuditFilter(Action: "Reachability checked via MCP")));
+        Assert.Equal((AuditSource.Mcp, "MCP-PROBE-01"), (entry.Source, entry.Details));
     }
 
     private static string Text(CallToolResult result) => string.Concat(result.Content.OfType<TextContentBlock>().Select(c => c.Text));

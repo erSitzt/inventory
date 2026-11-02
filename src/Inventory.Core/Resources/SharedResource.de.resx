@@ -2171,6 +2171,9 @@
   <data name="Free editions" xml:space="preserve">
     <value>Kostenlose Editionen</value>
   </data>
+  <data name="Free IP addresses searched via MCP" xml:space="preserve">
+    <value>Freie IP-Adressen über MCP gesucht</value>
+  </data>
   <data name="Free IPs in {0}" xml:space="preserve">
     <value>Freie IPs in {0}</value>
   </data>
@@ -4285,6 +4288,9 @@
   </data>
   <data name="Re-captures the computer's hardware and software, e.g. after an installation." xml:space="preserve">
     <value>Erfasst Hard- und Software des Rechners neu, z. B. nach einer Installation.</value>
+  </data>
+  <data name="Reachability checked via MCP" xml:space="preserve">
+    <value>Erreichbarkeit über MCP geprüft</value>
   </data>
   <data name="Reads hosts, clusters and virtual machines from the vCenter, read-only, and matches the virtual machines to the inventoried computers. The licence calculation needs this for virtual machines on VMware." xml:space="preserve">
     <value>Liest Hosts, Cluster und virtuelle Maschinen aus dem vCenter, nur lesend, und ordnet die virtuellen Maschinen den inventarisierten Rechnern zu. Die Lizenzberechnung braucht das für virtuelle Maschinen auf VMware.</value>
