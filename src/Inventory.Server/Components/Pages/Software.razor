@@ -28,7 +28,7 @@
                      QuickFilter="@(g => string.IsNullOrWhiteSpace(_search) || g.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || (g.Publisher?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) || g.Versions.Any(v => v.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)))">
             <Columns>
                 <HierarchyColumn T="SoftwareGroup" />
-                <TemplateColumn Title="@L["Program"]" SortBy="g => g.Name">
+                <TemplateColumn Sortable="true" Title="@L["Program"]" SortBy="g => g.Name">
                     <CellTemplate>
                         <b>@context.Item.Name</b>
                         @if (context.Item.Versions.Count == 1 && context.Item.Versions[0].Name != context.Item.Name)
@@ -37,10 +37,10 @@
                         }
                     </CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="@L["Publisher"]" SortBy="g => g.Publisher">
+                <TemplateColumn Sortable="true" Title="@L["Publisher"]" SortBy="g => g.Publisher">
                     <CellTemplate>@context.Item.Publisher</CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="@L["Versions"]" SortBy="g => g.Versions.Count">
+                <TemplateColumn Sortable="true" Title="@L["Versions"]" SortBy="g => g.Versions.Count">
                     <CellTemplate>
                         @if (context.Item.Versions.Count == 1)
                         {
@@ -65,7 +65,7 @@
                         }
                     </CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="@L["Computers"]" SortBy="g => g.Computers">
+                <TemplateColumn Sortable="true" Title="@L["Computers"]" SortBy="g => g.Computers">
                     <CellTemplate>@context.Item.Computers</CellTemplate>
                 </TemplateColumn>
             </Columns>

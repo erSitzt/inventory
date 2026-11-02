@@ -112,7 +112,7 @@
              Dense="true" Hover="true" Loading="_busy" SortMode="SortMode.Single" RowsPerPage="50">
     <Columns>
         <SelectColumn T="Computer" />
-        <TemplateColumn Title="Name" SortBy="c => c.Name">
+        <TemplateColumn Sortable="true" Title="Name" SortBy="c => c.Name">
             <CellTemplate>
                 <span style="white-space: nowrap">
                     <MudTooltip Text="@Display.DeviceLabel(context.Item)">
@@ -151,7 +151,7 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Status" SortBy="c => c.IsOnline">
+        <TemplateColumn Sortable="true" Title="Status" SortBy="c => c.IsOnline">
             <CellTemplate>
                 @if (context.Item.AgentKeyHash is not null)
                 {
@@ -181,7 +181,7 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Operating system"]" SortBy="c => Display.Os(c)">
+        <TemplateColumn Sortable="true" Title="@L["Operating system"]" SortBy="c => Display.Os(c)">
             <CellTemplate>@Display.Os(context.Item)</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Security"]" Sortable="false">
@@ -211,7 +211,7 @@
         <PropertyColumn Property="c => c.Model" Title="@L["Model"]" />
         <PropertyColumn Property="c => c.LoggedOnUser" Title="@L["User"]" />
         <PropertyColumn Property="c => c.IpAddress" Title="@L["IP address"]" />
-        <TemplateColumn Title="@L["Last scan"]" SortBy="c => c.LastScanUtc">
+        <TemplateColumn Sortable="true" Title="@L["Last scan"]" SortBy="c => c.LastScanUtc">
             <CellTemplate>
                 @if (context.Item.LastScanError is not null)
                 {

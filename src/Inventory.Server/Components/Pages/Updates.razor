@@ -32,14 +32,14 @@
                     <MudDataGrid T="PendingUpdateSummary" Items="_report.Updates" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50"
                                  QuickFilter="@(u => Matches([u.KbIds, u.Title, .. u.ComputerNames]))">
                         <Columns>
-                            <TemplateColumn Title="KB" SortBy="u => u.KbIds" CellStyle="white-space: nowrap">
+                            <TemplateColumn Sortable="true" Title="KB" SortBy="u => u.KbIds" CellStyle="white-space: nowrap">
                                 <CellTemplate>@(context.Item.KbIds ?? "–")</CellTemplate>
                             </TemplateColumn>
                             <PropertyColumn Property="u => u.Title" Title="@L["Update title"]" />
-                            <TemplateColumn Title="@L["Classification"]" SortBy="u => u.Classification">
+                            <TemplateColumn Sortable="true" Title="@L["Classification"]" SortBy="u => u.Classification">
                                 <CellTemplate>@(context.Item.Classification is null ? "" : L[context.Item.Classification])</CellTemplate>
                             </TemplateColumn>
-                            <TemplateColumn Title="@L["Severity"]" SortBy="u => u.Severity">
+                            <TemplateColumn Sortable="true" Title="@L["Severity"]" SortBy="u => u.Severity">
                                 <CellTemplate>
                                     @if (context.Item.Severity is not null)
                                     {
@@ -51,7 +51,7 @@
                                     }
                                 </CellTemplate>
                             </TemplateColumn>
-                            <TemplateColumn Title="@L["Computers"]" SortBy="u => u.Computers">
+                            <TemplateColumn Sortable="true" Title="@L["Computers"]" SortBy="u => u.Computers">
                                 <CellTemplate><MudLink OnClick="@(() => SelectAsync(context.Item))">@context.Item.Computers</MudLink></CellTemplate>
                             </TemplateColumn>
                         </Columns>
@@ -96,10 +96,10 @@
             <MudDataGrid T="Computer" Items="_report.Computers" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50"
                          QuickFilter="@(c => Matches(c.Name))">
                 <Columns>
-                    <TemplateColumn Title="@L["Computer"]" SortBy="c => c.Name">
+                    <TemplateColumn Sortable="true" Title="@L["Computer"]" SortBy="c => c.Name">
                         <CellTemplate><MudLink Href="@($"computers/{context.Item.Id}")">@context.Item.Name</MudLink></CellTemplate>
                     </TemplateColumn>
-                    <TemplateColumn Title="@L["Status"]" SortBy="c => c.UpdatePendingSecurityCount">
+                    <TemplateColumn Sortable="true" Title="@L["Status"]" SortBy="c => c.UpdatePendingSecurityCount">
                         <CellTemplate>
                             <MudChip T="string" Size="Size.Small" Color="@(context.Item.UpdatePendingSecurityCount > 0 ? Color.Warning : context.Item.UpdatePendingSecurityCount == 0 ? Color.Success : Color.Default)">
                                 @(context.Item.UpdatePendingSecurityCount switch { null => L["unknown"], 0 => L["up to date"], _ => L["security updates missing"] })
@@ -108,13 +108,13 @@
                     </TemplateColumn>
                     <PropertyColumn Property="c => c.UpdatePendingSecurityCount" Title="@L["Pending security updates"]" />
                     <PropertyColumn Property="c => c.UpdatePendingCount" Title="@L["Pending updates"]" />
-                    <TemplateColumn Title="@L["Reboot pending"]" SortBy="c => c.UpdateRebootRequired">
+                    <TemplateColumn Sortable="true" Title="@L["Reboot pending"]" SortBy="c => c.UpdateRebootRequired">
                         <CellTemplate>@(context.Item.UpdateRebootRequired == true ? L["yes"] : "")</CellTemplate>
                     </TemplateColumn>
-                    <TemplateColumn Title="@L["Last installation"]" SortBy="c => c.UpdateLastInstallUtc">
+                    <TemplateColumn Sortable="true" Title="@L["Last installation"]" SortBy="c => c.UpdateLastInstallUtc">
                         <CellTemplate>@Display.LocalTime(context.Item.UpdateLastInstallUtc)</CellTemplate>
                     </TemplateColumn>
-                    <TemplateColumn Title="@L["Last search"]" SortBy="c => c.UpdateLastSearchUtc">
+                    <TemplateColumn Sortable="true" Title="@L["Last search"]" SortBy="c => c.UpdateLastSearchUtc">
                         <CellTemplate>@Display.LocalTime(context.Item.UpdateLastSearchUtc)</CellTemplate>
                     </TemplateColumn>
                 </Columns>

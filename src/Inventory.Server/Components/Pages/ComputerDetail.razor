@@ -306,13 +306,13 @@ else if (_computer.ReverseDnsMismatch)
         </MudText>
         <MudDataGrid T="ComputerApp" Items="_computer.Apps" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
             <Columns>
-                <TemplateColumn Title="@L["Name"]" SortBy="@(a => a.DisplayName ?? a.Name)">
+                <TemplateColumn Sortable="true" Title="@L["Name"]" SortBy="@(a => a.DisplayName ?? a.Name)">
                     <CellTemplate>@(context.Item.DisplayName ?? context.Item.Name)</CellTemplate>
                 </TemplateColumn>
                 <PropertyColumn Property="a => a.Name" Title="@L["Package name"]" />
                 <PropertyColumn Property="a => a.Version" Title="@L["Version"]" />
                 <PropertyColumn Property="a => a.Publisher" Title="@L["Publisher"]" />
-                <TemplateColumn Title="@L["New users"]" SortBy="@(a => a.Provisioned)">
+                <TemplateColumn Sortable="true" Title="@L["New users"]" SortBy="@(a => a.Provisioned)">
                     <CellTemplate>@(context.Item.Provisioned ? L["provisioned"] : "")</CellTemplate>
                 </TemplateColumn>
             </Columns>

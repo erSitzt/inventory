@@ -32,10 +32,10 @@ else
 {
     <MudDataGrid T="IpSubnetView" Items="_views" Dense="true" Hover="true" SortMode="SortMode.Single" Loading="!_loaded">
         <Columns>
-            <TemplateColumn Title="@L["Name"]" SortBy="v => v.Subnet.Name">
+            <TemplateColumn Sortable="true" Title="@L["Name"]" SortBy="v => v.Subnet.Name">
                 <CellTemplate><MudLink Href="@($"ip-addresses/{context.Item.Subnet.Id}")">@context.Item.Subnet.Name</MudLink></CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="@L["Network"]" SortBy="v => IpRanges.SortKey(v.Subnet.Cidr.Split('/')[0])">
+            <TemplateColumn Sortable="true" Title="@L["Network"]" SortBy="v => IpRanges.SortKey(v.Subnet.Cidr.Split('/')[0])">
                 <CellTemplate>
                     <span>@context.Item.Subnet.Cidr</span>
                     @if (context.Item.Subnet.Vlan is { } vlan)
@@ -47,10 +47,10 @@ else
             <TemplateColumn Title="@L["Usage"]" Sortable="false" CellStyle="min-width: 200px">
                 <CellTemplate><IpUsageBar View="context.Item" /></CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="@L["Free"]" SortBy="v => v.Count(IpAddressStatus.Free)" CellStyle="white-space: nowrap">
+            <TemplateColumn Sortable="true" Title="@L["Free"]" SortBy="v => v.Count(IpAddressStatus.Free)" CellStyle="white-space: nowrap">
                 <CellTemplate>@context.Item.Count(IpAddressStatus.Free) / @context.Item.Addresses.Count</CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="@L["Last scan"]" SortBy="v => v.Subnet.LastScanUtc">
+            <TemplateColumn Sortable="true" Title="@L["Last scan"]" SortBy="v => v.Subnet.LastScanUtc">
                 <CellTemplate>
                     @if (context.Item.Subnet.LastScanUtc is not null)
                     {

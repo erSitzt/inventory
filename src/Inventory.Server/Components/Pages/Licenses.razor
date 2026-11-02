@@ -22,19 +22,19 @@
 <MudDataGrid T="LicenseUsage" Items="_usage" Dense="true" Hover="true" SortMode="SortMode.Single">
     <Columns>
         <HierarchyColumn T="LicenseUsage" />
-        <TemplateColumn Title="@L["Licence"]" SortBy="u => u.License.Name">
+        <TemplateColumn Sortable="true" Title="@L["Licence"]" SortBy="u => u.License.Name">
             <CellTemplate>
                 <b>@context.Item.License.Name</b>
                 <MudText Typo="Typo.caption" Class="d-block" Style="color: var(--mud-palette-text-secondary)">@context.Item.License.Pattern</MudText>
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Owned"]" SortBy="u => u.License.Owned" CellStyle="text-align: right">
+        <TemplateColumn Sortable="true" Title="@L["Owned"]" SortBy="u => u.License.Owned" CellStyle="text-align: right">
             <CellTemplate>@context.Item.License.Owned</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Installed"]" SortBy="u => u.Installed" CellStyle="text-align: right">
+        <TemplateColumn Sortable="true" Title="@L["Installed"]" SortBy="u => u.Installed" CellStyle="text-align: right">
             <CellTemplate>@context.Item.Installed</CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Balance"]" SortBy="u => u.Missing">
+        <TemplateColumn Sortable="true" Title="@L["Balance"]" SortBy="u => u.Missing">
             <CellTemplate>
                 @if (context.Item.Exceeded)
                 {
@@ -50,7 +50,7 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Cost"]" SortBy="u => u.License.Owned * (u.License.CostPerLicense ?? 0)" CellStyle="text-align: right; white-space: nowrap">
+        <TemplateColumn Sortable="true" Title="@L["Cost"]" SortBy="u => u.License.Owned * (u.License.CostPerLicense ?? 0)" CellStyle="text-align: right; white-space: nowrap">
             <CellTemplate>
                 @if (context.Item.License.CostPerLicense is { } cost)
                 {
@@ -58,7 +58,7 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="@L["Valid until"]" SortBy="u => u.License.ValidUntil">
+        <TemplateColumn Sortable="true" Title="@L["Valid until"]" SortBy="u => u.License.ValidUntil">
             <CellTemplate>
                 @if (context.Item.License.ValidUntil is { } until)
                 {
