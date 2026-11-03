@@ -7,7 +7,10 @@ using Inventory.Core;
 
 namespace Inventory.Server.Api;
 
-public sealed record LicenseBalanceDto(string Product, string Name, string Unit, int? Need, int Stock, int? Delta, bool SoftwareAssurance);
+/// <param name="Missing">Was fehlt, wenn jede Lizenz nur ihre Version und ältere deckt.</param>
+/// <param name="Versions">Bedarf, Bestand und Fehlendes je Version.</param>
+public sealed record LicenseBalanceDto(string Product, string Name, string Unit, int? Need, int Stock, int? Delta, bool SoftwareAssurance, int? Missing = null,
+    IReadOnlyList<VersionBalance>? Versions = null);
 
 /// <param name="Product">Das Produkt; bei mehreren Teilen das höchste – die Aufteilung je Produkt steht in <paramref name="Parts"/>.</param>
 /// <param name="Parts">Kerne und Kosten je Produkt (z. B. SQL-VMs in Enterprise und in Standard); passt zu den Summen je Produkt.</param>
@@ -53,7 +56,7 @@ public static class LicensingEndpoints
                 h.VmsOnHost, h.Mobile, h.AdditionalCost, h.Decision.Select(Text).ToList());
             return new LicensingDto(overview.Rules.Version, overview.Rules.SqlServer.Version, DateTime.SpecifyKind(overview.CalculatedUtc, DateTimeKind.Utc),
                 overview.SoftwareAssurance, overview.SqlSoftwareAssurance,
-                overview.Balances.Select(b => new LicenseBalanceDto(b.Product.Key, b.Product.Name, b.Product.Unit, b.Need, b.Stock, b.Delta, b.SoftwareAssurance)).ToList(),
+                overview.Balances.Select(b => new LicenseBalanceDto(b.Product.Key, b.Product.Name, b.Product.Unit, b.Need, b.Stock, b.Delta, b.SoftwareAssurance, b.Missing, b.Versions)).ToList(),
                 overview.WindowsServer.Hosts.Select(Host).ToList(), overview.SqlServer.Entries.Select(Host).ToList(), overview.SqlServer.Free.Select(Text).ToList(),
                 overview.Gaps.Select(Text).ToList());
         }).WithSummary("Microsoft licence need and stock").WithDescription(

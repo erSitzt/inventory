@@ -16,12 +16,27 @@ public sealed record ProductBalance(LicenseProduct Product, int? Need, int Stock
     /// <summary>Bestand minus Bedarf; negativ = Unterdeckung.</summary>
     public int? Delta => Need is { } need ? Stock - need : null;
 
+    /// <summary>
+    /// Was fehlt, wenn jede Lizenz nur ihre Version und ältere deckt; kann trotz positiver <see cref="Delta"/> größer als 0 sein (etwa
+    /// genug Kerne für 2022, aber nicht für 2025). Ohne Angabe: die Unterdeckung aus <see cref="Delta"/>.
+    /// </summary>
+    public int? Missing { get => field ?? (Delta is { } delta ? Math.Max(0, -delta) : null); init; }
+
+    /// <summary>Bedarf, Bestand und Fehlendes je Version, die neueste zuerst; leer, wenn keine Version eine Rolle spielt.</summary>
+    public IReadOnlyList<VersionBalance> Versions { get; init; } = [];
+
     /// <summary>Was der Bedarf kostet.</summary>
     public decimal? NeedCost => Need is { } need && UnitPrice is { } price ? need * price : null;
 
     /// <summary>Was die Unterdeckung kostet, also noch zu kaufen ist; 0 bei Deckung.</summary>
-    public decimal? ShortfallCost => Delta is { } delta && UnitPrice is { } price ? Math.Max(0, -delta) * price : null;
+    public decimal? ShortfallCost => Missing is { } missing && UnitPrice is { } price ? missing * price : null;
 }
+
+/// <summary>Bedarf und Bestand eines Produkts in einer Version.</summary>
+/// <param name="Version">Jahreszahl; null = Bestand ohne Version (deckt jede) bzw. Bedarf ohne Versionsangabe.</param>
+/// <param name="Stock">Bestand, der bis zu dieser Version reicht (mit SA ggf. weiter als die gekaufte Version).</param>
+/// <param name="Missing">Bedarf dieser Version, den kein Bestand deckt; neuere Lizenzen decken ältere Versionen mit.</param>
+public sealed record VersionBalance(int? Version, int Need, int Stock, int Missing);
 
 /// <param name="SoftwareAssurance">SA bzw. Abonnement für Windows Server.</param>
 /// <param name="SqlSoftwareAssurance">SA bzw. Abonnement für SQL Server.</param>
@@ -232,12 +247,19 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         var windowsServerProducts = new[] { MicrosoftRules.WindowsServerStandard, MicrosoftRules.WindowsServerDatacenter, MicrosoftRules.WindowsServerPerVm };
         var softwareAssurance = entitlements.Any(e => windowsServerProducts.Contains(e.Product) && e.SoftwareAssuranceActive(today));
         var (hosts, gaps) = await HostsAsync(options.ClusterMobility, ct);
-        var stock = entitlements.GroupBy(e => e.Product).ToDictionary(g => g.Key, g => g.Sum(e => e.Quantity));
+        var reaches = entitlements.ToDictionary(e => e, e => Reaches(e, today));
+        LicenseStock Stock() => new(entitlements.Select(e => (e.Product, reaches[e], e.Quantity)));
+        var stock = Stock();
         var result = WindowsServerEngine.Calculate(hosts, new WindowsServerOptions(options.Prices, options.ClusterWide, softwareAssurance, stock), Rules);
 
         var sqlProducts = new[] { MicrosoftRules.SqlEnterprise, MicrosoftRules.SqlStandard };
         var sqlAssurance = entitlements.Any(e => sqlProducts.Contains(e.Product) && e.SoftwareAssuranceActive(today));
         var sql = SqlServerEngine.Calculate(await SqlMachinesAsync(ct), hosts.ToDictionary(h => h.Key), new SqlServerOptions(options.Prices, sqlAssurance, stock, options.ClusterWide), Rules);
+        // Gegenüberstellung je Version mit frischem Bestand: die neueste Version zuerst, denn nur neuere Lizenzen decken sie.
+        var needs = result.NeedByVersion.Concat(sql.NeedByVersion).ToList();
+        var balanceStock = Stock();
+        var missing = needs.OrderByDescending(n => n.Version ?? int.MinValue)
+            .Select(n => n with { Cores = n.Cores - balanceStock.Take(n.Product, n.Version, n.Cores) }).ToList();
 
         var balances = Rules.Products.Select(product =>
         {
@@ -246,8 +268,25 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
             int? need = windowsServerProducts.Contains(product.Key) ? result.Need.GetValueOrDefault(product.Key)
                 : sqlProducts.Contains(product.Key) ? sql.Need.GetValueOrDefault(product.Key) : null;
             var price = Rules.Price(product.Key, options.Prices);
-            return new ProductBalance(product, need, stock, sa, price > 0 ? product.PerCore ? price / Rules.PackSize : price : null);
+            var versions = VersionBalances(product.Key, needs, missing, entitlements, reaches);
+            return new ProductBalance(product, need, stock, sa, price > 0 ? product.PerCore ? price / Rules.PackSize : price : null)
+            {
+                Missing = need is null ? null : missing.Where(m => m.Product == product.Key).Sum(m => m.Cores),
+                Versions = versions,
+            };
         }).ToList();
+        foreach (var entitlement in entitlements.Where(e => VersionsOf(e.Product) is { Count: > 0 }))
+        {
+            var name = Rules.Product(entitlement.Product)?.Name ?? entitlement.Product;
+            var own = LicenseVersions.Parse(entitlement.Version, VersionsOf(entitlement.Product)!);
+            if (entitlement.Version is null)
+                gaps.Add(new("{0} ({1}): no version entered; it is counted as covering every version.", name, entitlement.ContractNumber ?? "–"));
+            else if (own is null)
+                gaps.Add(new("{0} ({1}): the version \"{2}\" is not understood; it is counted as covering every version.", name, entitlement.ContractNumber ?? "–", entitlement.Version));
+            else if (reaches[entitlement] > own)
+                gaps.Add(new("{0} ({1}): version {2} with Software Assurance until {3} also covers version {4}.", name, entitlement.ContractNumber ?? "–", own,
+                    entitlement.SoftwareAssuranceUntil!.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), reaches[entitlement]!));
+        }
         foreach (var expired in entitlements.Where(e => e.SoftwareAssuranceUntil is { } until && until < today))
             gaps.Add(new("Software Assurance of {0} ({1}) ended on {2}.", Rules.Product(expired.Product)?.Name ?? expired.Product, expired.ContractNumber ?? "–",
                 expired.SoftwareAssuranceUntil!.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
@@ -264,6 +303,33 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
             .OrderBy(c => c.Source, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
         return new LicensingOverview(result, sql, balances, [.. gaps, .. result.Gaps, .. sql.Gaps], Rules, softwareAssurance, sqlAssurance, options.Prices,
             time.GetUtcNow().UtcDateTime) { Clusters = clusters };
+    }
+
+    /// <summary>Die Versionen der Produktfamilie (Windows Server oder SQL Server); null für Produkte ohne Versionsrechnung.</summary>
+    private IReadOnlyList<ProductVersion>? VersionsOf(string product) => product switch
+    {
+        MicrosoftRules.WindowsServerStandard or MicrosoftRules.WindowsServerDatacenter or MicrosoftRules.WindowsServerPerVm => Rules.WindowsServer.Versions,
+        MicrosoftRules.SqlEnterprise or MicrosoftRules.SqlStandard => Rules.SqlServer.Versions,
+        _ => null,
+    };
+
+    /// <summary>Bis zu welcher Version ein Bestand reicht (mit SA weiter); null = ohne bzw. unverständliche Version, deckt jede.</summary>
+    private int? Reaches(LicenseEntitlement entitlement, DateOnly today) => VersionsOf(entitlement.Product) is { } versions
+        ? LicenseVersions.Covers(LicenseVersions.Parse(entitlement.Version, versions), entitlement.SoftwareAssuranceUntil, today, versions)
+        : null;
+
+    /// <summary>Je Version Bedarf, Bestand und Fehlendes; leer, solange weder Bedarf noch Bestand eine Version tragen.</summary>
+    private static List<VersionBalance> VersionBalances(string product, List<LicenseNeed> needs, List<LicenseNeed> missing, List<LicenseEntitlement> entitlements,
+        Dictionary<LicenseEntitlement, int?> reaches)
+    {
+        var own = entitlements.Where(e => e.Product == product).ToList();
+        var versions = needs.Where(n => n.Product == product).Select(n => n.Version).Concat(own.Select(e => reaches[e])).Distinct().ToList();
+        if (versions.All(v => v is null))
+            return [];
+        return versions.OrderByDescending(v => v ?? int.MinValue).Select(v => new VersionBalance(v,
+            needs.Where(n => n.Product == product && n.Version == v).Sum(n => n.Cores),
+            own.Where(e => reaches[e] == v).Sum(e => e.Quantity),
+            missing.Where(m => m.Product == product && m.Version == v).Sum(m => m.Cores))).ToList();
     }
 
     /// <summary>
@@ -320,12 +386,16 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         foreach (var view in await virtualization.HostsAsync(ct))
         {
             var vms = view.VirtualMachines.Select(v => new LicensingVm(v.Name, v.VirtualCpus, v.Running ?? true, WindowsServer(v.GuestComputerId, v.GuestOs), v.GuestComputerId)
-                { Os = v.GuestComputerId is { } id && computers.TryGetValue(id, out var guest) && guest.OsName is { } os ? os : v.GuestOs }).ToList();
+                {
+                    Os = v.GuestComputerId is { } id && computers.TryGetValue(id, out var guest) && guest.OsName is { } os ? os : v.GuestOs,
+                    Version = v.GuestComputerId is { } guestId && computers.TryGetValue(guestId, out var inventoried) && Version(inventoried) is { } known
+                        ? known : LicenseVersions.WindowsServer(v.GuestOs, null, Rules.WindowsServer.Versions),
+                }).ToList();
             if (view.Source == VirtualHostSource.HyperV && view.ComputerId is { } hostId && computers.TryGetValue(hostId, out var host))
             {
                 hostComputers.Add(hostId);
                 hosts.Add(Mobility(new LicensingHost($"computer:{hostId}", host.Name, host.ClusterName, "Hyper-V", host.CpuSockets, host.CpuCoresPerSocket, host.CpuCores,
-                    true, host.OsEdition, hostId, vms) { ClusterKey = host.ClusterName is { } cluster ? $"hyperv|{cluster.ToUpperInvariant()}" : null }));
+                    true, host.OsEdition, hostId, vms) { ClusterKey = host.ClusterName is { } cluster ? $"hyperv|{cluster.ToUpperInvariant()}" : null, Version = Version(host) }));
             }
             else
                 // Die Verwaltung gehört zur Quelle: gleichnamige Cluster zweier vCenter sind verschiedene Cluster.
@@ -346,10 +416,13 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
             }
             hosts.Add(new LicensingHost($"computer:{computer.Id}", computer.Name, computer.ClusterName, "physical", computer.CpuSockets, computer.CpuCoresPerSocket, computer.CpuCores,
                 true, computer.OsEdition, computer.Id, [])
-                { ClusterKey = computer.ClusterName is { } cluster ? $"physical|{cluster.ToUpperInvariant()}" : null });
+                { ClusterKey = computer.ClusterName is { } cluster ? $"physical|{cluster.ToUpperInvariant()}" : null, Version = Version(computer) });
         }
         return (hosts, gaps);
     }
+
+    /// <summary>Version von Windows Server laut Inventar (Build, sonst Name); null = unbekannt.</summary>
+    private int? Version(Computer computer) => LicenseVersions.WindowsServer(computer.OsName, computer.OsVersion, Rules.WindowsServer.Versions);
 
     private static bool IsWindowsServer(Computer computer) =>
         computer.OsProductType is 2 or 3 || (computer.OsName ?? "").Contains("Server", StringComparison.OrdinalIgnoreCase);
@@ -363,16 +436,21 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         var rows = balances.Select(b => new string?[]
         {
             L[b.Product.Name], L[b.Product.PerCore ? "Cores" : "Licences"], b.Need?.ToString(CultureInfo.InvariantCulture), b.Stock.ToString(CultureInfo.InvariantCulture),
-            b.Delta?.ToString(CultureInfo.InvariantCulture), Status(b), Money(b.NeedCost), Money(b.ShortfallCost),
+            b.Delta?.ToString(CultureInfo.InvariantCulture), Status(b), Money(b.NeedCost), Money(b.ShortfallCost), ByVersion(b),
         }).ToList();
         if (total)
-            rows.Add([L["Total"], null, null, null, null, null, Money(balances.Sum(b => b.NeedCost ?? 0)), Money(balances.Sum(b => b.ShortfallCost ?? 0))]);
+            rows.Add([L["Total"], null, null, null, null, null, Money(balances.Sum(b => b.NeedCost ?? 0)), Money(balances.Sum(b => b.ShortfallCost ?? 0)), null]);
         return new(
         [
             new("product", L["Product"]), new("unit", L["Unit"]), new("need", L["Need"], true), new("stock", L["Stock"], true), new("delta", L["Difference"], true),
-            new("status", L["Status"]), new("needCost", L["Cost of the need"], true), new("shortfallCost", L["Still to buy"], true),
+            new("status", L["Status"]), new("needCost", L["Cost of the need"], true), new("shortfallCost", L["Still to buy"], true), new("versions", L["By version"]),
         ], rows);
     }
+
+    /// <summary>Kurz je Version: Bedarf, Bestand und was fehlt, z. B. "2025: need 64, stock 0, missing 64 · 2022: need 96, stock 128".</summary>
+    private string? ByVersion(ProductBalance balance) => balance.Versions.Count == 0 ? null : string.Join(" · ", balance.Versions.Select(v =>
+        (v.Version?.ToString(CultureInfo.InvariantCulture) ?? L["without version"]) + ": "
+        + (balance.Need is null ? L["stock {0}", v.Stock] : v.Missing > 0 ? L["need {0}, stock {1}, missing {2}", v.Need, v.Stock, v.Missing] : L["need {0}, stock {1}", v.Need, v.Stock])));
 
     private static string? Money(decimal? value) => value?.ToString("N0", CultureInfo.CurrentCulture);
 
@@ -527,11 +605,11 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         _ => source,
     };
 
-    public string Status(ProductBalance balance) => balance.Delta switch
+    public string Status(ProductBalance balance) => (balance.Delta, balance.Missing) switch
     {
-        null => L["not calculated"],
-        < 0 => L["shortfall"],
-        0 => L["covered"],
+        (null, _) => L["not calculated"],
+        (_, > 0) => L["shortfall"],
+        (0, _) => L["covered"],
         _ => L["surplus"],
     };
 }

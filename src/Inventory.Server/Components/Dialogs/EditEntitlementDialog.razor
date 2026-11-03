@@ -14,7 +14,8 @@
             </MudSelect>
             <MudNumericField T="int" @bind-Value="_quantity" Label="@(Licensing.Rules.Product(_product)?.PerCore == true ? L["Cores"] : L["Licences"])" Variant="Variant.Outlined" Min="1"
                              HelperText="@(Licensing.Rules.Product(_product)?.PerCore == true ? L["Number of cores, not packs: a 16-core licence is 16."] : null)" />
-            <MudTextField @bind-Value="_version" Label="@L["Version"]" Variant="Variant.Outlined" Placeholder="2022" />
+            <MudTextField @bind-Value="_version" Label="@L["Version"]" Variant="Variant.Outlined" Placeholder="2022"
+                          HelperText="@L["Covers this version and older ones; with Software Assurance also every version released until its end."]" />
             <MudDatePicker @bind-Date="_saUntil" Label="@L["Software Assurance or subscription until"]" Variant="Variant.Outlined" Clearable="true" Editable="true"
                            HelperText="@L["Empty = no Software Assurance. With active SA, Windows Server may also be licensed per virtual machine."]" />
             <MudTextField @bind-Value="_contract" Label="@L["Contract"]" Variant="Variant.Outlined" />

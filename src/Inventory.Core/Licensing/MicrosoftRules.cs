@@ -24,10 +24,17 @@ public sealed record SqlServerRules(string Version, DateOnly ValidFrom, string S
 {
     /// <summary>Die Dokumente von Microsoft zu SQL Server, zum Nachlesen.</summary>
     public IReadOnlyList<RuleDocument> Documents { get; init; } = [];
+
+    /// <summary>Die Versionen mit Hauptversion und Erscheinungsdatum; Lizenzen decken ihre Version und ältere.</summary>
+    public IReadOnlyList<ProductVersion> Versions { get; init; } = [];
 }
 
 public sealed record WindowsServerRules(int MinCoresPerProcessor, int MinCoresPerServer, int StandardVmsPerLicense, int PerVmMinCores,
-    bool PerVmRequiresSoftwareAssurance, int LicenceReassignmentDays);
+    bool PerVmRequiresSoftwareAssurance, int LicenceReassignmentDays)
+{
+    /// <summary>Die Versionen mit Build und Erscheinungsdatum; Lizenzen decken ihre Version und ältere.</summary>
+    public IReadOnlyList<ProductVersion> Versions { get; init; } = [];
+}
 
 /// <summary>
 /// Die Regeln der Microsoft-Lizenzierung aus rules/microsoft (eingebettet). Werte stehen nicht im Code: eine geänderte Regel ist

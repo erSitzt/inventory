@@ -52,11 +52,26 @@ else
                             <td style="text-align: right">@(balance.Delta is { } delta ? delta.ToString("+#;-#;0") : "–")</td>
                             <td>
                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
-                                         Color="@(balance.Delta switch { null => Color.Default, < 0 => Color.Error, _ => Color.Success })">@Service.Status(balance)</MudChip>
+                                         Color="@(balance.Delta is null ? Color.Default : balance.Missing > 0 ? Color.Error : Color.Success)">@Service.Status(balance)</MudChip>
                             </td>
                             <td style="text-align: right">@(balance.NeedCost?.ToString("N0") ?? "–")</td>
                             <td style="text-align: right">@(balance.ShortfallCost is > 0 ? balance.ShortfallCost.Value.ToString("N0") : balance.ShortfallCost is null ? "–" : "0")</td>
                         </tr>
+                        @foreach (var version in balance.Versions)
+                        {
+                            <tr style="color: var(--mud-palette-text-secondary)">
+                                <td style="padding-left: 32px">@(version.Version is { } year ? L["Version {0}", year] : L["without version"])</td>
+                                <td style="text-align: right">@(balance.Need is null ? "–" : version.Need.ToString())</td>
+                                <td style="text-align: right">@version.Stock</td>
+                                <td style="text-align: right">@(balance.Need is null ? "–" : version.Missing > 0 ? (-version.Missing).ToString() : "")</td>
+                                <td colspan="3">
+                                    @if (balance.Need is not null && version.Missing > 0)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Error">@L["{0} cores of version {1} or later are missing", version.Missing, version.Version?.ToString() ?? "–"]</MudText>
+                                    }
+                                </td>
+                            </tr>
+                        }
                     }
                     <tr style="font-weight: 600; border-top: 2px solid var(--mud-palette-text-primary)">
                         <td>@L["Total"]</td><td></td><td></td><td></td><td></td>

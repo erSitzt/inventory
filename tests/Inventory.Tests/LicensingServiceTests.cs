@@ -65,7 +65,7 @@ public class LicensingServiceTests
         var balance = overview.Balances.Single(b => b.Product.Key == MicrosoftRules.WindowsServerDatacenter);
         Assert.Equal((64, 48, -16, true), (balance.Need!.Value, balance.Stock, balance.Delta!.Value, overview.SoftwareAssurance));
         Assert.Equal("shortfall", service.Status(balance));
-        Assert.Equal(["product", "unit", "need", "stock", "delta", "status", "needCost", "shortfallCost"], service.BalanceTable(overview).Columns.Select(c => c.Key));
+        Assert.Equal(["product", "unit", "need", "stock", "delta", "status", "needCost", "shortfallCost", "versions"], service.BalanceTable(overview).Columns.Select(c => c.Key));
         // SQL Server: SRV-SQL01 (Standard 2022) im Hyper-V-Cluster ohne SA → ganzer Host in Standard, und zwar auf beiden Hosts, denn die VM
         // kann auf jeden wandern, die Lizenz aber nicht mit; die VMware-VM ohne Host ist eine Lücke.
         var sql = overview.SqlServer.Entries.Where(e => e.Chosen is not null).ToList();

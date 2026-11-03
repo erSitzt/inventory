@@ -932,6 +932,9 @@
   <data name="By update" xml:space="preserve">
     <value>Nach Update</value>
   </data>
+  <data name="By version" xml:space="preserve">
+    <value>Nach Version</value>
+  </data>
   <data name="by {0}" xml:space="preserve">
     <value>von {0}</value>
   </data>
@@ -1327,6 +1330,9 @@
   </data>
   <data name="Covered by the existing stock." xml:space="preserve">
     <value>Durch den vorhandenen Bestand gedeckt.</value>
+  </data>
+  <data name="Covers this version and older ones; with Software Assurance also every version released until its end." xml:space="preserve">
+    <value>Deckt diese und ältere Versionen; mit Software Assurance auch jede Version, die bis zu ihrem Ende erscheint.</value>
   </data>
   <data name="Create" xml:space="preserve">
     <value>Anlegen</value>
@@ -2384,6 +2390,9 @@
   <data name="Hide" xml:space="preserve">
     <value>Ausblenden</value>
   </data>
+  <data name="Highest Windows Server version to cover: {0}; licences of version {0} or later cover it (downgrade rights)." xml:space="preserve">
+    <value>Höchste zu deckende Windows-Server-Version: {0}; Lizenzen der Version {0} oder neuer decken sie (Downgrade-Recht).</value>
+  </data>
   <data name="History" xml:space="preserve">
     <value>Verlauf</value>
   </data>
@@ -3223,6 +3232,9 @@
   </data>
   <data name="need {0}, stock {1}" xml:space="preserve">
     <value>Bedarf {0}, Bestand {1}</value>
+  </data>
+  <data name="need {0}, stock {1}, missing {2}" xml:space="preserve">
+    <value>Bedarf {0}, Bestand {1}, fehlen {2}</value>
   </data>
   <data name="Needs attention" xml:space="preserve">
     <value>Handlungsbedarf</value>
@@ -5630,6 +5642,9 @@
   <data name="Stock" xml:space="preserve">
     <value>Bestand</value>
   </data>
+  <data name="stock {0}" xml:space="preserve">
+    <value>Bestand {0}</value>
+  </data>
   <data name="Stop" xml:space="preserve">
     <value>Beenden</value>
   </data>
@@ -6650,6 +6665,9 @@
   <data name="Version less than (optional)" xml:space="preserve">
     <value>Version kleiner als (optional)</value>
   </data>
+  <data name="Version {0}" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
   <data name="Version {0} available" xml:space="preserve">
     <value>Version {0} verfügbar</value>
   </data>
@@ -7091,6 +7109,9 @@
   <data name="without sign-in" xml:space="preserve">
     <value>ohne Anmeldung</value>
   </data>
+  <data name="without version" xml:space="preserve">
+    <value>ohne Version</value>
+  </data>
   <data name="Wrong computer responds" xml:space="preserve">
     <value>Falscher Rechner antwortet</value>
   </data>
@@ -7153,6 +7174,15 @@
   </data>
   <data name="{0} ({1}), allowed for {2}." xml:space="preserve">
     <value>{0} ({1}), erlaubt für {2}.</value>
+  </data>
+  <data name="{0} ({1}): no version entered; it is counted as covering every version." xml:space="preserve">
+    <value>{0} ({1}): keine Version eingetragen; zählt so, als decke der Bestand jede Version.</value>
+  </data>
+  <data name="{0} ({1}): the version &quot;{2}&quot; is not understood; it is counted as covering every version." xml:space="preserve">
+    <value>{0} ({1}): Die Version „{2}“ ist nicht verständlich; zählt so, als decke der Bestand jede Version.</value>
+  </data>
+  <data name="{0} ({1}): version {2} with Software Assurance until {3} also covers version {4}." xml:space="preserve">
+    <value>{0} ({1}): Version {2} mit Software Assurance bis {3} deckt auch Version {4}.</value>
   </data>
   <data name="{0} accounts are excluded by the rules." xml:space="preserve">
     <value>Die Regeln schließen {0} Konten aus.</value>
@@ -7255,6 +7285,12 @@
   </data>
   <data name="{0} cores" xml:space="preserve">
     <value>{0} Kerne</value>
+  </data>
+  <data name="{0} cores in stock are for older versions than {1} and do not cover this host." xml:space="preserve">
+    <value>{0} Kerne im Bestand gelten für ältere Versionen als {1} und decken diesen Host nicht.</value>
+  </data>
+  <data name="{0} cores of version {1} or later are missing" xml:space="preserve">
+    <value>{0} Kerne der Version {1} oder neuer fehlen</value>
   </data>
   <data name="{0} cores once, any number of VMs" xml:space="preserve">
     <value>{0} Kerne einmal, beliebig viele VMs</value>
@@ -7541,8 +7577,17 @@
   <data name="{0}: the number of processors or cores is unknown; the host cannot be calculated." xml:space="preserve">
     <value>{0}: Anzahl der Prozessoren oder Kerne unbekannt; der Host lässt sich nicht berechnen.</value>
   </data>
+  <data name="{0}: the SQL Server version is unknown; it is counted as {1}." xml:space="preserve">
+    <value>{0}: Die SQL-Server-Version ist unbekannt; sie zählt als {1}.</value>
+  </data>
   <data name="{0}: the Web edition can only be licensed through SPLA (hosting) and is not calculated here." xml:space="preserve">
     <value>{0}: die Web-Edition ist nur über SPLA (Hosting) lizenzierbar und wird hier nicht berechnet.</value>
+  </data>
+  <data name="{0}: the Windows Server version of the host is unknown; it is counted as {1}." xml:space="preserve">
+    <value>{0}: Die Windows-Server-Version des Hosts ist unbekannt; sie zählt als {1}.</value>
+  </data>
+  <data name="{0}: the Windows Server version of {1} is unknown; counted as {2}." xml:space="preserve">
+    <value>{0}: Die Windows-Server-Version von {1} ist unbekannt; zählt als {2}.</value>
   </data>
   <data name="{0}: virtual machine without a known host; it is not included." xml:space="preserve">
     <value>{0}: virtuelle Maschine ohne bekannten Host; sie ist nicht berücksichtigt.</value>

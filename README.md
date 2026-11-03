@@ -392,6 +392,12 @@ record – an estimate according to versioned rules (`rules/microsoft/*.json`), 
 - **Stock** is recorded by hand or imported as CSV (`Product;Quantity;Version;SA until;Contract;Notes`); products are the
   keys from the rules file. Need, stock and difference per product show at a glance; CSV, PDF and `GET /api/licensing`
   export them.
+- **Versions count**: a licence covers its version and older ones (downgrade rights), never a newer one. Each host needs
+  the highest Windows Server version running on it – host and VMs, in a cluster whose VMs move all VMs of the cluster;
+  SQL Server likewise the highest instance version. With Software Assurance a licence also covers every version released
+  until the SA ends, and keeps that right afterwards. Need, stock and what is missing are shown per version (e.g. enough
+  cores for 2022, but not for 2025). Stock without a version covers every version, with a hint; an unknown version on a
+  server counts as the newest and is listed as a gap.
 - **Data gaps** – virtual machines without a known host, hosts without processor data, expired Software Assurance – are
   listed instead of being estimated.
 - **SQL Server** is calculated from the instances found by the scan, highest edition per server or VM: physical servers
