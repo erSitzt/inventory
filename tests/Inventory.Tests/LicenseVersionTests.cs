@@ -25,6 +25,9 @@ public class LicenseVersionTests
         Assert.Equal(2016, LicenseVersions.WindowsServer("Microsoft Windows Server 2016 Datacenter", null, windows));
         // So meldet vSphere manche Gäste: keine Version.
         Assert.Null(LicenseVersions.WindowsServer("Microsoft Windows Server 2019 or later (64-bit)", null, windows));
+        // Eine Jahreszahl nach der neuesten bekannten Version ist unbekannt.
+        Assert.Null(LicenseVersions.WindowsServer("Windows Server 2031 Datacenter", null, windows));
+        Assert.Null(LicenseVersions.Parse("2031", windows));
         var sql = Rules.SqlServer.Versions;
         Assert.Equal(2022, LicenseVersions.Sql(16, sql));
         Assert.Equal((2022, 2019, (int?)null), (LicenseVersions.Parse("Windows Server 2022", windows), LicenseVersions.Parse("15", sql), LicenseVersions.Parse("current", sql)));
@@ -106,5 +109,18 @@ public class LicenseVersionTests
         overview = await service.CalculateAsync();
         Assert.Equal(0, overview.Balances.Single(b => b.Product.Key == MicrosoftRules.WindowsServerDatacenter).Missing);
         Assert.Contains(overview.Gaps, g => g.Text.Contains("no version entered") && g.Args.Contains("EA-2"));
+    }
+
+    [Fact]
+    public void One_unknown_sql_instance_makes_the_machine_count_as_the_newest_version()
+    {
+        var vm = new SqlMachine(1, "vm-sql", true, null, null, null, 4,
+            [new SqlInstanceInfo("A", SqlEdition.Standard, 15, false), new SqlInstanceInfo("B", SqlEdition.Standard, null, false)]);
+        var result = SqlServerEngine.Calculate([vm], new Dictionary<string, LicensingHost>(), new SqlServerOptions(new Dictionary<string, decimal>()), Rules);
+        var entry = Assert.Single(result.Entries);
+        Assert.Equal(LicenseVersions.Newest(Rules.SqlServer.Versions), entry.Variants[0].Version);
+        // Als neueste Version braucht sie für die Lizenzierung je VM SA.
+        Assert.False(entry.Variants[0].Allowed);
+        Assert.Contains(result.Gaps, g => g.Text.Contains("SQL Server version is unknown") && g.Args.Contains("vm-sql"));
     }
 }

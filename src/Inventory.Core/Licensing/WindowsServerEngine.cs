@@ -168,7 +168,7 @@ public static class WindowsServerEngine
             // Die Lizenzen eines Hosts müssen die höchste Version decken, die auf ihm läuft: Host und VMs, im wandernden Cluster alle VMs des Clusters.
             var version = new[] { host.RunsWindowsServer ? host.Version ?? newest : null, vms.Select(VmVersion).Max(),
                 mobile && host.ClusterKey is { } versionKey ? clusterVersion.GetValueOrDefault(versionKey) : null }.Max();
-            var unknownVersion = vms.Where(v => v.WindowsServer == true && v.Version is null).Select(v => v.Name).ToList();
+            var unknownVersion = vms.Where(v => v.Version is null).Select(v => v.Name).ToList();
             if (newest is not null && host.RunsWindowsServer && host.Version is null)
                 gaps.Add(new("{0}: the Windows Server version of the host is unknown; it is counted as {1}.", host.Name, newest));
             if (newest is not null && unknownVersion.Count > 0)

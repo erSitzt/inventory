@@ -91,9 +91,16 @@ public static class SqlServerEngine
         var paid = machines.Where(m => m.Edition is SqlEdition.Enterprise or SqlEdition.Standard).ToList();
         // Die Lizenzen müssen die höchste Version decken; eine unbekannte zählt vorsichtshalber als die neueste.
         var newest = LicenseVersions.Newest(sql.Versions);
-        int? Version(SqlMachine machine) => LicenseVersions.Sql(machine.MaxMajorVersion, sql.Versions) ?? newest;
+        // Jede kostenpflichtige Instanz zählt: eine einzige unbekannte macht die Maschine unbekannt.
+        bool Unknown(SqlMachine machine) => machine.Instances.Any(i => i.Edition is SqlEdition.Enterprise or SqlEdition.Standard && LicenseVersions.Sql(i.MajorVersion, sql.Versions) is null);
+        int? Version(SqlMachine machine) => Unknown(machine) ? newest : LicenseVersions.Sql(machine.MaxMajorVersion, sql.Versions);
+        // Je VM ab SQL Server 2022 nur mit SA; eine unbekannte Version zählt als die neueste und damit auch hier.
+        var saFrom = LicenseVersions.Sql(sql.PerVmRequiresSoftwareAssuranceFromMajorVersion, sql.Versions);
+        bool NeedsSa(SqlMachine machine) => saFrom is { } from && Version(machine) is { } year
+            ? year >= from
+            : machine.MaxMajorVersion is { } major && major >= sql.PerVmRequiresSoftwareAssuranceFromMajorVersion;
         if (newest is not null)
-            foreach (var machine in paid.Where(m => LicenseVersions.Sql(m.MaxMajorVersion, sql.Versions) is null))
+            foreach (var machine in paid.Where(Unknown))
                 gaps.Add(new("{0}: the SQL Server version is unknown; it is counted as {1}.", machine.Name, newest));
 
         // Physische Server: alle Kerne der Edition.
@@ -160,7 +167,7 @@ public static class SqlServerEngine
                 perVmCost += Cost(product, vmCores);
                 perVm.Add($"{vm.Name} ({vm.Edition}) {vmCores}");
             }
-            var needsSa = perVmSet.Any(v => v.MaxMajorVersion is { } major && major >= sql.PerVmRequiresSoftwareAssuranceFromMajorVersion);
+            var needsSa = perVmSet.Any(NeedsSa);
             var perVmAllowed = options.SoftwareAssurance || !needsSa;
             steps.Add(perVmSet.Count == 0
                 ? new("Per VM: no SQL Server VM runs on this host right now; with SA the licences move with the VMs: 0 cores.")
@@ -230,7 +237,7 @@ public static class SqlServerEngine
         {
             var cores = rules.RoundToPacks(Math.Max(vm.VirtualCpus ?? sql.MinCoresPerVm, sql.MinCoresPerVm));
             var product = Product(vm.Edition);
-            var needsSa = vm.MaxMajorVersion is { } major && major >= sql.PerVmRequiresSoftwareAssuranceFromMajorVersion;
+            var needsSa = NeedsSa(vm);
             var allowed = options.SoftwareAssurance || !needsSa;
             var steps = new List<LicensingNote>
             {

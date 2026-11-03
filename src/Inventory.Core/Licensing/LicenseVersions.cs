@@ -39,8 +39,11 @@ public static partial class LicenseVersions
             return byBuild.Year;
         if (osName is null || osName.Contains("or later", StringComparison.OrdinalIgnoreCase))
             return null;
-        return YearPattern().Match(osName) is { Success: true } match ? int.Parse(match.Groups[1].Value) : null;
+        return YearPattern().Match(osName) is { Success: true } match ? Known(int.Parse(match.Groups[1].Value), versions) : null;
     }
+
+    /// <summary>Eine Jahreszahl nach der neuesten bekannten Version ist keine bekannte Version: null, damit sie als unbekannt zählt.</summary>
+    private static int? Known(int year, IReadOnlyList<ProductVersion> versions) => Newest(versions) is { } newest && year > newest ? null : year;
 
     /// <summary>Version von SQL Server aus der Hauptversion (16 = 2022); eine unbekannte Hauptversion ist null.</summary>
     public static int? Sql(int? major, IReadOnlyList<ProductVersion> versions) =>
@@ -55,7 +58,7 @@ public static partial class LicenseVersions
         if (string.IsNullOrWhiteSpace(text))
             return null;
         if (YearPattern().Match(text) is { Success: true } match)
-            return int.Parse(match.Groups[1].Value);
+            return Known(int.Parse(match.Groups[1].Value), versions);
         return int.TryParse(text.Trim().Split('.')[0], out var major) ? Sql(major, versions) : null;
     }
 
