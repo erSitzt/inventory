@@ -407,6 +407,12 @@ ein Audit.
 - Der **Bestand** wird von Hand erfasst oder als CSV importiert (`Product;Quantity;Version;SA until;Contract;Notes`);
   Produkte sind die Schlüssel aus der Regeldatei. Bedarf, Bestand und Differenz je Produkt stehen auf einen Blick; CSV,
   PDF und `GET /api/licensing` exportieren sie.
+- **Die Version zählt**: Eine Lizenz deckt ihre Version und ältere (Downgrade-Recht), nie eine neuere. Jeder Host braucht
+  die höchste Windows-Server-Version, die auf ihm läuft – Host und VMs, im Cluster mit wandernden VMs alle VMs des
+  Clusters; SQL Server ebenso die höchste Version seiner Instanzen. Mit Software Assurance deckt eine Lizenz zusätzlich
+  jede Version, die bis zum Ende der SA erscheint, und behält dieses Recht danach. Bedarf, Bestand und Fehlendes stehen
+  je Version da (etwa genug Kerne für 2022, aber nicht für 2025). Bestand ohne Version deckt jede Version, mit Hinweis;
+  eine unbekannte Version auf einem Server zählt als die neueste und steht bei den Lücken.
 - **Datenlücken** – virtuelle Maschinen ohne bekannten Host, Hosts ohne Prozessorangaben, abgelaufene Software
   Assurance – werden aufgelistet statt geschätzt.
 - **SQL Server** wird aus den gescannten Instanzen berechnet, mit der höchsten Edition je Server bzw. VM: physische

@@ -65,7 +65,8 @@ public sealed class NetworkTools(DeviceService devices, IpAddressService ipAddre
         return new
         {
             calculatedUtc = DateTime.SpecifyKind(overview.CalculatedUtc, DateTimeKind.Utc),
-            balance = overview.Balances.Select(b => new { product = b.Product.Name, unit = b.Product.Unit, need = b.Need, stock = b.Stock, delta = b.Delta }),
+            balance = overview.Balances.Select(b => new { product = b.Product.Name, unit = b.Product.Unit, need = b.Need, stock = b.Stock, delta = b.Delta, missing = b.Missing,
+                versions = b.Versions.Select(v => new { version = v.Version, need = v.Need, stock = v.Stock, missing = v.Missing }) }),
             windowsServerHosts = overview.WindowsServer.Hosts.Count,
             sqlServerEntries = overview.SqlServer.Entries.Count,
             gaps = overview.Gaps.Select(licensing.Format),

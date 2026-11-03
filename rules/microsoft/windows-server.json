@@ -1,5 +1,5 @@
 {
-  "version": "2025.1",
+  "version": "2025.2",
   "validFrom": "2025-01-01",
   "source": "Microsoft Product Terms and Windows Server 2025 licensing guide; check against the current Product Terms before relying on the result.",
   "packSize": 2,
@@ -9,7 +9,14 @@
     "standardVmsPerLicense": 2,
     "perVmMinCores": 8,
     "perVmRequiresSoftwareAssurance": true,
-    "licenceReassignmentDays": 90
+    "licenceReassignmentDays": 90,
+    "versions": [
+      { "year": 2012, "build": 9200, "released": "2012-10-30" },
+      { "year": 2016, "build": 14393, "released": "2016-10-15" },
+      { "year": 2019, "build": 17763, "released": "2018-11-13" },
+      { "year": 2022, "build": 20348, "released": "2021-08-18" },
+      { "year": 2025, "build": 26100, "released": "2024-11-01" }
+    ]
   },
   "products": [
     { "key": "WindowsServerStandardCore", "name": "Windows Server Standard (core)", "unit": "core", "listPricePerPack": 147.0 },
