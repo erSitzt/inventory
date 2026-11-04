@@ -263,7 +263,7 @@ public sealed partial class ReportService
         new("program", L["Program"], r => r.Name),
         new("version", L["Version"], r => r.Version),
         new("publisher", L["Publisher"], r => r.Publisher),
-        new("installed", L["Installed"], r => r.InstallDate),
+        new("installed", L["Installed"], r => InventoryDates.Format(r.InstallDate, Date)),
         new("architecture", L["Architecture"], r => r.Is64Bit ? "64 Bit" : "32 Bit"),
         new("perUser", L["Installed per user"], r => YesNo(r.PerUser)),
     ];
