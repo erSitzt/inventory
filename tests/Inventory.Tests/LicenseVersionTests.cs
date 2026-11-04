@@ -103,6 +103,11 @@ public class LicenseVersionTests
         Assert.Contains(balance.Versions, v => v.Version == 2016 && v.Stock == need + 16 && v.Need == 0);
         Assert.Equal(need, balance.Versions.Where(v => v.Version > 2016).Sum(v => v.Missing));
         Assert.Contains(service.BalanceTable(overview).Rows, r => r[^1] is { } text && text.Contains("2016"));
+        // Woher die Zahlen kommen: die Hosts mit ihren Kernen, die Bestandseinträge mit Vertrag.
+        var needSources = service.NeedSources(overview, MicrosoftRules.WindowsServerDatacenter);
+        Assert.Contains(needSources, line => line.Contains("HV-01", StringComparison.OrdinalIgnoreCase) && line.Contains("cores, version 20"));
+        Assert.Empty(service.NeedSources(overview, MicrosoftRules.WindowsServerDatacenter, balance.Versions.Single(v => v.Version == 2016)));
+        Assert.Equal([$"EA-1: {need + 16} · Version 2016"], service.StockSources(await service.EntitlementsAsync(), MicrosoftRules.WindowsServerDatacenter));
 
         // Ohne Version zählt der Bestand wie bisher für jede, mit Hinweis.
         await service.SaveEntitlementAsync(new LicenseEntitlement { Product = MicrosoftRules.WindowsServerDatacenter, Quantity = need, ContractNumber = "EA-2" });

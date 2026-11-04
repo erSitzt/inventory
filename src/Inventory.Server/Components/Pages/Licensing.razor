@@ -47,8 +47,8 @@ else
                     {
                         <tr>
                             <td>@L[balance.Product.Name]@(balance.SoftwareAssurance ? " · SA" : "")</td>
-                            <td style="text-align: right">@(balance.Need?.ToString() ?? "–")</td>
-                            <td style="text-align: right">@balance.Stock</td>
+                            <td style="text-align: right">@Sourced(balance.Need?.ToString() ?? "–", balance.Need is > 0 ? Service.NeedSources(_overview, balance.Product.Key) : [])</td>
+                            <td style="text-align: right">@Sourced(balance.Stock.ToString(), Service.StockSources(_entitlements, balance.Product.Key))</td>
                             <td style="text-align: right">@(balance.Delta is { } delta ? delta.ToString("+#;-#;0") : "–")</td>
                             <td>
                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
@@ -61,8 +61,8 @@ else
                         {
                             <tr style="color: var(--mud-palette-text-secondary)">
                                 <td style="padding-left: 32px">@(version.Version is { } year ? L["Version {0}", year] : L["without version"])</td>
-                                <td style="text-align: right">@(balance.Need is null ? "–" : version.Need.ToString())</td>
-                                <td style="text-align: right">@version.Stock</td>
+                                <td style="text-align: right">@Sourced(balance.Need is null ? "–" : version.Need.ToString(), version.Need > 0 ? Service.NeedSources(_overview, balance.Product.Key, version) : [])</td>
+                                <td style="text-align: right">@Sourced(version.Stock.ToString(), Service.StockSources(_entitlements, balance.Product.Key, version))</td>
                                 <td style="text-align: right">@(balance.Need is null ? "–" : version.Missing > 0 ? (-version.Missing).ToString() : "")</td>
                                 <td colspan="3">
                                     @if (balance.Need is not null && version.Missing > 0)
@@ -213,6 +213,19 @@ else
         _entitlements = await Service.EntitlementsAsync();
         _overview = await Service.CalculateAsync();
     }
+
+    /// <summary>Eine Zahl mit Tooltip, woraus sie sich zusammensetzt; ohne Herkunft nur die Zahl.</summary>
+    private static RenderFragment Sourced(string value, IReadOnlyList<string> sources) => sources.Count == 0
+        ? @<span>@value</span>
+        : @<MudTooltip Placement="Placement.Left">
+              <TooltipContent>
+                  @foreach (var source in sources)
+                  {
+                      <div style="text-align: left">@source</div>
+                  }
+              </TooltipContent>
+              <ChildContent><span tabindex="0" style="text-decoration: underline dotted; cursor: help">@value</span></ChildContent>
+          </MudTooltip>;
 
     private string ProductName(string key) => L[Service.Rules.Product(key)?.Name ?? key];
 
