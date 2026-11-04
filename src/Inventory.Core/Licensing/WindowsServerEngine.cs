@@ -66,7 +66,14 @@ public sealed record WindowsServerOptions(IReadOnlyDictionary<string, decimal> P
 
 /// <summary>Ein Teil einer Variante in einem Produkt, z. B. die Enterprise-VMs einer Lizenzierung je VM.</summary>
 /// <param name="Version">Die Version, die die Lizenzen mindestens haben müssen; null = ohne Versionsangabe.</param>
-public sealed record LicensePart(string Product, int Cores, decimal Cost, int? Version = null);
+public sealed record LicensePart(string Product, int Cores, decimal Cost, int? Version = null)
+{
+    /// <summary>Die Rechner, für die dieser Teil zählt, zur Anzeige (SQL Server: die VMs auf dem Host); leer, wenn der Teil für den Rechner selbst zählt.</summary>
+    public IReadOnlyList<string> Machines { get; init; } = [];
+
+    /// <summary>Rechner aus dem Cluster, die hierher wandern können und deshalb mitzählen (SQL Server ohne SA).</summary>
+    public IReadOnlyList<string> MayMoveHere { get; init; } = [];
+}
 
 /// <param name="Product">Das Produkt; bei mehreren Teilen das höchste.</param>
 /// <param name="Cores">Zu lizenzierende Kerne, auf Pakete gerundet (alle Teile zusammen).</param>

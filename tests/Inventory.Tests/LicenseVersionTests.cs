@@ -107,6 +107,9 @@ public class LicenseVersionTests
         var needSources = service.NeedSources(overview, MicrosoftRules.WindowsServerDatacenter);
         Assert.Contains(needSources, line => line.Contains("HV-01", StringComparison.OrdinalIgnoreCase) && line.Contains("cores, version 20"));
         Assert.Empty(service.NeedSources(overview, MicrosoftRules.WindowsServerDatacenter, balance.Versions.Single(v => v.Version == 2016)));
+        // SQL Server: die VMs auf dem Host und die, die ohne SA aus dem Cluster hierher wandern können.
+        Assert.Equal(["hv-01 · HVCLUSTER01 (srv-sql01): 32 cores, version 2022", "hv-02 · HVCLUSTER01 (may move here: srv-sql01): 32 cores, version 2022"],
+            service.NeedSources(overview, MicrosoftRules.SqlStandard));
         Assert.Equal([$"EA-1: {need + 16} · Version 2016"], service.StockSources(await service.EntitlementsAsync(), MicrosoftRules.WindowsServerDatacenter));
 
         // Ohne Version zählt der Bestand wie bisher für jede, mit Hinweis.

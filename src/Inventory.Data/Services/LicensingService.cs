@@ -313,11 +313,23 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
         overview.WindowsServer.Hosts.Concat(overview.SqlServer.Entries).Where(e => e.Chosen is not null)
             .Select(e => (Entry: e, Parts: e.Chosen!.Parts.Where(p => p.Product == product && p.Cores > 0 && (version is null || p.Version == version.Version)).ToList()))
             .Where(x => x.Parts.Count > 0)
-            .Select(x => (Name: x.Entry.Host.Name + (x.Entry.Host.Cluster is { } cluster ? $" · {cluster}" : ""), Cores: x.Parts.Sum(p => p.Cores),
+            .Select(x => (Name: x.Entry.Host.Name + (x.Entry.Host.Cluster is { } cluster ? $" · {cluster}" : "") + Machines(x.Parts), Cores: x.Parts.Sum(p => p.Cores),
                 Version: version is null ? x.Parts.Max(p => p.Version) : null))
             .OrderByDescending(x => x.Cores).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .Select(x => x.Version is { } year ? L["{0}: {1} cores, version {2}", x.Name, x.Cores, year].Value : L["{0}: {1} cores", x.Name, x.Cores].Value)
             .ToList();
+
+    /// <summary>
+    /// Die Rechner hinter einem Bedarf, z. B. die SQL-Server-VMs auf dem Host und die, die aus dem Cluster hierher wandern können:
+    /// " (sql-01, sql-02; may move here: sql-03)"; leer ohne.
+    /// </summary>
+    private string Machines(IReadOnlyList<LicensePart> parts)
+    {
+        var here = parts.SelectMany(p => p.Machines).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var moving = parts.SelectMany(p => p.MayMoveHere).Distinct(StringComparer.OrdinalIgnoreCase).Except(here, StringComparer.OrdinalIgnoreCase).ToList();
+        var text = string.Join("; ", new[] { string.Join(", ", here), moving.Count > 0 ? L["may move here: {0}", string.Join(", ", moving)].Value : "" }.Where(t => t.Length > 0));
+        return text.Length > 0 ? $" ({text})" : "";
+    }
 
     /// <summary>Woher der Bestand eines Produkts kommt: die Einträge mit Vertrag, Menge, Version und SA. Mit Version nur die, die bis zu ihr reichen.</summary>
     public List<string> StockSources(IEnumerable<LicenseEntitlement> entitlements, string product, VersionBalance? version = null)

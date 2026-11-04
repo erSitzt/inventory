@@ -3098,6 +3098,9 @@
   <data name="Matches {0} programs: {1}" xml:space="preserve">
     <value>Trifft {0} Programme: {1}</value>
   </data>
+  <data name="may move here: {0}" xml:space="preserve">
+    <value>kann hierher wandern: {0}</value>
+  </data>
   <data name="MCP server on" xml:space="preserve">
     <value>MCP-Server eingeschaltet</value>
   </data>

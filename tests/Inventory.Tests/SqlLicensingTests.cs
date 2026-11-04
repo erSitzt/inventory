@@ -135,10 +135,23 @@ public class SqlLicensingTests
         var entry = Assert.Single(result.Entries);
         Assert.Equal([(MicrosoftRules.SqlEnterprise, 4), (MicrosoftRules.SqlStandard, 6)], entry.Chosen!.Parts.Select(p => (p.Product, p.Cores)).OrderBy(p => p.Product));
         Assert.Equal((4, 6), (result.Need[MicrosoftRules.SqlEnterprise], result.Need[MicrosoftRules.SqlStandard]));
+        // Jeder Teil nennt die VMs, für die er zählt.
+        Assert.Equal([(MicrosoftRules.SqlEnterprise, "sql-ent"), (MicrosoftRules.SqlStandard, "sql-std")],
+            entry.Chosen.Parts.Select(p => (p.Product, string.Join(",", p.Machines))).OrderBy(p => p.Product));
         // Bestand an Standard deckt nur den Standard-Teil; zu kaufen bleibt die Enterprise-VM.
         var stock = new Dictionary<string, int> { [MicrosoftRules.SqlStandard] = 6 };
         var covered = Assert.Single(SqlServerEngine.Calculate(vms, hosts, ListPrices with { SoftwareAssurance = true, Stock = stock }, Rules).Entries);
         Assert.Equal(6, covered.FromStock);
         Assert.Equal(Rules.Price(MicrosoftRules.SqlEnterprise, new Dictionary<string, decimal>()) * 2, covered.AdditionalCost);
+    }
+
+    [Fact]
+    public void A_fully_licensed_host_names_its_sql_vms()
+    {
+        var hosts = new Dictionary<string, LicensingHost> { ["h1"] = Host("h1", 1, 8) };
+        var vms = Enumerable.Range(1, 6).Select(i => Vm(i, $"sql-{7 - i:00}", "h1", 4, Instance("Standard Edition (64-bit)"))).ToArray();
+        var entry = Assert.Single(SqlServerEngine.Calculate(vms, hosts, ListPrices, Rules).Entries);
+        Assert.Equal(8, entry.Chosen!.Cores);
+        Assert.Equal(["sql-01", "sql-02", "sql-03", "sql-04", "sql-05", "sql-06"], Assert.Single(entry.Chosen.Parts).Machines);
     }
 }
