@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logos/logo-dark.png">
+    <img src="docs/logos/logo.png" alt="Inventory" height="80">
+  </picture>
+</p>
+
 # Inventory
 
 **English** · [Deutsch](README.de.md)

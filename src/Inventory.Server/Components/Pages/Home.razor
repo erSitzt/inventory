@@ -40,7 +40,7 @@
                 }
             </MudText>
             <MudStack Row="true" Spacing="2" Class="mt-4" Wrap="Wrap.Wrap">
-                <MudButton Href="computers" Variant="Variant.Filled" Style="background: rgba(255,255,255,0.92); color: #312e81" StartIcon="@Icons.Material.Filled.Computer">@L["Computers"]</MudButton>
+                <MudButton Href="computers" Variant="Variant.Filled" Style="background: rgba(255,255,255,0.92); color: #01244f" StartIcon="@Icons.Material.Filled.Computer">@L["Computers"]</MudButton>
                 <AdminOnly>
                     <MudButton Href="run" Variant="Variant.Outlined" Style="color: #fff; border-color: rgba(255,255,255,0.6)" StartIcon="@Icons.Material.Filled.Terminal">@L["Run command"]</MudButton>
                 </AdminOnly>
@@ -295,7 +295,7 @@
     {
         var values = _trends!.Days.Select(value).ToList();
         var delta = values[^1] - values[0];
-        var color = neutral || delta == 0 ? "#6366f1" : delta > 0 ? "#ef4444" : "#10b981";
+        var color = neutral || delta == 0 ? "#0493e3" : delta > 0 ? "#ef4444" : "#10b981";
         var change = delta == 0 ? L["unchanged"].Value : (delta > 0 ? "+" : "−") + Math.Abs(delta);
         return @<div class="trend">
             <div class="head">

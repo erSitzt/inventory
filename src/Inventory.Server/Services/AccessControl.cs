@@ -262,13 +262,15 @@ public static class AccessControl
         <!DOCTYPE html>
         <html lang="{{System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{title}} – Inventory</title>
+        <link rel="icon" href="/favicon.ico" sizes="any">
         <style>
           body { font-family: Roboto, Segoe UI, sans-serif; background: #f5f5f5; margin: 0; display: grid; place-items: center; min-height: 100vh; color: #212121; }
           main { background: #fff; padding: 32px 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.15); max-width: 360px; }
           h1 { font-size: 1.4rem; margin: 0 0 12px; }
-          .button.secondary { background: #fff; color: #594ae2; border: 1px solid #594ae2; }
-          .button { display: block; margin-top: 12px; padding: 10px 16px; border-radius: 4px; background: #594ae2; color: #fff; text-decoration: none; text-align: center; }
+          .logo { display: block; height: 48px; width: auto; margin: 0 0 20px; }
+          .button.secondary { background: #fff; color: #0664aa; border: 1px solid #0664aa; }
+          .button { display: block; margin-top: 12px; padding: 10px 16px; border-radius: 4px; background: #0664aa; color: #fff; text-decoration: none; text-align: center; }
         </style></head>
-        <body><main><h1>{{title}}</h1>{{body}}</main></body></html>
+        <body><main><img class="logo" src="/img/logo.png" alt="Inventory"><h1>{{title}}</h1>{{body}}</main></body></html>
         """;
 }
