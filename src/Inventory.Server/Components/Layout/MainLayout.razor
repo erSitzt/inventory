@@ -19,7 +19,7 @@
             <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" aria-label="@L["Show or hide the menu"]"
                            OnClick="@(() => _drawerOpen = !_drawerOpen)" />
         </MudTooltip>
-        <MudText Typo="Typo.h6">Inventory</MudText>
+        <a href="" class="app-logo"><img src="img/logo-dark.png" alt="Inventory" height="32" /></a>
         <MudSpacer />
         @if (Updates.UpdateAvailable)
         {
@@ -196,19 +196,19 @@
 
     private static readonly IReadOnlyList<(string Code, string Name)> AvailableLanguages = Languages.Available();
 
-    /// <summary>Etwas wärmere Farben und rundere Kanten als der MudBlazor-Standard; alle Seiten erben das.</summary>
+    /// <summary>Die Farben des Logos (Dunkelblau, Blau, Grün) und rundere Kanten als der MudBlazor-Standard; alle Seiten erben das.</summary>
     private static readonly MudTheme Theme = new()
     {
         PaletteLight = new PaletteLight
         {
-            Primary = "#4f46e5",
-            Secondary = "#0ea5e9",
+            Primary = "#0664aa",
+            Secondary = "#0493e3",
             Info = "#0284c7",
             Success = "#059669",
             Warning = "#d97706",
             Error = "#dc2626",
             Background = "#f5f6fa",
-            AppbarBackground = "#1e1b4b",
+            AppbarBackground = "#01244f",
             DrawerBackground = "#ffffff",
             Surface = "#ffffff",
             LinesDefault = "#e5e7eb",
@@ -217,11 +217,11 @@
         },
         PaletteDark = new PaletteDark
         {
-            Primary = "#818cf8",
-            Secondary = "#38bdf8",
+            Primary = "#38b2fa",
+            Secondary = "#9cea42",
             Background = "#0f172a",
             Surface = "#1e293b",
-            AppbarBackground = "#1e1b4b",
+            AppbarBackground = "#01244f",
             DrawerBackground = "#111827",
             LinesDefault = "#334155",
         },

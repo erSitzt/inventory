@@ -203,20 +203,23 @@ public static class AgentEndpoints
               <meta name="viewport" content="width=device-width, initial-scale=1">
               <meta name="robots" content="noindex">
               <title>{{H(L["Install the Inventory agent"])}}</title>
+              <link rel="icon" href="/favicon.ico" sizes="any">
               <style>
-                body { font-family: "Segoe UI", system-ui, sans-serif; background: #f4f5fa; color: #1e1b4b; margin: 0; }
-                main { max-width: 640px; margin: 8vh auto; background: #fff; border-radius: 14px; padding: 32px 40px; box-shadow: 0 6px 24px rgba(30, 27, 75, .08); }
+                body { font-family: "Segoe UI", system-ui, sans-serif; background: #f4f5fa; color: #01244f; margin: 0; }
+                main { max-width: 640px; margin: 8vh auto; background: #fff; border-radius: 14px; padding: 32px 40px; box-shadow: 0 6px 24px rgba(1, 36, 79, .08); }
                 h1 { font-size: 1.5rem; margin-top: 0; }
+                .logo { display: block; height: 48px; width: auto; margin-bottom: 20px; }
                 h2 { font-size: 1.05rem; margin-top: 2rem; }
                 li { margin-bottom: 1rem; line-height: 1.5; }
-                .button { display: inline-block; margin-top: .5rem; padding: .65rem 1.2rem; border-radius: 8px; background: #4f46e5; color: #fff; text-decoration: none; font-weight: 600; }
-                pre { background: #1e1b4b; color: #e0e7ff; padding: 12px 16px; border-radius: 8px; overflow-x: auto; user-select: all; }
+                .button { display: inline-block; margin-top: .5rem; padding: .65rem 1.2rem; border-radius: 8px; background: #0664aa; color: #fff; text-decoration: none; font-weight: 600; }
+                pre { background: #01244f; color: #e0f2fe; padding: 12px 16px; border-radius: 8px; overflow-x: auto; user-select: all; }
                 .note { color: #555; font-size: .9rem; }
                 .warn { color: #b45309; }
               </style>
             </head>
             <body>
               <main>
+                <img class="logo" src="/img/logo.png" alt="Inventory">
                 <h1>{{H(L["Install the Inventory agent"])}}</h1>
                 {{body}}
               </main>

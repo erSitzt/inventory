@@ -33,6 +33,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName=Inventory
+SetupIconFile=..\src\Inventory.Server\wwwroot\favicon.ico
+UninstallDisplayIcon={app}\Inventory.Server.exe
 ; Der Dienst wird im Code gestoppt; der Neustart-Manager würde ihn sonst selbst beenden wollen.
 CloseApplications=no
 SetupLogging=yes
