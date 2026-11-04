@@ -186,7 +186,7 @@ public static class SqlServerEngine
             variants.Add(new LicenseVariant(mainProduct, perVmCores.Values.Sum(), perVmCost, perVmAllowed, perVmAllowed ? null : new("Only with Software Assurance or a subscription."))
             {
                 Plan = options.SoftwareAssurance ? LicenseVariant.PlanVm : LicenseVariant.PlanHost,
-                Parts = perVmCores.Select(p => new LicensePart(p.Key, p.Value, Cost(p.Key, p.Value), perVmVersion[p.Key])).ToList(),
+                Parts = perVmCores.Select(p => new LicensePart(p.Key, p.Value, Cost(p.Key, p.Value), perVmVersion[p.Key]) { Machines = Names(own.Where(v => Product(v.Edition) == p.Key)), MayMoveHere = Names(perVmSet.Except(own).Where(v => Product(v.Edition) == p.Key)) }).ToList(),
                 Version = perVmSet.Select(Version).Max(),
                 Formula = perVmSet.Count == 0 ? new("no SQL Server VM on this host right now")
                     : perVmSet.Count > own.Count ? new("{0} VMs of the cluster × their vCPUs, at least {1} each (without SA on every host)", perVmSet.Count, sql.MinCoresPerVm)
@@ -208,6 +208,7 @@ public static class SqlServerEngine
                 {
                     Plan = LicenseVariant.PlanHost,
                     Version = covered.Select(Version).Max(),
+                    Parts = [new LicensePart(hostProduct, hostCores, hostCost, covered.Select(Version).Max()) { Machines = Names(own), MayMoveHere = Names(covered.Except(own)) }],
                     Formula = unlimited ? new("all {0} cores of the host, with SA any number of SQL VMs", hostCores) : new("all {0} cores of the host, covers up to {0} SQL VMs", hostCores),
                 });
                 steps.Add(new("Whole host in {0}: {1} processors × {2} cores (at least {3} per processor) = {4} cores, {5:N0}; covers up to {4} SQL VMs.",
@@ -216,7 +217,8 @@ public static class SqlServerEngine
                 {
                     var enterpriseCost = Cost(MicrosoftRules.SqlEnterprise, hostCores);
                     variants.Add(new LicenseVariant(MicrosoftRules.SqlEnterprise, hostCores, enterpriseCost, true)
-                        { Plan = LicenseVariant.PlanHost, Version = covered.Select(Version).Max(), Formula = new("all {0} cores of the host, with SA any number of SQL VMs", hostCores) });
+                        { Plan = LicenseVariant.PlanHost, Version = covered.Select(Version).Max(),
+                          Parts = [new LicensePart(MicrosoftRules.SqlEnterprise, hostCores, enterpriseCost, covered.Select(Version).Max()) { Machines = Names(own), MayMoveHere = Names(covered.Except(own)) }], Formula = new("all {0} cores of the host, with SA any number of SQL VMs", hostCores) });
                     steps.Add(new("Whole host in Enterprise with SA: {0} cores, {1:N0}; any number of SQL VMs.", hostCores, enterpriseCost));
                 }
                 else if (unlimited)
@@ -232,6 +234,9 @@ public static class SqlServerEngine
             entries.Add(new HostLicensing(hostInfo with { VirtualMachines = own.Select(v => new LicensingVm(v.Name, v.VirtualCpus, true, true, v.ComputerId)).ToList() },
                 0, covered.Count, variants, null, [], steps) { VmsOnHost = own.Count, Mobile = mobile });
         }
+
+        // Die Namen der SQL-Server-VMs, für die ein Teil zählt, zur Anzeige.
+        static List<string> Names(IEnumerable<SqlMachine> vms) => vms.Select(v => v.Name).Order(StringComparer.OrdinalIgnoreCase).ToList();
 
         HostLicensing PerVmOnly(SqlMachine vm)
         {
