@@ -224,7 +224,7 @@ else
                       <div style="text-align: left">@source</div>
                   }
               </TooltipContent>
-              <ChildContent><span style="text-decoration: underline dotted; cursor: help">@value</span></ChildContent>
+              <ChildContent><span tabindex="0" style="text-decoration: underline dotted; cursor: help">@value</span></ChildContent>
           </MudTooltip>;
 
     private string ProductName(string key) => L[Service.Rules.Product(key)?.Name ?? key];
