@@ -305,6 +305,39 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
             time.GetUtcNow().UtcDateTime) { Clusters = clusters };
     }
 
+    /// <summary>
+    /// Woher der Bedarf eines Produkts kommt: je Host bzw. Maschine die Kerne der gewählten Variante, die größten zuerst. Mit Version nur
+    /// der Bedarf dieser Version.
+    /// </summary>
+    public List<string> NeedSources(LicensingOverview overview, string product, VersionBalance? version = null) =>
+        overview.WindowsServer.Hosts.Concat(overview.SqlServer.Entries).Where(e => e.Chosen is not null)
+            .Select(e => (Entry: e, Parts: e.Chosen!.Parts.Where(p => p.Product == product && p.Cores > 0 && (version is null || p.Version == version.Version)).ToList()))
+            .Where(x => x.Parts.Count > 0)
+            .Select(x => (Name: x.Entry.Host.Name + (x.Entry.Host.Cluster is { } cluster ? $" · {cluster}" : ""), Cores: x.Parts.Sum(p => p.Cores),
+                Version: version is null ? x.Parts.Max(p => p.Version) : null))
+            .OrderByDescending(x => x.Cores).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.Version is { } year ? L["{0}: {1} cores, version {2}", x.Name, x.Cores, year].Value : L["{0}: {1} cores", x.Name, x.Cores].Value)
+            .ToList();
+
+    /// <summary>Woher der Bestand eines Produkts kommt: die Einträge mit Vertrag, Menge, Version und SA. Mit Version nur die, die bis zu ihr reichen.</summary>
+    public List<string> StockSources(IEnumerable<LicenseEntitlement> entitlements, string product, VersionBalance? version = null)
+    {
+        var today = DateOnly.FromDateTime(time.GetLocalNow().DateTime);
+        return entitlements.Where(e => e.Product == product && (version is null || Reaches(e, today) == version.Version))
+            .OrderByDescending(e => e.Quantity).ThenBy(e => e.ContractNumber)
+            .Select(e =>
+            {
+                var text = $"{e.ContractNumber ?? L["without contract"]}: {e.Quantity}";
+                if (e.Version is { } own)
+                    text += " · " + L["Version {0}", own];
+                if (e.SoftwareAssuranceUntil is { } until)
+                    text += " · " + L["SA until {0}", until.ToString("d", CultureInfo.CurrentCulture)];
+                if (Reaches(e, today) is { } reach && reach != LicenseVersions.Parse(e.Version, VersionsOf(e.Product) ?? []))
+                    text += " · " + L["covers up to {0}", reach];
+                return text;
+            }).ToList();
+    }
+
     /// <summary>Die Versionen der Produktfamilie (Windows Server oder SQL Server); null für Produkte ohne Versionsrechnung.</summary>
     private IReadOnlyList<ProductVersion>? VersionsOf(string product) => product switch
     {

@@ -1334,6 +1334,9 @@
   <data name="Covers this version and older ones; with Software Assurance also every version released until its end." xml:space="preserve">
     <value>Deckt diese und ältere Versionen; mit Software Assurance auch jede Version, die bis zu ihrem Ende erscheint.</value>
   </data>
+  <data name="covers up to {0}" xml:space="preserve">
+    <value>deckt bis {0}</value>
+  </data>
   <data name="Create" xml:space="preserve">
     <value>Anlegen</value>
   </data>
@@ -5003,6 +5006,9 @@
   <data name="SA until" xml:space="preserve">
     <value>SA bis</value>
   </data>
+  <data name="SA until {0}" xml:space="preserve">
+    <value>SA bis {0}</value>
+  </data>
   <data name="Save" xml:space="preserve">
     <value>Speichern</value>
   </data>
@@ -7091,6 +7097,9 @@
   <data name="Without cluster" xml:space="preserve">
     <value>Ohne Cluster</value>
   </data>
+  <data name="without contract" xml:space="preserve">
+    <value>ohne Vertrag</value>
+  </data>
   <data name="Without launcher: commands to copy" xml:space="preserve">
     <value>Ohne Starter: Befehle zum Kopieren</value>
   </data>
@@ -7591,6 +7600,12 @@
   </data>
   <data name="{0}: virtual machine without a known host; it is not included." xml:space="preserve">
     <value>{0}: virtuelle Maschine ohne bekannten Host; sie ist nicht berücksichtigt.</value>
+  </data>
+  <data name="{0}: {1} cores" xml:space="preserve">
+    <value>{0}: {1} Kerne</value>
+  </data>
+  <data name="{0}: {1} cores, version {2}" xml:space="preserve">
+    <value>{0}: {1} Kerne, Version {2}</value>
   </data>
   <data name="{0}: {1} of {2} addresses answered, {3} with DNS entries." xml:space="preserve">
     <value>{0}: {1} von {2} Adressen haben geantwortet, {3} mit DNS-Einträgen.</value>
