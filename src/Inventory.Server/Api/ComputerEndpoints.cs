@@ -155,7 +155,7 @@ public static class ComputerEndpoints
 
         group.MapGet("{id:int}/software", async (int id, ComputerService computers, CancellationToken ct) =>
             await computers.GetDetailAsync(id, ct) is { } computer
-                ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new SoftwareDto(s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser, s.CarriedOver)))
+                ? Results.Ok(computer.Software.OrderBy(s => s.Name).Select(s => new SoftwareDto(s.Name, s.Version, s.Publisher, InventoryDates.Iso(s.InstallDate), s.Is64Bit, s.PerUser, s.CarriedOver)))
                 : Results.NotFound())
             .WithSummary("Installed software").WithDescription("perUser = installed in one user's profile only. carriedOver = kept from an earlier scan because that user was not logged on during the last scan.").Produces<IEnumerable<SoftwareDto>>().Produces(404);
 

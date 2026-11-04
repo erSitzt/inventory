@@ -27,5 +27,8 @@ public static class InventoryDates
     }
 
     /// <summary>Zur Anzeige im Format der Sprache ("26.10.2023"); was kein Datum ist, bleibt wie geliefert.</summary>
-    public static string? Format(string? text, string format = "d") => Parse(text) is { } date ? date.ToString(format, CultureInfo.CurrentCulture) : text;
+    public static string? Format(string? text) => Parse(text) is { } date ? date.ToString("d", CultureInfo.CurrentCulture) : text;
+
+    /// <summary>Für Berichte, API und MCP: "2023-10-26"; was kein Datum ist, bleibt wie geliefert.</summary>
+    public static string? Iso(string? text) => Parse(text) is { } date ? date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : text;
 }

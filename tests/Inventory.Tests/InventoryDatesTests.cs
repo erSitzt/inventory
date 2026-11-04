@@ -30,7 +30,7 @@ public class InventoryDatesTests
         {
             CultureInfo.CurrentCulture = new CultureInfo("de-DE");
             Assert.Equal("26.10.2023", InventoryDates.Format("10/26/2023"));
-            Assert.Equal("2023-10-26", InventoryDates.Format("20231026", "yyyy-MM-dd"));
+            Assert.Equal("2023-10-26", InventoryDates.Iso("20231026"));
             Assert.Equal("unknown", InventoryDates.Format("unknown"));
         }
         finally
