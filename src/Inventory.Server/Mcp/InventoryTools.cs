@@ -84,7 +84,7 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
     {
         var c = await computerService.GetDetailAsync((await caller.ComputerAsync(computer, ct)).Id, ct) ?? throw new McpException("The computer no longer exists.");
         var list = c.Software.Where(s => string.IsNullOrWhiteSpace(filter) || s.Name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase))
-            .OrderBy(s => s.Name).Select(s => new { s.Name, s.Version, s.Publisher, s.InstallDate, s.PerUser });
+            .OrderBy(s => s.Name).Select(s => new { s.Name, s.Version, s.Publisher, InstallDate = Inventory.Core.InventoryDates.Iso(s.InstallDate), s.PerUser });
         return McpCaller.Page(list);
     }
 

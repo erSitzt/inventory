@@ -290,7 +290,9 @@ else if (_computer.ReverseDnsMismatch)
                 <PropertyColumn Property="s => s.Name" Title="@L["Name"]" />
                 <PropertyColumn Property="s => s.Version" Title="@L["Version"]" />
                 <PropertyColumn Property="s => s.Publisher" Title="@L["Publisher"]" />
-                <PropertyColumn Property="s => s.InstallDate" Title="@L["Installed"]" />
+                <TemplateColumn Sortable="true" Title="@L["Installed"]" SortBy="@(s => InventoryDates.Parse(s.InstallDate))">
+                    <CellTemplate>@InventoryDates.Format(context.Item.InstallDate)</CellTemplate>
+                </TemplateColumn>
                 <TemplateColumn Title="@L["Type"]" Sortable="false">
                     <CellTemplate>@(context.Item.Is64Bit ? "64 Bit" : "32 Bit")@(context.Item.PerUser ? ", " + L["per user"] : "")@(context.Item.CarriedOver ? " – " + L["from an earlier scan, user not logged on"] : "")</CellTemplate>
                 </TemplateColumn>
@@ -337,7 +339,9 @@ else if (_computer.ReverseDnsMismatch)
             <Columns>
                 <PropertyColumn Property="h => h.HotfixId" Title="KB" />
                 <PropertyColumn Property="h => h.Description" Title="@L["Description"]" />
-                <PropertyColumn Property="h => h.InstalledOn" Title="@L["Installed on"]" />
+                <TemplateColumn Sortable="true" Title="@L["Installed on"]" SortBy="@(h => InventoryDates.Parse(h.InstalledOn))">
+                    <CellTemplate>@InventoryDates.Format(context.Item.InstalledOn)</CellTemplate>
+                </TemplateColumn>
             </Columns>
         </MudDataGrid>
     </MudTabPanel>
