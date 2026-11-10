@@ -15,6 +15,10 @@ public class ComputerSoftware
     public string? UserSid { get; set; }
     /// <summary>Aus einem früheren Scan übernommen: der Benutzer war beim letzten Scan nicht angemeldet, sein Profil daher nicht lesbar.</summary>
     public bool CarriedOver { get; set; }
+    /// <summary>Mac: Herkunft laut Signatur (<see cref="Contracts.SoftwareOrigins"/>).</summary>
+    public string? Origin { get; set; }
+    /// <summary>Mac: Prozessorarchitektur (<see cref="Contracts.SoftwareArchitectures"/>).</summary>
+    public string? Architecture { get; set; }
 }
 
 public class ComputerHotfix
@@ -167,6 +171,8 @@ public class ComputerApp
     public string? Architecture { get; set; }
     /// <summary>Für neue Benutzer vorgesehen (im Abbild bereitgestellt).</summary>
     public bool Provisioned { get; set; }
+    /// <summary>Mac: Installer-Paket oder Homebrew (<see cref="Contracts.AppKinds"/>); null bei MSIX/AppX.</summary>
+    public string? Kind { get; set; }
 }
 
 public class ComputerPrinter

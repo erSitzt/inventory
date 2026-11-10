@@ -632,10 +632,19 @@ Macs are inventoried by a small agent for macOS (Apple Silicon and Intel, one se
 Mac). Like the Windows agent it only ever connects *to* the server and updates itself after a server update.
 
 **What is collected:** model (with the sales name on Apple Silicon), serial number, chip or processor, memory, macOS
-version and build, last boot, logged-on user, programs in `/Applications` and the users' `~/Applications` (with version,
-developer from the signature and date), volumes, network adapters, graphics, displays, SSD, battery, printers, local
-users and administrators, and the security settings **FileVault**, **firewall** (and stealth mode), **Gatekeeper**,
-**System Integrity Protection** and the automatic update check. Changes appear in the history like on Windows; the
+version and build, last boot, logged-on user, IP address of the default route, programs in `/Applications` and the users'
+`~/Applications` (with version, developer from the signature, date, **origin** – Apple, App Store, identified or unknown
+developer – and **architecture**, e.g. *Intel only (Rosetta)*), **installer packages** (`.pkg` receipts without Apple's,
+updates of one package shown once) and **Homebrew** formulae and casks (tab *Packages*), volumes, network adapters,
+graphics, displays, SSD, battery, printers, local users (with last login and password age) and administrators, and the
+security settings **FileVault**, **firewall** (and stealth mode), **Gatekeeper**, **System Integrity Protection** and the
+automatic update check.
+
+**macOS support:** the overview of a Mac shows the last macOS version its model gets (Intel Macs end with macOS 26 at the
+latest; Apple Silicon gets the current one), whether an upgrade is possible, and whether its installed version still gets
+security updates. The latter is an estimate from Apple's usual practice (the current version and the two before it), not
+a promise. Collections can use *macOS without security updates*, *Mac with Intel-only apps (Rosetta)* and *Mac with apps
+from unknown developers*; reports have matching columns. Changes appear in the history like on Windows; the
 platform can be used in collections ("Platform = macOS") and reports.
 
 **Not yet for Macs:** commands, packages and deployments, macOS updates and remote access. Inventory skips Macs in these

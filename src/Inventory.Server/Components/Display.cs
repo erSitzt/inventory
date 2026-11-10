@@ -208,6 +208,61 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     /// <summary>Name der Plattform; "macOS" bleibt in jeder Sprache gleich.</summary>
     public string Platform(OsPlatform platform) => platform == OsPlatform.MacOS ? "macOS" : "Windows";
 
+    /// <summary>
+    /// Wie lange ein Mac noch versorgt wird, z. B. "letzte Version: macOS 15; Upgrade auf macOS 15 möglich; Sicherheitsupdates bis
+    /// etwa Herbst 2027"; null für andere Rechner und unbekannte Intel-Modelle.
+    /// </summary>
+    public string? MacOsSupport(Computer c, string latestMajor = Core.MacOsSupport.LatestMajor)
+    {
+        if (Core.MacOsSupport.Assess(c, latestMajor) is not { } a)
+            return null;
+        var parts = new List<string> { a.AppleSilicon ? T("receives the current macOS") : T("last version: macOS {0}", a.FinalMajor!) };
+        if (a.UpgradeTo is not null)
+            parts.Add(T("upgrade to macOS {0} possible", a.UpgradeTo));
+        parts.Add(a.SecurityUpdates switch
+        {
+            true when a.SecurityUntilYear is { } year => T("security updates until about autumn {0} (estimate)", year),
+            true => T("receives security updates (estimate)"),
+            false when a.UpgradeTo is not null => T("no security updates any more – upgrade needed (estimate)"),
+            false => T("no security updates any more – replace (estimate)"),
+            null => T("macOS version unknown"),
+        });
+        return string.Join("; ", parts);
+    }
+
+    /// <summary>Art eines Mac-Programms: Architektur und Herkunft, z. B. "nur Intel (Rosetta), App Store".</summary>
+    public string MacSoftwareKind(ComputerSoftware s) => string.Join(", ", new[]
+    {
+        s.Architecture switch
+        {
+            SoftwareArchitectures.Universal => T("Universal"),
+            SoftwareArchitectures.AppleSilicon => "Apple Silicon",
+            SoftwareArchitectures.Intel => T("Intel only (Rosetta)"),
+            SoftwareArchitectures.IOS => T("iPhone/iPad app"),
+            _ => null,
+        },
+        SoftwareOrigin(s.Origin),
+        s.PerUser ? T("per user") : null,
+    }.Where(p => p is not null));
+
+    public string? SoftwareOrigin(string? origin) => origin switch
+    {
+        SoftwareOrigins.Apple => "Apple",
+        SoftwareOrigins.AppStore => "App Store",
+        SoftwareOrigins.IdentifiedDeveloper => T("identified developer"),
+        SoftwareOrigins.Unknown => T("unknown developer"),
+        _ => null,
+    };
+
+    /// <summary>Art eines Pakets auf dem Mac.</summary>
+    public string MacPackageKind(string? kind) => kind switch
+    {
+        AppKinds.InstallerPackage => T("Installer package"),
+        AppKinds.HomebrewFormula => T("Homebrew formula"),
+        AppKinds.HomebrewCask => T("Homebrew cask"),
+        _ => kind ?? "",
+    };
+
     /// <summary>Kennzeichen der Plattform neben dem Betriebssystem; null für Windows (der Normalfall braucht keins).</summary>
     public static string? PlatformIcon(Computer c) => c.IsMac ? Icons.Custom.Brands.Apple : null;
 
@@ -260,6 +315,9 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.InCollection => T("Member of collection"),
         RuleField.DeviceType => T("Device type"),
         RuleField.Platform => T("Platform"),
+        RuleField.MacOsSecurityUpdatesEnded => T("macOS without security updates (estimate)"),
+        RuleField.IntelOnlyApps => T("Mac with Intel-only apps (Rosetta)"),
+        RuleField.UnknownDeveloperApps => T("Mac with apps from unknown developers"),
         RuleField.SecureBoot => T("Secure Boot on"),
         RuleField.TpmReady => T("TPM ready"),
         RuleField.SystemDriveProtected => T("BitLocker (system drive)"),
@@ -308,7 +366,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
             or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
             or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
             or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem
-            or RuleField.IsVirtual => [RuleOperator.Equals],
+            or RuleField.IsVirtual or RuleField.MacOsSecurityUpdatesEnded or RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps => [RuleOperator.Equals],
         RuleField.InCollection or RuleField.DeviceType or RuleField.Platform => [RuleOperator.Equals, RuleOperator.NotEquals],
         RuleField.DiskFreeGb or RuleField.BatteryHealthPercent or RuleField.DaysSinceBoot or RuleField.ScanAgeDays => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
         RuleField.CpuSockets => [RuleOperator.Equals, RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
@@ -524,7 +582,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
         or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
         or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem
-        or RuleField.IsVirtual;
+        or RuleField.IsVirtual or RuleField.MacOsSecurityUpdatesEnded or RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps;
 
     /// <summary>Der Wert einer Regel, wie er in Listen erscheint: Namen statt Kennungen, übersetzte feste Werte.</summary>
     public string RuleValue(CollectionRule rule, Func<int, string?> collectionName) => rule.Field switch

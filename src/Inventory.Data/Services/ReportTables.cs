@@ -1,4 +1,5 @@
 using System.Globalization;
+using Inventory.Contracts;
 using Inventory.Core;
 using Inventory.Core.Model;
 using Microsoft.EntityFrameworkCore;
@@ -79,9 +80,9 @@ public sealed partial class ReportService
             {
                 // Erst sortieren, dann in den Zeilentyp füllen: nach einem Konstruktoraufruf kann die Datenbank nicht mehr ordnen.
                 var rows = (await db.Software.AsNoTracking().Where(s => members == null || members.Contains(s.ComputerId))
-                        .Join(db.Computers, s => s.ComputerId, c => c.Id, (s, c) => new { c.Id, Computer = c.Name, s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser })
+                        .Join(db.Computers, s => s.ComputerId, c => c.Id, (s, c) => new { c.Id, Computer = c.Name, s.Name, s.Version, s.Publisher, s.InstallDate, s.Is64Bit, s.PerUser, s.Origin, s.Architecture })
                         .OrderBy(r => r.Computer).ThenBy(r => r.Name).ToListAsync(ct))
-                    .Select(r => new SoftwareRow(r.Id, r.Computer, r.Name, r.Version, r.Publisher, r.InstallDate, r.Is64Bit, r.PerUser));
+                    .Select(r => new SoftwareRow(r.Id, r.Computer, r.Name, r.Version, r.Publisher, r.InstallDate, r.Is64Bit, r.PerUser, r.Origin, r.Architecture));
                 return Build(SoftwareColumns(zone), rows, query, limit);
             }
             case ReportSource.PendingUpdates:
@@ -164,7 +165,8 @@ public sealed partial class ReportService
         }
     }
 
-    private sealed record SoftwareRow(int ComputerId, string Computer, string Name, string? Version, string? Publisher, string? InstallDate, bool Is64Bit, bool PerUser);
+    private sealed record SoftwareRow(int ComputerId, string Computer, string Name, string? Version, string? Publisher, string? InstallDate, bool Is64Bit, bool PerUser,
+        string? Origin = null, string? Architecture = null);
     private sealed record UpdateRow(int ComputerId, string Computer, DateTime? LastSearchUtc, ComputerPendingUpdate Update);
     private sealed record DeploymentRow(int Id, string Package, string? Version, DateTime CreatedUtc, DateTime? FinishedUtc, string? StopReason, int Targets, int Succeeded, int Failed, int Cancelled, int Open);
     private sealed record ChangeRow(int ComputerId, string Computer, InventoryChange Change);
@@ -234,6 +236,8 @@ public sealed partial class ReportService
         new("gatekeeper", "Gatekeeper", c => YesNo(c.MacGatekeeper)),
         new("sip", L["System Integrity Protection"], c => YesNo(c.MacSip)),
         new("macAutoUpdateCheck", L["Automatic update check"], c => YesNo(c.MacAutoUpdateCheck)),
+        new("macOsFinal", L["Last macOS version"], c => MacOsSupport.Assess(c) is { } a ? a.FinalMajor ?? L["current"] : null),
+        new("macOsSecurityUpdates", L["macOS security updates (estimate)"], c => MacOsSupport.Assess(c)?.SecurityUpdates is { } updates ? YesNo(updates) : null),
         new("edition", L["Edition"], c => c.OsEdition),
         new("licenseChannel", L["Licence channel"], c => c.LicenseChannel),
         new("sockets", L["Processor sockets"], c => Number(c.CpuSockets), Numeric: true),
@@ -271,6 +275,22 @@ public sealed partial class ReportService
         new("installed", L["Installed"], r => InventoryDates.Iso(r.InstallDate)),
         new("architecture", L["Architecture"], r => r.Is64Bit ? "64 Bit" : "32 Bit"),
         new("perUser", L["Installed per user"], r => YesNo(r.PerUser)),
+        new("origin", L["Origin (Mac)"], r => r.Origin switch
+        {
+            SoftwareOrigins.Apple => "Apple",
+            SoftwareOrigins.AppStore => "App Store",
+            SoftwareOrigins.IdentifiedDeveloper => L["identified developer"],
+            SoftwareOrigins.Unknown => L["unknown developer"],
+            _ => null,
+        }),
+        new("macArchitecture", L["Processor (Mac)"], r => r.Architecture switch
+        {
+            SoftwareArchitectures.Universal => L["Universal"],
+            SoftwareArchitectures.AppleSilicon => "Apple Silicon",
+            SoftwareArchitectures.Intel => L["Intel only (Rosetta)"],
+            SoftwareArchitectures.IOS => L["iPhone/iPad app"],
+            _ => null,
+        }),
     ];
 
     private List<Column<UpdateRow>> UpdateColumns(TimeZoneInfo zone) =>

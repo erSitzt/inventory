@@ -35,6 +35,7 @@ internal static class SimulatedInventory
     {
         var random = new Random((int)StableHash(host));
         var notebook = random.Next(3) != 0;
+        var (osName, osVersion) = random.Next(2) == 0 ? ("macOS Sequoia 15.7.1", "15.7.1 (24G231)") : ("macOS Tahoe 26.1", "26.1 (25B78)");
         var data = new InventoryData
         {
             Platform = AgentPlatforms.MacOS,
@@ -43,8 +44,8 @@ internal static class SimulatedInventory
             Model = notebook ? "MacBook Pro (14-inch, Nov 2023) (Mac15,6)" : "Mac mini (2023) (Mac14,3)",
             SerialNumber = $"C02{StableHash(host) % 10_000_000:D7}",
             BiosVersion = "11881.41.5",
-            OsName = random.Next(2) == 0 ? "macOS Sequoia 15.7.1" : "macOS Tahoe 26.1",
-            OsVersion = "15.7.1 (24G231)",
+            OsName = osName,
+            OsVersion = osVersion,
             OsArchitecture = "ARM 64-bit",
             OsInstalledUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(random.Next(600)),
             LastBootUtc = DateTime.UtcNow.AddHours(-random.Next(1, 300)),
@@ -67,19 +68,33 @@ internal static class SimulatedInventory
             MacOs = new MacOsInfo { FirewallEnabled = random.Next(3) != 0, FirewallStealth = false, GatekeeperEnabled = true, SipEnabled = true, AutomaticUpdateCheck = true },
         };
         data.InteractiveUsers = [data.LoggedOnUser];
-        foreach (var (name, publisher, version) in new[]
+        data.PrimaryIpAddress = $"10.0.0.{random.Next(100, 250)}";
+        foreach (var (name, publisher, version, origin, architecture) in new[]
                  {
-                     ("Google Chrome", "Google LLC", "141.0.7390.108"), ("Microsoft Teams", "Microsoft Corporation", "25275.2601.4002.2815"),
-                     ("Microsoft Word", "Microsoft Corporation", "16.102"), ("Safari", "Apple Inc.", "26.1"), ("zoom.us", "Zoom Video Communications, Inc.", "6.6.0"),
+                     ("Google Chrome", "Google LLC", "141.0.7390.108", SoftwareOrigins.IdentifiedDeveloper, SoftwareArchitectures.Universal),
+                     ("Microsoft Teams", "Microsoft Corporation", "25275.2601.4002.2815", SoftwareOrigins.IdentifiedDeveloper, SoftwareArchitectures.Universal),
+                     ("Microsoft Word", "Microsoft Corporation", "16.102", SoftwareOrigins.AppStore, SoftwareArchitectures.Universal),
+                     ("Safari", "Apple Inc.", "26.1", SoftwareOrigins.Apple, SoftwareArchitectures.Universal),
+                     ("zoom.us", "Zoom Video Communications, Inc.", "6.6.0", SoftwareOrigins.IdentifiedDeveloper, SoftwareArchitectures.AppleSilicon),
+                     ("Label Printer Tool", null, "2.3", SoftwareOrigins.Unknown, SoftwareArchitectures.Intel),
                  })
-            data.Software.Add(new SoftwareItem { Name = name, Publisher = publisher, Version = version, InstallDate = "20251020", Is64Bit = true });
+            data.Software.Add(new SoftwareItem { Name = name, Publisher = publisher, Version = version, InstallDate = "20251020", Is64Bit = true, Origin = origin, Architecture = architecture });
+        data.Apps =
+        [
+            new AppItem { Name = "org.openvpn.client.pkg", Version = "3.5.0", Kind = AppKinds.InstallerPackage },
+            new AppItem { Name = "com.microsoft.package.Microsoft_AutoUpdate.app", Version = "4.79", Kind = AppKinds.InstallerPackage },
+            new AppItem { Name = "git", Version = "2.51.0", Publisher = "Homebrew", Kind = AppKinds.HomebrewFormula },
+        ];
         data.Disks.Add(new DiskItem { Drive = "/", Label = "Macintosh HD", FileSystem = "APFS", SizeBytes = 494_384_795_648, FreeBytes = 494_384_795_648L * random.Next(10, 70) / 100 });
         data.NetworkAdapters.Add(new NetworkAdapterItem
         {
             Name = "Wi-Fi (en0)", MacAddress = $"A4:83:E7:{random.Next(256):X2}:{random.Next(256):X2}:{random.Next(256):X2}",
             IpAddresses = [$"10.0.0.{random.Next(100, 250)}"], SubnetMasks = ["255.255.255.0"], Gateways = ["10.0.0.1"], DnsServers = ["10.0.1.10"], DhcpEnabled = true,
         });
-        data.LocalUsers.Add(new LocalUserItem { Name = data.LoggedOnUser, FullName = "Max Mustermann" });
+        data.LocalUsers.Add(new LocalUserItem
+        {
+            Name = data.LoggedOnUser, FullName = "Max Mustermann", LastLogonUtc = DateTime.UtcNow.AddHours(-random.Next(1, 48)), PasswordAgeDays = random.Next(10, 400),
+        });
         data.LocalAdmins.Add(new LocalAdminItem { Name = data.LoggedOnUser });
         return data;
     }

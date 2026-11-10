@@ -28,6 +28,11 @@ namespace Inventory.Contracts
         public long MemoryBytes { get; set; }
         public string? LoggedOnUser { get; set; }
         /// <summary>
+        /// Die IP-Adresse der Schnittstelle mit der Standardroute, wie sie der Rechner selbst sieht. Bisher nur vom Mac-Agenten;
+        /// bei Windows kommt die Adresse aus der Erreichbarkeitsprüfung.
+        /// </summary>
+        public string? PrimaryIpAddress { get; set; }
+        /// <summary>
         /// Benutzer mit einer interaktiven Sitzung (Konsole oder Remotedesktop) zum Zeitpunkt des Scans, als DOMÄNE\name.
         /// Dienste, geplante Aufgaben und Netzwerkanmeldungen zählen nicht. null bei Runnern, die das noch nicht erfassen.
         /// </summary>
@@ -90,6 +95,17 @@ namespace Inventory.Contracts
         public string? Architecture { get; set; }
         /// <summary>Für neue Benutzer vorgesehen (im Abbild bereitgestellt).</summary>
         public bool Provisioned { get; set; }
+        /// <summary>Mac: Installer-Paket oder Homebrew, siehe <see cref="AppKinds"/>; null bei MSIX/AppX unter Windows.</summary>
+        public string? Kind { get; set; }
+    }
+
+    /// <summary>Arten von Paketen auf dem Mac, die keine Programme in /Applications sind.</summary>
+    public static class AppKinds
+    {
+        /// <summary>Beleg eines Installer-Pakets (.pkg) laut pkgutil.</summary>
+        public const string InstallerPackage = "pkg";
+        public const string HomebrewFormula = "brew";
+        public const string HomebrewCask = "cask";
     }
 
     public sealed class SoftwareItem
@@ -107,6 +123,32 @@ namespace Inventory.Contracts
         public string? UserSid { get; set; }
         /// <summary>Setzt der Server: aus dem vorigen Scan übernommen, weil der Benutzer diesmal nicht angemeldet war.</summary>
         public bool CarriedOver { get; set; }
+        /// <summary>Mac: woher das Programm stammt, siehe <see cref="SoftwareOrigins"/>; null unter Windows.</summary>
+        public string? Origin { get; set; }
+        /// <summary>Mac: für welche Prozessoren es gebaut ist, siehe <see cref="SoftwareArchitectures"/>; null unter Windows.</summary>
+        public string? Architecture { get; set; }
+    }
+
+    /// <summary>Herkunft eines Mac-Programms laut Signatur.</summary>
+    public static class SoftwareOrigins
+    {
+        public const string Apple = "Apple";
+        public const string AppStore = "AppStore";
+        public const string IdentifiedDeveloper = "IdentifiedDeveloper";
+        /// <summary>Weder von Apple noch von einem verifizierten Entwickler signiert.</summary>
+        public const string Unknown = "Unknown";
+    }
+
+    /// <summary>Prozessoren, für die ein Mac-Programm gebaut ist.</summary>
+    public static class SoftwareArchitectures
+    {
+        /// <summary>Apple Silicon und Intel.</summary>
+        public const string Universal = "Universal";
+        public const string AppleSilicon = "AppleSilicon";
+        /// <summary>Nur Intel: auf Apple Silicon nur mit Rosetta.</summary>
+        public const string Intel = "Intel";
+        /// <summary>iPhone-/iPad-App auf Apple Silicon.</summary>
+        public const string IOS = "iOS";
     }
 
     public sealed class HotfixItem

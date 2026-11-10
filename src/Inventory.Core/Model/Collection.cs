@@ -116,6 +116,12 @@ public enum RuleField
     CustomField = 159,
     /// <summary>Betriebssystem-Familie: Windows oder MacOS (<see cref="OsPlatform"/>).</summary>
     Platform = 160,
+    /// <summary>Mac, dessen installierte macOS-Version keine Sicherheitsupdates mehr bekommt (Schätzung, siehe <see cref="MacOsSupport"/>).</summary>
+    MacOsSecurityUpdatesEnded = 161,
+    /// <summary>Mac mit mindestens einem Programm nur für Intel (läuft auf Apple Silicon nur mit Rosetta).</summary>
+    IntelOnlyApps = 162,
+    /// <summary>Mac mit mindestens einem Programm, das weder von Apple noch von einem verifizierten Entwickler signiert ist.</summary>
+    UnknownDeveloperApps = 163,
     Online = 1,
     Scanned,
     OsName,

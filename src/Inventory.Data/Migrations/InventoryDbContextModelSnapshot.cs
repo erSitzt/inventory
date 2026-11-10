@@ -610,6 +610,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("DisplayName")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Kind")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1045,6 +1048,9 @@ namespace Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Architecture")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("CarriedOver")
                         .HasColumnType("INTEGER");
 
@@ -1061,6 +1067,9 @@ namespace Inventory.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .UseCollation("NOCASE");
+
+                    b.Property<string>("Origin")
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("PerUser")
                         .HasColumnType("INTEGER");

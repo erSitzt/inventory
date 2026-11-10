@@ -78,6 +78,9 @@ public static class CollectionEvaluator
         RuleField.Gpu => Text(rule, computer.Gpu),
         RuleField.DeviceType => computer.ChassisType is not null && Text(rule, Chassis.Kind(computer.ChassisType, computer.Model).ToString()),
         RuleField.Platform => Text(rule, computer.Platform.ToString()),
+        RuleField.MacOsSecurityUpdatesEnded => Known(rule, MacOsSupport.Assess(computer)?.SecurityUpdates is { } updates ? !updates : null),
+        RuleField.IntelOnlyApps => Known(rule, computer.IsMac ? computer.Software.Any(s => s.Architecture == SoftwareArchitectures.Intel) : null),
+        RuleField.UnknownDeveloperApps => Known(rule, computer.IsMac ? computer.Software.Any(s => s.Origin == SoftwareOrigins.Unknown) : null),
         RuleField.DiskFreeGb => Number(rule, computer.Disks.FirstOrDefault(d => computer.IsMac ? d.Drive == "/" : d.Drive.StartsWith("C", StringComparison.OrdinalIgnoreCase)) is { } system
             ? (int)(system.FreeBytes / (1L << 30)) : null),
         RuleField.BatteryHealthPercent => Number(rule, computer.BatteryHealthPercent),
@@ -211,6 +214,7 @@ public static class CollectionEvaluator
         RuleField.SqlInstance => [nameof(Computer.SqlInstances)],
         RuleField.ServerFeature => [nameof(Computer.ServerFeatures)],
         RuleField.CustomField => [nameof(Computer.CustomValues)],
+        RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps => [nameof(Computer.Software)],
         _ => [],
     };
 
