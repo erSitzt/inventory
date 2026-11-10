@@ -82,7 +82,7 @@ internal sealed class MacJob(string jobDir, string hostName, string agentDirecto
                 }
                 break;
             case StepType.UninstallAgent:
-                stepResult.Output = MacAgentRemoval.Schedule(agentDirectory);
+                stepResult.Output = MacAgentRemoval.Schedule(agentDirectory, result.JobId);
                 break;
             case StepType.Sleep:
                 for (var waited = 0; waited < step.Seconds && !_cancelled; waited++)

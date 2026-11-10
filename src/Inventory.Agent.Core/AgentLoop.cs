@@ -31,6 +31,12 @@ namespace Inventory.Agent
         /// eine Abfrage führte zur erneuten Anmeldung), nur noch abgelegte Ergebnisse abliefern.
         /// </summary>
         private volatile bool _removing;
+        private DateTime _removingSince;
+        /// <summary>
+        /// Ist der Agent so lange nach dem Entfernen-Auftrag noch da, ist das Entfernen gescheitert: er arbeitet weiter und meldet
+        /// sich (mit verworfenem Schlüssel) neu an, statt unbemerkt stillzustehen.
+        /// </summary>
+        private static readonly TimeSpan RemovalLimit = TimeSpan.FromMinutes(10);
 
         /// <param name="handler">Nur für Tests: statt einer echten Verbindung zum Server.</param>
         public AgentLoop(IAgentPlatform platform, HttpMessageHandler? handler = null)
@@ -102,6 +108,11 @@ namespace Inventory.Agent
         {
             while (!_stop.IsCancellationRequested)
             {
+                if (_removing && DateTime.UtcNow - _removingSince > RemovalLimit && !HasPending())
+                {
+                    Log("Das Entfernen ist nicht geschehen; arbeite weiter.");
+                    _removing = false;
+                }
                 if (_removing)
                 {
                     DeliverPending();
@@ -225,6 +236,7 @@ namespace Inventory.Agent
                 if (result.Success && offer.Manifest.Steps.Any(s => s.Type == StepType.UninstallAgent))
                 {
                     Log("Wird entfernt; frage keine Jobs mehr ab.");
+                    _removingSince = DateTime.UtcNow;
                     _removing = true;
                 }
             }
@@ -433,6 +445,8 @@ namespace Inventory.Agent
         }
 
         private string PendingDir => Path.Combine(_baseDir, AgentProtocol.PendingFolder);
+
+        private bool HasPending() => Directory.Exists(PendingDir) && Directory.GetFiles(PendingDir, "*.json").Length > 0;
 
         /// <summary>
         /// Meldet abgelegte Ergebnisse. Ein Ergebnis bleibt liegen, bis der Server es angenommen oder als unbekannt abgelehnt

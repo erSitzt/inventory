@@ -524,6 +524,9 @@
   <data name="Agents" xml:space="preserve">
     <value>Agenten</value>
   </data>
+  <data name="Agents are removed with &quot;Remove agent&quot;, not with a package step." xml:space="preserve">
+    <value>Agenten werden mit „Agent entfernen“ entfernt, nicht mit einem Paketschritt.</value>
+  </data>
   <data name="AI" xml:space="preserve">
     <value>KI</value>
   </data>
@@ -3671,8 +3674,8 @@
   <data name="Not approved: operators and schedules cannot deploy this package. Every change to steps, detection or files withdraws the approval." xml:space="preserve">
     <value>Nicht freigegeben: Operatoren und Zeitpläne können dieses Paket nicht verteilen. Jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf.</value>
   </data>
-  <data name="Not available for macOS yet: on a Mac the agent only collects the inventory." xml:space="preserve">
-    <value>Für macOS noch nicht verfügbar: auf einem Mac erfasst der Agent nur das Inventar.</value>
+  <data name="Not available for macOS yet: on a Mac the agent collects the inventory and can be removed, nothing else." xml:space="preserve">
+    <value>Für macOS noch nicht verfügbar: auf einem Mac erfasst der Agent das Inventar und lässt sich entfernen, mehr nicht.</value>
   </data>
   <data name="not calculable" xml:space="preserve">
     <value>nicht berechenbar</value>
@@ -3895,6 +3898,9 @@
   </data>
   <data name="Only approved packages can be deployed by operators and schedules." xml:space="preserve">
     <value>Operatoren und Zeitpläne können nur freigegebene Pakete verteilen.</value>
+  </data>
+  <data name="Only Command and PowerShell can be run directly." xml:space="preserve">
+    <value>Direkt ausführen lassen sich nur Command und PowerShell.</value>
   </data>
   <data name="Only copied to computers without .NET Framework 4.8 (Windows Server 2012 to 2016, early Windows 10 releases)." xml:space="preserve">
     <value>Wird nur auf Rechner ohne .NET Framework 4.8 kopiert (Windows Server 2012 bis 2016, frühe Windows-10-Stände).</value>

@@ -116,7 +116,7 @@ namespace Inventory.Runner
         /// Runners außerhalb des Agent-Ordners übernimmt das, sobald das Ergebnis beim Server angekommen ist. Agentenlos
         /// (SMB/WinRM) entfernt der Runner den Agenten gleich.
         /// </summary>
-        public static string ScheduleRemoval()
+        public static string ScheduleRemoval(string jobId)
         {
             if (!ServiceExists() && !Directory.Exists(TargetDir))
                 return "No agent is installed.";
@@ -131,7 +131,7 @@ namespace Inventory.Runner
             Directory.CreateDirectory(copy);
             foreach (var file in Directory.GetFiles(RunnerInfo.Directory).Where(f => IsAgentFile(f) && !string.Equals(Path.GetFileName(f), AgentProtocol.ConfigFile, StringComparison.OrdinalIgnoreCase)))
                 File.Copy(file, Path.Combine(copy, Path.GetFileName(file)));
-            Process.Start(new ProcessStartInfo(Path.Combine(copy, JobFiles.RunnerExe), RunnerModes.RemoveAgent)
+            Process.Start(new ProcessStartInfo(Path.Combine(copy, JobFiles.RunnerExe), RunnerModes.RemoveAgent + " " + jobId)
             {
                 UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = copy,
             });
@@ -139,19 +139,27 @@ namespace Inventory.Runner
         }
 
         /// <summary>
-        /// Mit <see cref="RunnerModes.RemoveAgent"/> aus der Kopie: warten, bis die abgelegten Ergebnisse abgeliefert sind (höchstens
-        /// zwei Minuten), den Agenten entfernen und zuletzt die Kopie selbst, sobald dieser Prozess beendet ist.
+        /// Mit <see cref="RunnerModes.RemoveAgent"/> aus der Kopie: warten, bis das Ergebnis des Entfernen-Auftrags abgelegt und
+        /// dann abgeliefert ist (ohne Frist: sonst wüsste der Server nie davon; verfällt es nach sieben Tagen, geht es ebenfalls
+        /// weiter), den Agenten entfernen und zuletzt die Kopie selbst. Wird das Ergebnis gar nicht abgelegt, bleibt der Agent.
         /// </summary>
-        public static int RemoveDeferred()
+        public static int RemoveDeferred(string jobId)
         {
-            var pending = Path.Combine(TargetDir, AgentProtocol.PendingFolder);
-            // Das Ergebnis des Entfernen-Schritts wird erst nach dem Schritt abgelegt.
-            System.Threading.Thread.Sleep(TimeSpan.FromSeconds(5));
-            var until = DateTime.UtcNow.AddMinutes(2);
-            while (DateTime.UtcNow < until && Directory.Exists(pending) && Directory.GetFiles(pending, "*.json").Length > 0)
-                System.Threading.Thread.Sleep(TimeSpan.FromSeconds(2));
-            var code = Uninstall();
+            var result = Path.Combine(TargetDir, AgentProtocol.PendingFolder, jobId + ".json");
+            var job = Path.Combine(TargetDir, JobFiles.JobsFolder, jobId);
             var own = RunnerInfo.Directory;
+            // Abgelegt ist das Ergebnis, sobald es da ist – oder der Agent das Job-Verzeichnis schon weggeräumt hat (das tut er erst danach).
+            Func<bool> queued = () => File.Exists(result) || !Directory.Exists(job);
+            var deadline = DateTime.UtcNow.AddMinutes(1);
+            while (!queued() && DateTime.UtcNow < deadline)
+                System.Threading.Thread.Sleep(TimeSpan.FromMilliseconds(500));
+            var code = 1;
+            if (queued())
+            {
+                while (File.Exists(result))
+                    System.Threading.Thread.Sleep(TimeSpan.FromSeconds(2));
+                code = Uninstall();
+            }
             Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe"), "/d /c ping -n 6 127.0.0.1 >nul & rmdir /s /q \"" + own + "\"")
             {
                 UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetTempPath(),

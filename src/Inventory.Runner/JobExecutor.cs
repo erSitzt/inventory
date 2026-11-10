@@ -362,7 +362,7 @@ namespace Inventory.Runner
                 case StepType.WakeOnLan:
                     return RunInProcess(index, step, progress, () => WakeSender.Send(step.Script));
                 case StepType.UninstallAgent:
-                    return RunInProcess(index, step, progress, AgentInstaller.ScheduleRemoval);
+                    return RunInProcess(index, step, progress, () => AgentInstaller.ScheduleRemoval(job.JobId));
                 case StepType.Sleep:
                     return RunInProcess(index, step, progress, () =>
                     {

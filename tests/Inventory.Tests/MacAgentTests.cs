@@ -265,6 +265,10 @@ public class MacAgentTests
         Assert.True(scan.Success, scan.Error);
         // Den Agenten entfernen geht auch auf dem Mac.
         Assert.True((await jobs.RunAsync(id, new JobManifest { Steps = [new JobStep { Name = "remove", Type = StepType.UninstallAgent }] })).Success);
+        // Einen Mac erreicht nur sein Agent, auch wenn ein anderer Transport eingetragen ist.
+        await using (var context = db.CreateDbContext())
+            await context.Computers.Where(c => c.Id == id).ExecuteUpdateAsync(s => s.SetProperty(c => c.Transport, TransportKind.SmbService));
+        Assert.True((await jobs.RunAsync(id, new JobManifest { Steps = [new JobStep { Name = "scan", Type = StepType.InventoryScan }] })).Success);
     }
 
     [Fact]
@@ -292,7 +296,8 @@ public class MacAgentTests
     public void The_removal_script_waits_for_the_result_and_unloads_the_daemon_last()
     {
         var script = MacAgentRemoval.Script;
-        var wait = script.IndexOf($"\"$1/{AgentProtocol.PendingFolder}/\"*.json", StringComparison.Ordinal);
+        Assert.Contains($"result=\"$1/{AgentProtocol.PendingFolder}/$2.json\"", script);
+        var wait = script.IndexOf("while [ -f \"$result\" ]", StringComparison.Ordinal);
         var removeFiles = script.IndexOf("rm -rf \"$1\"", StringComparison.Ordinal);
         var bootout = script.IndexOf($"launchctl bootout system/{AgentProtocol.MacAgentLabel}", StringComparison.Ordinal);
         // Erst warten, dann löschen, zuletzt entladen: das Entladen beendet auch dieses Skript.

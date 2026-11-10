@@ -62,8 +62,8 @@ namespace Inventory.Runner
             if (args.Length == 1 && args[0] == RunnerModes.UninstallAgent)
                 return AgentInstaller.Uninstall();
 
-            if (args.Length == 1 && args[0] == RunnerModes.RemoveAgent)
-                return AgentInstaller.RemoveDeferred();
+            if (args.Length == 2 && args[0] == RunnerModes.RemoveAgent)
+                return AgentInstaller.RemoveDeferred(args[1]);
 
             Console.Error.WriteLine("Usage: InventoryRunner --service [<jobdir|job-id>] | --console <jobdir|job-id> | --agent | --agent-console | --install-agent [--force] | --uninstall-agent | --version");
             return 2;

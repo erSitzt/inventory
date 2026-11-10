@@ -48,9 +48,10 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
                 return JobResult.Failed(job.JobId, L["Computer {0} not found", computerId]);
             // Pakete, Befehle und Windows-Aktionen gibt es für Macs noch nicht; ihr Agent kennt nur das Inventar.
             if (computer.IsMac && (agentInstall || job.Steps.Any(s => !MacSteps.Contains(s.Type))))
-                return JobResult.Failed(job.JobId, L["Not available for macOS yet: on a Mac the agent only collects the inventory."]);
+                return JobResult.Failed(job.JobId, L["Not available for macOS yet: on a Mac the agent collects the inventory and can be removed, nothing else."]);
 
-            var kind = computer.Transport ?? await settings.GetDefaultTransportAsync(ct);
+            // Einen Mac erreicht nur sein Agent, gleich welcher Transport eingetragen ist.
+            var kind = computer.IsMac ? TransportKind.Agent : computer.Transport ?? await settings.GetDefaultTransportAsync(ct);
             if (agentInstall && kind == TransportKind.Agent)
                 kind = await settings.GetDefaultTransportAsync(ct);
             if (kind != TransportKind.Agent)
