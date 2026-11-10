@@ -85,6 +85,34 @@ public static class ComputerEndpoints
             }
         }).RequireAuthorization(AccessControl.AdminPolicy).WithTags("Downloads").WithSummary("macOS agent install script").WithDescription("Shell script that downloads the macOS agent from this server and installs it as a LaunchDaemon (run as root, e.g. by Intune or Jamf); --uninstall removes it. Contains the enrollment secret. Administrators only.");
 
+        // Für Intune und Jamf: bringt die Agenten mit, der Mac muss den Server bei der Installation nicht erreichen.
+        app.MapGet("/download/agent-macos-pkg", async (HttpContext http, AgentService agents, Inventory.Remoting.RunnerPackage runner, AuditService audit, CancellationToken ct) =>
+        {
+            var binaries = new[] { RunnerRuntimes.MacArm64, RunnerRuntimes.MacX64 }
+                .Select(runner.For).OfType<Inventory.Remoting.RunnerPackage>()
+                .Select(p => new AgentService.MacAgentBinary(p.Runtime, Path.Combine(p.Directory, AgentProtocol.MacAgentFile), p.Hash))
+                .ToList();
+            // Die Agenten sind zusammen gut 70 MB: das Paket entsteht in einer temporären Datei, nicht im Speicher.
+            var package = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.DeleteOnClose);
+            try
+            {
+                await agents.BuildMacPackageAsync(package, binaries, AppVersion.Current, ct);
+                package.Position = 0;
+                await audit.LogAsync(http.Actor(), "macOS agent package downloaded", null, ct);
+                return Results.File(package, "application/octet-stream", AgentService.MacPackageFileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                await package.DisposeAsync();
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+            }
+            catch
+            {
+                await package.DisposeAsync();
+                throw;
+            }
+        }).RequireAuthorization(AccessControl.AdminPolicy).WithTags("Downloads").WithSummary("macOS agent package").WithDescription("Unsigned installer package (.pkg) with the macOS agent for Apple Silicon and Intel and its configuration, for Intune (\"macOS app (PKG)\") or Jamf. Installs without a connection to this server; the agent enrolls as soon as the Mac reaches it. Contains the enrollment secret. Administrators only.");
+
         var group = app.MapGroup("/api/computers").WithTags("Computers");
 
         group.MapGet("", async (ComputerService computers, CancellationToken ct) =>

@@ -108,84 +108,160 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
     /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
     public async Task<string> BuildMacInstallScriptAsync(CancellationToken ct = default)
     {
-        var serverUrl = await GetServerUrlAsync(ct);
-        if (string.IsNullOrWhiteSpace(serverUrl))
-            throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
+        var (serverUrl, config) = await MacConfigAsync(ct);
         var token = await GetEnrollmentTokenAsync(ct);
-        static string Quote(string value) => "'" + value.Replace("'", "'\\''") + "'";
-        var config = JobJson.Serialize(new AgentConfig { ServerUrl = serverUrl, EnrollmentToken = token });
-        return $$"""
+        return Lf($$"""
             #!/bin/bash
             # Inventory-Agent für macOS: installiert oder aktualisiert den Agenten als LaunchDaemon; --uninstall entfernt ihn.
             # Als root ausführen, z. B.:  curl -fsSL {{serverUrl}}/{{PublicMacScriptPath}} | sudo bash
             set -euo pipefail
             SERVER={{Quote(serverUrl)}}
             TOKEN={{Quote(token)}}
-            DIR='{{MacAgentDirectory}}'
-            PLIST='/Library/LaunchDaemons/{{MacAgentLabel}}.plist'
-
-            if [ "$(id -u)" -ne 0 ]; then
-              echo 'Please run as root (sudo).' >&2
-              exit 1
-            fi
+            {{MacPrelude}}
 
             if [ "${1:-}" = '--uninstall' ]; then
               launchctl bootout system "$PLIST" 2>/dev/null || true
               rm -f "$PLIST"
               rm -rf "$DIR"
+              pkgutil --forget {{MacAgentLabel}} >/dev/null 2>&1 || true
               echo 'Inventory agent removed.'
               exit 0
             fi
 
-            case "$(uname -m)" in
-              arm64) RUNTIME='{{RunnerRuntimes.MacArm64}}' ;;
-              x86_64) RUNTIME='{{RunnerRuntimes.MacX64}}' ;;
-              *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
-            esac
-
-            umask 077
-            mkdir -p "$DIR"
-            chown root:wheel "$DIR"
-            chmod 700 "$DIR"
-            DOWNLOAD="$(mktemp "$DIR/download.XXXXXX")"
+            {{MacPrepare}}
             HEADERS="$(mktemp "$DIR/headers.XXXXXX")"
             trap 'rm -f "$DOWNLOAD" "$HEADERS"' EXIT
             curl -fsSL -H "{{AgentProtocol.EnrollmentTokenHeader}}: $TOKEN" -D "$HEADERS" -o "$DOWNLOAD" "$SERVER/{{AgentProtocol.DownloadPath}}/$RUNTIME"
             HASH="$(grep -i '^{{AgentHashHeader}}:' "$HEADERS" | tail -n 1 | cut -d: -f2 | tr -d ' \r\n')"
-            chmod 700 "$DOWNLOAD"
-            # Auf Apple Silicon starten nur signierte Programme; eine Ad-hoc-Signatur genügt, Gatekeeper prüft nur Downloads aus dem Browser.
-            xattr -c "$DOWNLOAD" 2>/dev/null || true
-            codesign --force --sign - "$DOWNLOAD"
-
-            launchctl bootout system "$PLIST" 2>/dev/null || true
-            mv -f "$DOWNLOAD" "$DIR/{{AgentProtocol.MacAgentFile}}"
-            cat > "$DIR/{{AgentProtocol.ConfigFile}}" <<'INVENTORY_CONFIG'
-            {{config}}
-            INVENTORY_CONFIG
-            printf '%s' "$HASH" > "$DIR/{{AgentProtocol.VersionFile}}"
-
-            cat > "$PLIST" <<'INVENTORY_PLIST'
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-              <key>Label</key><string>{{MacAgentLabel}}</string>
-              <key>ProgramArguments</key>
-              <array><string>{{MacAgentDirectory}}/{{AgentProtocol.MacAgentFile}}</string><string>{{RunnerModes.Agent}}</string></array>
-              <key>RunAtLoad</key><true/>
-              <key>KeepAlive</key><true/>
-              <key>ThrottleInterval</key><integer>30</integer>
-              <key>StandardErrorPath</key><string>{{MacAgentDirectory}}/stderr.log</string>
-            </dict>
-            </plist>
-            INVENTORY_PLIST
-            chown root:wheel "$PLIST"
-            chmod 644 "$PLIST"
-            launchctl bootstrap system "$PLIST"
+            {{MacInstallSteps(config)}}
             echo 'Inventory agent installed. The Mac appears in Inventory under "Computers" in a few seconds.'
 
-            """;
+            """);
     }
+
+    /// <summary>Ein Mac-Agent, den das Installationspaket mitbringt: Laufzeit, Datei und Stand (wie beim Download).</summary>
+    public sealed record MacAgentBinary(string Runtime, string File, string Hash);
+
+    public const string MacPackageFileName = "Inventory-Agent.pkg";
+
+    /// <summary>
+    /// Installationspaket für den Mac (.pkg, für Intune oder Jamf): bringt die Agenten für Apple Silicon und Intel mit, braucht
+    /// bei der Installation also keine Verbindung zum Server. Der Agent meldet sich an, sobald er den Server erreicht (Büro, VPN).
+    /// Unsigniert; enthält das Anmeldegeheimnis.
+    /// </summary>
+    /// <param name="version">Paketversion, unter der macOS die Installation verbucht (die des Servers).</param>
+    /// <exception cref="InvalidOperationException">Die Server-Adresse ist nicht eingestellt, oder der Server bringt keinen Mac-Agenten mit.</exception>
+    public async Task BuildMacPackageAsync(Stream output, IReadOnlyList<MacAgentBinary> agents, string version, CancellationToken ct = default)
+    {
+        var (_, config) = await MacConfigAsync(ct);
+        if (agents.Count == 0)
+            throw new InvalidOperationException(L["This server does not include the macOS agent."]);
+        var hashes = string.Join("\n", agents.Select(a => $"  {a.Runtime}) HASH={Quote(a.Hash)} ;;"));
+        var postinstall = Lf($$"""
+            #!/bin/bash
+            # Inventory-Agent für macOS aus dem Installationspaket: richtet den mitgebrachten Agenten als LaunchDaemon ein. Den
+            # Server braucht es dafür nicht; der Agent meldet sich an, sobald er ihn erreicht.
+            set -euo pipefail
+            SOURCE="$(cd "$(dirname "$0")" && pwd)"
+            {{MacPrelude}}
+
+            if [ "${3:-/}" != '/' ]; then
+              echo 'The agent can only be installed on the startup volume.' >&2
+              exit 1
+            fi
+
+            {{MacPrepare}}
+            trap 'rm -f "$DOWNLOAD"' EXIT
+            if [ ! -f "$SOURCE/$RUNTIME/{{AgentProtocol.MacAgentFile}}" ]; then
+              echo "This package does not contain the agent for $RUNTIME." >&2
+              exit 1
+            fi
+            case "$RUNTIME" in
+            {{hashes}}
+            esac
+            cp "$SOURCE/$RUNTIME/{{AgentProtocol.MacAgentFile}}" "$DOWNLOAD"
+            {{MacInstallSteps(config)}}
+            echo 'Inventory agent installed.'
+
+            """);
+        var files = new List<MacPackageFile> { new(MacPackage.PostinstallScript, true, Content: Encoding.UTF8.GetBytes(postinstall)) };
+        files.AddRange(agents.Select(a => new MacPackageFile($"{a.Runtime}/{AgentProtocol.MacAgentFile}", true, a.File)));
+        MacPackage.Write(output, MacAgentLabel, version, files);
+    }
+
+    private async Task<(string ServerUrl, string Config)> MacConfigAsync(CancellationToken ct)
+    {
+        var serverUrl = await GetServerUrlAsync(ct);
+        if (string.IsNullOrWhiteSpace(serverUrl))
+            throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
+        return (serverUrl, JobJson.Serialize(new AgentConfig { ServerUrl = serverUrl, EnrollmentToken = await GetEnrollmentTokenAsync(ct) }));
+    }
+
+    private static string Quote(string value) => "'" + value.Replace("'", "'\\''") + "'";
+
+    /// <summary>bash verträgt keine Windows-Zeilenenden; der Quelltext hat zwar LF (.gitattributes), aber sicher ist sicher.</summary>
+    private static string Lf(string script) => script.Replace("\r\n", "\n");
+
+    /// <summary>Gemeinsamer Anfang der Mac-Skripte: Ordner, plist, nur als root.</summary>
+    private static readonly string MacPrelude = $$"""
+        DIR='{{MacAgentDirectory}}'
+        PLIST='/Library/LaunchDaemons/{{MacAgentLabel}}.plist'
+
+        if [ "$(id -u)" -ne 0 ]; then
+          echo 'Please run as root (sudo).' >&2
+          exit 1
+        fi
+        """;
+
+    /// <summary>Architektur bestimmen, Ordner anlegen, Platz für die neue Agent-Datei ($DOWNLOAD).</summary>
+    private static readonly string MacPrepare = $$"""
+        # hw.optional.arm64 erkennt Apple Silicon auch dann, wenn das Skript unter Rosetta läuft (uname -m meldete dort x86_64).
+        if [ "$(sysctl -n hw.optional.arm64 2>/dev/null || true)" = 1 ]; then
+          RUNTIME='{{RunnerRuntimes.MacArm64}}'
+        else
+          RUNTIME='{{RunnerRuntimes.MacX64}}'
+        fi
+
+        umask 077
+        mkdir -p "$DIR"
+        chown root:wheel "$DIR"
+        chmod 700 "$DIR"
+        DOWNLOAD="$(mktemp "$DIR/download.XXXXXX")"
+        """;
+
+    /// <summary>Die neue Agent-Datei ($DOWNLOAD, Stand $HASH) signieren, an ihren Platz bringen und den LaunchDaemon (neu) starten.</summary>
+    private static string MacInstallSteps(string config) => $$"""
+        chmod 700 "$DOWNLOAD"
+        # Auf Apple Silicon starten nur signierte Programme; eine Ad-hoc-Signatur genügt, Gatekeeper prüft nur Downloads aus dem Browser.
+        xattr -c "$DOWNLOAD" 2>/dev/null || true
+        codesign --force --sign - "$DOWNLOAD"
+
+        launchctl bootout system "$PLIST" 2>/dev/null || true
+        mv -f "$DOWNLOAD" "$DIR/{{AgentProtocol.MacAgentFile}}"
+        cat > "$DIR/{{AgentProtocol.ConfigFile}}" <<'INVENTORY_CONFIG'
+        {{config}}
+        INVENTORY_CONFIG
+        printf '%s' "$HASH" > "$DIR/{{AgentProtocol.VersionFile}}"
+
+        cat > "$PLIST" <<'INVENTORY_PLIST'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>Label</key><string>{{MacAgentLabel}}</string>
+          <key>ProgramArguments</key>
+          <array><string>{{MacAgentDirectory}}/{{AgentProtocol.MacAgentFile}}</string><string>{{RunnerModes.Agent}}</string></array>
+          <key>RunAtLoad</key><true/>
+          <key>KeepAlive</key><true/>
+          <key>ThrottleInterval</key><integer>30</integer>
+          <key>StandardErrorPath</key><string>{{MacAgentDirectory}}/stderr.log</string>
+        </dict>
+        </plist>
+        INVENTORY_PLIST
+        chown root:wheel "$PLIST"
+        chmod 644 "$PLIST"
+        launchctl bootstrap system "$PLIST"
+        """;
 
     public const string MacAgentDirectory = AgentProtocol.MacAgentDirectory;
     public const string MacAgentLabel = AgentProtocol.MacAgentLabel;

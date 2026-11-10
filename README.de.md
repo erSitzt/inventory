@@ -593,7 +593,7 @@ nicht rückgängig; ihr Ergebnis wird verworfen.
 | Job-Ausführung | Das Job-Manifest kommt mit der Antwort der Abfrage; Paketdateien werden einzeln geholt (`GET /api/agent/jobs/{id}/files/{n}`) in einen Job-Ordner unterhalb des Agentenordners. Derselbe `JobExecutor` wie im agentenlosen Betrieb führt die Schritte als Lokales System aus (bzw. in der Sitzung des angemeldeten Benutzers, wenn so eingestellt). Fortschrittszeilen gehen jede Sekunde an den Server (`POST …/progress`), das Ergebnis am Ende (`POST …/result`, bis 64 MB für große Scans), danach wird der Job-Ordner gelöscht. |
 | Zeitlimits | Holt kein Agent den Job innerhalb von 2 Minuten ab, gilt der Rechner als nicht erreichbar (Deployments mit „Offline-Rechner nachholen“ versuchen es später erneut). Während ein Job läuft, wartet der Server die Summe der Schritt-Zeitlimits plus Reserve ab. |
 | Selbstaktualisierung | Die Abfrage enthält den Hash der installierten Runner-Dateien. Liefert der Server einen anderen Runner aus (nach einem Server-Update), kommt statt eines Jobs ein Update-Angebot: Der Agent lädt erst alle Dateien in einen Zwischenordner, tauscht sie dann aus (laufende Dateien werden zu `*.old` umbenannt und beim nächsten Start gelöscht), schreibt den neuen Hash und beendet sich mit Code 3 – die Wiederherstellung des Dienstes startet ihn binnen Sekunden mit den neuen Dateien neu. Wartende Jobs bleiben so lange in der Warteschlange. |
-| Fehler | Bei jedem Fehler (Server nicht erreichbar, ungültige Antwort) protokolliert der Agent in `agent.log` und versucht es nach 30 s erneut, beliebig oft. |
+| Fehler | Bei jedem Fehler (Server nicht erreichbar, ungültige Antwort) protokolliert der Agent in `agent.log` und versucht es nach 30 s erneut, beliebig oft; denselben Fehler höchstens einmal je Stunde. `agent.log` beginnt ab 1 MB neu, das vorige bleibt als `agent.log.1`. |
 
 **Was die Kommunikation braucht**
 
@@ -683,7 +683,7 @@ bei Windows im Verlauf; die Plattform lässt sich in Sammlungen („Plattform = 
 **Für Macs noch nicht:** Befehle, Pakete und Verteilungen, macOS-Updates und Fernzugriff. Inventory überspringt Macs bei
 diesen Aktionen mit einem Hinweis, und der Server lehnt solche Jobs für Macs ab.
 
-**Installation** – als root ausführen; das Skript lädt den Agenten passend zur Architektur vom Server, legt ihn unter
+**Installation** – das Installationsskript oder das Installationspaket legt den Agenten passend zur Architektur unter
 `/Library/Application Support/Inventory Agent` ab (nur für root lesbar) und startet ihn als LaunchDaemon `inventory.agent`:
 
 - **Von Hand:** die Download-Seite öffnen (*Einstellungen → Agenten → Download-Seite ohne Anmeldung*) und den dort
@@ -691,10 +691,19 @@ diesen Aktionen mit einem Hinweis, und der Server lehnt solche Jobs für Macs ab
   braucht ein Konto mit Administratorrechten auf dem Mac; ein Standardbenutzer kann den Agenten so nicht installieren.
 - **Per MDM:** *Einstellungen → Agenten → macOS-Installationsskript herunterladen* und als Shell-Skript zuweisen (Intune:
   *Geräte → macOS → Skripts*, als root; Jamf: eine Richtlinie mit dem Skript). Das Skript enthält das Anmeldegeheimnis
-  und holt den Agenten damit; die Download-Seite muss dafür nicht offen sein.
+  und holt den Agenten damit; die Download-Seite muss dafür nicht offen sein. Der Mac muss den Server erreichen, während
+  das Skript läuft.
+- **Per MDM, auch für Macs außerhalb des Büros:** *Einstellungen → Agenten → macOS-Paket (.pkg) herunterladen*. Das Paket
+  bringt den Agenten für Apple Silicon und Intel mit und installiert ohne Verbindung zum Server; der Agent meldet sich
+  an, sobald der Mac den Server erreicht (Büro, VPN), und versucht es bis dahin alle 30 Sekunden. Intune: *Apps → macOS →
+  macOS-App (PKG)*, *App-Version ignorieren* = Ja (der Agent aktualisiert sich selbst); Jamf: eine Richtlinie mit dem
+  Paket. Das Paket ist nicht signiert: Es ist für das MDM gedacht, das es mit `installer` installiert; per Doppelklick
+  blockiert es Gatekeeper. Es enthält das Anmeldegeheimnis – wer das Geheimnis erneuert, sperrt Macs aus, die das Paket
+  schon bekommen, sich aber noch nicht angemeldet haben.
 - **Entfernen:** *Agent entfernen* unter *Rechner bearbeiten* oder als Aktion für mehrere Rechner; von Hand dasselbe
   Skript mit `--uninstall` (z. B. `curl … | sudo bash -s -- --uninstall`), danach *Agent vergessen* unter *Rechner
-  bearbeiten*.
+  bearbeiten*. Beides entfernt auch den Paketbeleg; ist der Mac in Intune noch als *Erforderlich* für das Paket
+  zugewiesen, installiert Intune es wieder – also vorher die Zuweisung entfernen.
 
 Ein Mac meldet sich unter seinem lokalen Hostnamen an (`scutil --get LocalHostName`, z. B. `Maxs-MacBook-Pro`) und wird an
 seiner Seriennummer wiedererkannt, auch nach einer Umbenennung. Den Eintrag eines gleichnamigen Windows-Rechners übernimmt

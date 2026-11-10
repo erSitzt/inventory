@@ -168,4 +168,28 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
             Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "The agent loop did not stop.");
         }
     }
+
+    [Fact]
+    public void The_agent_log_starts_over_when_it_gets_too_big()
+    {
+        var folder = Directory.CreateTempSubdirectory();
+        try
+        {
+            var path = Path.Combine(folder.FullName, AgentLoop.LogFile);
+            foreach (var line in new[] { "first", "second", "third" })
+                AgentLoop.AppendLog(path, line, maxBytes: 10);
+            Assert.Equal(["third"], File.ReadAllLines(path));
+            Assert.Equal(["first", "second"], File.ReadAllLines(path + ".1"));
+            // Es bleibt bei einem älteren Protokoll.
+            foreach (var line in new[] { "fourth", "fifth" })
+                AgentLoop.AppendLog(path, line, maxBytes: 10);
+            Assert.Equal(["fifth"], File.ReadAllLines(path));
+            Assert.Equal(["third", "fourth"], File.ReadAllLines(path + ".1"));
+            Assert.Equal(2, folder.GetFiles().Length);
+        }
+        finally
+        {
+            folder.Delete(true);
+        }
+    }
 }

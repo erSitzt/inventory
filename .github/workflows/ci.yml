@@ -38,3 +38,31 @@ jobs:
           and (.software | length > 0) and (.disks | length > 0) and (.networkAdapters | length > 0) and (.hardware.volumes[0].protected != null)
           and (.macOs.gatekeeperEnabled != null) and (.primaryIpAddress != null) and (.apps != null)
           and ([.software[] | select(.architecture != null and .origin != null)] | length > 0)' inventory.json
+      # Das Installationspaket (Intune, Jamf), wie es der Server baut, mit dem eben veröffentlichten Agenten: installieren wie
+      # ein MDM, ohne erreichbaren Server. Der Agent muss als LaunchDaemon laufen und es weiter versuchen.
+      - run: mkdir -p agent-macos/osx-arm64 && cp agent/inventory-agent agent-macos/osx-arm64/
+      - run: dotnet test tests/Inventory.Tests --filter "FullyQualifiedName~MacPackageTests"
+        env:
+          INVENTORY_MAC_AGENT_DIR: ${{ github.workspace }}/agent-macos
+          INVENTORY_MAC_PKG: ${{ github.workspace }}/inventory-agent.pkg
+      - run: |
+          pkgutil --expand inventory-agent.pkg expanded
+          cat expanded/PackageInfo
+          sudo installer -pkg inventory-agent.pkg -target /
+          pkgutil --pkg-info inventory.agent
+          sleep 10
+          dir="/Library/Application Support/Inventory Agent"
+          sudo ls -la "$dir"
+          sudo cat "$dir/agent.log"
+          sudo launchctl print system/inventory.agent | head -30
+          sudo launchctl print system/inventory.agent | grep -q 'state = running'
+          sudo grep -q 'Fehler' "$dir/agent.log"
+          sudo codesign --verify "$dir/inventory-agent"
+      # Zum Vergleich, falls das Paket nicht durchgeht: ein Paket ohne Payload, wie Apples pkgbuild es baut.
+      - if: failure()
+        run: |
+          mkdir -p ref/scripts && printf '#!/bin/bash\nexit 0\n' > ref/scripts/postinstall && chmod +x ref/scripts/postinstall
+          pkgbuild --nopayload --scripts ref/scripts --identifier ref.test --version 1 ref.pkg
+          xar --dump-toc=ref-toc.xml -f ref.pkg && cat ref-toc.xml
+          pkgutil --expand ref.pkg ref/expanded && ls -la ref/expanded && cat ref/expanded/PackageInfo
+          tail -60 /var/log/install.log
