@@ -34,6 +34,11 @@ namespace Inventory.Contracts
         WindowsFeature = 12,
         /// <summary>App-Paket (MSIX/AppX) für alle Benutzer entfernen, auf Wunsch samt Bereitstellung für neue Benutzer.</summary>
         RemoveApp = 13,
+        /// <summary>
+        /// Den Agenten vom Rechner entfernen. Läuft der Schritt im Agenten selbst, entfernt er sich erst, nachdem dieses
+        /// Ergebnis beim Server angekommen ist. Kein Schritt für Pakete: der Server schickt ihn über "Agent entfernen".
+        /// </summary>
+        UninstallAgent = 14,
     }
 
     public enum RegistryAction

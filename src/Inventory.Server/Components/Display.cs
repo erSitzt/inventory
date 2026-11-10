@@ -342,6 +342,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         StepType.Registry => T("Registry"),
         StepType.WindowsFeature => T("Windows feature"),
         StepType.RemoveApp => T("Remove app (MSIX/Store)"),
+        StepType.UninstallAgent => T("Remove agent"),
         _ => type.ToString(),
     };
 

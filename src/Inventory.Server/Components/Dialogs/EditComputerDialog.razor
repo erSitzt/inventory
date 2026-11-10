@@ -4,6 +4,9 @@
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
 @inject Access Access
+@inject RemoteJobService Jobs
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
@@ -43,10 +46,11 @@
             {
                 <MudAlert Severity="Severity.Info" Dense="true">
                     @L["Agent {0}, last contact {1}", Computer.AgentVersion, Display.LocalTime(Computer.AgentLastSeenUtc)]
-                    <div class="mt-2">
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="ForgetAgentAsync">@L["Forget agent"]</MudButton>
-                    </div>
-                    <MudText Typo="Typo.caption" Class="mt-1">@L["Removes the agent's key on the server and resets the transport. Uninstall the service on the computer first (sc stop InventoryAgent, sc delete InventoryAgent), otherwise it enrolls again with the enrollment secret."]</MudText>
+                    <MudStack Row="true" Class="mt-2" Spacing="2">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="_removing" OnClick="RemoveAgentAsync">@(_removing ? L["Removing agent …"] : L["Remove agent"])</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="_removing" OnClick="ForgetAgentAsync">@L["Forget agent"]</MudButton>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Class="mt-1">@L["\"Remove agent\" uninstalls the agent on the computer, then the server forgets it. \"Forget agent\" only removes the agent's key on the server and resets the transport – if the agent is still installed, it enrolls again with the enrollment secret."]</MudText>
                 </MudAlert>
             }
         </MudStack>
@@ -69,6 +73,7 @@
     private int? _credentialId;
     private string? _wakeMac;
     private string? _error;
+    private bool _removing;
 
     protected override void OnInitialized()
     {
@@ -79,6 +84,34 @@
         _transport = Computer.Transport;
         _credentialId = Computer.CredentialId;
         _wakeMac = Computer.WakeMac;
+    }
+
+    private async Task RemoveAgentAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (await Dialogs.ShowMessageBoxAsync(L["Remove agent"], L["Uninstall the agent on {0}? Afterwards the computer is reached agentless again (a Mac not at all until the agent is installed again).", Computer.Name],
+                yesText: L["Remove"], cancelText: L["Cancel"]) != true)
+            return;
+        _removing = true;
+        _error = null;
+        try
+        {
+            await Audit.LogAsync(L["Agent removal started"], Computer.Name);
+            var result = await Agents.RemoveAsync(Computer.Id, Jobs);
+            if (!result.Success)
+            {
+                _error = L["The agent could not be removed: {0}", result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error ?? ""];
+                return;
+            }
+            await Audit.LogAsync(L["Agent removed"], Computer.Name);
+            Snackbar.Add(L["The agent on {0} removes itself now; the server has forgotten it.", Computer.Name], Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            _removing = false;
+        }
     }
 
     private async Task ForgetAgentAsync()

@@ -4,10 +4,11 @@ using Inventory.Contracts;
 namespace Inventory.Agent.MacOS;
 
 /// <summary>
-/// Führt einen Job auf dem Mac aus. Bisher nur das Inventar (und Warten); alle anderen Schritte sind Windows-Schritte und
-/// scheitern mit einer klaren Meldung, ohne dass etwas ausgeführt wird.
+/// Führt einen Job auf dem Mac aus. Bisher nur das Inventar, Warten und das Entfernen des Agenten; alle anderen Schritte sind
+/// Windows-Schritte und scheitern mit einer klaren Meldung, ohne dass etwas ausgeführt wird.
 /// </summary>
-internal sealed class MacJob(string jobDir, string hostName) : IAgentJob
+/// <param name="agentDirectory">Der Ordner des Agenten; ihn räumt "Agent entfernen" ab.</param>
+internal sealed class MacJob(string jobDir, string hostName, string agentDirectory) : IAgentJob
 {
     private volatile bool _cancelled;
 
@@ -79,6 +80,9 @@ internal sealed class MacJob(string jobDir, string hostName) : IAgentJob
                     stepResult.Status = StepStatus.Failed;
                     stepResult.Error = "Inventory scan failed: " + ex.Message;
                 }
+                break;
+            case StepType.UninstallAgent:
+                stepResult.Output = MacAgentRemoval.Schedule(agentDirectory);
                 break;
             case StepType.Sleep:
                 for (var waited = 0; waited < step.Seconds && !_cancelled; waited++)

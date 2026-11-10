@@ -26,6 +26,11 @@ namespace Inventory.Agent
         private readonly string _version;
         private HttpClient _http = null!;
         private IAgentJob? _running;
+        /// <summary>
+        /// Der Agent entfernt sich gerade selbst: keine Jobs mehr abfragen (der Server hat den Schlüssel dann schon verworfen,
+        /// eine Abfrage führte zur erneuten Anmeldung), nur noch abgelegte Ergebnisse abliefern.
+        /// </summary>
+        private volatile bool _removing;
 
         /// <param name="handler">Nur für Tests: statt einer echten Verbindung zum Server.</param>
         public AgentLoop(IAgentPlatform platform, HttpMessageHandler? handler = null)
@@ -97,6 +102,12 @@ namespace Inventory.Agent
         {
             while (!_stop.IsCancellationRequested)
             {
+                if (_removing)
+                {
+                    DeliverPending();
+                    _stop.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(2));
+                    continue;
+                }
                 ContinueAfterRestart();
                 DeliverPending();
                 using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash(), Runtime = _platform.Runtime }), _stop.Token).GetAwaiter().GetResult())
@@ -211,6 +222,11 @@ namespace Inventory.Agent
                     pump.Change(Timeout.Infinite, Timeout.Infinite);
                 }
                 SendProgress(jobId, jobDir);
+                if (result.Success && offer.Manifest.Steps.Any(s => s.Type == StepType.UninstallAgent))
+                {
+                    Log("Wird entfernt; frage keine Jobs mehr ab.");
+                    _removing = true;
+                }
             }
             catch (Exception ex)
             {
@@ -416,7 +432,7 @@ namespace Inventory.Agent
             }
         }
 
-        private string PendingDir => Path.Combine(_baseDir, "pending");
+        private string PendingDir => Path.Combine(_baseDir, AgentProtocol.PendingFolder);
 
         /// <summary>
         /// Meldet abgelegte Ergebnisse. Ein Ergebnis bleibt liegen, bis der Server es angenommen oder als unbekannt abgelehnt

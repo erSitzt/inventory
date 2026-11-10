@@ -36,7 +36,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
     }
 
     /// <summary>Was der Mac-Agent ausführen kann.</summary>
-    public static readonly IReadOnlySet<StepType> MacSteps = new HashSet<StepType> { StepType.InventoryScan, StepType.Sleep };
+    public static readonly IReadOnlySet<StepType> MacSteps = new HashSet<StepType> { StepType.InventoryScan, StepType.Sleep, StepType.UninstallAgent };
 
     private async Task<JobResult> RunCoreAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct,
         IReadOnlyList<JobFile>? files, bool agentInstall)

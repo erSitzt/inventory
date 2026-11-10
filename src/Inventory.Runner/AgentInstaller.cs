@@ -111,6 +111,57 @@ namespace Inventory.Runner
             return 0;
         }
 
+        /// <summary>
+        /// Schritt "Agent entfernen". Läuft er im Agenten selbst, kann der sich nicht löschen, solange er läuft: eine Kopie des
+        /// Runners außerhalb des Agent-Ordners übernimmt das, sobald das Ergebnis beim Server angekommen ist. Agentenlos
+        /// (SMB/WinRM) entfernt der Runner den Agenten gleich.
+        /// </summary>
+        public static string ScheduleRemoval()
+        {
+            if (!ServiceExists() && !Directory.Exists(TargetDir))
+                return "No agent is installed.";
+            if (!SameFolder(RunnerInfo.Directory, TargetDir))
+            {
+                var code = Uninstall();
+                if (code != 0)
+                    throw new InvalidOperationException("The agent could not be removed (exit code " + code + ").");
+                return "Agent removed.";
+            }
+            var copy = Path.Combine(Path.GetTempPath(), "InventoryAgentRemoval-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(copy);
+            foreach (var file in Directory.GetFiles(RunnerInfo.Directory).Where(f => IsAgentFile(f) && !string.Equals(Path.GetFileName(f), AgentProtocol.ConfigFile, StringComparison.OrdinalIgnoreCase)))
+                File.Copy(file, Path.Combine(copy, Path.GetFileName(file)));
+            Process.Start(new ProcessStartInfo(Path.Combine(copy, JobFiles.RunnerExe), RunnerModes.RemoveAgent)
+            {
+                UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = copy,
+            });
+            return "The agent removes itself as soon as this result has reached the server.";
+        }
+
+        /// <summary>
+        /// Mit <see cref="RunnerModes.RemoveAgent"/> aus der Kopie: warten, bis die abgelegten Ergebnisse abgeliefert sind (höchstens
+        /// zwei Minuten), den Agenten entfernen und zuletzt die Kopie selbst, sobald dieser Prozess beendet ist.
+        /// </summary>
+        public static int RemoveDeferred()
+        {
+            var pending = Path.Combine(TargetDir, AgentProtocol.PendingFolder);
+            // Das Ergebnis des Entfernen-Schritts wird erst nach dem Schritt abgelegt.
+            System.Threading.Thread.Sleep(TimeSpan.FromSeconds(5));
+            var until = DateTime.UtcNow.AddMinutes(2);
+            while (DateTime.UtcNow < until && Directory.Exists(pending) && Directory.GetFiles(pending, "*.json").Length > 0)
+                System.Threading.Thread.Sleep(TimeSpan.FromSeconds(2));
+            var code = Uninstall();
+            var own = RunnerInfo.Directory;
+            Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe"), "/d /c ping -n 6 127.0.0.1 >nul & rmdir /s /q \"" + own + "\"")
+            {
+                UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetTempPath(),
+            });
+            return code;
+        }
+
+        private static bool SameFolder(string a, string b) =>
+            string.Equals(Path.GetFullPath(a).TrimEnd(Path.DirectorySeparatorChar), Path.GetFullPath(b).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase);
+
         /// <summary>Programmdateien, Konfiguration und Versionskennung; nicht das Startskript, Hinweise oder ein fremder Schlüssel.</summary>
         internal static bool IsAgentFile(string path)
         {

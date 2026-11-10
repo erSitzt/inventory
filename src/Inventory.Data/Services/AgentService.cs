@@ -187,9 +187,8 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             """;
     }
 
-    /// <summary>Hier liegt der Mac-Agent mit Konfiguration, Schlüssel und Ablage (nur für root lesbar).</summary>
-    public const string MacAgentDirectory = "/Library/Application Support/Inventory Agent";
-    public const string MacAgentLabel = "inventory.agent";
+    public const string MacAgentDirectory = AgentProtocol.MacAgentDirectory;
+    public const string MacAgentLabel = AgentProtocol.MacAgentLabel;
     /// <summary>Antwortkopf des Downloads: der Stand der Agent-Dateien, den das Skript als agent.version ablegt.</summary>
     public const string AgentHashHeader = "X-Agent-Hash";
     public const string PublicMacScriptPath = "agent/macos/install.sh";
@@ -290,6 +289,19 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             await db.SaveChangesAsync(ct);
         }
         return computer;
+    }
+
+    /// <summary>
+    /// Entfernt den Agenten vom Rechner (Windows und Mac) und danach seine Zuordnung auf dem Server. Der Agent meldet zuerst
+    /// das Ergebnis und entfernt sich erst dann selbst; scheitert der Auftrag, bleibt die Zuordnung.
+    /// </summary>
+    public async Task<JobResult> RemoveAsync(int computerId, RemoteJobService jobs, CancellationToken ct = default)
+    {
+        var job = new JobManifest { Steps = [new JobStep { Name = "Agent entfernen", Type = StepType.UninstallAgent, TimeoutSeconds = 120 }] };
+        var result = await jobs.RunAsync(computerId, job, null, ct);
+        if (result.Success)
+            await ForgetAsync(computerId, ct);
+        return result;
     }
 
     /// <summary>Entfernt die Agenten-Zuordnung; der Rechner wird wieder agentenlos angesprochen.</summary>

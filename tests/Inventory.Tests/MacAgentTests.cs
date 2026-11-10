@@ -263,6 +263,8 @@ public class MacAgentTests
         Assert.Contains("Not available for macOS yet", command.Error);
         var scan = await jobs.RunAsync(id, new JobManifest { Steps = [new JobStep { Name = "scan", Type = StepType.InventoryScan }] });
         Assert.True(scan.Success, scan.Error);
+        // Den Agenten entfernen geht auch auf dem Mac.
+        Assert.True((await jobs.RunAsync(id, new JobManifest { Steps = [new JobStep { Name = "remove", Type = StepType.UninstallAgent }] })).Success);
     }
 
     [Fact]
@@ -284,5 +286,17 @@ public class MacAgentTests
         Assert.Contains("set -euo pipefail", script);
         Assert.DoesNotContain("codesign --force --sign - \"$DOWNLOAD\" >/dev/null 2>&1 || true", script);
         Assert.Contains("--uninstall", script);
+    }
+
+    [Fact]
+    public void The_removal_script_waits_for_the_result_and_unloads_the_daemon_last()
+    {
+        var script = MacAgentRemoval.Script;
+        var wait = script.IndexOf($"\"$1/{AgentProtocol.PendingFolder}/\"*.json", StringComparison.Ordinal);
+        var removeFiles = script.IndexOf("rm -rf \"$1\"", StringComparison.Ordinal);
+        var bootout = script.IndexOf($"launchctl bootout system/{AgentProtocol.MacAgentLabel}", StringComparison.Ordinal);
+        // Erst warten, dann löschen, zuletzt entladen: das Entladen beendet auch dieses Skript.
+        Assert.True(wait > 0 && removeFiles > wait && bootout > removeFiles, script);
+        Assert.Contains($"rm -f '/Library/LaunchDaemons/{AgentProtocol.MacAgentLabel}.plist'", script);
     }
 }

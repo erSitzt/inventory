@@ -67,12 +67,14 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
             public JobResult Run()
             {
                 var manifest = JobJson.Deserialize<JobManifest>(File.ReadAllText(Path.Combine(jobDir, JobFiles.Manifest), Encoding.UTF8))!;
-                var scan = manifest.Steps.Single();
+                var step = manifest.Steps.Single();
                 return new JobResult
                 {
-                    JobId = manifest.JobId, Success = scan.Type == StepType.InventoryScan, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow,
-                    Steps = [new StepResult { Index = 0, Name = scan.Name, Status = StepStatus.Succeeded }],
-                    Inventory = new InventoryData { ComputerName = hostName, OsName = "Test OS 1.0", Manufacturer = "Test Inc.", MemoryBytes = 8L << 30 },
+                    JobId = manifest.JobId, Success = step.Type is StepType.InventoryScan or StepType.UninstallAgent, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow,
+                    Steps = [new StepResult { Index = 0, Name = step.Name, Status = StepStatus.Succeeded }],
+                    Inventory = step.Type == StepType.InventoryScan
+                        ? new InventoryData { ComputerName = hostName, OsName = "Test OS 1.0", Manufacturer = "Test Inc.", MemoryBytes = 8L << 30 }
+                        : null,
                 };
             }
 
@@ -121,6 +123,48 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
         {
             loop.Stop();
             // Läuft die Schleife weiter, arbeitete sie im Datenordner, den der Testaufbau gleich löscht.
+            Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "The agent loop did not stop.");
+        }
+    }
+
+    [Fact]
+    public async Task Removing_an_agent_forgets_it_and_it_does_not_enroll_again()
+    {
+        var agents = _app.Services.GetRequiredService<AgentService>();
+        var runner = _app.Services.GetRequiredService<RunnerPackage>();
+        var directory = Path.Combine(_app.DataDirectory, "agent-removed");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, AgentProtocol.ConfigFile),
+            JobJson.Serialize(new AgentConfig { ServerUrl = "http://localhost", EnrollmentToken = await agents.GetEnrollmentTokenAsync() }));
+        File.WriteAllText(Path.Combine(directory, AgentProtocol.VersionFile), runner.For(RunnerRuntimes.Framework)!.Hash);
+
+        var loop = new AgentLoop(new FakePlatform(directory, "AGENT-02", RunnerRuntimes.Framework), _app.Server.CreateHandler());
+        var thread = new Thread(loop.Run) { IsBackground = true };
+        thread.Start();
+        try
+        {
+            var factory = _app.Services.GetRequiredService<IDbContextFactory<Inventory.Data.InventoryDbContext>>();
+            async Task<Inventory.Core.Model.Computer?> Load()
+            {
+                await using var db = await factory.CreateDbContextAsync();
+                return await db.Computers.AsNoTracking().FirstOrDefaultAsync(c => c.Name == "AGENT-02");
+            }
+            for (var i = 0; i < 100 && (await Load())?.AgentKeyHash is null; i++)
+                await Task.Delay(100);
+            var id = (await Load())!.Id;
+
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            var result = await agents.RemoveAsync(id, _app.Services.GetRequiredService<RemoteJobService>(), timeout.Token);
+            Assert.True(result.Success, result.Error);
+            Assert.Null((await Load())!.AgentKeyHash);
+            // Nach dem Entfernen fragt der Agent keine Jobs mehr ab: mit dem verworfenen Schlüssel meldete er sich sonst neu an.
+            await Task.Delay(TimeSpan.FromSeconds(4));
+            var after = (await Load())!;
+            Assert.Equal((null, (Inventory.Core.Model.TransportKind?)null), (after.AgentKeyHash, after.Transport));
+        }
+        finally
+        {
+            loop.Stop();
             Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "The agent loop did not stop.");
         }
     }
