@@ -119,7 +119,8 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
         finally
         {
             loop.Stop();
-            thread.Join(TimeSpan.FromSeconds(10));
+            // Läuft die Schleife weiter, arbeitete sie im Datenordner, den der Testaufbau gleich löscht.
+            Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "The agent loop did not stop.");
         }
     }
 }
