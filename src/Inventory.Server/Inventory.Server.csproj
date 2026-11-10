@@ -46,8 +46,8 @@
   <Target Name="IncludeRunner" AfterTargets="ResolveProjectReferences" BeforeTargets="AssignTargetPaths">
     <MSBuild Projects="..\Inventory.Runner\Inventory.Runner.csproj" Targets="Publish" Properties="Configuration=$(Configuration);TargetFramework=net10.0-windows;RuntimeIdentifier=win-x64;SelfContained=true;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Runner\bin\$(Configuration)\selfcontained\" />
     <!-- Der Mac-Agent als eine Datei je Architektur; der Server liefert ihn über das Installationsskript und als Update aus. -->
-    <MSBuild Projects="..\Inventory.Agent.MacOS\Inventory.Agent.MacOS.csproj" Targets="Publish" Properties="Configuration=$(Configuration);RuntimeIdentifier=osx-arm64;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Agent.MacOS\bin\$(Configuration)\publish\osx-arm64\" />
-    <MSBuild Projects="..\Inventory.Agent.MacOS\Inventory.Agent.MacOS.csproj" Targets="Publish" Properties="Configuration=$(Configuration);RuntimeIdentifier=osx-x64;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Agent.MacOS\bin\$(Configuration)\publish\osx-x64\" />
+    <MSBuild Projects="..\Inventory.Agent.MacOS\Inventory.Agent.MacOS.csproj" Targets="Publish" Properties="Configuration=$(Configuration);RuntimeIdentifier=osx-arm64;SelfContained=true;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Agent.MacOS\bin\$(Configuration)\publish\osx-arm64\" />
+    <MSBuild Projects="..\Inventory.Agent.MacOS\Inventory.Agent.MacOS.csproj" Targets="Publish" Properties="Configuration=$(Configuration);RuntimeIdentifier=osx-x64;SelfContained=true;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Agent.MacOS\bin\$(Configuration)\publish\osx-x64\" />
     <ItemGroup>
       <RunnerFile Include="..\Inventory.Runner\bin\$(Configuration)\net48\*.exe;..\Inventory.Runner\bin\$(Configuration)\net48\*.dll;..\Inventory.Runner\bin\$(Configuration)\net48\*.config" />
       <Content Include="@(RunnerFile)" Link="runner\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
