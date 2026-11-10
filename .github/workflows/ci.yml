@@ -29,6 +29,22 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      # VORÜBERGEHEND: Referenz für ein Paket mit leerer Payload (Beleg ja/nein, Bom, Payload-Format).
+      - continue-on-error: true
+        run: |
+          mkdir -p ref2/root ref2/scripts && printf '#!/bin/bash\nexit 0\n' > ref2/scripts/postinstall && chmod +x ref2/scripts/postinstall
+          pkgbuild --root ref2/root --scripts ref2/scripts --identifier ref.empty --version 1 --install-location / ref2.pkg
+          xar --dump-toc=ref2-toc.xml -f ref2.pkg && cat ref2-toc.xml
+          pkgutil --expand ref2.pkg ref2/expanded && ls -la ref2/expanded && cat ref2/expanded/PackageInfo
+          file ref2/expanded/Payload; xxd ref2/expanded/Payload | head -20
+          lsbom -p MUGsTf ref2/expanded/Bom
+          echo BOM-BASE64; base64 -i ref2/expanded/Bom; echo END
+          mkbom -u 0 -g 0 ref2/root ref2/mk.bom && lsbom ref2/mk.bom && echo MKBOM-BASE64 && base64 -i ref2/mk.bom && echo END
+          cmp ref2/mk.bom ref2/expanded/Bom && echo SAME-BOM || echo DIFFERENT-BOM
+          sudo installer -pkg ref2.pkg -target /
+          pkgutil --pkg-info ref.empty; ls -la /var/db/receipts/ | grep ref.empty
+          pkgutil --files ref.empty
+          sudo pkgutil --forget ref.empty
       - run: dotnet publish src/Inventory.Agent.MacOS -c Release -r osx-arm64 -o agent
       - run: sudo ./agent/inventory-agent --collect > inventory.json
       - run: |
