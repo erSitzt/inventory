@@ -35,6 +35,7 @@
     <!-- Ohne eigene Eigenschaften, damit dieser Build derselbe ist wie der aus der Solution; sonst bauen beide gleichzeitig ins selbe obj. -->
     <ProjectReference Include="..\Inventory.Runner\Inventory.Runner.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
     <ProjectReference Include="..\Inventory.Launcher\Inventory.Launcher.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
+    <ProjectReference Include="..\Inventory.Agent.MacOS\Inventory.Agent.MacOS.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained" />
     <ProjectReference Include="..\Inventory.Plugins\Inventory.Plugins.csproj" />
   </ItemGroup>
 
@@ -44,11 +45,18 @@
   -->
   <Target Name="IncludeRunner" AfterTargets="ResolveProjectReferences" BeforeTargets="AssignTargetPaths">
     <MSBuild Projects="..\Inventory.Runner\Inventory.Runner.csproj" Targets="Publish" Properties="Configuration=$(Configuration);TargetFramework=net10.0-windows;RuntimeIdentifier=win-x64;SelfContained=true;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Runner\bin\$(Configuration)\selfcontained\" />
+    <!-- Der Mac-Agent als eine Datei je Architektur; der Server liefert ihn über das Installationsskript und als Update aus. -->
+    <MSBuild Projects="..\Inventory.Agent.MacOS\Inventory.Agent.MacOS.csproj" Targets="Publish" Properties="Configuration=$(Configuration);RuntimeIdentifier=osx-arm64;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Agent.MacOS\bin\$(Configuration)\publish\osx-arm64\" />
+    <MSBuild Projects="..\Inventory.Agent.MacOS\Inventory.Agent.MacOS.csproj" Targets="Publish" Properties="Configuration=$(Configuration);RuntimeIdentifier=osx-x64;PublishDir=$(MSBuildProjectDirectory)\..\Inventory.Agent.MacOS\bin\$(Configuration)\publish\osx-x64\" />
     <ItemGroup>
       <RunnerFile Include="..\Inventory.Runner\bin\$(Configuration)\net48\*.exe;..\Inventory.Runner\bin\$(Configuration)\net48\*.dll;..\Inventory.Runner\bin\$(Configuration)\net48\*.config" />
       <Content Include="@(RunnerFile)" Link="runner\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
       <SelfContainedRunnerFile Include="..\Inventory.Runner\bin\$(Configuration)\selfcontained\InventoryRunner.exe" />
       <Content Include="@(SelfContainedRunnerFile)" Link="runner-net10\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+      <MacAgentArm64 Include="..\Inventory.Agent.MacOS\bin\$(Configuration)\publish\osx-arm64\inventory-agent" />
+      <Content Include="@(MacAgentArm64)" Link="agent-macos\osx-arm64\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+      <MacAgentX64 Include="..\Inventory.Agent.MacOS\bin\$(Configuration)\publish\osx-x64\inventory-agent" />
+      <Content Include="@(MacAgentX64)" Link="agent-macos\osx-x64\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
       <!-- Der Starter für Admin-PCs wird über die Oberfläche zum Download angeboten. -->
       <LauncherFile Include="..\Inventory.Launcher\bin\$(Configuration)\net48\InventoryLauncher.exe;..\Inventory.Launcher\bin\$(Configuration)\net48\InventoryLauncher.exe.config" />
       <Content Include="@(LauncherFile)" Link="launcher\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

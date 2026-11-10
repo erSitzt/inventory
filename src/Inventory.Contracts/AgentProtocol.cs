@@ -17,6 +17,18 @@ namespace Inventory.Contracts
         public const string VersionFile = "agent.version";
         /// <summary>Anfrageparameter von <see cref="UpdatePath"/>: die Laufzeit, für die der Agent Dateien holt (<see cref="RunnerRuntimes"/>).</summary>
         public const string RuntimeQuery = "runtime";
+        /// <summary>Lädt den Agenten für eine Laufzeit herunter (Installation auf dem Mac); nur mit gültigem Anmeldetoken.</summary>
+        public const string DownloadPath = "api/agent/download";
+        /// <summary>Kopfzeile mit dem Anmeldetoken für <see cref="DownloadPath"/>.</summary>
+        public const string EnrollmentTokenHeader = "X-Enrollment-Token";
+        /// <summary>Die eine Datei des Mac-Agenten.</summary>
+        public const string MacAgentFile = "inventory-agent";
+    }
+
+    /// <summary>Betriebssystem-Familien der Agenten; Windows-Agenten melden keine (null).</summary>
+    public static class AgentPlatforms
+    {
+        public const string MacOS = "macOS";
     }
 
     /// <summary>
@@ -27,6 +39,10 @@ namespace Inventory.Contracts
     {
         public const string Framework = "net48";
         public const string SelfContained = "net10";
+        /// <summary>Der Mac-Agent für Apple Silicon (eine Datei, eigenständig mit .NET 10).</summary>
+        public const string MacArm64 = "osx-arm64";
+        /// <summary>Der Mac-Agent für Intel-Macs.</summary>
+        public const string MacX64 = "osx-x64";
         /// <summary>
         /// Umgebungsvariable, die der Runner für seine Schritte setzt: sein eigener Ordner. Die Agent-Installation übernimmt
         /// daraus genau den Runner, der den Job ausführt.
@@ -49,6 +65,10 @@ namespace Inventory.Contracts
         /// <summary>Voller DNS-Name (Rechnername + primäres DNS-Suffix); leer ohne Suffix und bei älteren Agenten.</summary>
         public string? DnsName { get; set; }
         public string? Version { get; set; }
+        /// <summary><see cref="AgentPlatforms"/>; null = Windows (auch alle älteren Agenten).</summary>
+        public string? Platform { get; set; }
+        /// <summary>Seriennummer des Geräts: wiederfinden, auch wenn sich der Name ändert. Bisher nur vom Mac-Agenten.</summary>
+        public string? SerialNumber { get; set; }
     }
 
     public sealed class AgentEnrollResponse

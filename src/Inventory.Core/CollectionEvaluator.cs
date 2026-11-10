@@ -77,7 +77,8 @@ public static class CollectionEvaluator
         RuleField.FirmwareType => Text(rule, computer.FirmwareType),
         RuleField.Gpu => Text(rule, computer.Gpu),
         RuleField.DeviceType => computer.ChassisType is not null && Text(rule, Chassis.Kind(computer.ChassisType, computer.Model).ToString()),
-        RuleField.DiskFreeGb => Number(rule, computer.Disks.FirstOrDefault(d => d.Drive.StartsWith("C", StringComparison.OrdinalIgnoreCase)) is { } system
+        RuleField.Platform => Text(rule, computer.Platform.ToString()),
+        RuleField.DiskFreeGb => Number(rule, computer.Disks.FirstOrDefault(d => computer.IsMac ? d.Drive == "/" : d.Drive.StartsWith("C", StringComparison.OrdinalIgnoreCase)) is { } system
             ? (int)(system.FreeBytes / (1L << 30)) : null),
         RuleField.BatteryHealthPercent => Number(rule, computer.BatteryHealthPercent),
         RuleField.DaysSinceBoot => Number(rule, computer.LastBootUtc is { } boot ? (int)(DateTime.UtcNow - boot).TotalDays : null),

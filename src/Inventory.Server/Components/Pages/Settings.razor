@@ -266,6 +266,14 @@
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="/download/agent-setup" Target="_blank">@L["Download agent setup"]</MudButton>
         </div>
         <MudDivider />
+        <MudText Typo="Typo.subtitle2">@L["Macs"]</MudText>
+        <MudText Typo="Typo.body2">
+            @L["On a Mac the agent collects the inventory (hardware, macOS, programs, network, users, FileVault, firewall, Gatekeeper); commands and packages are not available for Macs yet. The install script fetches the agent from this server and sets it up as a LaunchDaemon. Run it as root – in Terminal with sudo, or as a shell script in Intune or Jamf. With --uninstall it removes the agent again. It contains the enrollment secret."]
+        </MudText>
+        <div>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Custom.Brands.Apple" Href="/download/agent-macos" Target="_blank">@L["Download macOS install script"]</MudButton>
+        </div>
+        <MudDivider />
         <MudText Typo="Typo.subtitle2">@L["Download page without sign-in"]</MudText>
         <MudText Typo="Typo.body2">
             @L["To set up a new computer, open this page in its browser: it offers the agent setup, already configured for this server, and a one-line command for PowerShell. Nobody has to sign in."]

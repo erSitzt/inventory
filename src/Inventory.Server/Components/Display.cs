@@ -205,6 +205,12 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     public string Os(Computer c) =>
         c.OsName is null ? "–" : $"{c.OsName.Replace("Microsoft ", "")} {c.OsRelease}".Trim();
 
+    /// <summary>Name der Plattform; "macOS" bleibt in jeder Sprache gleich.</summary>
+    public string Platform(OsPlatform platform) => platform == OsPlatform.MacOS ? "macOS" : "Windows";
+
+    /// <summary>Kennzeichen der Plattform neben dem Betriebssystem; null für Windows (der Normalfall braucht keins).</summary>
+    public static string? PlatformIcon(Computer c) => c.IsMac ? Icons.Custom.Brands.Apple : null;
+
     public string Field(RuleField field) => field switch
     {
         RuleField.ComputerName => T("Computer name"),
@@ -253,6 +259,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.Service => T("Windows service"),
         RuleField.InCollection => T("Member of collection"),
         RuleField.DeviceType => T("Device type"),
+        RuleField.Platform => T("Platform"),
         RuleField.SecureBoot => T("Secure Boot on"),
         RuleField.TpmReady => T("TPM ready"),
         RuleField.SystemDriveProtected => T("BitLocker (system drive)"),
@@ -302,7 +309,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
             or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
             or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem
             or RuleField.IsVirtual => [RuleOperator.Equals],
-        RuleField.InCollection or RuleField.DeviceType => [RuleOperator.Equals, RuleOperator.NotEquals],
+        RuleField.InCollection or RuleField.DeviceType or RuleField.Platform => [RuleOperator.Equals, RuleOperator.NotEquals],
         RuleField.DiskFreeGb or RuleField.BatteryHealthPercent or RuleField.DaysSinceBoot or RuleField.ScanAgeDays => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
         RuleField.CpuSockets => [RuleOperator.Equals, RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
         RuleField.Service => [RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains],
@@ -524,6 +531,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     {
         RuleField.InCollection => int.TryParse(rule.Value, out var id) ? collectionName(id) ?? T("(deleted collection)") : rule.Value,
         RuleField.DeviceType => Enum.TryParse<ChassisKind>(rule.Value, true, out var kind) ? T(Core.Chassis.Label(kind)) : rule.Value,
+        RuleField.Platform => Enum.TryParse<OsPlatform>(rule.Value, true, out var platform) ? Platform(platform) : rule.Value,
         RuleField.Service when !string.IsNullOrWhiteSpace(rule.Value2) => $"{rule.Value} ({ServiceState(rule.Value2)})",
         _ when IsFlag(rule.Field) => rule.Value.Trim().ToLowerInvariant() is "true" or "ja" or "1" ? T("yes") : T("no"),
         _ => rule.Value,

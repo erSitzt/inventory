@@ -63,6 +63,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         {
             computer.IsOnline = false;
         }
+        computer.Platform = data.Platform == AgentPlatforms.MacOS ? OsPlatform.MacOS : OsPlatform.Windows;
         computer.Domain = data.Domain;
         // Ein Domänenmitglied meldet seine DNS-Domäne (eine Arbeitsgruppe hat keinen Punkt); nur als Lückenfüller, das Verzeichnis geht vor.
         if (computer.DnsName is null && data.ComputerName is { } own && data.Domain is { } domain && domain.Contains('.'))
@@ -87,6 +88,15 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.SessionId = remote.SessionId;
             computer.TeamViewerId = remote.TeamViewerId;
             computer.AnyDeskId = remote.AnyDeskId;
+        }
+        if (data.MacOs is { } mac)
+        {
+            // Wie bei den Windows-Einstellungen: was sich diesmal nicht lesen ließ, bleibt.
+            computer.MacFirewall = mac.FirewallEnabled ?? computer.MacFirewall;
+            computer.MacFirewallStealth = mac.FirewallStealth ?? computer.MacFirewallStealth;
+            computer.MacGatekeeper = mac.GatekeeperEnabled ?? computer.MacGatekeeper;
+            computer.MacSip = mac.SipEnabled ?? computer.MacSip;
+            computer.MacAutoUpdateCheck = mac.AutomaticUpdateCheck ?? computer.MacAutoUpdateCheck;
         }
         if (data.Security is { } security)
         {
@@ -401,8 +411,9 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
     }
 
     /// <summary>Das Laufwerk, auf dem Windows liegt; Scans nennen es nicht eigens, in der Praxis ist es C:.</summary>
+    /// <summary>Das Systemlaufwerk: C: unter Windows, das Startvolume "/" beim Mac.</summary>
     private static VolumeEncryptionItem? SystemDrive(List<VolumeEncryptionItem> volumes) =>
-        volumes.FirstOrDefault(v => v.Drive.StartsWith("C", StringComparison.OrdinalIgnoreCase));
+        volumes.FirstOrDefault(v => v.Drive.StartsWith("C", StringComparison.OrdinalIgnoreCase) || v.Drive == "/");
 
     /// <summary>Änderungen eines Rechners (computerId gesetzt) oder aller Rechner, neueste zuerst.</summary>
     public async Task<List<(InventoryChange Change, string Computer)>> ChangesAsync(int? computerId = null, int take = 1000, CancellationToken ct = default)

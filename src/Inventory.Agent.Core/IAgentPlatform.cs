@@ -28,6 +28,9 @@ namespace Inventory.Agent
 
         /// <summary>Nach dem Herunterladen einer neuen Agent-Datei, bevor sie die laufende ersetzt.</summary>
         void PrepareUpdatedFile(string path);
+
+        /// <summary>Ergänzt die Anmeldung um Angaben der Plattform (Betriebssystem, Seriennummer).</summary>
+        void Describe(AgentEnrollRequest request);
     }
 
     /// <summary>Ein laufender Job: Fortschritt schreibt er ins Job-Verzeichnis, das Ergebnis gibt er zurück.</summary>

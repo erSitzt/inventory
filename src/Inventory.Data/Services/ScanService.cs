@@ -25,7 +25,8 @@ public sealed class ScanService(RemoteJobService jobs, InventoryStore store, ISt
         {
             var mismatch = await store.SaveAsync(computerId, result.Inventory, ct);
             // Nur auf dem richtigen Rechner: meldet sich ein anderer, gehören seine Werte nicht zu diesem Eintrag.
-            if (!mismatch)
+            // Die Skripte sind PowerShell: auf einem Mac laufen sie nicht.
+            if (!mismatch && result.Inventory.Platform != AgentPlatforms.MacOS)
                 await RunScriptsAsync(computerId, ct);
             return new ScanOutcome(computerId, true, null, mismatch ? result.Inventory.ComputerName : null);
         }

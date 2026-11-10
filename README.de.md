@@ -655,6 +655,40 @@ Nach einem Server-Update aktualisieren sich die Agenten selbst (siehe oben); nic
 dort (als Administrator, bei gestopptem Dienst) führt dieselbe Schleife in der Konsole aus. Das Protokoll des Servers
 hält jede Anmeldung mit Rechnername, Version und Absenderadresse fest.
 
+### Macs
+
+Macs werden von einem kleinen Agenten für macOS inventarisiert (Apple Silicon und Intel, eine eigenständige Datei ohne
+.NET auf dem Mac). Wie der Windows-Agent verbindet er sich nur *zum* Server und aktualisiert sich nach einem Server-Update
+selbst.
+
+**Was erfasst wird:** Modell (auf Apple Silicon mit Verkaufsnamen), Seriennummer, Chip bzw. Prozessor, Arbeitsspeicher,
+macOS-Version und Build, letzter Start, angemeldeter Benutzer, Programme in `/Applications` und in `~/Applications` der
+Benutzer (mit Version, Entwickler aus der Signatur und Datum), Volumes, Netzwerkkarten, Grafik, Bildschirme, SSD, Akku,
+Drucker, lokale Benutzer und Administratoren sowie die Sicherheitseinstellungen **FileVault**, **Firewall** (und
+Tarnmodus), **Gatekeeper**, **System Integrity Protection** und die automatische Update-Suche. Änderungen erscheinen wie
+bei Windows im Verlauf; die Plattform lässt sich in Sammlungen („Plattform = macOS") und Berichten verwenden.
+
+**Für Macs noch nicht:** Befehle, Pakete und Verteilungen, macOS-Updates und Fernzugriff. Inventory überspringt Macs bei
+diesen Aktionen mit einem Hinweis, und der Server lehnt solche Jobs für Macs ab.
+
+**Installation** – als root ausführen; das Skript lädt den Agenten passend zur Architektur vom Server, legt ihn unter
+`/Library/Application Support/Inventory Agent` ab (nur für root lesbar) und startet ihn als LaunchDaemon `inventory.agent`:
+
+- **Von Hand:** die Download-Seite öffnen (*Einstellungen → Agenten → Download-Seite ohne Anmeldung*) und den dort
+  angezeigten Befehl im Terminal ausführen: `curl -fsSL <Server-Adresse>/agent/macos/install.sh | sudo bash`.
+- **Per MDM:** *Einstellungen → Agenten → macOS-Installationsskript herunterladen* und als Shell-Skript zuweisen (Intune:
+  *Geräte → macOS → Skripts*, als root; Jamf: eine Richtlinie mit dem Skript). Das Skript enthält das Anmeldegeheimnis
+  und holt den Agenten damit; die Download-Seite muss dafür nicht offen sein.
+- **Entfernen:** dasselbe Skript mit `--uninstall` (z. B. `curl … | sudo bash -s -- --uninstall`), danach *Agent
+  vergessen* unter *Rechner bearbeiten*.
+
+Ein Mac meldet sich unter seinem lokalen Hostnamen an (`scutil --get LocalHostName`, z. B. `Maxs-MacBook-Pro`) und wird an
+seiner Seriennummer wiedererkannt, auch nach einer Umbenennung. Den Eintrag eines gleichnamigen Windows-Rechners übernimmt
+er nie; eine solche Anmeldung wird abgelehnt und protokolliert. Nutzt der Server HTTPS mit einem Zertifikat der eigenen
+CA, muss der Mac dieser CA im Systemschlüsselbund vertrauen (meist verteilt das MDM sie). `agent.log` im Agent-Ordner
+zeigt, was der Agent tut; `sudo "/Library/Application Support/Inventory Agent/inventory-agent" --collect` gibt das
+Inventar aus, ohne es zu senden.
+
 ### Fernzugriff
 
 In der Rechnerliste und auf der Detailseite gibt es das Menü *Fernzugriff*:
@@ -819,6 +853,7 @@ Platzhalter erhalten bleiben; für eine weitere Sprache lässt sich der Test ent
 |---|---|
 | `Inventory.Contracts` | Job-Manifest und Ergebnisformat (von Server und Runner genutzt) |
 | `Inventory.Agent.Core` | Agent-Schleife für alle Plattformen: Anmeldung, Abfrage, Updates, Ergebnisse (netstandard2.0) |
+| `Inventory.Agent.MacOS` | Agent für macOS: Inventar eines Macs (eigenständige Einzeldatei für osx-arm64 und osx-x64) |
 | `Inventory.Core` | Modell, Regeln, Schnittstellen, Übersetzungen (`Resources`) |
 | `Inventory.Data` | EF Core/SQLite, Dienste (Scan, Pakete, Deployments, Zeitpläne …) |
 | `Inventory.Remoting` | Transporte (SMB, WinRM, Simulation), Erreichbarkeit, LDAP |

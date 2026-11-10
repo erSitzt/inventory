@@ -469,8 +469,9 @@ public sealed class LicensingService(IDbContextFactory<InventoryDbContext> dbFac
     /// <summary>Version von Windows Server laut Inventar (Build, sonst Name); null = unbekannt.</summary>
     private int? Version(Computer computer) => LicenseVersions.WindowsServer(computer.OsName, computer.OsVersion, Rules.WindowsServer.Versions);
 
+    /// <summary>Ein Mac ist nie ein Windows Server, auch wenn "Server" im Namen seines Betriebssystems stünde.</summary>
     private static bool IsWindowsServer(Computer computer) =>
-        computer.OsProductType is 2 or 3 || (computer.OsName ?? "").Contains("Server", StringComparison.OrdinalIgnoreCase);
+        !computer.IsMac && (computer.OsProductType is 2 or 3 || (computer.OsName ?? "").Contains("Server", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Bedarf, Bestand und Differenz als Tabelle für CSV, Excel und PDF.</summary>
     /// <param name="total">Mit Summenzeile (für PDF und Oberfläche); die CSV-Ausgabe bleibt ohne, damit sie sich weiterverarbeiten lässt.</param>

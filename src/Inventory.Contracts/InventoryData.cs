@@ -6,6 +6,8 @@ namespace Inventory.Contracts
     /// <summary>Ergebnis eines Inventar-Scans, wie es der Runner auf dem Zielrechner erfasst.</summary>
     public sealed class InventoryData
     {
+        /// <summary><see cref="AgentPlatforms"/>; null = Windows (auch alle älteren Runner).</summary>
+        public string? Platform { get; set; }
         public string? ComputerName { get; set; }
         public string? Domain { get; set; }
         public string? Manufacturer { get; set; }
@@ -53,6 +55,9 @@ namespace Inventory.Contracts
 
         /// <summary>Angaben für die Berechnung des Lizenzbedarfs; null bei Runnern, die das noch nicht erfassen.</summary>
         public LicensingInfo? Licensing { get; set; }
+
+        /// <summary>Sicherheitseinstellungen eines Macs; null unter Windows.</summary>
+        public MacOsInfo? MacOs { get; set; }
 
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
@@ -434,5 +439,20 @@ namespace Inventory.Contracts
         public string? BiosUuid { get; set; }
         public int? VirtualCpus { get; set; }
         public bool Running { get; set; }
+    }
+
+    /// <summary>Sicherheitseinstellungen eines Macs. FileVault steht wie BitLocker in <see cref="HardwareInfo.Volumes"/>.</summary>
+    public sealed class MacOsInfo
+    {
+        /// <summary>Firewall des Programms (Application Firewall); null = nicht ermittelt.</summary>
+        public bool? FirewallEnabled { get; set; }
+        /// <summary>Tarnmodus: der Mac antwortet nicht auf Ping und Portscans.</summary>
+        public bool? FirewallStealth { get; set; }
+        /// <summary>Gatekeeper: nur geprüfte Programme starten.</summary>
+        public bool? GatekeeperEnabled { get; set; }
+        /// <summary>System Integrity Protection.</summary>
+        public bool? SipEnabled { get; set; }
+        /// <summary>Automatische Suche nach macOS-Updates.</summary>
+        public bool? AutomaticUpdateCheck { get; set; }
     }
 }

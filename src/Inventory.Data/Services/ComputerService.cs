@@ -277,6 +277,9 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
     }
 
     /// <summary>Prüft die Erreichbarkeit der angegebenen Rechner (null = alle) und speichert das Ergebnis.</summary>
+    /// <summary>So lange gilt ein Rechner nach dem letzten Kontakt seines Agenten als erreichbar.</summary>
+    public static readonly TimeSpan AgentOnlineWindow = TimeSpan.FromMinutes(3);
+
     public async Task<int> ProbeAsync(IEnumerable<int>? ids = null, CancellationToken ct = default)
     {
         var idList = ids?.ToList();
@@ -287,10 +290,19 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         await Parallel.ForEachAsync(computers, new ParallelOptions { MaxDegreeOfParallelism = MaxParallelProbes, CancellationToken = ct },
             async (computer, token) =>
             {
-                var result = await probe.ProbeAsync(computer.Address, token);
                 var now = DateTime.UtcNow;
+                // Ein Agent meldet sich etwa jede Minute: wer sich gerade gemeldet hat, ist erreichbar, auch ohne offene Ports.
+                var agentRecent = computer.AgentKeyHash is not null && computer.AgentLastSeenUtc is { } seen && now - seen < AgentOnlineWindow;
+                if (computer.IsMac)
+                {
+                    // Ein Mac hat keine Windows-Ports (445, 5985); erreichbar ist er nur über seinen Agenten.
+                    computer.IsOnline = agentRecent;
+                    computer.LastProbeUtc = now;
+                    return;
+                }
+                var result = await probe.ProbeAsync(computer.Address, token);
                 // Antwortet unter der Adresse ein anderer Rechner, ist der eingetragene nicht erreichbar – nur seine alte Adresse.
-                var online = result.Online && !(verifyName && MachineNames.Differs(computer.Name, result.MachineName));
+                var online = agentRecent || result.Online && !(verifyName && MachineNames.Differs(computer.Name, result.MachineName));
                 computer.IsOnline = online;
                 computer.LastProbeUtc = now;
                 if (result.IpAddress is not null)

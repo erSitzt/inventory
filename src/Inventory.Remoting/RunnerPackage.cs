@@ -10,21 +10,38 @@ public sealed class RunnerPackage
     /// Der Runner eigenständig mit .NET 10 (eine Datei); nur für Rechner ohne .NET Framework 4.8. Fehlt der Ordner, gibt es
     /// keine Ausweichvariante.
     /// </param>
-    public RunnerPackage(string directory, string? selfContainedDirectory = null)
+    /// <param name="macDirectory">
+    /// Der Mac-Agent, je Laufzeit (<see cref="RunnerRuntimes.MacArm64"/>, <see cref="RunnerRuntimes.MacX64"/>) ein Unterordner mit
+    /// <see cref="AgentProtocol.MacAgentFile"/>. Fehlt er, gibt es keine Mac-Agenten.
+    /// </param>
+    public RunnerPackage(string directory, string? selfContainedDirectory = null, string? macDirectory = null)
+        : this(directory, JobFiles.RunnerExe)
+    {
+        if (selfContainedDirectory is not null && File.Exists(Path.Combine(selfContainedDirectory, JobFiles.RunnerExe)))
+            SelfContained = new RunnerPackage(selfContainedDirectory, JobFiles.RunnerExe) { Runtime = RunnerRuntimes.SelfContained };
+        foreach (var runtime in new[] { RunnerRuntimes.MacArm64, RunnerRuntimes.MacX64 })
+        {
+            var folder = macDirectory is null ? null : Path.Combine(macDirectory, runtime);
+            if (folder is not null && File.Exists(Path.Combine(folder, AgentProtocol.MacAgentFile)))
+                _mac[runtime] = new RunnerPackage(folder, AgentProtocol.MacAgentFile) { Runtime = runtime };
+        }
+    }
+
+    private RunnerPackage(string directory, string exe)
     {
         Directory = directory;
-        if (!File.Exists(Path.Combine(directory, JobFiles.RunnerExe)))
-            throw new FileNotFoundException($"Runner not found: {Path.Combine(directory, JobFiles.RunnerExe)}");
+        if (!File.Exists(Path.Combine(directory, exe)))
+            throw new FileNotFoundException($"Runner not found: {Path.Combine(directory, exe)}");
 
         Files = System.IO.Directory.GetFiles(directory).Where(f => !f.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase)).Order(StringComparer.Ordinal).ToList();
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         foreach (var file in Files)
             sha.AppendData(File.ReadAllBytes(file));
-        ExeSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(directory, JobFiles.RunnerExe)))).ToLowerInvariant();
+        ExeSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(directory, exe)))).ToLowerInvariant();
         Hash = Convert.ToHexString(sha.GetHashAndReset())[..16].ToLowerInvariant();
-        if (selfContainedDirectory is not null && File.Exists(Path.Combine(selfContainedDirectory, JobFiles.RunnerExe)))
-            SelfContained = new RunnerPackage(selfContainedDirectory) { Runtime = RunnerRuntimes.SelfContained };
     }
+
+    private readonly Dictionary<string, RunnerPackage> _mac = new(StringComparer.Ordinal);
 
     /// <summary><see cref="RunnerRuntimes"/>: womit diese Runner-Dateien laufen.</summary>
     public string Runtime { get; private init; } = RunnerRuntimes.Framework;
@@ -36,10 +53,15 @@ public sealed class RunnerPackage
     public IReadOnlyList<string> AllExeSha256 => SelfContained is null ? [ExeSha256] : [ExeSha256, SelfContained.ExeSha256];
 
     /// <summary>
-    /// Die Variante für die angegebene Laufzeit; unbekannt oder leer heißt .NET Framework 4.8 (ältere Agenten). null, wenn
-    /// die eigenständige Variante verlangt ist, der Server sie aber nicht hat: der kleine Runner liefe dort nicht.
+    /// Die Variante für die angegebene Laufzeit; leer heißt .NET Framework 4.8 (ältere Agenten). null, wenn der Server die
+    /// verlangte Variante nicht hat oder die Laufzeit nicht kennt: eine andere liefe dort nicht.
     /// </summary>
-    public RunnerPackage? For(string? runtime) => runtime == RunnerRuntimes.SelfContained ? SelfContained : this;
+    public RunnerPackage? For(string? runtime) => runtime switch
+    {
+        null or "" or RunnerRuntimes.Framework => this,
+        RunnerRuntimes.SelfContained => SelfContained,
+        _ => _mac.GetValueOrDefault(runtime),
+    };
 
     public string Directory { get; }
     public IReadOnlyList<string> Files { get; }

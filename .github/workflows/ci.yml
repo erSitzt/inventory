@@ -19,3 +19,21 @@ jobs:
       # Baut auch den net48-Runner (über die Referenz-Assemblies) und den Windows-Teil des Servers.
       - run: dotnet build -c Release
       - run: dotnet test -c Release --no-build
+
+  # Der Mac-Agent auf einem echten Mac (GitHub-Runner, Apple Silicon): als root wie im Betrieb, und das Inventar muss die
+  # wichtigsten Bereiche enthalten. Die Parser selbst prüfen die Tests oben mit aufgezeichneten Ausgaben.
+  macos-agent:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet publish src/Inventory.Agent.MacOS -c Release -r osx-arm64 -o agent
+      - run: sudo ./agent/inventory-agent --collect > inventory.json
+      - run: |
+          jq '{platform, computerName, osName, osVersion, model, serialNumber, cpuName, cpuCores, memoryBytes, software: (.software | length), disks, networkAdapters: [.networkAdapters[].name], macOs, volumes: .hardware.volumes, warnings}' inventory.json
+      - run: >
+          jq -e '.platform == "macOS" and (.computerName | length > 0) and (.osName | startswith("macOS")) and .cpuCores > 0 and .memoryBytes > 0
+          and (.software | length > 0) and (.disks | length > 0) and (.networkAdapters | length > 0) and (.hardware.volumes[0].protected != null)
+          and (.macOs.gatekeeperEnabled != null)' inventory.json

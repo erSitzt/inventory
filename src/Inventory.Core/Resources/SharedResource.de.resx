@@ -197,6 +197,9 @@
   <data name="A computer must be missing continuously for this long before it is deleted" xml:space="preserve">
     <value>So lange muss ein Rechner ununterbrochen fehlen, bevor er gelöscht wird</value>
   </data>
+  <data name="A computer named {0} exists already, but it is not a {1} computer; the agent was not enrolled." xml:space="preserve">
+    <value>Es gibt schon einen Rechner namens {0}, aber keinen mit {1}; der Agent wurde nicht angemeldet.</value>
+  </data>
   <data name="A deployment finishes with failures" xml:space="preserve">
     <value>Eine Verteilung endet mit Fehlern</value>
   </data>
@@ -478,6 +481,9 @@
   </data>
   <data name="Agent disconnected" xml:space="preserve">
     <value>Agent getrennt</value>
+  </data>
+  <data name="Agent enrollment refused" xml:space="preserve">
+    <value>Anmeldung eines Agenten abgelehnt</value>
   </data>
   <data name="Agent forgotten" xml:space="preserve">
     <value>Agent vergessen</value>
@@ -854,6 +860,9 @@
   <data name="Automate with a schedule" xml:space="preserve">
     <value>Mit einem Zeitplan automatisieren</value>
   </data>
+  <data name="Automatic update check" xml:space="preserve">
+    <value>Automatische Update-Suche</value>
+  </data>
   <data name="Automatic update to {0} failed" xml:space="preserve">
     <value>Automatische Aktualisierung auf {0} fehlgeschlagen</value>
   </data>
@@ -904,6 +913,9 @@
   </data>
   <data name="BitLocker (system drive)" xml:space="preserve">
     <value>BitLocker (Systemlaufwerk)</value>
+  </data>
+  <data name="BitLocker / FileVault (system drive)" xml:space="preserve">
+    <value>BitLocker / FileVault (Systemlaufwerk)</value>
   </data>
   <data name="BitLocker: no volume reported." xml:space="preserve">
     <value>BitLocker: kein Laufwerk gemeldet.</value>
@@ -1844,6 +1856,9 @@
   <data name="Download InventoryLauncher.exe" xml:space="preserve">
     <value>InventoryLauncher.exe herunterladen</value>
   </data>
+  <data name="Download macOS install script" xml:space="preserve">
+    <value>macOS-Installationsskript herunterladen</value>
+  </data>
   <data name="Download page" xml:space="preserve">
     <value>Download-Seite</value>
   </data>
@@ -2168,6 +2183,15 @@
   <data name="files changed" xml:space="preserve">
     <value>Dateien geändert</value>
   </data>
+  <data name="FileVault" xml:space="preserve">
+    <value>FileVault</value>
+  </data>
+  <data name="FileVault is off" xml:space="preserve">
+    <value>FileVault ist aus</value>
+  </data>
+  <data name="FileVault: not reported." xml:space="preserve">
+    <value>FileVault: nicht gemeldet.</value>
+  </data>
   <data name="Fill from MSI" xml:space="preserve">
     <value>Aus MSI übernehmen</value>
   </data>
@@ -2210,6 +2234,9 @@
   <data name="Firewall (public)" xml:space="preserve">
     <value>Firewall (Öffentlich)</value>
   </data>
+  <data name="Firewall and FileVault on" xml:space="preserve">
+    <value>Firewall und FileVault an</value>
+  </data>
   <data name="Firewall domain" xml:space="preserve">
     <value>Firewall Domäne</value>
   </data>
@@ -2224,6 +2251,9 @@
   </data>
   <data name="Firewall public" xml:space="preserve">
     <value>Firewall Öffentlich</value>
+  </data>
+  <data name="Firewall stealth mode" xml:space="preserve">
+    <value>Tarnmodus der Firewall</value>
   </data>
   <data name="Firewall, antivirus, drive encryption and platform security per computer" xml:space="preserve">
     <value>Firewall, Virenschutz, Laufwerksverschlüsselung und Plattformsicherheit je Rechner</value>
@@ -2317,6 +2347,9 @@
   </data>
   <data name="Full rights on the computer, but no access to a user's profile and settings." xml:space="preserve">
     <value>Volle Rechte auf dem Rechner, aber kein Zugriff auf Profil und Einstellungen eines Benutzers.</value>
+  </data>
+  <data name="Gatekeeper" xml:space="preserve">
+    <value>Gatekeeper</value>
   </data>
   <data name="Gateway" xml:space="preserve">
     <value>Gateway</value>
@@ -3065,6 +3098,21 @@
   <data name="MAC {0}" xml:space="preserve">
     <value>MAC {0}</value>
   </data>
+  <data name="macOS agent install script downloaded" xml:space="preserve">
+    <value>macOS-Installationsskript für den Agenten heruntergeladen</value>
+  </data>
+  <data name="macOS agent install script downloaded from the public page" xml:space="preserve">
+    <value>macOS-Installationsskript für den Agenten von der öffentlichen Seite geladen</value>
+  </data>
+  <data name="macOS firewall" xml:space="preserve">
+    <value>macOS-Firewall</value>
+  </data>
+  <data name="macOS version" xml:space="preserve">
+    <value>macOS-Version</value>
+  </data>
+  <data name="Macs" xml:space="preserve">
+    <value>Macs</value>
+  </data>
   <data name="Mail server (SMTP)" xml:space="preserve">
     <value>Mailserver (SMTP)</value>
   </data>
@@ -3608,6 +3656,9 @@
   <data name="Not approved: operators and schedules cannot deploy this package. Every change to steps, detection or files withdraws the approval." xml:space="preserve">
     <value>Nicht freigegeben: Operatoren und Zeitpläne können dieses Paket nicht verteilen. Jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf.</value>
   </data>
+  <data name="Not available for macOS yet: on a Mac the agent only collects the inventory." xml:space="preserve">
+    <value>Für macOS noch nicht verfügbar: auf einem Mac erfasst der Agent nur das Inventar.</value>
+  </data>
   <data name="not calculable" xml:space="preserve">
     <value>nicht berechenbar</value>
   </data>
@@ -3616,6 +3667,9 @@
   </data>
   <data name="Not captured yet." xml:space="preserve">
     <value>Noch nicht erfasst.</value>
+  </data>
+  <data name="Not captured yet. FileVault, firewall and Gatekeeper are read with the next scan." xml:space="preserve">
+    <value>Noch nicht erfasst. FileVault, Firewall und Gatekeeper werden beim nächsten Scan gelesen.</value>
   </data>
   <data name="Not captured yet. Firewall, antivirus and Windows Update are read with the next scan." xml:space="preserve">
     <value>Noch nicht erfasst. Firewall, Virenschutz und Windows Update werden beim nächsten Scan gelesen.</value>
@@ -3761,6 +3815,9 @@
   <data name="On a day of the month" xml:space="preserve">
     <value>An einem Tag des Monats</value>
   </data>
+  <data name="On a Mac the agent collects the inventory (hardware, macOS, programs, network, users, FileVault, firewall, Gatekeeper); commands and packages are not available for Macs yet. The install script fetches the agent from this server and sets it up as a LaunchDaemon. Run it as root – in Terminal with sudo, or as a shell script in Intune or Jamf. With --uninstall it removes the agent again. It contains the enrollment secret." xml:space="preserve">
+    <value>Auf einem Mac erfasst der Agent das Inventar (Hardware, macOS, Programme, Netzwerk, Benutzer, FileVault, Firewall, Gatekeeper); Befehle und Pakete gibt es für Macs noch nicht. Das Installationsskript holt den Agenten von diesem Server und richtet ihn als LaunchDaemon ein. Als root ausführen – im Terminal mit sudo oder als Shell-Skript in Intune oder Jamf. Mit --uninstall entfernt es den Agenten wieder. Es enthält das Anmeldegeheimnis.</value>
+  </data>
   <data name="On a weekday of the month" xml:space="preserve">
     <value>An einem Wochentag des Monats</value>
   </data>
@@ -3892,6 +3949,9 @@
   </data>
   <data name="Open ports" xml:space="preserve">
     <value>Offene Ports</value>
+  </data>
+  <data name="Open Terminal and run (asks for an administrator password):" xml:space="preserve">
+    <value>Terminal öffnen und ausführen (fragt nach einem Administratorkennwort):</value>
   </data>
   <data name="open until {0}" xml:space="preserve">
     <value>offen bis {0}</value>
@@ -4249,6 +4309,9 @@
   </data>
   <data name="Ping reply" xml:space="preserve">
     <value>Antwort auf Ping</value>
+  </data>
+  <data name="Platform" xml:space="preserve">
+    <value>Plattform</value>
   </data>
   <data name="Platform security" xml:space="preserve">
     <value>Plattformsicherheit</value>
@@ -5768,6 +5831,9 @@
   <data name="System drive not encrypted" xml:space="preserve">
     <value>Systemlaufwerk nicht verschlüsselt</value>
   </data>
+  <data name="System Integrity Protection" xml:space="preserve">
+    <value>System Integrity Protection (SIP)</value>
+  </data>
   <data name="System setting" xml:space="preserve">
     <value>Systemeinstellung</value>
   </data>
@@ -5968,6 +6034,9 @@
   </data>
   <data name="The filters and the search narrow the list; the CSV export can be edited and imported again for asset data." xml:space="preserve">
     <value>Filter und Suche grenzen die Liste ein; der CSV-Export lässt sich für Bestandsdaten bearbeiten und wieder importieren.</value>
+  </data>
+  <data name="The firewall is off" xml:space="preserve">
+    <value>Die Firewall ist aus</value>
   </data>
   <data name="The gateway must be an address in {0}." xml:space="preserve">
     <value>Das Gateway muss eine Adresse in {0} sein.</value>
@@ -7384,6 +7453,9 @@
   </data>
   <data name="{0} known addresses" xml:space="preserve">
     <value>{0} bekannte Adressen</value>
+  </data>
+  <data name="{0} Macs skipped: not available for macOS yet." xml:space="preserve">
+    <value>{0} Macs übersprungen: für macOS noch nicht verfügbar.</value>
   </data>
   <data name="{0} missing" xml:space="preserve">
     <value>{0} fehlen</value>
