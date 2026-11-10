@@ -46,6 +46,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Inventory.Contracts\Inventory.Contracts.csproj" />
+    <ProjectReference Include="..\Inventory.Agent.Core\Inventory.Agent.Core.csproj" />
   </ItemGroup>
 
 </Project>

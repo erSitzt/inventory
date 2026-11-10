@@ -8,21 +8,33 @@ using System.Text;
 using System.Threading;
 using Inventory.Contracts;
 
-namespace Inventory.Runner
+namespace Inventory.Agent
 {
     /// <summary>
     /// Dauerbetrieb als Agent: meldet sich einmalig beim Server an, fragt dann fortlaufend nach Jobs,
-    /// führt sie mit demselben <see cref="JobExecutor"/> aus wie im agentenlosen Betrieb und liefert Fortschritt und Ergebnis.
+    /// führt sie über die <see cref="IAgentPlatform"/> aus (unter Windows mit demselben Runner wie im agentenlosen Betrieb) und
+    /// liefert Fortschritt und Ergebnis.
     /// </summary>
-    internal sealed class AgentLoop
+    public sealed class AgentLoop
     {
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
-        private readonly string _baseDir = RunnerInfo.Directory;
+        private readonly IAgentPlatform _platform;
+        private readonly HttpMessageHandler? _handler;
+        private readonly string _baseDir;
         private readonly CancellationTokenSource _stop = new CancellationTokenSource();
-        private readonly string _version = RunnerInfo.Version;
+        private readonly string _version;
         private HttpClient _http = null!;
-        private JobExecutor? _running;
+        private IAgentJob? _running;
+
+        /// <param name="handler">Nur für Tests: statt einer echten Verbindung zum Server.</param>
+        public AgentLoop(IAgentPlatform platform, HttpMessageHandler? handler = null)
+        {
+            _platform = platform;
+            _handler = handler;
+            _baseDir = platform.Directory;
+            _version = platform.Version;
+        }
 
         public void Stop()
         {
@@ -41,7 +53,9 @@ namespace Inventory.Runner
                     var config = JobJson.Deserialize<AgentConfig>(File.ReadAllText(Path.Combine(_baseDir, AgentProtocol.ConfigFile), Encoding.UTF8))
                                  ?? throw new InvalidDataException("agent.json ist leer");
                     // Der Server hält die Anfrage offen, bis ein Job da ist; das Zeitlimit muss darüber liegen.
-                    _http = new HttpClient { BaseAddress = new Uri(config.ServerUrl.TrimEnd('/') + "/"), Timeout = TimeSpan.FromMinutes(2) };
+                    _http = (_handler == null ? new HttpClient() : new HttpClient(_handler, disposeHandler: false));
+                    _http.BaseAddress = new Uri(config.ServerUrl.TrimEnd('/') + "/");
+                    _http.Timeout = TimeSpan.FromMinutes(2);
                     _http.DefaultRequestHeaders.Add(AgentProtocol.KeyHeader, GetOrCreateKey(config));
                     // Vor der ersten Abfrage: eine Fortsetzung nach dem Neustart braucht den Server nicht. Der Schlüssel liegt
                     // dann schon vor (ohne Anmeldung gibt es keinen Job und damit nichts fortzusetzen).
@@ -53,6 +67,10 @@ namespace Inventory.Runner
                     Log("Fehler: " + ex.Message);
                     _stop.Token.WaitHandle.WaitOne(RetryDelay);
                 }
+                catch (Exception) when (_stop.IsCancellationRequested)
+                {
+                    // Beim Beenden bricht die laufende Abfrage ab; das ist kein Fehler.
+                }
             }
         }
 
@@ -62,7 +80,7 @@ namespace Inventory.Runner
             if (File.Exists(keyPath))
                 return File.ReadAllText(keyPath).Trim();
 
-            var request = new AgentEnrollRequest { EnrollmentToken = config.EnrollmentToken, HostName = Environment.MachineName, DnsName = DnsName(), Version = _version };
+            var request = new AgentEnrollRequest { EnrollmentToken = config.EnrollmentToken, HostName = _platform.HostName, DnsName = _platform.DnsName(), Version = _version };
             using (var response = _http.PostAsync(AgentProtocol.EnrollPath, Json(request)).GetAwaiter().GetResult())
             {
                 if (!response.IsSuccessStatusCode)
@@ -74,27 +92,13 @@ namespace Inventory.Runner
             }
         }
 
-        /// <summary>Rechnername mit primärem DNS-Suffix, ohne Namensauflösung; null, wenn der Rechner kein Suffix hat.</summary>
-        private static string? DnsName()
-        {
-            try
-            {
-                var properties = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
-                return string.IsNullOrWhiteSpace(properties.DomainName) ? null : properties.HostName + "." + properties.DomainName;
-            }
-            catch (System.Net.NetworkInformation.NetworkInformationException)
-            {
-                return null;
-            }
-        }
-
         private void PollUntilStopped()
         {
             while (!_stop.IsCancellationRequested)
             {
                 ContinueAfterRestart();
                 DeliverPending();
-                using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash(), Runtime = RunnerInfo.Runtime }), _stop.Token).GetAwaiter().GetResult())
+                using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash(), Runtime = _platform.Runtime }), _stop.Token).GetAwaiter().GetResult())
                 {
                     if (response.StatusCode == HttpStatusCode.NoContent)
                         continue;
@@ -123,7 +127,7 @@ namespace Inventory.Runner
         /// <summary>
         /// Tauscht die eigenen Programmdateien aus. Laufende Dateien lassen sich unter Windows nicht überschreiben,
         /// aber umbenennen: die alte wird zu *.old, die neue nimmt ihren Platz ein. Danach beendet sich der Prozess
-        /// mit Fehlercode, woraufhin die Wiederherstellung des Dienstes ihn mit den neuen Dateien neu startet.
+        /// mit Fehlercode, woraufhin die Wiederherstellung des Dienstes (unter macOS launchd) ihn mit den neuen Dateien neu startet.
         /// </summary>
         private void ApplyUpdate(AgentUpdateOffer update)
         {
@@ -137,12 +141,13 @@ namespace Inventory.Runner
             for (var i = 0; i < update.Files.Count; i++)
             {
                 var name = Path.GetFileName(update.Files[i]);
-                using (var response = _http.GetAsync($"{AgentProtocol.UpdatePath}/{i}?{AgentProtocol.RuntimeQuery}={RunnerInfo.Runtime}", HttpCompletionOption.ResponseHeadersRead, _stop.Token).GetAwaiter().GetResult())
+                using (var response = _http.GetAsync($"{AgentProtocol.UpdatePath}/{i}?{AgentProtocol.RuntimeQuery}={_platform.Runtime}", HttpCompletionOption.ResponseHeadersRead, _stop.Token).GetAwaiter().GetResult())
                 {
                     response.EnsureSuccessStatusCode();
                     using (var file = File.Create(Path.Combine(staging, name)))
                         response.Content.CopyToAsync(file).GetAwaiter().GetResult();
                 }
+                _platform.PrepareUpdatedFile(Path.Combine(staging, name));
             }
 
             foreach (var source in Directory.GetFiles(staging))
@@ -197,7 +202,7 @@ namespace Inventory.Runner
                 }
                 File.WriteAllText(Path.Combine(jobDir, JobFiles.Manifest), JobJson.Serialize(offer.Manifest), new UTF8Encoding(false));
 
-                var executor = new JobExecutor(jobDir);
+                var executor = _platform.CreateJob(jobDir);
                 _running = executor;
                 using (var pump = new Timer(_ => SendProgress(jobId, jobDir), null, 1000, 1000))
                 {
@@ -378,7 +383,7 @@ namespace Inventory.Runner
                     continue;
                 }
                 var previousBoot = state.Manifest.RequireBootAfterUtc;
-                if (previousBoot is DateTime boot && JobExecutor.BootTimeUtc() <= boot.AddSeconds(5))
+                if (previousBoot is DateTime boot && _platform.BootTimeUtc() <= boot.AddSeconds(5))
                 {
                     if (DateTime.UtcNow - state.SavedUtc > ResumeLimit)
                         Finish(jobId, jobDir, state.Manifest, JobResult.Failed(jobId, "Agent: the computer did not restart"), state.Sequence);
@@ -393,7 +398,7 @@ namespace Inventory.Runner
                 JobResult result;
                 try
                 {
-                    var executor = new JobExecutor(jobDir);
+                    var executor = _platform.CreateJob(jobDir);
                     _running = executor;
                     result = executor.Run();
                 }

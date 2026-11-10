@@ -1,0 +1,125 @@
+using System.Text;
+using Inventory.Agent;
+using Inventory.Contracts;
+using Inventory.Data.Services;
+using Inventory.Remoting;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Inventory.Tests;
+
+/// <summary>
+/// Die Agent-Schleife gegen den echten Server (Simulationsmodus): anmelden, Scan-Job abholen, Ergebnis abliefern. Die Plattform
+/// ist nachgebildet; so gilt der Test für jeden Agenten, der die Schleife nutzt.
+/// </summary>
+public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
+{
+    private readonly App _app;
+
+    public AgentLoopTests(App app) => _app = app;
+
+    public sealed class App : WebApplicationFactory<Program>
+    {
+        public string DataDirectory { get; } = Path.Combine(Path.GetTempPath(), $"inventory-agentloop-{Guid.NewGuid():N}");
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseSetting("Inventory:DataDirectory", DataDirectory);
+            builder.UseSetting("Inventory:Simulate", "true");
+            builder.UseSetting("Inventory:Update:Enabled", "false");
+            builder.UseEnvironment("Development");
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            SqliteConnection.ClearAllPools();
+            try
+            {
+                Directory.Delete(DataDirectory, recursive: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Ein Temp-Verzeichnis darf keinen Test scheitern lassen.
+            }
+        }
+    }
+
+    /// <summary>Beantwortet einen Inventar-Scan mit festen Daten.</summary>
+    private sealed class FakePlatform(string directory, string hostName, string runtime) : IAgentPlatform
+    {
+        public string Directory { get; } = directory;
+        public string Version => "9.9.9";
+        public string Runtime { get; } = runtime;
+        public string HostName { get; } = hostName;
+        public string? DnsName() => null;
+        public DateTime BootTimeUtc() => DateTime.UtcNow.AddHours(-1);
+        public void PrepareUpdatedFile(string path) { }
+
+        public IAgentJob CreateJob(string jobDir) => new Job(jobDir, HostName);
+
+        private sealed class Job(string jobDir, string hostName) : IAgentJob
+        {
+            public JobResult Run()
+            {
+                var manifest = JobJson.Deserialize<JobManifest>(File.ReadAllText(Path.Combine(jobDir, JobFiles.Manifest), Encoding.UTF8))!;
+                var scan = manifest.Steps.Single();
+                return new JobResult
+                {
+                    JobId = manifest.JobId, Success = scan.Type == StepType.InventoryScan, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow,
+                    Steps = [new StepResult { Index = 0, Name = scan.Name, Status = StepStatus.Succeeded }],
+                    Inventory = new InventoryData { ComputerName = hostName, OsName = "Test OS 1.0", Manufacturer = "Test Inc.", MemoryBytes = 8L << 30 },
+                };
+            }
+
+            public void Cancel() { }
+        }
+    }
+
+    [Fact]
+    public async Task An_agent_enrolls_picks_up_a_scan_and_delivers_the_inventory()
+    {
+        var agents = _app.Services.GetRequiredService<AgentService>();
+        var runner = _app.Services.GetRequiredService<RunnerPackage>();
+        var directory = Path.Combine(_app.DataDirectory, "agent");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, AgentProtocol.ConfigFile),
+            JobJson.Serialize(new AgentConfig { ServerUrl = "http://localhost", EnrollmentToken = await agents.GetEnrollmentTokenAsync() }));
+        // Auf dem Stand des Servers: sonst bekäme der Agent zuerst ein Update angeboten.
+        File.WriteAllText(Path.Combine(directory, AgentProtocol.VersionFile), runner.For(RunnerRuntimes.Framework)!.Hash);
+
+        var loop = new AgentLoop(new FakePlatform(directory, "AGENT-01", RunnerRuntimes.Framework), _app.Server.CreateHandler());
+        var thread = new Thread(loop.Run) { IsBackground = true };
+        thread.Start();
+        try
+        {
+            var factory = _app.Services.GetRequiredService<IDbContextFactory<Inventory.Data.InventoryDbContext>>();
+            int? id = null;
+            for (var i = 0; i < 100 && id is null; i++)
+            {
+                await using (var db = await factory.CreateDbContextAsync())
+                    id = (await db.Computers.FirstOrDefaultAsync(c => c.Name == "AGENT-01" && c.AgentKeyHash != null))?.Id;
+                if (id is null)
+                    await Task.Delay(100);
+            }
+            Assert.NotNull(id);
+
+            // Kommt das Ergebnis nicht an, wartet der Server sonst bis zum Ablauf des Jobs.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            var outcome = await _app.Services.GetRequiredService<ScanService>().ScanAsync(id.Value, timeout.Token);
+            Assert.True(outcome.Success, outcome.Error);
+            await using var check = await factory.CreateDbContextAsync();
+            var computer = await check.Computers.SingleAsync(c => c.Id == id);
+            Assert.Equal(("Test OS 1.0", "Test Inc."), (computer.OsName, computer.Manufacturer));
+            Assert.Equal("9.9.9", computer.AgentVersion?.Split(' ')[0]);
+        }
+        finally
+        {
+            loop.Stop();
+            thread.Join(TimeSpan.FromSeconds(10));
+        }
+    }
+}

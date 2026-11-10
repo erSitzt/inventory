@@ -784,6 +784,7 @@ language if you want the same safety net.
 | Project | Content |
 |---|---|
 | `Inventory.Contracts` | job manifest and result format (used by server and runner) |
+| `Inventory.Agent.Core` | agent loop shared by all platforms: enrollment, polling, updates, results (netstandard2.0) |
 | `Inventory.Core` | model, rules, interfaces, translations (`Resources`) |
 | `Inventory.Data` | EF Core/SQLite, services (scan, packages, deployments, schedules …) |
 | `Inventory.Remoting` | transports (SMB, WinRM, simulation), reachability, LDAP |

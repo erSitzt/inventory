@@ -818,6 +818,7 @@ Platzhalter erhalten bleiben; für eine weitere Sprache lässt sich der Test ent
 | Projekt | Inhalt |
 |---|---|
 | `Inventory.Contracts` | Job-Manifest und Ergebnisformat (von Server und Runner genutzt) |
+| `Inventory.Agent.Core` | Agent-Schleife für alle Plattformen: Anmeldung, Abfrage, Updates, Ergebnisse (netstandard2.0) |
 | `Inventory.Core` | Modell, Regeln, Schnittstellen, Übersetzungen (`Resources`) |
 | `Inventory.Data` | EF Core/SQLite, Dienste (Scan, Pakete, Deployments, Zeitpläne …) |
 | `Inventory.Remoting` | Transporte (SMB, WinRM, Simulation), Erreichbarkeit, LDAP |
