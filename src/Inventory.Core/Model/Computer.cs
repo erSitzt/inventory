@@ -116,7 +116,7 @@ public class Computer
     public bool ReverseDnsMismatch => ReportedName is null && Differs(ReverseDnsName);
 
     /// <summary>Der Name, unter dem sich der Rechner melden müsste; null, wenn eine IP-Adresse eingetragen ist.</summary>
-    public string? ExpectedMachineName => MachineNames.Expected(Name);
+    public string? ExpectedMachineName => IsMac ? MachineNames.ExpectedHostName(Name) : MachineNames.Expected(Name);
 
     private bool Differs(string? actual) => MachineNames.Differs(Name, actual);
 

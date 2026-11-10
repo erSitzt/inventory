@@ -361,6 +361,8 @@ namespace Inventory.Runner
                     return RunInProcess(index, step, progress, () => ControlService(step));
                 case StepType.WakeOnLan:
                     return RunInProcess(index, step, progress, () => WakeSender.Send(step.Script));
+                case StepType.UninstallAgent:
+                    return RunInProcess(index, step, progress, () => AgentInstaller.ScheduleRemoval(job.JobId));
                 case StepType.Sleep:
                     return RunInProcess(index, step, progress, () =>
                     {

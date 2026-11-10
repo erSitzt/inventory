@@ -368,6 +368,9 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
 
     private async Task SaveStepCoreAsync(int packageId, int? stepId, JobStep definition, int? nestedPackageId, CancellationToken ct)
     {
+        // Entfernt den Agenten, ohne dass der Server ihn vergisst: dafür gibt es "Agent entfernen", nicht Pakete.
+        if (definition.Type == StepType.UninstallAgent)
+            throw new InvalidOperationException(L["Agents are removed with \"Remove agent\", not with a package step."]);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (nestedPackageId is not null && await ContainsAsync(db, nestedPackageId.Value, packageId, MaxNestingDepth, ct))
             throw new InvalidOperationException(L["This package would then contain itself."]);

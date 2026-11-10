@@ -27,7 +27,7 @@ internal sealed class MacAgentPlatform : IAgentPlatform
         return name is not null && name.Contains('.') && !name.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ? name : null;
     }
 
-    public IAgentJob CreateJob(string jobDir) => new MacJob(jobDir, HostName);
+    public IAgentJob CreateJob(string jobDir) => new MacJob(jobDir, HostName, Directory);
 
     public DateTime BootTimeUtc() => MacInventoryCollector.BootTimeUtc() ?? DateTime.UtcNow - TimeSpan.FromMilliseconds(Environment.TickCount64);
 

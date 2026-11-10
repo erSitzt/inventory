@@ -15,6 +15,11 @@ namespace Inventory.Contracts
         /// <summary>Nach <see cref="InstallAgent"/>: auch einen vorhandenen Agenten mit den Dateien des Setups überschreiben.</summary>
         public const string Force = "--force";
         public const string UninstallAgent = "--uninstall-agent";
+        /// <summary>
+        /// Aus einer Kopie außerhalb des Agent-Ordners: warten, bis der Agent seine Ergebnisse abgeliefert hat, dann ihn entfernen
+        /// und zuletzt die Kopie selbst.
+        /// </summary>
+        public const string RemoveAgent = "--remove-agent";
         /// <summary>Mac-Agent: das Inventar als JSON ausgeben, ohne Server.</summary>
         public const string Collect = "--collect";
     }

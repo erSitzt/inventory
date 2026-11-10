@@ -615,10 +615,13 @@ deployment is cancelled in the meantime, a continuation that already ran is not 
 3. As soon as the service has enrolled, the computer switches to transport "Agent" (visible as a green "Agent" chip).
    Per computer the transport can be set back to SMB or WinRM; the agent keeps polling regardless.
 
-**Removing an agent:** run `InventoryRunner.exe --uninstall-agent` from a copy outside the agent folder
-(e.g. the setup share), or stop and delete the service by hand (`sc stop InventoryAgent`, `sc delete
-InventoryAgent`, delete the folder), then choose *Forget agent* in *Edit computer* – that drops the key on the server
-and resets the transport. The other way round, the still-running agent would simply enroll again with the secret.
+**Removing an agent:** *Remove agent* in *Edit computer*, or *Actions → Remove agent* for several computers (Windows
+and Mac). The agent reports back first, stops fetching jobs and then uninstalls itself (on Windows from a copy of the
+runner outside its folder, on a Mac by unloading its LaunchDaemon); the server forgets its key and resets the transport.
+If the job fails, nothing is forgotten. By hand: run `InventoryRunner.exe --uninstall-agent` from a copy outside the agent
+folder (e.g. the setup share), or stop and delete the service (`sc stop InventoryAgent`, `sc delete InventoryAgent`,
+delete the folder), then choose *Forget agent* – that only drops the key on the server; a still-running agent would
+simply enroll again with the secret.
 
 Agents update themselves after a server update (see above); nothing has to be redeployed.
 
@@ -651,8 +654,8 @@ to `/Library/Application Support/Inventory Agent` (readable by root only) and st
 - **By MDM:** *Settings → Agents → Download macOS install script* and assign it as a shell script (Intune: *Devices →
   macOS → Scripts*, run as root; Jamf: a policy with the script). The script contains the enrollment secret and fetches
   the agent with it, so the download page does not have to be open.
-- **Removing:** the same script with `--uninstall` (e.g. `curl … | sudo bash -s -- --uninstall`), then *Forget agent*
-  in *Edit computer*.
+- **Removing:** *Remove agent* in *Edit computer* or as an action for several computers; by hand the same script with
+  `--uninstall` (e.g. `curl … | sudo bash -s -- --uninstall`), then *Forget agent* in *Edit computer*.
 
 A Mac enrolls under its local host name (`scutil --get LocalHostName`, e.g. `Maxs-MacBook-Pro`) and is found again by its
 serial number, also after a rename. It never takes over the entry of a Windows computer with the same name; such an

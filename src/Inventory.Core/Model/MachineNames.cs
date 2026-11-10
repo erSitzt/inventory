@@ -10,6 +10,10 @@ public static class MachineNames
     public static string? Expected(string entered) =>
         System.Net.IPAddress.TryParse(entered, out _) ? null : Label(entered);
 
+    /// <summary>Wie <see cref="Expected"/>, aber ohne die NetBIOS-Kürzung: ein Mac meldet seinen vollen Hostnamen.</summary>
+    public static string? ExpectedHostName(string entered) =>
+        System.Net.IPAddress.TryParse(entered, out _) ? null : entered.Split('.')[0];
+
     /// <summary>true, wenn ein Name bekannt ist und nicht zum Eintrag passt. Unbekannt (null) gilt nicht als Abweichung.</summary>
     public static bool Differs(string entered, string? actual) =>
         actual is not null && Expected(entered) is { } expected && !string.Equals(expected, Label(actual), StringComparison.OrdinalIgnoreCase);
