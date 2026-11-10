@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.ServiceProcess;
+using Inventory.Agent;
 using Inventory.Contracts;
 
 namespace Inventory.Runner
@@ -49,7 +50,7 @@ namespace Inventory.Runner
 
             if (args.Length == 1 && args[0] == RunnerModes.AgentConsole)
             {
-                var loop = new AgentLoop();
+                var loop = new AgentLoop(new WindowsAgentPlatform());
                 Console.CancelKeyPress += (_, e) => { e.Cancel = true; loop.Stop(); };
                 loop.Run();
                 return 0;

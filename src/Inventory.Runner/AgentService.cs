@@ -1,11 +1,12 @@
 using System.ServiceProcess;
 using System.Threading;
+using Inventory.Agent;
 
 namespace Inventory.Runner
 {
     internal sealed class AgentService : ServiceBase
     {
-        private readonly AgentLoop _loop = new AgentLoop();
+        private readonly AgentLoop _loop = new AgentLoop(new WindowsAgentPlatform());
 
         public AgentService()
         {

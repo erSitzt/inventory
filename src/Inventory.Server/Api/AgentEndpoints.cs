@@ -79,7 +79,9 @@ public static class AgentEndpoints
             if (await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], null, ct) is not { } computer)
                 return Results.NotFound();
             // Ein Scan-Ergebnis mit mehreren hundert Programmen und Diensten ist größer als das Standardlimit erlaubt.
-            http.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = 64 * 1024 * 1024;
+            // Nicht jeder Server bietet die Grenze an (der Testserver etwa nicht).
+            if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+                limit.MaxRequestBodySize = 64 * 1024 * 1024;
             if (hub.Find(jobId, computer.Name) is { } job)
             {
                 if (await ReadAsync<JobResult>(http, ct) is not { } result)

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Der Teil des Agenten, der auf jeder Plattform gleich ist: Anmeldung, Abfrage, Update, Ergebnisablage, Fortsetzung nach dem
+    Neustart. netstandard2.0, damit ihn der Runner für .NET Framework 4.8 ebenso nutzt wie die eigenständigen Agenten.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inventory.Contracts\Inventory.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
