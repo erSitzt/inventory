@@ -263,4 +263,25 @@ public class MacAgentTests
         var scan = await jobs.RunAsync(id, new JobManifest { Steps = [new JobStep { Name = "scan", Type = StepType.InventoryScan }] });
         Assert.True(scan.Success, scan.Error);
     }
+
+    [Fact]
+    public async Task The_install_script_carries_server_and_secret_and_fails_when_signing_fails()
+    {
+        using var db = new TestDb();
+        var agents = new AgentService(db, new SettingsService(db), TimeProvider.System);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildMacInstallScriptAsync());
+        await agents.SetServerUrlAsync("https://inventory.example.local:5100/");
+        var script = await agents.BuildMacInstallScriptAsync();
+
+        Assert.StartsWith("#!/bin/bash", script);
+        Assert.Contains("SERVER='https://inventory.example.local:5100'", script);
+        Assert.Contains($"TOKEN='{await agents.GetEnrollmentTokenAsync()}'", script);
+        Assert.Contains($"\"$SERVER/{AgentProtocol.DownloadPath}/$RUNTIME\"", script);
+        // launchd setzt keine Shell-Variablen ein: der Pfad steht ausgeschrieben in der plist.
+        Assert.Contains($"<string>{AgentService.MacAgentDirectory}/{AgentProtocol.MacAgentFile}</string>", script);
+        // Eine fehlgeschlagene Signatur bricht ab (set -e), statt einen Agenten einzurichten, der nicht startet.
+        Assert.Contains("set -euo pipefail", script);
+        Assert.DoesNotContain("codesign --force --sign - \"$DOWNLOAD\" >/dev/null 2>&1 || true", script);
+        Assert.Contains("--uninstall", script);
+    }
 }

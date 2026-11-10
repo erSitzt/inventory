@@ -7,7 +7,9 @@ namespace Inventory.Agent.MacOS;
 
 /// <summary>
 /// Erfasst das Inventar eines Macs mit den Programmen des Systems (system_profiler, sw_vers, sysctl, dscl …). Jeder Bereich für
-/// sich: scheitert einer, steht das in den Warnungen, der Rest gilt.
+/// sich: scheitert einer, steht das in den Warnungen, der Rest gilt. Was der Server sonst als "leer" speichern würde, darf
+/// dabei nicht leer ankommen: ohne System oder Programme scheitert der ganze Scan (der Server behält den vorigen Stand), und
+/// Hardware-Bereiche, die sich nicht lesen ließen, stehen in <see cref="HardwareInfo.Failed"/> und werden übernommen.
 /// </summary>
 internal sealed class MacInventoryCollector(string hostName)
 {
@@ -20,28 +22,28 @@ internal sealed class MacInventoryCollector(string hostName)
         data.Hardware = hardware;
         data.MacOs = new MacOsInfo();
 
-        Section(data, "System", () => CollectSystem(data, hardware));
-        Section(data, "Applications", () =>
-        {
-            using var apps = MacParsers.Json(Shell.Run("/usr/sbin/system_profiler", ["-json", "-detailLevel", "mini", "SPApplicationsDataType"], ProfilerTimeout));
-            if (apps is null)
-                throw new InvalidOperationException("system_profiler SPApplicationsDataType failed");
-            data.Software = MacParsers.Applications(apps);
-        });
-        Section(data, "Disks", () => CollectVolumes(data));
-        Section(data, "Network", () => CollectNetwork(data));
-        Section(data, "Hardware", () => CollectHardware(hardware));
+        CollectSystem(data, hardware);
+        // Ohne Programmliste meldete der Scan alle Programme als entfernt: dann lieber gar kein Ergebnis.
+        using (var apps = MacParsers.Json(Shell.Run("/usr/sbin/system_profiler", ["-json", "-detailLevel", "mini", "SPApplicationsDataType"], ProfilerTimeout)))
+            data.Software = MacParsers.Applications(apps ?? throw new InvalidOperationException("system_profiler SPApplicationsDataType failed"));
+        CollectVolumes(data);
+        CollectNetwork(data);
+        Section(data, "Hardware", () => CollectHardware(hardware),
+            () => hardware.Failed.AddRange([HardwareAreas.Graphics, HardwareAreas.Monitors, HardwareAreas.Memory, HardwareAreas.Disks, HardwareAreas.Battery, HardwareAreas.Printers]));
         Section(data, "FileVault", () =>
         {
             var (on, percent) = MacParsers.FileVault(Shell.Run("/usr/bin/fdesetup", "status"));
+            if (on is null)
+                throw new InvalidOperationException("fdesetup status failed");
             hardware.Volumes.Add(new VolumeEncryptionItem { Drive = "/", Protected = on, EncryptedPercent = percent, Method = "FileVault" });
-        });
-        Section(data, "Users", () => CollectUsers(data));
+        }, () => hardware.Failed.Add(HardwareAreas.Volumes));
+        CollectUsers(data);
         Section(data, "Security", () => CollectSecurity(data.MacOs));
         return data;
     }
 
-    private static void Section(InventoryData data, string name, Action collect)
+    /// <param name="failed">Vermerkt, welche Bereiche der Server vom vorigen Scan übernehmen soll.</param>
+    private static void Section(InventoryData data, string name, Action collect, Action? failed = null)
     {
         try
         {
@@ -50,12 +52,15 @@ internal sealed class MacInventoryCollector(string hostName)
         catch (Exception ex)
         {
             data.Warnings.Add($"{name}: {ex.Message}");
+            failed?.Invoke();
         }
     }
 
     private void CollectSystem(InventoryData data, HardwareInfo hardware)
     {
         (data.OsName, data.OsVersion) = MacParsers.Os(Shell.Run("/usr/bin/sw_vers"));
+        if (data.OsName is null)
+            throw new InvalidOperationException("sw_vers failed");
         data.OsArchitecture = Shell.Run("/usr/bin/uname", "-m")?.Trim() switch
         {
             "arm64" => "ARM 64-bit",
@@ -179,7 +184,8 @@ internal sealed class MacInventoryCollector(string hostName)
 
     private static void CollectUsers(InventoryData data)
     {
-        foreach (var name in MacParsers.Users(Shell.Run("/usr/bin/dscl", ".", "-list", "/Users", "UniqueID")))
+        var users = Shell.Run("/usr/bin/dscl", ".", "-list", "/Users", "UniqueID") ?? throw new InvalidOperationException("dscl failed");
+        foreach (var name in MacParsers.Users(users))
         {
             var record = Shell.Run("/usr/bin/dscl", ".", "-read", "/Users/" + name, "RealName", "AuthenticationAuthority");
             data.LocalUsers.Add(new LocalUserItem

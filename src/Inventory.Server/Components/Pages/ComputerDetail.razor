@@ -548,7 +548,8 @@ else if (_computer.ReverseDnsMismatch)
     <MudTabPanel Text="@L["Security"]">
         @if (_computer.IsMac)
         {
-            if (_computer.MacFirewall is null && _computer.MacGatekeeper is null && _computer.SystemDriveProtected is null)
+            if (_computer.MacFirewall is null && _computer.MacFirewallStealth is null && _computer.MacGatekeeper is null && _computer.MacSip is null
+                && _computer.MacAutoUpdateCheck is null && _computer.SystemDriveProtected is null)
             {
                 <MudText Color="Color.Secondary">@L["Not captured yet. FileVault, firewall and Gatekeeper are read with the next scan."]</MudText>
             }

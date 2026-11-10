@@ -16,8 +16,20 @@ namespace Inventory.Server.Api;
 /// </summary>
 public static class AgentEndpoints
 {
-    /// <summary>Wann eine abgelehnte Anmeldung je Rechnername zuletzt protokolliert wurde.</summary>
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTime> RefusedEnrollments = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Wann eine abgelehnte Anmeldung je Rechnername zuletzt protokolliert wurde (Zugriff nur unter Sperre).</summary>
+    private static readonly Dictionary<string, DateTime> RefusedEnrollments = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>true, wenn diese Ablehnung ins Protokoll soll: höchstens einmal am Tag je Rechnername, auch bei gleichzeitigen Anfragen.</summary>
+    private static bool ShouldLogRefusal(string hostName, DateTime now)
+    {
+        lock (RefusedEnrollments)
+        {
+            if (RefusedEnrollments.TryGetValue(hostName, out var last) && now - last <= TimeSpan.FromDays(1))
+                return false;
+            RefusedEnrollments[hostName] = now;
+            return true;
+        }
+    }
 
     /// <summary>So lange bleibt eine Job-Anfrage offen; kürzer als das Zeitlimit des Agenten.</summary>
     private static readonly TimeSpan PollWait = TimeSpan.FromSeconds(50);
@@ -36,10 +48,8 @@ public static class AgentEndpoints
             if (enrollment.Refused is { } reason)
             {
                 // Der Agent versucht es alle 30 Sekunden erneut: ins Protokoll nur einmal am Tag je Rechnername.
-                var now = DateTime.UtcNow;
-                if (!RefusedEnrollments.TryGetValue(request!.HostName, out var last) || now - last > TimeSpan.FromDays(1))
+                if (ShouldLogRefusal(request!.HostName, DateTime.UtcNow))
                 {
-                    RefusedEnrollments[request.HostName] = now;
                     await audit.LogAsync(new AuditActor("(Agent)", null, AuditSource.Agent), "Agent enrollment refused", $"{reason} ({http.Connection.RemoteIpAddress})", ct);
                 }
                 return Results.Conflict();

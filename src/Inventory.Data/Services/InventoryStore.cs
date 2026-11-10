@@ -70,7 +70,8 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.DnsName = MachineNames.ValidDnsName($"{own}.{domain}", computer.Name);
         computer.Manufacturer = data.Manufacturer;
         computer.Model = data.Model;
-        computer.SerialNumber = data.SerialNumber;
+        // Ließ sich die Seriennummer diesmal nicht lesen, bleibt die bisherige: an ihr erkennt die Anmeldung einen Mac wieder.
+        computer.SerialNumber = data.SerialNumber ?? computer.SerialNumber;
         computer.BiosVersion = data.BiosVersion;
         computer.OsName = data.OsName;
         computer.OsVersion = data.OsVersion;

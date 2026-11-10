@@ -40,7 +40,9 @@ internal sealed class MacAgentPlatform : IAgentPlatform
         if (!OperatingSystem.IsWindows())
             File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         Shell.Run("/usr/bin/xattr", "-c", path);
-        Shell.Run("/usr/bin/codesign", "--force", "--sign", "-", path);
+        // Ohne Signatur startete die neue Datei nicht: dann lieber beim laufenden Agenten bleiben (das Update wird erneut versucht).
+        if (Shell.Run("/usr/bin/codesign", "--force", "--sign", "-", path) is null)
+            throw new InvalidOperationException("codesign failed for " + path);
     }
 
     public void Describe(AgentEnrollRequest request)

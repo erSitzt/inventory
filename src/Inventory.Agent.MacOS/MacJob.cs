@@ -68,8 +68,17 @@ internal sealed class MacJob(string jobDir, string hostName) : IAgentJob
         switch (step.Type)
         {
             case StepType.InventoryScan:
-                result.Inventory = new MacInventoryCollector(hostName).Collect();
-                stepResult.Output = result.Inventory.Warnings.Count == 0 ? "" : string.Join("\n", result.Inventory.Warnings);
+                try
+                {
+                    result.Inventory = new MacInventoryCollector(hostName).Collect();
+                    stepResult.Output = result.Inventory.Warnings.Count == 0 ? "" : string.Join("\n", result.Inventory.Warnings);
+                }
+                catch (Exception ex)
+                {
+                    // Ein unvollständiges Inventar würde den gespeicherten Stand überschreiben: lieber kein Ergebnis.
+                    stepResult.Status = StepStatus.Failed;
+                    stepResult.Error = "Inventory scan failed: " + ex.Message;
+                }
                 break;
             case StepType.Sleep:
                 for (var waited = 0; waited < step.Seconds && !_cancelled; waited++)

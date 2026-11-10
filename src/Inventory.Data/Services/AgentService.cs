@@ -155,7 +155,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             chmod 700 "$DOWNLOAD"
             # Auf Apple Silicon starten nur signierte Programme; eine Ad-hoc-Signatur genügt, Gatekeeper prüft nur Downloads aus dem Browser.
             xattr -c "$DOWNLOAD" 2>/dev/null || true
-            codesign --force --sign - "$DOWNLOAD" >/dev/null 2>&1 || true
+            codesign --force --sign - "$DOWNLOAD"
 
             launchctl bootout system "$PLIST" 2>/dev/null || true
             mv -f "$DOWNLOAD" "$DIR/{{AgentProtocol.MacAgentFile}}"
@@ -164,18 +164,18 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             INVENTORY_CONFIG
             printf '%s' "$HASH" > "$DIR/{{AgentProtocol.VersionFile}}"
 
-            cat > "$PLIST" <<INVENTORY_PLIST
+            cat > "$PLIST" <<'INVENTORY_PLIST'
             <?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
             <dict>
               <key>Label</key><string>{{MacAgentLabel}}</string>
               <key>ProgramArguments</key>
-              <array><string>$DIR/{{AgentProtocol.MacAgentFile}}</string><string>{{RunnerModes.Agent}}</string></array>
+              <array><string>{{MacAgentDirectory}}/{{AgentProtocol.MacAgentFile}}</string><string>{{RunnerModes.Agent}}</string></array>
               <key>RunAtLoad</key><true/>
               <key>KeepAlive</key><true/>
               <key>ThrottleInterval</key><integer>30</integer>
-              <key>StandardErrorPath</key><string>$DIR/stderr.log</string>
+              <key>StandardErrorPath</key><string>{{MacAgentDirectory}}/stderr.log</string>
             </dict>
             </plist>
             INVENTORY_PLIST
