@@ -42,6 +42,8 @@ public class MacInventoryTests
         var packages = MacParsers.Packages(receipts);
         Assert.Equal([("com.adobe.acrobat.AcrobatDCUpd2500121184", "25.001.21184"), ("org.openvpn.client.pkg", "3.5.0")],
             packages.Select(p => (p.Name, p.Version)));
+        // Ziffern am Ende einer gewöhnlichen Kennung sind kein Update: beide bleiben.
+        Assert.Equal(2, MacParsers.Packages([new("com.vendor.tool123456", "1", null), new("com.vendor.tool654321", "2", null)]).Count);
         Assert.All(packages, p => Assert.Equal(AppKinds.InstallerPackage, p.Kind));
     }
 
@@ -75,6 +77,9 @@ public class MacInventoryTests
             MacOsSupport.FinalForIntel("MacBookPro15,2"), MacOsSupport.FinalForIntel("Mac15,6")));
         Assert.Equal("28", MacOsSupport.Latest(["26.1", "28.0 (28A1)", null]));
         Assert.Equal(MacOsSupport.LatestMajor, MacOsSupport.Latest(["15.1"]));
+        // Eine gemeldete ältere Version senkt den Stand nie.
+        MacOsSupport.Observe("15.1");
+        Assert.NotEqual("15", MacOsSupport.CurrentLatest);
 
         // Apple Silicon auf einer älteren Version: Upgrade möglich, Updates noch (die aktuelle und die zwei davor).
         var silicon = MacOsSupport.Assess(Mac("Apple M1 Pro", "MacBook Pro (MacBookPro18,1)", "15.6 (24G84)"), "27")!;
@@ -112,6 +117,9 @@ public class MacInventoryTests
         bool Rule(RuleField field) => CollectionEvaluator.Matches(new CollectionRule { Field = field, Operator = RuleOperator.Equals, Value = "true" }, mac);
         Assert.True(Rule(RuleField.IntelOnlyApps));
         Assert.True(Rule(RuleField.UnknownDeveloperApps));
+        // Auf einem Intel-Mac laufen Intel-Programme nativ: kein Rosetta.
+        mac.CpuName = "Quad-Core Intel Core i5";
+        Assert.False(Rule(RuleField.IntelOnlyApps));
         // Für Windows-Rechner gilt keine der Mac-Regeln.
         Assert.False(CollectionEvaluator.Matches(new CollectionRule { Field = RuleField.IntelOnlyApps, Operator = RuleOperator.Equals, Value = "false" }, new Computer { Name = "pc" }));
     }

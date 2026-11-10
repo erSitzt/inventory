@@ -79,7 +79,10 @@ public static class CollectionEvaluator
         RuleField.DeviceType => computer.ChassisType is not null && Text(rule, Chassis.Kind(computer.ChassisType, computer.Model).ToString()),
         RuleField.Platform => Text(rule, computer.Platform.ToString()),
         RuleField.MacOsSecurityUpdatesEnded => Known(rule, MacOsSupport.Assess(computer)?.SecurityUpdates is { } updates ? !updates : null),
-        RuleField.IntelOnlyApps => Known(rule, computer.IsMac ? computer.Software.Any(s => s.Architecture == SoftwareArchitectures.Intel) : null),
+        // Nur Apple Silicon braucht für Intel-Programme Rosetta; auf einem Intel-Mac laufen sie nativ.
+        RuleField.IntelOnlyApps => Known(rule, computer.IsMac
+            ? MacOsSupport.IsAppleSilicon(computer) && computer.Software.Any(s => s.Architecture == SoftwareArchitectures.Intel)
+            : null),
         RuleField.UnknownDeveloperApps => Known(rule, computer.IsMac ? computer.Software.Any(s => s.Origin == SoftwareOrigins.Unknown) : null),
         RuleField.DiskFreeGb => Number(rule, computer.Disks.FirstOrDefault(d => computer.IsMac ? d.Drive == "/" : d.Drive.StartsWith("C", StringComparison.OrdinalIgnoreCase)) is { } system
             ? (int)(system.FreeBytes / (1L << 30)) : null),

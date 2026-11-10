@@ -64,6 +64,8 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.IsOnline = false;
         }
         computer.Platform = data.Platform == AgentPlatforms.MacOS ? OsPlatform.MacOS : OsPlatform.Windows;
+        if (computer.IsMac)
+            MacOsSupport.Observe(data.OsVersion);
         computer.Domain = data.Domain;
         // Ein Domänenmitglied meldet seine DNS-Domäne (eine Arbeitsgruppe hat keinen Punkt); nur als Lückenfüller, das Verzeichnis geht vor.
         if (computer.DnsName is null && data.ComputerName is { } own && data.Domain is { } domain && domain.Contains('.'))

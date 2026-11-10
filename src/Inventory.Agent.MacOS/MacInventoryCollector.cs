@@ -210,7 +210,7 @@ internal sealed class MacInventoryCollector(string hostName)
                 {
                     // Je Formel ein Unterordner pro installierter Version; die höchste zählt.
                     var version = Directory.GetDirectories(formula).Select(Path.GetFileName).Where(v => !string.IsNullOrEmpty(v) && v[0] != '.')
-                        .OrderBy(v => v, StringComparer.Ordinal).LastOrDefault();
+                        .OrderBy(v => v, Comparer<string?>.Create(VersionComparer.Compare)).LastOrDefault();
                     packages.Add(new AppItem { Name = Path.GetFileName(formula), Version = version, Publisher = "Homebrew", Kind = kind });
                 }
             }

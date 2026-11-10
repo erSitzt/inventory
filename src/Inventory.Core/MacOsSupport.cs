@@ -80,6 +80,28 @@ public static partial class MacOsSupport
 
     private static int Index(string? major) => major is null ? -1 : Array.FindIndex(Releases, r => r.Major == major);
 
+    private static string _observedLatest = LatestMajor;
+
+    /// <summary>
+    /// Die neueste bekannte macOS-Version: <see cref="LatestMajor"/>, oder eine neuere, sobald ein Mac sie meldet (siehe
+    /// <see cref="Observe"/>). Danach richtet sich, welche Versionen noch Sicherheitsupdates bekommen.
+    /// </summary>
+    public static string CurrentLatest => Volatile.Read(ref _observedLatest);
+
+    /// <summary>Merkt sich die Version eines Macs, wenn sie neuer ist als alles bisher Bekannte (Scan, Serverstart).</summary>
+    public static void Observe(string? version)
+    {
+        var major = Major(version);
+        while (Index(major) > Index(CurrentLatest))
+        {
+            var seen = CurrentLatest;
+            if (Interlocked.CompareExchange(ref _observedLatest, major!, seen) == seen)
+                return;
+        }
+    }
+
+    public static bool IsAppleSilicon(Computer computer) => computer.CpuName?.StartsWith("Apple", StringComparison.OrdinalIgnoreCase) == true;
+
     /// <summary>Die neuere von <see cref="LatestMajor"/> und den Versionen, die Macs schon melden.</summary>
     public static string Latest(IEnumerable<string?> runningVersions) =>
         runningVersions.Select(Major).Where(m => Index(m) > Index(LatestMajor)).OrderBy(Index).LastOrDefault() ?? LatestMajor;
@@ -109,12 +131,13 @@ public static partial class MacOsSupport
     }
 
     /// <summary>Die Einschätzung für einen Mac; null für andere Rechner und Intel-Macs, deren Modell nicht bekannt ist.</summary>
-    /// <param name="latestMajor">Die neueste macOS-Version, siehe <see cref="Latest"/>.</param>
-    public static MacOsAssessment? Assess(Computer computer, string latestMajor = LatestMajor)
+    /// <param name="latestMajor">Die neueste macOS-Version; ohne Angabe <see cref="CurrentLatest"/>.</param>
+    public static MacOsAssessment? Assess(Computer computer, string? latestMajor = null)
     {
         if (!computer.IsMac)
             return null;
-        var appleSilicon = computer.CpuName?.StartsWith("Apple", StringComparison.OrdinalIgnoreCase) == true;
+        latestMajor ??= CurrentLatest;
+        var appleSilicon = IsAppleSilicon(computer);
         var final = appleSilicon ? null : FinalForIntel(ModelIdentifier(computer.Model));
         if (!appleSilicon && final is null)
             return null;

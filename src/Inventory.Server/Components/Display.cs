@@ -212,9 +212,9 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     /// Wie lange ein Mac noch versorgt wird, z. B. "letzte Version: macOS 15; Upgrade auf macOS 15 möglich; Sicherheitsupdates bis
     /// etwa Herbst 2027"; null für andere Rechner und unbekannte Intel-Modelle.
     /// </summary>
-    public string? MacOsSupport(Computer c, string latestMajor = Core.MacOsSupport.LatestMajor)
+    public string? MacOsSupport(Computer c)
     {
-        if (Core.MacOsSupport.Assess(c, latestMajor) is not { } a)
+        if (Core.MacOsSupport.Assess(c) is not { } a)
             return null;
         var parts = new List<string> { a.AppleSilicon ? T("receives the current macOS") : T("last version: macOS {0}", a.FinalMajor!) };
         if (a.UpgradeTo is not null)

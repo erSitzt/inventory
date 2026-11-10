@@ -211,7 +211,7 @@ internal static partial class MacParsers
 
     /// <summary>
     /// Die Pakete, die neben den Programmen zählen: ohne die von Apple, und Update-Belege eines Pakets
-    /// ("…AcrobatDCUpd2500121184", einer je Update) zusammengefasst zum neuesten.
+    /// ("…AcrobatDCUpd2500121184", einer je Update) zusammengefasst zum neuesten. Andere Kennungen mit Ziffern am Ende bleiben getrennt.
     /// </summary>
     public static List<AppItem> Packages(IEnumerable<PackageReceipt> receipts) =>
         receipts
@@ -222,7 +222,7 @@ internal static partial class MacParsers
             .Select(r => new AppItem { Name = r.Id, Version = r.Version, Kind = AppKinds.InstallerPackage })
             .ToList();
 
-    [GeneratedRegex(@"\d{6,}$")]
+    [GeneratedRegex(@"(?<=Upd(?:ate)?)\d{4,}$", RegexOptions.IgnoreCase)]
     private static partial Regex UpdateSuffix();
 
     /// <summary>
