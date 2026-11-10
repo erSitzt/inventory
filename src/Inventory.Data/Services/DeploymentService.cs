@@ -206,7 +206,10 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
                 PilotCollectionId = pilot.Count > 0 ? options.PilotCollectionId : null,
                 PilotHoldHours = Math.Clamp(options.PilotHoldHours, 0, MaxPilotHoldHours),
                 PilotMaxFailurePercent = Math.Clamp(options.PilotMaxFailurePercent, 0, 100),
-                Targets = computers.Select(c => pilot.Count == 0 || pilot.Contains(c.Id)
+                // Pakete gibt es für Macs noch nicht: ihr Ziel scheitert gleich, ohne dass ein Job hinausgeht.
+                Targets = computers.Select(c => c.IsMac
+                    ? new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.Failed, Error = L["Not available for macOS yet: on a Mac the agent only collects the inventory."], FinishedUtc = DateTime.UtcNow }
+                    : pilot.Count == 0 || pilot.Contains(c.Id)
                     ? new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.Queued, Pilot = pilot.Count > 0 }
                     : new DeploymentTarget { ComputerId = c.Id, ComputerName = c.Name, Status = TargetStatus.WaitingPilot }).ToList(),
             };

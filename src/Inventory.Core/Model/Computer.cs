@@ -25,6 +25,11 @@ public class Computer
     /// <summary>Überschreibt den globalen Standard-Transport; null = Standard verwenden.</summary>
     public TransportKind? Transport { get; set; }
 
+    /// <summary>Windows, bis sich ein Mac-Agent anmeldet oder ein Scan etwas anderes meldet.</summary>
+    public OsPlatform Platform { get; set; }
+
+    public bool IsMac => Platform == OsPlatform.MacOS;
+
     /// <summary>Überschreibt die Standard-Zugangsdaten; null = Standard verwenden.</summary>
     public int? CredentialId { get; set; }
     public Credential? Credential { get; set; }
@@ -174,6 +179,13 @@ public class Computer
     public int? BuiltinAdminPasswordAgeDays { get; set; }
     public bool? WindowsActivated { get; set; }
 
+    // Sicherheitseinstellungen eines Macs (FileVault steht in SystemDriveProtected); null = nicht ermittelt
+    public bool? MacFirewall { get; set; }
+    public bool? MacFirewallStealth { get; set; }
+    public bool? MacGatekeeper { get; set; }
+    public bool? MacSip { get; set; }
+    public bool? MacAutoUpdateCheck { get; set; }
+
     /// <summary>true, sobald ein Scan mindestens eine dieser Einstellungen geliefert hat.</summary>
     public bool PostureKnown =>
         RdpEnabled is not null || RdpNla is not null || UacEnabled is not null || UacLevel is not null || Smb1Enabled is not null
@@ -198,7 +210,7 @@ public class Computer
     public bool? BatteryPresent { get; set; }
     public int? BatteryHealthPercent { get; set; }
     public int? BatteryCycleCount { get; set; }
-    /// <summary>BitLocker-Schutz des Systemlaufwerks; null = nicht ermittelt.</summary>
+    /// <summary>BitLocker-Schutz des Systemlaufwerks (beim Mac FileVault); null = nicht ermittelt.</summary>
     public bool? SystemDriveProtected { get; set; }
 
     // Angaben für die Lizenzberechnung aus dem letzten Scan; null = nicht ermittelt
@@ -240,8 +252,8 @@ public class Computer
     public string? TeamViewerId { get; set; }
     public string? AnyDeskId { get; set; }
 
-    /// <summary>true, wenn mindestens ein Firewall-Profil abgeschaltet ist.</summary>
-    public bool FirewallOff => FirewallDomain == false || FirewallPrivate == false || FirewallPublic == false;
+    /// <summary>true, wenn mindestens ein Firewall-Profil abgeschaltet ist (beim Mac: die Firewall).</summary>
+    public bool FirewallOff => FirewallDomain == false || FirewallPrivate == false || FirewallPublic == false || MacFirewall == false;
 
     /// <summary>true, wenn kein Echtzeitschutz läuft: weder Defender noch ein anderes registriertes und eingeschaltetes Virenschutzprogramm.</summary>
     public bool AntivirusProblem =>

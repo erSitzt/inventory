@@ -37,6 +37,10 @@ namespace Inventory.Runner
         {
         }
 
+        public void Describe(AgentEnrollRequest request)
+        {
+        }
+
         private sealed class Job : IAgentJob
         {
             private readonly JobExecutor _executor;

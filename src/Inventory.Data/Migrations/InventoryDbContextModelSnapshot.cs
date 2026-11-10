@@ -420,6 +420,21 @@ namespace Inventory.Data.Migrations
                     b.Property<bool?>("LsaProtection")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("MacAutoUpdateCheck")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("MacFirewall")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("MacFirewallStealth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("MacGatekeeper")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("MacSip")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Manufacturer")
                         .HasColumnType("TEXT");
 
@@ -470,6 +485,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<string>("Owner")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("Platform")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("PrimaryUser")
                         .HasColumnType("TEXT");

@@ -82,10 +82,10 @@
             <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">@L["Deploy package"]</MudMenuItem>
             <AdminOnly>
                 <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">@L["Run command"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => Updates.OpenAsync(_selected.Select(c => c.Id).ToList(), securityOnly: false))">@L["Install pending updates"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => Updates.OpenAsync(_selected.Select(c => c.Id).ToList(), securityOnly: true))">@L["Install pending security updates"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => Updates.OpenAsync(_selected.Select(c => c.Id).ToList(), securityOnly: false, restart: false))">@L["Install pending updates without restart"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => Updates.OpenAsync(_selected.Select(c => c.Id).ToList(), securityOnly: true, restart: false))">@L["Install pending security updates without restart"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: false))">@L["Install pending updates"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: true))">@L["Install pending security updates"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: false, restart: false))">@L["Install pending updates without restart"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: true, restart: false))">@L["Install pending security updates without restart"]</MudMenuItem>
                 <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MudMenuItem>
                 @if (Framework.Available)
                 {
@@ -195,13 +195,19 @@
             </CellTemplate>
         </TemplateColumn>
         <TemplateColumn Sortable="true" Title="@L["Operating system"]" SortBy="c => Display.Os(c)">
-            <CellTemplate>@Display.Os(context.Item)</CellTemplate>
+            <CellTemplate>
+                @if (context.Item.IsMac)
+                {
+                    <MudIcon Icon="@Icons.Custom.Brands.Apple" Size="Size.Small" Style="vertical-align: text-bottom" Title="macOS" />
+                }
+                @Display.Os(context.Item)
+            </CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="@L["Security"]" Sortable="false">
             <CellTemplate>
                 @if (context.Item.FirewallOff)
                 {
-                    <MudTooltip Text="@L["At least one firewall profile is off"]"><MudIcon Icon="@Icons.Material.Filled.GppBad" Color="Color.Error" Size="Size.Small" /></MudTooltip>
+                    <MudTooltip Text="@(context.Item.IsMac ? L["The firewall is off"] : L["At least one firewall profile is off"])"><MudIcon Icon="@Icons.Material.Filled.GppBad" Color="Color.Error" Size="Size.Small" /></MudTooltip>
                 }
                 @if (context.Item.AntivirusProblem)
                 {
@@ -214,6 +220,14 @@
                 @if (context.Item.UpdateRebootRequired == true)
                 {
                     <MudTooltip Text="@L["Reboot pending"]"><MudIcon Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
+                }
+                @if (context.Item.IsMac && context.Item.SystemDriveProtected == false)
+                {
+                    <MudTooltip Text="@L["FileVault is off"]"><MudIcon Icon="@Icons.Material.Filled.NoEncryption" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
+                }
+                @if (context.Item.IsMac && context.Item.MacFirewall == true && context.Item.SystemDriveProtected == true)
+                {
+                    <MudTooltip Text="@L["Firewall and FileVault on"]"><MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Color="Color.Success" Size="Size.Small" /></MudTooltip>
                 }
                 @if (context.Item.FirewallDomain is not null && !context.Item.FirewallOff && !context.Item.AntivirusProblem && !(context.Item.UpdatePendingCount > 0) && context.Item.UpdateRebootRequired != true)
                 {
@@ -250,9 +264,12 @@
         </TemplateColumn>
         <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
             <CellTemplate>
-                <OperatorOnly>
-                    <RemoteAccessMenu Computer="context.Item" Compact="true" />
-                </OperatorOnly>
+                @if (!context.Item.IsMac)
+                {
+                    <OperatorOnly>
+                        <RemoteAccessMenu Computer="context.Item" Compact="true" />
+                    </OperatorOnly>
+                }
                 <AdminOnly>
                     <MudTooltip Text="@L["Edit"]"><MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@L["Edit"]" OnClick="@(() => EditAsync(context.Item))" /></MudTooltip>
                 </AdminOnly>
@@ -557,9 +574,26 @@
         }
     }
 
+    /// <summary>
+    /// Die Auswahl ohne Macs: Pakete, Befehle, Updates und die Windows-Installationen gibt es für sie noch nicht. Fallen welche
+    /// weg, sagt ein Hinweis das; leer, wenn nur Macs gewählt sind.
+    /// </summary>
+    private List<Computer> WindowsTargets()
+    {
+        var macs = _selected.Count(c => c.IsMac);
+        if (macs > 0)
+            Snackbar.Add(L["{0} Macs skipped: not available for macOS yet.", macs], Severity.Info);
+        return _selected.Where(c => !c.IsMac).ToList();
+    }
+
+    private Task OpenUpdatesAsync(bool securityOnly, bool restart = true) =>
+        WindowsTargets() is { Count: > 0 } targets ? Updates.OpenAsync(targets.Select(c => c.Id).ToList(), securityOnly, restart) : Task.CompletedTask;
+
     private Task DeployAsync()
     {
-        var parameters = new DialogParameters<DeployDialog> { { d => d.ComputerIds, _selected.Select(c => c.Id).ToList() } };
+        if (WindowsTargets() is not { Count: > 0 } targets)
+            return Task.CompletedTask;
+        var parameters = new DialogParameters<DeployDialog> { { d => d.ComputerIds, targets.Select(c => c.Id).ToList() } };
         return Dialogs.ShowAsync<DeployDialog>(L["Deploy package"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
     }
 
@@ -578,7 +612,9 @@
             return;
         }
 
-        var targets = _selected.ToList();
+        var targets = WindowsTargets();
+        if (targets.Count == 0)
+            return;
         _busy = true;
         _progressText = L["Installing agent on {0} computers …", targets.Count];
         await Audit.LogAsync(L["Agent installation started"], string.Join(", ", targets.Select(c => c.Name)));
@@ -613,7 +649,9 @@
     {
         if (!await Access.DemandAdminAsync())
             return;
-        var targets = _selected.ToList();
+        var targets = WindowsTargets();
+        if (targets.Count == 0)
+            return;
         var confirmed = await Dialogs.ShowMessageBoxAsync(L["Install .NET Framework 4.8"],
             L["Installs .NET Framework 4.8 from the offline installer of Microsoft on {0} computers. It takes 5 to 30 minutes per computer and usually needs a restart, which Inventory does not trigger. Computers that already have it are left alone.", targets.Count],
             yesText: L["Install"], cancelText: L["Cancel"]);
@@ -663,7 +701,9 @@
             return;
         }
 
-        var targets = _selected.ToList();
+        var targets = WindowsTargets();
+        if (targets.Count == 0)
+            return;
         _busy = true;
         _progressText = L["Installing the launcher on {0} computers …", targets.Count];
         await Audit.LogAsync(L["Remote access launcher installed"], string.Join(", ", targets.Select(c => c.Name)));
@@ -688,7 +728,11 @@
         }
     }
 
-    private void RunCommand() => Navigation.NavigateTo($"run?ids={string.Join(',', _selected.Select(c => c.Id))}");
+    private void RunCommand()
+    {
+        if (WindowsTargets() is { Count: > 0 } targets)
+            Navigation.NavigateTo($"run?ids={string.Join(',', targets.Select(c => c.Id))}");
+    }
 
     private async Task AddToCollectionAsync(Collection collection)
     {

@@ -14,7 +14,7 @@ public static class ComputerEndpoints
         string? ReportedName, string? ReverseDnsName, bool NameMismatch, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser,
         string? PrimaryUser = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
         DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string? WakeMac = null, string? DnsName = null,
-        IReadOnlyDictionary<string, string>? CustomValues = null);
+        IReadOnlyDictionary<string, string>? CustomValues = null, OsPlatform Platform = OsPlatform.Windows);
 
     public sealed record WakeDto(bool Sent, IReadOnlyList<string> Macs, int Packets, IReadOnlyList<string> Relays);
 
@@ -70,6 +70,20 @@ public static class ComputerEndpoints
                 return Results.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
             }
         }).RequireAuthorization(AccessControl.AdminPolicy).WithTags("Downloads").WithSummary("Agent setup").WithDescription("ZIP with the agent, its configuration (server address and enrollment secret) and Install-Agent.cmd, for distribution by group policy or an existing software distribution. Administrators only.");
+
+        app.MapGet("/download/agent-macos", async (HttpContext http, AgentService agents, AuditService audit, CancellationToken ct) =>
+        {
+            try
+            {
+                var script = await agents.BuildMacInstallScriptAsync(ct);
+                await audit.LogAsync(http.Actor(), "macOS agent install script downloaded", null, ct);
+                return Results.File(System.Text.Encoding.UTF8.GetBytes(script), "text/x-shellscript", AgentService.MacScriptFileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+            }
+        }).RequireAuthorization(AccessControl.AdminPolicy).WithTags("Downloads").WithSummary("macOS agent install script").WithDescription("Shell script that downloads the macOS agent from this server and installs it as a LaunchDaemon (run as root, e.g. by Intune or Jamf); --uninstall removes it. Contains the enrollment secret. Administrators only.");
 
         var group = app.MapGroup("/api/computers").WithTags("Computers");
 
@@ -204,5 +218,6 @@ public static class ComputerEndpoints
     internal static ComputerDto ToDto(Computer c) =>
         new(c.Id, c.Name, c.Description, c.IpAddress, c.IsOnline, c.LastSeenUtc, c.LastScanUtc, c.LastScanError, c.Transport, c.CredentialId,
             c.ReportedName, c.ReverseDnsName, c.NameMismatch, c.OsName, c.OsVersion, c.Manufacturer, c.Model, c.SerialNumber, c.MemoryBytes, c.LoggedOnUser,
-            c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate, c.WarrantyUntil, c.Tags, c.Notes, c.WakeMac, c.DnsName);
+            c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate, c.WarrantyUntil, c.Tags, c.Notes, c.WakeMac, c.DnsName,
+            Platform: c.Platform);
 }

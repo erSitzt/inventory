@@ -66,6 +66,10 @@ Collected in issue [#27](https://github.com/erSitzt/inventory/issues/27).
 - LAPS integration: read the managed local administrator password as a credential source for agentless access.
 - Software from offline user hives (today only loaded profiles).
 
+**Macs**
+
+- The macOS agent collects the inventory (since 0.21). Open: commands and packages for Macs (shell scripts, `.pkg`/`.dmg` installs, a platform per package), pending macOS updates (`softwareupdate`), a signed and notarized `.pkg` for MDM deployments.
+
 **Platform**
 
 - OIDC role mapping via app roles only, for tenants that cannot emit group claims.
@@ -83,7 +87,7 @@ Collected in issue [#27](https://github.com/erSitzt/inventory/issues/27).
 | Custom report designer, PDF rendering | Saved reports with column selection, CSV/XLSX and the browser's print function cover the need. |
 | OS deployment / imaging, driver management, Intune co-management | A different product category. |
 | Built-in remote control | The launcher integrates Remote Assistance, Remote Desktop and shadowing; TeamViewer and AnyDesk are linked. |
-| Linux / macOS clients | Windows-only inventory and deployment is the product definition. |
+| Linux clients | Windows is the product definition; Macs have an inventory agent (see backlog), Linux has no demand so far. |
 | Fine-grained API scopes | The token role (2.7) is enough; scopes add UI complexity without anyone asking for them. |
 
 ## Cross-cutting notes for implementation

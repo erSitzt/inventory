@@ -81,6 +81,7 @@ namespace Inventory.Agent
                 return File.ReadAllText(keyPath).Trim();
 
             var request = new AgentEnrollRequest { EnrollmentToken = config.EnrollmentToken, HostName = _platform.HostName, DnsName = _platform.DnsName(), Version = _version };
+            _platform.Describe(request);
             using (var response = _http.PostAsync(AgentProtocol.EnrollPath, Json(request)).GetAwaiter().GetResult())
             {
                 if (!response.IsSuccessStatusCode)

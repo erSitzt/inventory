@@ -31,8 +31,64 @@ internal static class SimulatedInventory
         ("Java 8 Update 421 (64-bit)", "Oracle Corporation", ["8.0.4210.9"]),
     ];
 
+    private static InventoryData CreateMac(string host)
+    {
+        var random = new Random((int)StableHash(host));
+        var notebook = random.Next(3) != 0;
+        var data = new InventoryData
+        {
+            Platform = AgentPlatforms.MacOS,
+            ComputerName = host.Split('.')[0],
+            Manufacturer = "Apple Inc.",
+            Model = notebook ? "MacBook Pro (14-inch, Nov 2023) (Mac15,6)" : "Mac mini (2023) (Mac14,3)",
+            SerialNumber = $"C02{StableHash(host) % 10_000_000:D7}",
+            BiosVersion = "11881.41.5",
+            OsName = random.Next(2) == 0 ? "macOS Sequoia 15.7.1" : "macOS Tahoe 26.1",
+            OsVersion = "15.7.1 (24G231)",
+            OsArchitecture = "ARM 64-bit",
+            OsInstalledUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(random.Next(600)),
+            LastBootUtc = DateTime.UtcNow.AddHours(-random.Next(1, 300)),
+            CpuName = notebook ? "Apple M3 Pro" : "Apple M2",
+            CpuCores = notebook ? 11 : 8,
+            CpuLogicalProcessors = notebook ? 11 : 8,
+            MemoryBytes = (notebook ? 18L : 16L) * 1024 * 1024 * 1024,
+            LoggedOnUser = $"benutzer{random.Next(100, 999)}",
+            Hardware = new HardwareInfo
+            {
+                ChassisType = notebook ? 10 : 3,
+                Gpus = [new GpuItem { Name = notebook ? "Apple M3 Pro (14 cores)" : "Apple M2 (10 cores)" }],
+                MemoryModules = [new MemoryModuleItem { Slot = "Unified memory", CapacityBytes = (notebook ? 18L : 16L) * 1024 * 1024 * 1024, Type = "LPDDR5" }],
+                PhysicalDisks = [new PhysicalDiskItem { Model = "APPLE SSD AP0512Z", SizeBytes = 500_277_790_720, BusType = "NVMe", MediaType = "SSD", Health = "Verified" }],
+                Volumes = [new VolumeEncryptionItem { Drive = "/", Protected = random.Next(5) != 0, EncryptedPercent = 100, Method = "FileVault" }],
+                BatteryPresent = notebook,
+                BatteryHealthPercent = notebook ? random.Next(82, 100) : null,
+                BatteryCycleCount = notebook ? random.Next(20, 600) : null,
+            },
+            MacOs = new MacOsInfo { FirewallEnabled = random.Next(3) != 0, FirewallStealth = false, GatekeeperEnabled = true, SipEnabled = true, AutomaticUpdateCheck = true },
+        };
+        data.InteractiveUsers = [data.LoggedOnUser];
+        foreach (var (name, publisher, version) in new[]
+                 {
+                     ("Google Chrome", "Google LLC", "141.0.7390.108"), ("Microsoft Teams", "Microsoft Corporation", "25275.2601.4002.2815"),
+                     ("Microsoft Word", "Microsoft Corporation", "16.102"), ("Safari", "Apple Inc.", "26.1"), ("zoom.us", "Zoom Video Communications, Inc.", "6.6.0"),
+                 })
+            data.Software.Add(new SoftwareItem { Name = name, Publisher = publisher, Version = version, InstallDate = "20251020", Is64Bit = true });
+        data.Disks.Add(new DiskItem { Drive = "/", Label = "Macintosh HD", FileSystem = "APFS", SizeBytes = 494_384_795_648, FreeBytes = 494_384_795_648L * random.Next(10, 70) / 100 });
+        data.NetworkAdapters.Add(new NetworkAdapterItem
+        {
+            Name = "Wi-Fi (en0)", MacAddress = $"A4:83:E7:{random.Next(256):X2}:{random.Next(256):X2}:{random.Next(256):X2}",
+            IpAddresses = [$"10.0.0.{random.Next(100, 250)}"], SubnetMasks = ["255.255.255.0"], Gateways = ["10.0.0.1"], DnsServers = ["10.0.1.10"], DhcpEnabled = true,
+        });
+        data.LocalUsers.Add(new LocalUserItem { Name = data.LoggedOnUser, FullName = "Max Mustermann" });
+        data.LocalAdmins.Add(new LocalAdminItem { Name = data.LoggedOnUser });
+        return data;
+    }
+
     public static InventoryData Create(string host)
     {
+        // Namen mit "MAC" vorn sind Macs mit Agent: so lässt sich die Mac-Ansicht ohne Mac ausprobieren.
+        if (host.StartsWith("MAC", StringComparison.OrdinalIgnoreCase))
+            return CreateMac(host);
         var random = new Random((int)StableHash(host));
         var (manufacturer, model) = Models[random.Next(Models.Length)];
         var system = Systems[random.Next(Systems.Length)];

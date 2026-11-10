@@ -101,6 +101,105 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             """;
     }
 
+    /// <summary>
+    /// Installationsskript für den Mac (bash, als root): lädt den Agenten passend zur Architektur vom Server, richtet ihn als
+    /// LaunchDaemon ein und startet ihn. Mit <c>--uninstall</c> entfernt es ihn wieder. Enthält das Anmeldegeheimnis.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Die Server-Adresse für Agenten ist nicht eingestellt.</exception>
+    public async Task<string> BuildMacInstallScriptAsync(CancellationToken ct = default)
+    {
+        var serverUrl = await GetServerUrlAsync(ct);
+        if (string.IsNullOrWhiteSpace(serverUrl))
+            throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
+        var token = await GetEnrollmentTokenAsync(ct);
+        static string Quote(string value) => "'" + value.Replace("'", "'\\''") + "'";
+        var config = JobJson.Serialize(new AgentConfig { ServerUrl = serverUrl, EnrollmentToken = token });
+        return $$"""
+            #!/bin/bash
+            # Inventory-Agent für macOS: installiert oder aktualisiert den Agenten als LaunchDaemon; --uninstall entfernt ihn.
+            # Als root ausführen, z. B.:  curl -fsSL {{serverUrl}}/{{PublicMacScriptPath}} | sudo bash
+            set -euo pipefail
+            SERVER={{Quote(serverUrl)}}
+            TOKEN={{Quote(token)}}
+            DIR='{{MacAgentDirectory}}'
+            PLIST='/Library/LaunchDaemons/{{MacAgentLabel}}.plist'
+
+            if [ "$(id -u)" -ne 0 ]; then
+              echo 'Please run as root (sudo).' >&2
+              exit 1
+            fi
+
+            if [ "${1:-}" = '--uninstall' ]; then
+              launchctl bootout system "$PLIST" 2>/dev/null || true
+              rm -f "$PLIST"
+              rm -rf "$DIR"
+              echo 'Inventory agent removed.'
+              exit 0
+            fi
+
+            case "$(uname -m)" in
+              arm64) RUNTIME='{{RunnerRuntimes.MacArm64}}' ;;
+              x86_64) RUNTIME='{{RunnerRuntimes.MacX64}}' ;;
+              *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+            esac
+
+            umask 077
+            mkdir -p "$DIR"
+            chown root:wheel "$DIR"
+            chmod 700 "$DIR"
+            DOWNLOAD="$(mktemp "$DIR/download.XXXXXX")"
+            HEADERS="$(mktemp "$DIR/headers.XXXXXX")"
+            trap 'rm -f "$DOWNLOAD" "$HEADERS"' EXIT
+            curl -fsSL -H "{{AgentProtocol.EnrollmentTokenHeader}}: $TOKEN" -D "$HEADERS" -o "$DOWNLOAD" "$SERVER/{{AgentProtocol.DownloadPath}}/$RUNTIME"
+            HASH="$(grep -i '^{{AgentHashHeader}}:' "$HEADERS" | tail -n 1 | cut -d: -f2 | tr -d ' \r\n')"
+            chmod 700 "$DOWNLOAD"
+            # Auf Apple Silicon starten nur signierte Programme; eine Ad-hoc-Signatur genügt, Gatekeeper prüft nur Downloads aus dem Browser.
+            xattr -c "$DOWNLOAD" 2>/dev/null || true
+            codesign --force --sign - "$DOWNLOAD"
+
+            launchctl bootout system "$PLIST" 2>/dev/null || true
+            mv -f "$DOWNLOAD" "$DIR/{{AgentProtocol.MacAgentFile}}"
+            cat > "$DIR/{{AgentProtocol.ConfigFile}}" <<'INVENTORY_CONFIG'
+            {{config}}
+            INVENTORY_CONFIG
+            printf '%s' "$HASH" > "$DIR/{{AgentProtocol.VersionFile}}"
+
+            cat > "$PLIST" <<'INVENTORY_PLIST'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+              <key>Label</key><string>{{MacAgentLabel}}</string>
+              <key>ProgramArguments</key>
+              <array><string>{{MacAgentDirectory}}/{{AgentProtocol.MacAgentFile}}</string><string>{{RunnerModes.Agent}}</string></array>
+              <key>RunAtLoad</key><true/>
+              <key>KeepAlive</key><true/>
+              <key>ThrottleInterval</key><integer>30</integer>
+              <key>StandardErrorPath</key><string>{{MacAgentDirectory}}/stderr.log</string>
+            </dict>
+            </plist>
+            INVENTORY_PLIST
+            chown root:wheel "$PLIST"
+            chmod 644 "$PLIST"
+            launchctl bootstrap system "$PLIST"
+            echo 'Inventory agent installed. The Mac appears in Inventory under "Computers" in a few seconds.'
+
+            """;
+    }
+
+    /// <summary>Hier liegt der Mac-Agent mit Konfiguration, Schlüssel und Ablage (nur für root lesbar).</summary>
+    public const string MacAgentDirectory = "/Library/Application Support/Inventory Agent";
+    public const string MacAgentLabel = "inventory.agent";
+    /// <summary>Antwortkopf des Downloads: der Stand der Agent-Dateien, den das Skript als agent.version ablegt.</summary>
+    public const string AgentHashHeader = "X-Agent-Hash";
+    public const string PublicMacScriptPath = "agent/macos/install.sh";
+    public const string MacScriptFileName = "install-inventory-agent.sh";
+
+    /// <summary>Prüft das Anmeldegeheimnis, ohne anzumelden (Download des Mac-Agenten).</summary>
+    public async Task<bool> IsEnrollmentTokenAsync(string? token, CancellationToken ct = default) =>
+        !string.IsNullOrEmpty(token)
+        && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(await GetEnrollmentTokenAsync(ct)), Encoding.UTF8.GetBytes(token));
+
     public const string PublicPagePath = "agent";
     public const string PublicSetupPath = "agent/setup.zip";
     public const string PublicScriptPath = "agent/install.ps1";
@@ -114,23 +213,45 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
     }
 
     /// <summary>Meldet einen Agenten an und liefert seinen Schlüssel; null, wenn das Anmeldegeheimnis nicht stimmt.</summary>
-    public async Task<string?> EnrollAsync(AgentEnrollRequest request, CancellationToken ct = default)
+    public async Task<string?> EnrollAsync(AgentEnrollRequest request, CancellationToken ct = default) => (await EnrollWithReasonAsync(request, ct)).Key;
+
+    /// <summary>Ergebnis einer Anmeldung: der Schlüssel, oder warum der Server sie trotz gültigem Geheimnis abgelehnt hat.</summary>
+    public sealed record Enrollment(string? Key, string? Refused = null);
+
+    /// <summary>Gleichnamige Rechner einer anderen Plattform übernimmt ein Agent nie; die Anmeldung scheitert dann mit Begründung.</summary>
+    public async Task<Enrollment> EnrollWithReasonAsync(AgentEnrollRequest request, CancellationToken ct = default)
     {
         var expected = await GetEnrollmentTokenAsync(ct);
         if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(request.EnrollmentToken ?? ""))
             || string.IsNullOrWhiteSpace(request.HostName))
-            return null;
+            return new Enrollment(null);
 
         var key = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var name = request.HostName.Trim();
+        var platform = request.Platform == AgentPlatforms.MacOS ? OsPlatform.MacOS : OsPlatform.Windows;
+        var computers = await db.Computers.ToListAsync(ct);
+        // Ein Mac ist an seiner Seriennummer sicher wiederzuerkennen, auch wenn er inzwischen anders heißt.
+        var computer = platform == OsPlatform.MacOS && !string.IsNullOrWhiteSpace(request.SerialNumber)
+            ? computers.FirstOrDefault(c => c.Platform == platform && string.Equals(c.SerialNumber, request.SerialNumber.Trim(), StringComparison.OrdinalIgnoreCase))
+            : null;
         // Auch unter dem FQDN eingetragene Rechner wiederfinden.
-        var computer = (await db.Computers.ToListAsync(ct)).FirstOrDefault(c => c.Name.Split('.')[0].Equals(name, StringComparison.OrdinalIgnoreCase));
+        var byName = computers.FirstOrDefault(c => c.Name.Split('.')[0].Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (computer is null && byName is not null)
+        {
+            if (byName.Platform != platform)
+                return new Enrollment(null, L["A computer named {0} exists already, but it is not a {1} computer; the agent was not enrolled.", name, platform == OsPlatform.MacOS ? "macOS" : "Windows"]);
+            computer = byName;
+        }
+        // Umbenannter Mac: der Eintrag folgt dem neuen Namen, sonst passten Jobs und Namensprüfung nicht mehr zusammen.
+        else if (computer is not null && byName is null && !computer.Name.Split('.')[0].Equals(name, StringComparison.OrdinalIgnoreCase))
+            computer.Name = name;
         if (computer is null)
         {
-            computer = new Computer { Name = name };
+            computer = new Computer { Name = name, Platform = platform };
             db.Computers.Add(computer);
         }
+        computer.SerialNumber ??= string.IsNullOrWhiteSpace(request.SerialNumber) ? null : request.SerialNumber.Trim();
         // Der Agent kennt sein DNS-Suffix; darüber erreichen ihn später auch agentenlose Wege und der Fernzugriff.
         // Was das Verzeichnis für einen dort bekannten Rechner geliefert hat, geht vor.
         if (computer.DnsName is null || computer.DirectorySeenUtc is null)
@@ -140,7 +261,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         computer.AgentLastSeenUtc = time.GetUtcNow().UtcDateTime;
         computer.Transport = TransportKind.Agent;
         await db.SaveChangesAsync(ct);
-        return key;
+        return new Enrollment(key);
     }
 
     /// <summary>Anzeigetext aus Programmversion und Stand der Dateien, z. B. "0.1.0.0 (3fa9c21b)".</summary>

@@ -50,7 +50,8 @@ public static partial class InventoryDiff
         Value("Reported name", previous.ReportedName, current.ComputerName);
         Value("Domain", previous.Domain, current.Domain);
         Value("Operating system", previous.OsName, current.OsName);
-        Value("Windows version", previous.OsVersion, current.OsVersion);
+        var mac = current.Platform == AgentPlatforms.MacOS;
+        Value(mac ? "macOS version" : "Windows version", previous.OsVersion, current.OsVersion);
         Value("Feature update", previous.OsRelease, current.OsRelease);
         Value("Manufacturer", previous.Manufacturer, current.Manufacturer);
         Value("Model", previous.Model, current.Model);
@@ -96,6 +97,20 @@ public static partial class InventoryDiff
                 Set("Antivirus", Split(previous.AntivirusProducts).Select(p => (p, (string?)null)), security.AntivirusProducts.Select(p => (p, (string?)null)));
         }
 
+        if (current.MacOs is { } macOs)
+        {
+            void MacSetting(string item, bool? oldValue, bool? newValue)
+            {
+                if (oldValue is not null && newValue is not null && oldValue != newValue)
+                    Add("Security", ChangeKind.Changed, item, oldValue.Value ? "on" : "off", newValue.Value ? "on" : "off");
+            }
+            MacSetting("macOS firewall", previous.MacFirewall, macOs.FirewallEnabled);
+            MacSetting("Firewall stealth mode", previous.MacFirewallStealth, macOs.FirewallStealth);
+            MacSetting("Gatekeeper", previous.MacGatekeeper, macOs.GatekeeperEnabled);
+            MacSetting("System Integrity Protection", previous.MacSip, macOs.SipEnabled);
+            MacSetting("Automatic update check", previous.MacAutoUpdateCheck, macOs.AutomaticUpdateCheck);
+        }
+
         Set("Software", previous.Software.Select(s => (s.Name, s.Version)), current.Software.Select(s => (s.Name, s.Version)));
         Set("Hotfix", previous.Hotfixes.Select(h => (h.HotfixId, h.Description)), current.Hotfixes.Select(h => (h.Id, h.Description)));
         Set("Disk", previous.Disks.Select(d => (d.Drive, Gigabytes(d.SizeBytes))), current.Disks.Select(d => (d.Drive, Gigabytes(d.SizeBytes))));
@@ -138,7 +153,7 @@ public static partial class InventoryDiff
                 Set("Physical disk",
                     previous.PhysicalDisks.Select(d => (DiskKey(d.Model, d.SerialNumber), d.Health)),
                     hardware.PhysicalDisks.Select(d => (DiskKey(d.Model, d.SerialNumber), d.Health)));
-                Set("BitLocker",
+                Set(mac ? "FileVault" : "BitLocker",
                     previous.Volumes.Select(v => (v.Drive, OnOff(v.Protected))),
                     hardware.Volumes.Select(v => (v.Drive, OnOff(v.Protected))));
                 // Monitore fehlen hier bewusst: Notebooks wechseln sie mit jedem Arbeitsplatz.

@@ -626,6 +626,41 @@ Agents update themselves after a server update (see above); nothing has to be re
 `InventoryRunner.exe --agent-console` there (as administrator, with the service stopped) prints the same loop to the
 console. The server's audit log records every enrollment with host name, version and source address.
 
+### Macs
+
+Macs are inventoried by a small agent for macOS (Apple Silicon and Intel, one self-contained file without .NET on the
+Mac). Like the Windows agent it only ever connects *to* the server and updates itself after a server update.
+
+**What is collected:** model (with the sales name on Apple Silicon), serial number, chip or processor, memory, macOS
+version and build, last boot, logged-on user, programs in `/Applications` and the users' `~/Applications` (with version,
+developer from the signature and date), volumes, network adapters, graphics, displays, SSD, battery, printers, local
+users and administrators, and the security settings **FileVault**, **firewall** (and stealth mode), **Gatekeeper**,
+**System Integrity Protection** and the automatic update check. Changes appear in the history like on Windows; the
+platform can be used in collections ("Platform = macOS") and reports.
+
+**Not yet for Macs:** commands, packages and deployments, macOS updates and remote access. Inventory skips Macs in these
+actions with a note, and the server refuses such jobs for Macs.
+
+**Installation** – run as root; the script downloads the agent for the Mac's architecture from the server, installs it
+to `/Library/Application Support/Inventory Agent` (readable by root only) and starts it as the LaunchDaemon
+`inventory.agent`:
+
+- **By hand:** open the download page (*Settings → Agents → Download page without sign-in*) and run the command shown
+  there in Terminal: `curl -fsSL <server address>/agent/macos/install.sh | sudo bash`. `sudo` needs an account with
+  administrator rights on the Mac; a standard user cannot install the agent this way.
+- **By MDM:** *Settings → Agents → Download macOS install script* and assign it as a shell script (Intune: *Devices →
+  macOS → Scripts*, run as root; Jamf: a policy with the script). The script contains the enrollment secret and fetches
+  the agent with it, so the download page does not have to be open.
+- **Removing:** the same script with `--uninstall` (e.g. `curl … | sudo bash -s -- --uninstall`), then *Forget agent*
+  in *Edit computer*.
+
+A Mac enrolls under its local host name (`scutil --get LocalHostName`, e.g. `Maxs-MacBook-Pro`) and is found again by its
+serial number, also after a rename. It never takes over the entry of a Windows computer with the same name; such an
+enrollment is refused and written to the audit log. If the server uses HTTPS with a certificate of your own CA, the Mac
+has to trust that CA in the system keychain (usually done by the MDM). `agent.log` in the agent folder shows what the
+agent does; `sudo "/Library/Application Support/Inventory Agent/inventory-agent" --collect` prints the inventory without
+sending it.
+
 ### Remote access
 
 The computer list and the detail page have a *Remote access* menu:
@@ -785,6 +820,7 @@ language if you want the same safety net.
 |---|---|
 | `Inventory.Contracts` | job manifest and result format (used by server and runner) |
 | `Inventory.Agent.Core` | agent loop shared by all platforms: enrollment, polling, updates, results (netstandard2.0) |
+| `Inventory.Agent.MacOS` | agent for macOS: inventory of a Mac (self-contained single file for osx-arm64 and osx-x64) |
 | `Inventory.Core` | model, rules, interfaces, translations (`Resources`) |
 | `Inventory.Data` | EF Core/SQLite, services (scan, packages, deployments, schedules …) |
 | `Inventory.Remoting` | transports (SMB, WinRM, simulation), reachability, LDAP |

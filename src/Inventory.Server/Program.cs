@@ -102,7 +102,8 @@ else
         new HttpClient { Timeout = TimeSpan.FromMinutes(30) }, sp.GetRequiredService<IStringLocalizer<SharedResource>>()));
 }
 // Der Agent verbindet sich von sich aus; das funktioniert unabhängig vom Betriebssystem des Servers und auch in der Simulation.
-builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner"), Path.Combine(AppContext.BaseDirectory, "runner-net10")));
+builder.Services.AddSingleton(new RunnerPackage(Path.Combine(AppContext.BaseDirectory, "runner"), Path.Combine(AppContext.BaseDirectory, "runner-net10"),
+    Path.Combine(AppContext.BaseDirectory, "agent-macos")));
 builder.Services.AddSingleton<AgentHub>();
 builder.Services.AddSingleton<IRemoteTransport, AgentTransport>();
 builder.Services.AddSingleton<AgentService>();

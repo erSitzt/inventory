@@ -114,6 +114,8 @@ public enum RuleField
     CpuSockets = 158,
     /// <summary>Eigenes Inventarfeld eines Plugins; <see cref="CollectionRule.Value2"/> nennt den Schlüssel des Felds.</summary>
     CustomField = 159,
+    /// <summary>Betriebssystem-Familie: Windows oder MacOS (<see cref="OsPlatform"/>).</summary>
+    Platform = 160,
     Online = 1,
     Scanned,
     OsName,

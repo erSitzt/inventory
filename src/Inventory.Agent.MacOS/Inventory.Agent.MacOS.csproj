@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Der Agent für macOS: eine einzige, eigenständige Datei (kein .NET auf dem Mac nötig), je eine für Apple Silicon und Intel.
+    Der Server veröffentlicht beide beim Bauen (IncludeRunner) und verteilt sie über das Installationsskript und als Update.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>inventory-agent</AssemblyName>
+    <RootNamespace>Inventory.Agent.MacOS</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>Inventory Agent for macOS</AssemblyTitle>
+    <Description>Inventory Agent: collects the inventory of a Mac for the Inventory server</Description>
+    <RuntimeIdentifiers>osx-arm64;osx-x64</RuntimeIdentifiers>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- Nur beim Veröffentlichen mit Laufzeit; ohne sie leitete das SDK die des Build-Rechners ab. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inventory.Contracts\Inventory.Contracts.csproj" />
+    <ProjectReference Include="..\Inventory.Agent.Core\Inventory.Agent.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inventory.Tests" />
+  </ItemGroup>
+
+</Project>

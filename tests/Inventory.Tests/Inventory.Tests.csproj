@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Inventory.Agent.Core\Inventory.Agent.Core.csproj" />
+    <ProjectReference Include="..\..\src\Inventory.Agent.MacOS\Inventory.Agent.MacOS.csproj" />
     <ProjectReference Include="..\..\src\Inventory.Core\Inventory.Core.csproj" />
     <ProjectReference Include="..\..\src\Inventory.Remoting\Inventory.Remoting.csproj" />
     <ProjectReference Include="..\..\src\Inventory.Data\Inventory.Data.csproj" />

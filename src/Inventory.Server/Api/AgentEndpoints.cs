@@ -16,6 +16,21 @@ namespace Inventory.Server.Api;
 /// </summary>
 public static class AgentEndpoints
 {
+    /// <summary>Wann eine abgelehnte Anmeldung je Rechnername zuletzt protokolliert wurde (Zugriff nur unter Sperre).</summary>
+    private static readonly Dictionary<string, DateTime> RefusedEnrollments = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>true, wenn diese Ablehnung ins Protokoll soll: höchstens einmal am Tag je Rechnername, auch bei gleichzeitigen Anfragen.</summary>
+    private static bool ShouldLogRefusal(string hostName, DateTime now)
+    {
+        lock (RefusedEnrollments)
+        {
+            if (RefusedEnrollments.TryGetValue(hostName, out var last) && now - last <= TimeSpan.FromDays(1))
+                return false;
+            RefusedEnrollments[hostName] = now;
+            return true;
+        }
+    }
+
     /// <summary>So lange bleibt eine Job-Anfrage offen; kürzer als das Zeitlimit des Agenten.</summary>
     private static readonly TimeSpan PollWait = TimeSpan.FromSeconds(50);
 
@@ -29,8 +44,17 @@ public static class AgentEndpoints
         group.MapPost("enroll", async (HttpContext http, AgentService agents, AuditService audit, CancellationToken ct) =>
         {
             var request = await ReadAsync<AgentEnrollRequest>(http, ct);
-            var key = request is null ? null : await agents.EnrollAsync(request, ct);
-            if (key is null)
+            var enrollment = request is null ? new AgentService.Enrollment(null) : await agents.EnrollWithReasonAsync(request, ct);
+            if (enrollment.Refused is { } reason)
+            {
+                // Der Agent versucht es alle 30 Sekunden erneut: ins Protokoll nur einmal am Tag je Rechnername.
+                if (ShouldLogRefusal(request!.HostName, DateTime.UtcNow))
+                {
+                    await audit.LogAsync(new AuditActor("(Agent)", null, AuditSource.Agent), "Agent enrollment refused", $"{reason} ({http.Connection.RemoteIpAddress})", ct);
+                }
+                return Results.Conflict();
+            }
+            if (enrollment.Key is not { } key)
                 return Results.Unauthorized();
             await audit.LogAsync(new AuditActor("(Agent)", null, AuditSource.Agent), "Agent enrolled", $"{request!.HostName}, version {request.Version}, from {http.Connection.RemoteIpAddress}", ct);
             return Json(new AgentEnrollResponse { AgentKey = key });
@@ -59,6 +83,18 @@ public static class AgentEndpoints
             await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], null, ct) is not null && runner.For(runtime) is { } files && index >= 0 && index < files.Files.Count
                 ? Results.File(files.Files[index], "application/octet-stream")
                 : Results.NotFound());
+
+        // Für die Installation auf dem Mac: der Agent als eine Datei. Statt eines Agentenschlüssels genügt das Anmeldegeheimnis,
+        // das das Installationsskript ohnehin enthält.
+        group.MapGet("download/{runtime}", async (string runtime, HttpContext http, AgentService agents, RunnerPackage runner, CancellationToken ct) =>
+        {
+            if (!await agents.IsEnrollmentTokenAsync(http.Request.Headers[AgentProtocol.EnrollmentTokenHeader], ct))
+                return Results.Unauthorized();
+            if (runtime is not (RunnerRuntimes.MacArm64 or RunnerRuntimes.MacX64) || runner.For(runtime) is not { } package)
+                return Results.NotFound();
+            http.Response.Headers[AgentService.AgentHashHeader] = package.Hash;
+            return Results.File(package.Files.Single(), "application/octet-stream", AgentProtocol.MacAgentFile);
+        });
 
         group.MapGet("jobs/{jobId}/files/{index:int}", async (string jobId, int index, HttpContext http, AgentService agents, AgentHub hub, CancellationToken ct) =>
             await FindJobAsync(http, agents, hub, jobId, ct) is { } job && index >= 0 && index < job.Files.Count
@@ -142,8 +178,8 @@ public static class AgentEndpoints
                 return Results.NotFound();
             var serverUrl = await agents.GetServerUrlAsync(ct);
             return string.IsNullOrWhiteSpace(serverUrl)
-                ? Results.Content(Page(L, L["The server address for agents is not set yet. An administrator can enter it under Settings → Agents."], null), "text/html; charset=utf-8")
-                : Results.Content(Page(L, null, $"irm {serverUrl}/{AgentService.PublicScriptPath} | iex"), "text/html; charset=utf-8");
+                ? Results.Content(Page(L, L["The server address for agents is not set yet. An administrator can enter it under Settings → Agents."], null, null), "text/html; charset=utf-8")
+                : Results.Content(Page(L, null, $"irm {serverUrl}/{AgentService.PublicScriptPath} | iex", $"curl -fsSL {serverUrl}/{AgentService.PublicMacScriptPath} | sudo bash"), "text/html; charset=utf-8");
         });
 
         group.MapGet("setup.zip", async (HttpContext http, AgentService agents, RunnerPackage runner, AuditService audit, CancellationToken ct) =>
@@ -156,6 +192,22 @@ public static class AgentEndpoints
                 // Das Paket enthält das Anmeldegeheimnis: wer es geholt hat, soll nachvollziehbar sein.
                 await audit.LogAsync(new AuditActor("(anonymous)", null, AuditSource.Agent), "Agent setup downloaded from the public page", $"from {http.Connection.RemoteIpAddress}", ct);
                 return Results.File(setup, "application/zip", AgentService.SetupFileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict);
+            }
+        });
+
+        group.MapGet("macos/install.sh", async (HttpContext http, AgentService agents, AuditService audit, CancellationToken ct) =>
+        {
+            if (await agents.GetPublicDownloadUntilAsync(ct) is null)
+                return Results.NotFound();
+            try
+            {
+                var script = await agents.BuildMacInstallScriptAsync(ct);
+                await audit.LogAsync(new AuditActor("(anonymous)", null, AuditSource.Agent), "macOS agent install script downloaded from the public page", $"from {http.Connection.RemoteIpAddress}", ct);
+                return Results.Text(script, "text/plain; charset=utf-8");
             }
             catch (InvalidOperationException ex)
             {
@@ -181,12 +233,13 @@ public static class AgentEndpoints
     }
 
     /// <summary>Eine Seite ohne Skripte und ohne die Oberfläche der Anwendung: sie soll auf einem frischen Rechner in jedem Browser laufen.</summary>
-    private static string Page(IStringLocalizer<SharedResource> L, string? problem, string? command)
+    private static string Page(IStringLocalizer<SharedResource> L, string? problem, string? command, string? macCommand)
     {
         static string H(string text) => System.Net.WebUtility.HtmlEncode(text);
         var body = problem is not null
             ? $"<p class=\"warn\">{H(problem)}</p>"
             : $"""
+               <h2>Windows</h2>
                <ol>
                  <li>{H(L["Download the agent setup."])}<br><a class="button" href="/{AgentService.PublicSetupPath}">{H(L["Download agent setup"])}</a></li>
                  <li>{H(L["Unpack the ZIP file."])}</li>
@@ -195,6 +248,9 @@ public static class AgentEndpoints
                <h2>{H(L["Or in one step"])}</h2>
                <p>{H(L["Open Windows PowerShell as administrator and run:"])}</p>
                <pre>{H(command!)}</pre>
+               <h2>Mac</h2>
+               <p>{H(L["In Terminal of an account with administrator rights, run (sudo asks for that account's password; without such an account use the install script from Settings → Agents via MDM):"])}</p>
+               <pre>{H(macCommand!)}</pre>
                <p class="note">{H(L["The computer appears in Inventory under \"Computers\" a few seconds after the installation. The setup is configured for this server; nothing has to be entered."])}</p>
                """;
         return $$"""

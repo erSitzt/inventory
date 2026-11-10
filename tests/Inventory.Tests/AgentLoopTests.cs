@@ -58,6 +58,7 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
         public string? DnsName() => null;
         public DateTime BootTimeUtc() => DateTime.UtcNow.AddHours(-1);
         public void PrepareUpdatedFile(string path) { }
+        public void Describe(AgentEnrollRequest request) { }
 
         public IAgentJob CreateJob(string jobDir) => new Job(jobDir, HostName);
 

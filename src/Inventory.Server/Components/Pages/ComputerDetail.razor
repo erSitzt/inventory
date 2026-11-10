@@ -34,12 +34,20 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
     <MudTooltip Text="@L["Back to the list"]"><MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="computers" aria-label="@L["Back to the list"]" /></MudTooltip>
     <MudText Typo="Typo.h5">@_computer.Name</MudText>
+    @if (_computer.IsMac)
+    {
+        <MudChip T="string" Size="Size.Small" Icon="@Icons.Custom.Brands.Apple" Variant="Variant.Outlined">macOS</MudChip>
+    }
     <MudChip T="string" Size="Size.Small" Color="@(_computer.IsOnline ? Color.Success : _computer.NameMismatch ? Color.Warning : Color.Default)">@(_computer.IsOnline ? L["online"] : _computer.NameMismatch ? L["unreachable"] : L["offline"])</MudChip>
     <MudSpacer />
     <MudTooltip Text="@L["Show on the map"]"><MudIconButton Icon="@Icons.Material.Filled.AccountTree" Href="@($"network?focus=c{Id}")" aria-label="@L["Show on the map"]" /></MudTooltip>
-    <OperatorOnly>
-        <RemoteAccessMenu Computer="_computer" />
-    </OperatorOnly>
+    @* Fernhilfe, RDP und Befehle sind Windows-Wege; für Macs gibt es sie (noch) nicht. *@
+    @if (!_computer.IsMac)
+    {
+        <OperatorOnly>
+            <RemoteAccessMenu Computer="_computer" />
+        </OperatorOnly>
+    }
     @if (_pluginActions)
     {
         <MudMenu Label="@L["Plugins"]" StartIcon="@Icons.Material.Filled.Extension" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Variant="Variant.Outlined">
@@ -48,7 +56,10 @@
     }
     <AdminOnly>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="EditAsync">@L["Edit"]</MudButton>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">@L["Run command"]</MudButton>
+        @if (!_computer.IsMac)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Terminal" Href="@($"run?ids={Id}")">@L["Run command"]</MudButton>
+        }
     </AdminOnly>
     <OperatorOnly>
         @if (!_computer.IsOnline)
@@ -133,7 +144,7 @@ else if (_computer.ReverseDnsMismatch)
                         @Row(L["Manufacturer"], _computer.Manufacturer)
                         @Row(L["Model"], _computer.Model)
                         @Row(L["Serial number"], _computer.SerialNumber)
-                        @Row("BIOS", _computer.BiosVersion)
+                        @Row(_computer.IsMac ? L["Firmware"] : "BIOS", _computer.BiosVersion)
                         @Row(L["Processor"], _computer.CpuName)
                         @Row(L["Cores / threads"], _computer.CpuCores is null ? null : $"{_computer.CpuCores} / {_computer.CpuLogicalProcessors}")
                         @if (_computer.CpuSockets is { } sockets)
@@ -177,8 +188,16 @@ else if (_computer.ReverseDnsMismatch)
                     <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
                         <tbody>
                             @Row(L["Device type"], Display.Chassis(_computer))
-                            @Row(L["Firmware"], _computer.FirmwareType)
-                            @Row(L["BIOS date"], _computer.BiosDateUtc?.ToString("d"))
+                            @if (_computer.IsMac)
+                            {
+                                @* Beim Mac die Version der Systemfirmware (Boot-ROM); ein BIOS-Datum gibt es nicht. *@
+                                @Row(L["Firmware"], _computer.BiosVersion)
+                            }
+                            else
+                            {
+                                @Row(L["Firmware"], _computer.FirmwareType)
+                                @Row(L["BIOS date"], _computer.BiosDateUtc?.ToString("d"))
+                            }
                             @Row(L["Graphics"], _computer.Gpu)
                             @Row(L["Memory slots"], _computer.MemorySlots is null ? null : L["{0} of {1} used", _computer.MemoryModules.Count, _computer.MemorySlots])
                             @Row(L["Battery"], _computer.BatteryPresent switch
@@ -195,30 +214,33 @@ else if (_computer.ReverseDnsMismatch)
                 <MudItem xs="12" md="6">
                     <MudPaper Class="pa-4" Outlined="true">
                         <MudText Typo="Typo.h6" Class="mb-2">@L["Platform security"]</MudText>
-                        @StatusRow("Secure Boot", _computer.SecureBoot)
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
-                            <MudText Typo="Typo.body2" Style="flex: 1">TPM</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="@(_computer.TpmPresent is null ? Color.Default : _computer.TpmReady == true ? Color.Success : Color.Warning)">
-                                @(_computer.TpmPresent switch
-                                {
-                                    null => L["unknown"],
-                                    false => L["none"],
-                                    true => $"{_computer.TpmVersion} – {(_computer.TpmReady == true ? L["ready"] : L["not ready"])}".TrimStart(' ', '–'),
-                                })
-                            </MudChip>
-                        </MudStack>
+                        @if (!_computer.IsMac)
+                        {
+                            @StatusRow("Secure Boot", _computer.SecureBoot)
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                                <MudText Typo="Typo.body2" Style="flex: 1">TPM</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@(_computer.TpmPresent is null ? Color.Default : _computer.TpmReady == true ? Color.Success : Color.Warning)">
+                                    @(_computer.TpmPresent switch
+                                    {
+                                        null => L["unknown"],
+                                        false => L["none"],
+                                        true => $"{_computer.TpmVersion} – {(_computer.TpmReady == true ? L["ready"] : L["not ready"])}".TrimStart(' ', '–'),
+                                    })
+                                </MudChip>
+                            </MudStack>
+                        }
                         @foreach (var volume in _computer.Volumes)
                         {
                             <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
                                 <MudText Typo="Typo.body2" Style="flex: 1">
-                                    BitLocker @volume.Drive@(volume.Method is null ? "" : $" ({volume.Method})")@(volume.EncryptedPercent is > 0 and < 100 ? ", " + L["{0} % encrypted", volume.EncryptedPercent] : "")
+                                    @(volume.Method == "FileVault" ? "FileVault" : $"BitLocker {volume.Drive}{(volume.Method is null ? "" : $" ({volume.Method})")}")@(volume.EncryptedPercent is > 0 and < 100 ? ", " + L["{0} % encrypted", volume.EncryptedPercent] : "")
                                 </MudText>
                                 <MudChip T="string" Size="Size.Small" Color="@Display.OnOffColor(volume.Protected)">@Display.OnOff(volume.Protected)</MudChip>
                             </MudStack>
                         }
                         @if (_computer.Volumes.Count == 0)
                         {
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["BitLocker: no volume reported."]</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@(_computer.IsMac ? L["FileVault: not reported."] : L["BitLocker: no volume reported."])</MudText>
                         }
                     </MudPaper>
                 </MudItem>
@@ -299,9 +321,12 @@ else if (_computer.ReverseDnsMismatch)
                 <TemplateColumn Sortable="false" CellStyle="width: 1%; white-space: nowrap">
                     <CellTemplate>
                         <AdminOnly>
-                            <MudTooltip Text="@L["Uninstall …"]">
-                                <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" Size="Size.Small" aria-label="@L["Uninstall …"]" OnClick="@(() => UninstallAsync(context.Item))" />
-                            </MudTooltip>
+                            @if (!_computer.IsMac)
+                            {
+                                <MudTooltip Text="@L["Uninstall …"]">
+                                    <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" Size="Size.Small" aria-label="@L["Uninstall …"]" OnClick="@(() => UninstallAsync(context.Item))" />
+                                </MudTooltip>
+                            }
                         </AdminOnly>
                     </CellTemplate>
                 </TemplateColumn>
@@ -312,39 +337,45 @@ else if (_computer.ReverseDnsMismatch)
         </MudDataGrid>
     </MudTabPanel>
 
-    <MudTabPanel Text="@($"{L["Apps"]} ({_computer.Apps.Count})")">
-        <MudText Typo="Typo.body2" Class="mb-2">
-            @L["App packages (MSIX/AppX, also from the Store) registered on the computer, without parts of Windows and runtime libraries. If the list is empty, the computer has no such apps or has not been scanned with a current runner yet."]
-        </MudText>
-        <MudDataGrid T="ComputerApp" Items="_computer.Apps" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
-            <Columns>
-                <TemplateColumn Sortable="true" Title="@L["Name"]" SortBy="@(a => a.DisplayName ?? a.Name)">
-                    <CellTemplate>@(context.Item.DisplayName ?? context.Item.Name)</CellTemplate>
-                </TemplateColumn>
-                <PropertyColumn Property="a => a.Name" Title="@L["Package name"]" />
-                <PropertyColumn Property="a => a.Version" Title="@L["Version"]" />
-                <PropertyColumn Property="a => a.Publisher" Title="@L["Publisher"]" />
-                <TemplateColumn Sortable="true" Title="@L["New users"]" SortBy="@(a => a.Provisioned)">
-                    <CellTemplate>@(context.Item.Provisioned ? L["provisioned"] : "")</CellTemplate>
-                </TemplateColumn>
-            </Columns>
-            <PagerContent>
-                <MudDataGridPager T="ComputerApp" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
-            </PagerContent>
-        </MudDataGrid>
-    </MudTabPanel>
+    @if (!_computer.IsMac)
+    {
+        <MudTabPanel Text="@($"{L["Apps"]} ({_computer.Apps.Count})")">
+            <MudText Typo="Typo.body2" Class="mb-2">
+                @L["App packages (MSIX/AppX, also from the Store) registered on the computer, without parts of Windows and runtime libraries. If the list is empty, the computer has no such apps or has not been scanned with a current runner yet."]
+            </MudText>
+            <MudDataGrid T="ComputerApp" Items="_computer.Apps" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
+                <Columns>
+                    <TemplateColumn Sortable="true" Title="@L["Name"]" SortBy="@(a => a.DisplayName ?? a.Name)">
+                        <CellTemplate>@(context.Item.DisplayName ?? context.Item.Name)</CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="a => a.Name" Title="@L["Package name"]" />
+                    <PropertyColumn Property="a => a.Version" Title="@L["Version"]" />
+                    <PropertyColumn Property="a => a.Publisher" Title="@L["Publisher"]" />
+                    <TemplateColumn Sortable="true" Title="@L["New users"]" SortBy="@(a => a.Provisioned)">
+                        <CellTemplate>@(context.Item.Provisioned ? L["provisioned"] : "")</CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ComputerApp" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudTabPanel>
+    }
 
-    <MudTabPanel Text="@($"Hotfixes ({_computer.Hotfixes.Count})")">
-        <MudDataGrid T="ComputerHotfix" Items="_computer.Hotfixes" Dense="true" Hover="true" SortMode="SortMode.Single">
-            <Columns>
-                <PropertyColumn Property="h => h.HotfixId" Title="KB" />
-                <PropertyColumn Property="h => h.Description" Title="@L["Description"]" />
-                <TemplateColumn Sortable="true" Title="@L["Installed on"]" SortBy="@(h => InventoryDates.Parse(h.InstalledOn))">
-                    <CellTemplate>@InventoryDates.Format(context.Item.InstalledOn)</CellTemplate>
-                </TemplateColumn>
-            </Columns>
-        </MudDataGrid>
-    </MudTabPanel>
+    @if (!_computer.IsMac)
+    {
+        <MudTabPanel Text="@($"Hotfixes ({_computer.Hotfixes.Count})")">
+            <MudDataGrid T="ComputerHotfix" Items="_computer.Hotfixes" Dense="true" Hover="true" SortMode="SortMode.Single">
+                <Columns>
+                    <PropertyColumn Property="h => h.HotfixId" Title="KB" />
+                    <PropertyColumn Property="h => h.Description" Title="@L["Description"]" />
+                    <TemplateColumn Sortable="true" Title="@L["Installed on"]" SortBy="@(h => InventoryDates.Parse(h.InstalledOn))">
+                        <CellTemplate>@InventoryDates.Format(context.Item.InstalledOn)</CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        </MudTabPanel>
+    }
 
     <MudTabPanel Text="@L["Disks"]">
         <MudDataGrid T="ComputerDisk" Items="_computer.Disks" Dense="true" Hover="true" SortMode="SortMode.None">
@@ -379,137 +410,167 @@ else if (_computer.ReverseDnsMismatch)
         </MudDataGrid>
     </MudTabPanel>
 
-    <MudTabPanel Text="@L["Licensing"]">
-        @if (_computer.LicensingScanUtc is null)
-        {
-            <MudText Color="Color.Secondary">@L["Not captured yet. Licensing details are read with the next scan; computers with an agent need the current agent version first."]</MudText>
-        }
-        else
-        {
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
-                        <tbody>
-                            @Row(L["Edition"], _computer.OsEdition)
-                            @Row(L["Licence channel"], Display.LicenseChannel(_computer.LicenseChannel))
-                            @Row(L["Processor sockets"], _computer.CpuSockets?.ToString())
-                            @Row(L["Physical cores per socket"], _computer.CpuCoresPerSocket?.ToString())
-                            @Row(L["Virtual machine"], _computer.IsVirtual ? L["yes"] : L["no"])
-                            @if (_computer.IsVirtual)
-                            {
-                                <tr>
-                                    <td style="width: 40%; color: var(--mud-palette-text-secondary)">@L["Runs on host"]</td>
-                                    <td>
-                                        @if (_hypervisorHost is { } esx)
-                                        {
-                                            <MudLink Href="virtualization">@esx.Name</MudLink>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.HypervisorName ? L["{0}, matched by name", ManagerLabel(esx)] : L["{0}, matched by BIOS UUID", ManagerLabel(esx)])</MudText>
-                                        }
-                                        else if (_computer.HostComputerId is { } hostId && _names.TryGetValue(hostId, out var hostName))
-                                        {
-                                            <MudLink Href="@($"computers/{hostId}")">@hostName</MudLink>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.BiosUuid ? L["matched by BIOS UUID"] : L["reported by the guest"])</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudText Typo="Typo.body2" Color="Color.Warning">@(_computer.ReportedHostName is { } reported ? L["{0} (not inventoried)", reported] : L["unknown"])</MudText>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                            @Row(L["Cluster"], _computer.ClusterName ?? _hypervisorHost?.Cluster)
-                            @Row("BIOS UUID", _computer.BiosUuid)
-                        </tbody>
-                    </MudSimpleTable>
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudText Typo="Typo.subtitle2" Class="mb-1">@L["SQL Server instances"]</MudText>
-                    @if (_computer.SqlInstances.Count == 0)
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@L["none"]</MudText>
-                    }
-                    else
-                    {
-                        <MudSimpleTable Dense="true" Outlined="true" Elevation="0" Class="mb-3">
-                            <thead><tr><th>@L["Instance"]</th><th>@L["Edition"]</th><th>@L["Version"]</th></tr></thead>
-                            <tbody>
-                                @foreach (var instance in _computer.SqlInstances.OrderBy(i => i.Name))
-                                {
-                                    <tr>
-                                        <td>@instance.Name@(instance.Clustered ? " (" + L["Cluster"] + ")" : "")</td>
-                                        <td>@instance.Edition</td>
-                                        <td>@instance.Version</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </MudSimpleTable>
-                    }
-                    @if (_computer.OsProductType is 2 or 3)
-                    {
-                        <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Server roles and features"]</MudText>
-                        <MudText Typo="Typo.body2" Class="mb-3">@(_computer.ServerFeatures.Count == 0 ? "–" : string.Join(", ", _computer.ServerFeatures.Select(f => f.Name).Order()))</MudText>
-                    }
-                </MudItem>
-                @if (_computer.VirtualMachines.Count > 0 || _guests.Count > 0)
-                {
-                    <MudItem xs="12">
-                        <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Virtual machines on this host"]</MudText>
+    @if (!_computer.IsMac)
+    {
+        <MudTabPanel Text="@L["Licensing"]">
+            @if (_computer.LicensingScanUtc is null)
+            {
+                <MudText Color="Color.Secondary">@L["Not captured yet. Licensing details are read with the next scan; computers with an agent need the current agent version first."]</MudText>
+            }
+            else
+            {
+                <MudGrid>
+                    <MudItem xs="12" md="6">
                         <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
-                            <thead><tr><th>@L["Name"]</th><th>@L["Virtual processors"]</th><th>@L["State"]</th><th>@L["Inventoried as"]</th></tr></thead>
                             <tbody>
-                                @foreach (var vm in _computer.VirtualMachines.OrderBy(v => v.Name))
+                                @Row(L["Edition"], _computer.OsEdition)
+                                @Row(L["Licence channel"], Display.LicenseChannel(_computer.LicenseChannel))
+                                @Row(L["Processor sockets"], _computer.CpuSockets?.ToString())
+                                @Row(L["Physical cores per socket"], _computer.CpuCoresPerSocket?.ToString())
+                                @Row(L["Virtual machine"], _computer.IsVirtual ? L["yes"] : L["no"])
+                                @if (_computer.IsVirtual)
                                 {
                                     <tr>
-                                        <td>@vm.Name</td>
-                                        <td>@vm.VirtualCpus</td>
-                                        <td>@(vm.Running ? L["running"] : L["off"])</td>
+                                        <td style="width: 40%; color: var(--mud-palette-text-secondary)">@L["Runs on host"]</td>
                                         <td>
-                                            @if (vm.GuestComputerId is { } guestId && _names.TryGetValue(guestId, out var guestName))
+                                            @if (_hypervisorHost is { } esx)
                                             {
-                                                <MudLink Href="@($"computers/{guestId}")">@guestName</MudLink>
+                                                <MudLink Href="virtualization">@esx.Name</MudLink>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.HypervisorName ? L["{0}, matched by name", ManagerLabel(esx)] : L["{0}, matched by BIOS UUID", ManagerLabel(esx)])</MudText>
+                                            }
+                                            else if (_computer.HostComputerId is { } hostId && _names.TryGetValue(hostId, out var hostName))
+                                            {
+                                                <MudLink Href="@($"computers/{hostId}")">@hostName</MudLink>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@(_computer.HostSource == HostSources.BiosUuid ? L["matched by BIOS UUID"] : L["reported by the guest"])</MudText>
                                             }
                                             else
                                             {
-                                                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not inventoried"]</MudText>
+                                                <MudText Typo="Typo.body2" Color="Color.Warning">@(_computer.ReportedHostName is { } reported ? L["{0} (not inventoried)", reported] : L["unknown"])</MudText>
                                             }
                                         </td>
                                     </tr>
                                 }
-                                @* Gäste, die sich über die Gastdienste diesem Host zuordnen, ohne dass er sie meldet (z. B. ohne Rechte auf Hyper-V). *@
-                                @foreach (var guest in _guests.Where(g => _computer.VirtualMachines.All(v => v.GuestComputerId != g.Id)))
-                                {
-                                    <tr>
-                                        <td>@guest.Name</td>
-                                        <td>@guest.CpuCores</td>
-                                        <td>–</td>
-                                        <td><MudLink Href="@($"computers/{guest.Id}")">@guest.Name</MudLink></td>
-                                    </tr>
-                                }
+                                @Row(L["Cluster"], _computer.ClusterName ?? _hypervisorHost?.Cluster)
+                                @Row("BIOS UUID", _computer.BiosUuid)
                             </tbody>
                         </MudSimpleTable>
                     </MudItem>
-                }
-            </MudGrid>
-        }
-    </MudTabPanel>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">@L["SQL Server instances"]</MudText>
+                        @if (_computer.SqlInstances.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@L["none"]</MudText>
+                        }
+                        else
+                        {
+                            <MudSimpleTable Dense="true" Outlined="true" Elevation="0" Class="mb-3">
+                                <thead><tr><th>@L["Instance"]</th><th>@L["Edition"]</th><th>@L["Version"]</th></tr></thead>
+                                <tbody>
+                                    @foreach (var instance in _computer.SqlInstances.OrderBy(i => i.Name))
+                                    {
+                                        <tr>
+                                            <td>@instance.Name@(instance.Clustered ? " (" + L["Cluster"] + ")" : "")</td>
+                                            <td>@instance.Edition</td>
+                                            <td>@instance.Version</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        }
+                        @if (_computer.OsProductType is 2 or 3)
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Server roles and features"]</MudText>
+                            <MudText Typo="Typo.body2" Class="mb-3">@(_computer.ServerFeatures.Count == 0 ? "–" : string.Join(", ", _computer.ServerFeatures.Select(f => f.Name).Order()))</MudText>
+                        }
+                    </MudItem>
+                    @if (_computer.VirtualMachines.Count > 0 || _guests.Count > 0)
+                    {
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">@L["Virtual machines on this host"]</MudText>
+                            <MudSimpleTable Dense="true" Outlined="true" Elevation="0">
+                                <thead><tr><th>@L["Name"]</th><th>@L["Virtual processors"]</th><th>@L["State"]</th><th>@L["Inventoried as"]</th></tr></thead>
+                                <tbody>
+                                    @foreach (var vm in _computer.VirtualMachines.OrderBy(v => v.Name))
+                                    {
+                                        <tr>
+                                            <td>@vm.Name</td>
+                                            <td>@vm.VirtualCpus</td>
+                                            <td>@(vm.Running ? L["running"] : L["off"])</td>
+                                            <td>
+                                                @if (vm.GuestComputerId is { } guestId && _names.TryGetValue(guestId, out var guestName))
+                                                {
+                                                    <MudLink Href="@($"computers/{guestId}")">@guestName</MudLink>
+                                                }
+                                                else
+                                                {
+                                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not inventoried"]</MudText>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                    @* Gäste, die sich über die Gastdienste diesem Host zuordnen, ohne dass er sie meldet (z. B. ohne Rechte auf Hyper-V). *@
+                                    @foreach (var guest in _guests.Where(g => _computer.VirtualMachines.All(v => v.GuestComputerId != g.Id)))
+                                    {
+                                        <tr>
+                                            <td>@guest.Name</td>
+                                            <td>@guest.CpuCores</td>
+                                            <td>–</td>
+                                            <td><MudLink Href="@($"computers/{guest.Id}")">@guest.Name</MudLink></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </MudTabPanel>
+    }
 
-    <MudTabPanel Text="@($"{L["Services"]} ({_computer.Services.Count})")">
-        <MudDataGrid T="ComputerWindowsService" Items="_computer.Services" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
-            <Columns>
-                <PropertyColumn Property="s => s.Name" Title="@L["Name"]" />
-                <PropertyColumn Property="s => s.DisplayName" Title="@L["Display name"]" />
-                <PropertyColumn Property="s => s.State" Title="@L["State"]" />
-                <PropertyColumn Property="s => s.StartMode" Title="@L["Start type"]" />
-                <PropertyColumn Property="s => s.Account" Title="@L["Account"]" />
-            </Columns>
-            <PagerContent>
-                <MudDataGridPager T="ComputerWindowsService" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
-            </PagerContent>
-        </MudDataGrid>
-    </MudTabPanel>
+    @if (!_computer.IsMac)
+    {
+        <MudTabPanel Text="@($"{L["Services"]} ({_computer.Services.Count})")">
+            <MudDataGrid T="ComputerWindowsService" Items="_computer.Services" Dense="true" Hover="true" SortMode="SortMode.Single" RowsPerPage="50">
+                <Columns>
+                    <PropertyColumn Property="s => s.Name" Title="@L["Name"]" />
+                    <PropertyColumn Property="s => s.DisplayName" Title="@L["Display name"]" />
+                    <PropertyColumn Property="s => s.State" Title="@L["State"]" />
+                    <PropertyColumn Property="s => s.StartMode" Title="@L["Start type"]" />
+                    <PropertyColumn Property="s => s.Account" Title="@L["Account"]" />
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ComputerWindowsService" PageSizeOptions="@(new[] { 50, 100, 500 })" RowsPerPageString="@L["Rows per page"]" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudTabPanel>
+    }
 
     <MudTabPanel Text="@L["Security"]">
-        @if (_computer.FirewallDomain is null && _computer.DefenderEnabled is null && _computer.UpdateRebootRequired is null)
+        @if (_computer.IsMac)
+        {
+            if (_computer.MacFirewall is null && _computer.MacFirewallStealth is null && _computer.MacGatekeeper is null && _computer.MacSip is null
+                && _computer.MacAutoUpdateCheck is null && _computer.SystemDriveProtected is null)
+            {
+                <MudText Color="Color.Secondary">@L["Not captured yet. FileVault, firewall and Gatekeeper are read with the next scan."]</MudText>
+            }
+            else
+            {
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-4" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="mb-2">macOS</MudText>
+                            @StatusRow("FileVault", _computer.SystemDriveProtected)
+                            @StatusRow(L["Firewall"], _computer.MacFirewall)
+                            @StatusRow(L["Firewall stealth mode"], _computer.MacFirewallStealth)
+                            @StatusRow("Gatekeeper", _computer.MacGatekeeper)
+                            @StatusRow(L["System Integrity Protection"], _computer.MacSip)
+                            @StatusRow(L["Automatic update check"], _computer.MacAutoUpdateCheck)
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+        }
+        else if (_computer.FirewallDomain is null && _computer.DefenderEnabled is null && _computer.UpdateRebootRequired is null)
         {
             <MudText Color="Color.Secondary">@L["Not captured yet. Firewall, antivirus and Windows Update are read with the next scan."]</MudText>
         }

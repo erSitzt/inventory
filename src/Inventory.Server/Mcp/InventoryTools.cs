@@ -52,7 +52,7 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
     }
 
     [McpServerTool(Name = "get_computer", Title = "Computer details", ReadOnly = true, Idempotent = true, OpenWorld = false)]
-    [Description("Master data, status, hardware, security (Defender, firewall, BitLocker, TPM, Secure Boot) and update state of one computer.")]
+    [Description("Master data, status, hardware, security (Defender, firewall, BitLocker, TPM, Secure Boot; on Macs FileVault, firewall, Gatekeeper, SIP) and update state of one computer.")]
     public async Task<object> GetComputer([Description("Computer name, DNS name or id.")] string computer, CancellationToken ct = default)
     {
         var c = await computerService.GetDetailAsync((await caller.ComputerAsync(computer, ct)).Id, ct) ?? throw new McpException("The computer no longer exists.");
@@ -64,7 +64,8 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
             {
                 c.DefenderEnabled, c.DefenderRealTime, c.DefenderSignatureUpdatedUtc, c.AntivirusProducts, c.FirewallDomain, c.FirewallPrivate, c.FirewallPublic,
                 c.UacEnabled, c.RdpEnabled, c.Smb1Enabled, c.CredentialGuard, c.LsaProtection, c.SystemDriveProtected,
-                volumes = c.Volumes.Select(v => new { v.Drive, v.Protected, v.EncryptedPercent }),
+                volumes = c.Volumes.Select(v => new { v.Drive, v.Protected, v.EncryptedPercent, v.Method }),
+                macOS = c.IsMac ? new { firewall = c.MacFirewall, firewallStealth = c.MacFirewallStealth, gatekeeper = c.MacGatekeeper, sip = c.MacSip, automaticUpdateCheck = c.MacAutoUpdateCheck } : null,
             },
             updates = new { c.UpdatePendingCount, c.UpdatePendingSecurityCount, c.UpdateRebootRequired, c.UpdateLastSearchUtc, c.UpdateLastInstallUtc },
             disks = c.Disks.Select(d => new { d.Drive, d.SizeBytes, d.FreeBytes }),
