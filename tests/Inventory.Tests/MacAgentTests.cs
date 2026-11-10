@@ -304,4 +304,13 @@ public class MacAgentTests
         Assert.True(wait > 0 && removeFiles > wait && bootout > removeFiles, script);
         Assert.Contains($"rm -f '/Library/LaunchDaemons/{AgentProtocol.MacAgentLabel}.plist'", script);
     }
+
+    [Fact]
+    public void A_mac_is_expected_under_its_full_host_name()
+    {
+        // Gefunden auf einem echten MacBook: die Windows-Kürzung auf 15 Zeichen (NetBIOS) gilt für Macs nicht.
+        var mac = new Computer { Name = "MacBook-Pro-von-Buhring", Platform = OsPlatform.MacOS };
+        Assert.Equal("MacBook-Pro-von-Buhring", mac.ExpectedMachineName);
+        Assert.Equal("LONGWINDOWSNAME", new Computer { Name = "LONGWINDOWSNAME-01.corp.example" }.ExpectedMachineName);
+    }
 }

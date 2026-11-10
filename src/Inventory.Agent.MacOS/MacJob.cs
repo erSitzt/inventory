@@ -20,8 +20,7 @@ internal sealed class MacJob(string jobDir, string hostName, string agentDirecto
             var manifest = JobJson.Deserialize<JobManifest>(File.ReadAllText(Path.Combine(jobDir, JobFiles.Manifest), Encoding.UTF8))
                            ?? throw new InvalidDataException("Empty job manifest");
             result.JobId = manifest.JobId;
-            if (!string.IsNullOrEmpty(manifest.ExpectedComputerName)
-                && !string.Equals(manifest.ExpectedComputerName.Split('.')[0], hostName, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(manifest.ExpectedComputerName) && !IsThisComputer(manifest.ExpectedComputerName.Split('.')[0]))
             {
                 throw new InvalidOperationException(
                     $"This computer is {hostName}, expected was {manifest.ExpectedComputerName}. Nothing was run.");
@@ -62,6 +61,11 @@ internal sealed class MacJob(string jobDir, string hostName, string agentDirecto
         result.FinishedUtc = DateTime.UtcNow;
         return result;
     }
+
+    /// <summary>Der eigene Name, auch in der auf 15 Zeichen gekürzten Form, wie ältere Server sie für Windows erwarten.</summary>
+    private bool IsThisComputer(string expected) =>
+        string.Equals(expected, hostName, StringComparison.OrdinalIgnoreCase)
+        || (hostName.Length > 15 && string.Equals(expected, hostName[..15], StringComparison.OrdinalIgnoreCase));
 
     private StepResult Execute(int index, JobStep step, JobResult result)
     {
