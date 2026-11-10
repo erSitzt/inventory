@@ -263,6 +263,12 @@ public class MacAgentTests
         Assert.Contains("Not available for macOS yet", command.Error);
         var scan = await jobs.RunAsync(id, new JobManifest { Steps = [new JobStep { Name = "scan", Type = StepType.InventoryScan }] });
         Assert.True(scan.Success, scan.Error);
+        // Den Agenten entfernen geht auch auf dem Mac.
+        Assert.True((await jobs.RunAsync(id, new JobManifest { Steps = [new JobStep { Name = "remove", Type = StepType.UninstallAgent }] })).Success);
+        // Einen Mac erreicht nur sein Agent, auch wenn ein anderer Transport eingetragen ist.
+        await using (var context = db.CreateDbContext())
+            await context.Computers.Where(c => c.Id == id).ExecuteUpdateAsync(s => s.SetProperty(c => c.Transport, TransportKind.SmbService));
+        Assert.True((await jobs.RunAsync(id, new JobManifest { Steps = [new JobStep { Name = "scan", Type = StepType.InventoryScan }] })).Success);
     }
 
     [Fact]
@@ -284,5 +290,27 @@ public class MacAgentTests
         Assert.Contains("set -euo pipefail", script);
         Assert.DoesNotContain("codesign --force --sign - \"$DOWNLOAD\" >/dev/null 2>&1 || true", script);
         Assert.Contains("--uninstall", script);
+    }
+
+    [Fact]
+    public void The_removal_script_waits_for_the_result_and_unloads_the_daemon_last()
+    {
+        var script = MacAgentRemoval.Script;
+        Assert.Contains($"result=\"$1/{AgentProtocol.PendingFolder}/$2.json\"", script);
+        var wait = script.IndexOf("while [ -f \"$result\" ]", StringComparison.Ordinal);
+        var removeFiles = script.IndexOf("rm -rf \"$1\"", StringComparison.Ordinal);
+        var bootout = script.IndexOf($"launchctl bootout system/{AgentProtocol.MacAgentLabel}", StringComparison.Ordinal);
+        // Erst warten, dann löschen, zuletzt entladen: das Entladen beendet auch dieses Skript.
+        Assert.True(wait > 0 && removeFiles > wait && bootout > removeFiles, script);
+        Assert.Contains($"rm -f '/Library/LaunchDaemons/{AgentProtocol.MacAgentLabel}.plist'", script);
+    }
+
+    [Fact]
+    public void A_mac_is_expected_under_its_full_host_name()
+    {
+        // Gefunden auf einem echten MacBook: die Windows-Kürzung auf 15 Zeichen (NetBIOS) gilt für Macs nicht.
+        var mac = new Computer { Name = "MacBook-Pro-von-Buhring", Platform = OsPlatform.MacOS };
+        Assert.Equal("MacBook-Pro-von-Buhring", mac.ExpectedMachineName);
+        Assert.Equal("LONGWINDOWSNAME", new Computer { Name = "LONGWINDOWSNAME-01.corp.example" }.ExpectedMachineName);
     }
 }

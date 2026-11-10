@@ -643,11 +643,14 @@ nicht rückgängig; ihr Ergebnis wird verworfen.
 3. Sobald sich der Dienst angemeldet hat, steht der Rechner auf Transport „Agent“ (grüner Chip „Agent“). Je Rechner
    lässt sich der Transport wieder auf SMB oder WinRM stellen; der Agent fragt trotzdem weiter ab.
 
-**Agent entfernen:** `InventoryRunner.exe --uninstall-agent` aus einer Kopie außerhalb des Agent-Ordners ausführen
-(z. B. von der Setup-Freigabe), oder den Dienst von Hand beenden und löschen (`sc stop InventoryAgent`, `sc delete
-InventoryAgent`, Ordner löschen), danach in *Rechner bearbeiten* „Agent vergessen“ wählen – das verwirft den Schlüssel
-auf dem Server und setzt den Transport zurück. Umgekehrt würde sich der noch laufende Agent mit dem Geheimnis einfach
-neu anmelden.
+**Agent entfernen:** *Agent entfernen* unter *Rechner bearbeiten* oder *Aktionen → Agent entfernen* für mehrere Rechner
+(Windows und Mac). Der Agent meldet zuerst das Ergebnis, fragt keine Jobs mehr ab und deinstalliert sich dann selbst (unter
+Windows aus einer Kopie des Runners außerhalb seines Ordners, auf dem Mac durch Entladen seines LaunchDaemons); der Server
+verwirft seinen Schlüssel und setzt den Transport zurück. Scheitert der Auftrag, wird nichts vergessen. Von Hand:
+`InventoryRunner.exe --uninstall-agent` aus einer Kopie außerhalb des Agent-Ordners ausführen (z. B. von der
+Setup-Freigabe) oder den Dienst beenden und löschen (`sc stop InventoryAgent`, `sc delete InventoryAgent`, Ordner löschen),
+danach „Agent vergessen“ wählen – das verwirft nur den Schlüssel auf dem Server; ein noch laufender Agent würde sich mit dem
+Geheimnis einfach neu anmelden.
 
 Nach einem Server-Update aktualisieren sich die Agenten selbst (siehe oben); nichts muss neu verteilt werden.
 
@@ -689,8 +692,9 @@ diesen Aktionen mit einem Hinweis, und der Server lehnt solche Jobs für Macs ab
 - **Per MDM:** *Einstellungen → Agenten → macOS-Installationsskript herunterladen* und als Shell-Skript zuweisen (Intune:
   *Geräte → macOS → Skripts*, als root; Jamf: eine Richtlinie mit dem Skript). Das Skript enthält das Anmeldegeheimnis
   und holt den Agenten damit; die Download-Seite muss dafür nicht offen sein.
-- **Entfernen:** dasselbe Skript mit `--uninstall` (z. B. `curl … | sudo bash -s -- --uninstall`), danach *Agent
-  vergessen* unter *Rechner bearbeiten*.
+- **Entfernen:** *Agent entfernen* unter *Rechner bearbeiten* oder als Aktion für mehrere Rechner; von Hand dasselbe
+  Skript mit `--uninstall` (z. B. `curl … | sudo bash -s -- --uninstall`), danach *Agent vergessen* unter *Rechner
+  bearbeiten*.
 
 Ein Mac meldet sich unter seinem lokalen Hostnamen an (`scutil --get LocalHostName`, z. B. `Maxs-MacBook-Pro`) und wird an
 seiner Seriennummer wiedererkannt, auch nach einer Umbenennung. Den Eintrag eines gleichnamigen Windows-Rechners übernimmt

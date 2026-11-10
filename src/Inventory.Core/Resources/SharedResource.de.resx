@@ -86,6 +86,9 @@
   <data name='"{0}" is now being installed on this computer and can no longer be postponed.' xml:space="preserve">
     <value>„{0}“ wird jetzt auf diesem Rechner installiert und lässt sich nicht mehr verschieben.</value>
   </data>
+  <data name="&quot;Remove agent&quot; uninstalls the agent on the computer, then the server forgets it. &quot;Forget agent&quot; only removes the agent's key on the server and resets the transport – if the agent is still installed, it enrolls again with the enrollment secret." xml:space="preserve">
+    <value>„Agent entfernen“ deinstalliert den Agenten auf dem Rechner, danach vergisst der Server ihn. „Agent vergessen“ verwirft nur den Schlüssel des Agenten auf dem Server und setzt den Transport zurück – ist der Agent noch installiert, meldet er sich mit dem Anmeldegeheimnis neu an.</value>
+  </data>
   <data name="&quot;{0}&quot; was created by a person; AI assistants can only change packages they created themselves." xml:space="preserve">
     <value>„{0}“ hat ein Mensch angelegt; KI-Assistenten ändern nur Pakete, die sie selbst angelegt haben.</value>
   </data>
@@ -497,6 +500,12 @@
   <data name='Agent installed on {0} computers. They show as "Agent" as soon as the service reports in.' xml:space="preserve">
     <value>Agent auf {0} Rechnern installiert. Sie erscheinen als „Agent“, sobald sich der Dienst meldet.</value>
   </data>
+  <data name="Agent removal started" xml:space="preserve">
+    <value>Entfernen des Agenten gestartet</value>
+  </data>
+  <data name="Agent removed" xml:space="preserve">
+    <value>Agent entfernt</value>
+  </data>
   <data name="Agent {0}, last contact {1}" xml:space="preserve">
     <value>Agent {0}, letzter Kontakt {1}</value>
   </data>
@@ -514,6 +523,9 @@
   </data>
   <data name="Agents" xml:space="preserve">
     <value>Agenten</value>
+  </data>
+  <data name="Agents are removed with &quot;Remove agent&quot;, not with a package step." xml:space="preserve">
+    <value>Agenten werden mit „Agent entfernen“ entfernt, nicht mit einem Paketschritt.</value>
   </data>
   <data name="AI" xml:space="preserve">
     <value>KI</value>
@@ -3686,6 +3698,9 @@
   <data name="None of the checked ports is open." xml:space="preserve">
     <value>Keiner der geprüften Ports ist offen.</value>
   </data>
+  <data name="None of the selected computers has an agent." xml:space="preserve">
+    <value>Keiner der gewählten Rechner hat einen Agenten.</value>
+  </data>
   <data name="None set up yet." xml:space="preserve">
     <value>Noch keins eingerichtet.</value>
   </data>
@@ -3710,8 +3725,8 @@
   <data name="Not approved: operators and schedules cannot deploy this package. Every change to steps, detection or files withdraws the approval." xml:space="preserve">
     <value>Nicht freigegeben: Operatoren und Zeitpläne können dieses Paket nicht verteilen. Jede Änderung an Schritten, Erkennung oder Dateien hebt die Freigabe auf.</value>
   </data>
-  <data name="Not available for macOS yet: on a Mac the agent only collects the inventory." xml:space="preserve">
-    <value>Für macOS noch nicht verfügbar: auf einem Mac erfasst der Agent nur das Inventar.</value>
+  <data name="Not available for macOS yet: on a Mac the agent collects the inventory and can be removed, nothing else." xml:space="preserve">
+    <value>Für macOS noch nicht verfügbar: auf einem Mac erfasst der Agent das Inventar und lässt sich entfernen, mehr nicht.</value>
   </data>
   <data name="not calculable" xml:space="preserve">
     <value>nicht berechenbar</value>
@@ -3934,6 +3949,9 @@
   </data>
   <data name="Only approved packages can be deployed by operators and schedules." xml:space="preserve">
     <value>Operatoren und Zeitpläne können nur freigegebene Pakete verteilen.</value>
+  </data>
+  <data name="Only Command and PowerShell can be run directly." xml:space="preserve">
+    <value>Direkt ausführen lassen sich nur Command und PowerShell.</value>
   </data>
   <data name="Only copied to computers without .NET Framework 4.8 (Windows Server 2012 to 2016, early Windows 10 releases)." xml:space="preserve">
     <value>Wird nur auf Rechner ohne .NET Framework 4.8 kopiert (Windows Server 2012 bis 2016, frühe Windows-10-Stände).</value>
@@ -4799,6 +4817,9 @@
   <data name="Remove" xml:space="preserve">
     <value>Entfernen</value>
   </data>
+  <data name="Remove agent" xml:space="preserve">
+    <value>Agent entfernen</value>
+  </data>
   <data name="Remove app (MSIX/Store)" xml:space="preserve">
     <value>App entfernen (MSIX/Store)</value>
   </data>
@@ -4825,6 +4846,12 @@
   </data>
   <data name="Removes the app for all users of the computer and, unless kept, also for users who log on later. Parts of Windows and runtime libraries are left alone. If the name matches more than {0} different apps, nothing is removed." xml:space="preserve">
     <value>Entfernt die App für alle Benutzer des Rechners und – sofern nicht beibehalten – auch für Benutzer, die sich später anmelden. Bestandteile von Windows und Laufzeitbibliotheken bleiben unberührt. Trifft der Name mehr als {0} verschiedene Apps, wird nichts entfernt.</value>
+  </data>
+  <data name="Removing agent …" xml:space="preserve">
+    <value>Agent wird entfernt …</value>
+  </data>
+  <data name="Removing the agent from {0} computers …" xml:space="preserve">
+    <value>Agent wird von {0} Rechnern entfernt …</value>
   </data>
   <data name="Rename entry to {0}" xml:space="preserve">
     <value>Eintrag in {0} umbenennen</value>
@@ -5981,14 +6008,23 @@
   <data name="The address must start with https://." xml:space="preserve">
     <value>Die Adresse muss mit https:// beginnen.</value>
   </data>
+  <data name="The agent could not be removed: {0}" xml:space="preserve">
+    <value>Der Agent konnte nicht entfernt werden: {0}</value>
+  </data>
   <data name="The agent did not report back within {0} days after the restart" xml:space="preserve">
     <value>Der Agent hat sich innerhalb von {0} Tagen nach dem Neustart nicht zurückgemeldet</value>
   </data>
   <data name="The agent on {0} did not pick up the job – the computer is off or the agent is not running." xml:space="preserve">
     <value>Der Agent auf {0} hat den Job nicht abgeholt – der Rechner ist aus oder der Agent läuft nicht.</value>
   </data>
+  <data name="The agent on {0} removes itself now; the server has forgotten it." xml:space="preserve">
+    <value>Der Agent auf {0} entfernt sich jetzt; der Server hat ihn vergessen.</value>
+  </data>
   <data name="The agent on {0} returned no result (connection lost during the job?)." xml:space="preserve">
     <value>Der Agent auf {0} hat kein Ergebnis geliefert (Verbindung während des Jobs verloren?).</value>
+  </data>
+  <data name="The agent removes itself from {0} computers; the server has forgotten them." xml:space="preserve">
+    <value>Der Agent entfernt sich von {0} Rechnern; der Server hat sie vergessen.</value>
   </data>
   <data name="The allowed variant with the least still to buy wins; with the same amount, the cheaper one and then the one with fewer cores." xml:space="preserve">
     <value>Gewählt wird die zulässige Variante, bei der am wenigsten zu kaufen bleibt; bei gleichem Betrag die günstigere, dann die mit weniger Kernen.</value>
@@ -6595,6 +6631,12 @@
   </data>
   <data name="Uninstall package" xml:space="preserve">
     <value>Deinstallations-Paket</value>
+  </data>
+  <data name="Uninstall the agent on {0} computers? Afterwards they are reached agentless again (Macs not at all until the agent is installed again)." xml:space="preserve">
+    <value>Den Agenten auf {0} Rechnern deinstallieren? Danach werden sie wieder agentenlos angesprochen (Macs gar nicht, bis der Agent wieder installiert ist).</value>
+  </data>
+  <data name="Uninstall the agent on {0}? Afterwards the computer is reached agentless again (a Mac not at all until the agent is installed again)." xml:space="preserve">
+    <value>Den Agenten auf {0} deinstallieren? Danach wird der Rechner wieder agentenlos angesprochen (ein Mac gar nicht, bis der Agent wieder installiert ist).</value>
   </data>
   <data name="Uninstall {0}" xml:space="preserve">
     <value>{0} deinstallieren</value>

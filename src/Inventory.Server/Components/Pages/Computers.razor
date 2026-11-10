@@ -87,6 +87,7 @@
                 <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: false, restart: false))">@L["Install pending updates without restart"]</MudMenuItem>
                 <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: true, restart: false))">@L["Install pending security updates without restart"]</MudMenuItem>
                 <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.PortableWifiOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveAgentsAsync">@L["Remove agent"]</MudMenuItem>
                 @if (Framework.Available)
                 {
                     <MudMenuItem Icon="@Icons.Material.Filled.Extension" Disabled="@(_selected.Count == 0)" OnClick="InstallFrameworkAsync">@L["Install .NET Framework 4.8"]</MudMenuItem>
@@ -630,6 +631,53 @@
             });
             if (failures.IsEmpty)
                 Snackbar.Add(L["Agent installed on {0} computers. They show as \"Agent\" as soon as the service reports in.", targets.Count], Severity.Success);
+            else
+                Snackbar.Add(L["{0} of {1} failed – {2}", failures.Count, targets.Count, string.Join("; ", failures.Take(3))], Severity.Error);
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _progressText = null;
+        }
+    }
+
+    /// <summary>Entfernt die Agenten der gewählten Rechner (Windows und Mac); Rechner ohne Agent bleiben unberührt.</summary>
+    private async Task RemoveAgentsAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var targets = _selected.Where(c => c.AgentKeyHash is not null).ToList();
+        if (targets.Count == 0)
+        {
+            Snackbar.Add(L["None of the selected computers has an agent."], Severity.Info);
+            return;
+        }
+        if (await Dialogs.ShowMessageBoxAsync(L["Remove agent"],
+                L["Uninstall the agent on {0} computers? Afterwards they are reached agentless again (Macs not at all until the agent is installed again).", targets.Count],
+                yesText: L["Remove"], cancelText: L["Cancel"]) != true)
+            return;
+
+        _busy = true;
+        _progressText = L["Removing the agent from {0} computers …", targets.Count];
+        StateHasChanged();
+        await Audit.LogAsync(L["Agent removal started"], string.Join(", ", targets.Select(c => c.Name)));
+        try
+        {
+            var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
+            var removed = new System.Collections.Concurrent.ConcurrentBag<string>();
+            await Parallel.ForEachAsync(targets, new ParallelOptions { MaxDegreeOfParallelism = 8 }, async (computer, ct) =>
+            {
+                var result = await AgentService.RemoveAsync(computer.Id, Jobs, ct);
+                if (result.Success)
+                    removed.Add(computer.Name);
+                else
+                    failures.Add($"{computer.Name}: {result.Error ?? result.Steps.FirstOrDefault(s => s.Error is not null)?.Error}");
+            });
+            if (!removed.IsEmpty)
+                await Audit.LogAsync(L["Agent removed"], string.Join(", ", removed.Order()));
+            if (failures.IsEmpty)
+                Snackbar.Add(L["The agent removes itself from {0} computers; the server has forgotten them.", removed.Count], Severity.Success);
             else
                 Snackbar.Add(L["{0} of {1} failed – {2}", failures.Count, targets.Count, string.Join("; ", failures.Take(3))], Severity.Error);
             await ReloadAsync();

@@ -23,6 +23,12 @@ namespace Inventory.Contracts
         public const string EnrollmentTokenHeader = "X-Enrollment-Token";
         /// <summary>Die eine Datei des Mac-Agenten.</summary>
         public const string MacAgentFile = "inventory-agent";
+        /// <summary>Hier liegt der Mac-Agent mit Konfiguration, Schlüssel und Ablage (nur für root lesbar).</summary>
+        public const string MacAgentDirectory = "/Library/Application Support/Inventory Agent";
+        /// <summary>Label des LaunchDaemons; die plist liegt unter /Library/LaunchDaemons/&lt;Label&gt;.plist.</summary>
+        public const string MacAgentLabel = "inventory.agent";
+        /// <summary>Ordner der noch nicht abgelieferten Ergebnisse im Agent-Ordner.</summary>
+        public const string PendingFolder = "pending";
     }
 
     /// <summary>Betriebssystem-Familien der Agenten; Windows-Agenten melden keine (null).</summary>
