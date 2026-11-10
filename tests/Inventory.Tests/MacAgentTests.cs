@@ -144,6 +144,7 @@ public class MacAgentTests
         Assert.Equal(["root", "max"], MacParsers.DsclValues("GroupMembership: root max\n", "GroupMembership"));
         Assert.Equal("Wi-Fi", MacParsers.HardwarePorts("Hardware Port: Ethernet\nDevice: en1\nEthernet Address: aa\n\nHardware Port: Wi-Fi\nDevice: en0\n")["en0"]);
         Assert.Equal("Macintosh HD", MacParsers.DiskutilValue("   Volume Name:               Macintosh HD\n   File System Personality:   APFS\n", "Volume Name"));
+        Assert.Equal("Disk Image", MacParsers.DiskutilValue("   Volume Name:              SolidCraft\n   Protocol:                  Disk Image\n", "Protocol"));
     }
 
     [Fact]

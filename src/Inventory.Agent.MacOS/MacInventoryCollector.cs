@@ -124,6 +124,9 @@ internal sealed class MacInventoryCollector(string hostName)
             if (!drive.IsReady || drive.DriveType is DriveType.Network or DriveType.Ram or DriveType.CDRom || drive.TotalSize == 0)
                 continue;
             var info = Shell.Run("/usr/sbin/diskutil", "info", drive.Name);
+            // Eingehängte Disk-Images (.dmg, meist Installer) sind keine Datenträger des Macs.
+            if (MacParsers.DiskutilValue(info, "Protocol") == "Disk Image")
+                continue;
             data.Disks.Add(new DiskItem
             {
                 Drive = isRoot ? "/" : path,
@@ -197,7 +200,8 @@ internal sealed class MacInventoryCollector(string hostName)
         }
         foreach (var member in MacParsers.DsclValues(Shell.Run("/usr/bin/dscl", ".", "-read", "/Groups/admin", "GroupMembership"), "GroupMembership"))
         {
-            if (member != "root")
+            // Systemkonten (root, _mbsetupuser für den Einrichtungsassistenten) sind keine Administratoren im Alltag.
+            if (member != "root" && !member.StartsWith('_'))
                 data.LocalAdmins.Add(new LocalAdminItem { Name = member });
         }
     }
