@@ -646,7 +646,8 @@ to `/Library/Application Support/Inventory Agent` (readable by root only) and st
 `inventory.agent`:
 
 - **By hand:** open the download page (*Settings → Agents → Download page without sign-in*) and run the command shown
-  there in Terminal: `curl -fsSL <server address>/agent/macos/install.sh | sudo bash`.
+  there in Terminal: `curl -fsSL <server address>/agent/macos/install.sh | sudo bash`. `sudo` needs an account with
+  administrator rights on the Mac; a standard user cannot install the agent this way.
 - **By MDM:** *Settings → Agents → Download macOS install script* and assign it as a shell script (Intune: *Devices →
   macOS → Scripts*, run as root; Jamf: a policy with the script). The script contains the enrollment secret and fetches
   the agent with it, so the download page does not have to be open.

@@ -2582,6 +2582,9 @@
   <data name="In shorter months the last day." xml:space="preserve">
     <value>In kürzeren Monaten der letzte Tag.</value>
   </data>
+  <data name="In Terminal of an account with administrator rights, run (sudo asks for that account's password; without such an account use the install script from Settings → Agents via MDM):" xml:space="preserve">
+    <value>Im Terminal eines Kontos mit Administratorrechten ausführen (sudo fragt nach dessen Kennwort; ohne ein solches Konto das Installationsskript aus Einstellungen → Agenten per MDM verteilen):</value>
+  </data>
   <data name="In use" xml:space="preserve">
     <value>Belegt</value>
   </data>
@@ -3949,9 +3952,6 @@
   </data>
   <data name="Open ports" xml:space="preserve">
     <value>Offene Ports</value>
-  </data>
-  <data name="Open Terminal and run (asks for an administrator password):" xml:space="preserve">
-    <value>Terminal öffnen und ausführen (fragt nach einem Administratorkennwort):</value>
   </data>
   <data name="open until {0}" xml:space="preserve">
     <value>offen bis {0}</value>

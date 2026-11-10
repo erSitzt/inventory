@@ -249,7 +249,7 @@ public static class AgentEndpoints
                <p>{H(L["Open Windows PowerShell as administrator and run:"])}</p>
                <pre>{H(command!)}</pre>
                <h2>Mac</h2>
-               <p>{H(L["Open Terminal and run (asks for an administrator password):"])}</p>
+               <p>{H(L["In Terminal of an account with administrator rights, run (sudo asks for that account's password; without such an account use the install script from Settings → Agents via MDM):"])}</p>
                <pre>{H(macCommand!)}</pre>
                <p class="note">{H(L["The computer appears in Inventory under \"Computers\" a few seconds after the installation. The setup is configured for this server; nothing has to be entered."])}</p>
                """;

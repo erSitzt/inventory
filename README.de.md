@@ -675,7 +675,8 @@ diesen Aktionen mit einem Hinweis, und der Server lehnt solche Jobs für Macs ab
 `/Library/Application Support/Inventory Agent` ab (nur für root lesbar) und startet ihn als LaunchDaemon `inventory.agent`:
 
 - **Von Hand:** die Download-Seite öffnen (*Einstellungen → Agenten → Download-Seite ohne Anmeldung*) und den dort
-  angezeigten Befehl im Terminal ausführen: `curl -fsSL <Server-Adresse>/agent/macos/install.sh | sudo bash`.
+  angezeigten Befehl im Terminal ausführen: `curl -fsSL <Server-Adresse>/agent/macos/install.sh | sudo bash`. `sudo`
+  braucht ein Konto mit Administratorrechten auf dem Mac; ein Standardbenutzer kann den Agenten so nicht installieren.
 - **Per MDM:** *Einstellungen → Agenten → macOS-Installationsskript herunterladen* und als Shell-Skript zuweisen (Intune:
   *Geräte → macOS → Skripts*, als root; Jamf: eine Richtlinie mit dem Skript). Das Skript enthält das Anmeldegeheimnis
   und holt den Agenten damit; die Download-Seite muss dafür nicht offen sein.
