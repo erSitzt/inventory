@@ -222,7 +222,8 @@ internal static partial class MacParsers
             .Select(r => new AppItem { Name = r.Id, Version = r.Version, Kind = AppKinds.InstallerPackage })
             .ToList();
 
-    [GeneratedRegex(@"(?<=Upd(?:ate)?)\d{4,}$", RegexOptions.IgnoreCase)]
+    // Auch mit Sprachkürzel dahinter: "…AcroRdrSCADCUpd2600322075_MUI".
+    [GeneratedRegex(@"(?<=Upd(?:ate)?)\d{4,}(?=(?:_[A-Za-z]+)?$)", RegexOptions.IgnoreCase)]
     private static partial Regex UpdateSuffix();
 
     /// <summary>

@@ -42,6 +42,8 @@ public class MacInventoryTests
         var packages = MacParsers.Packages(receipts);
         Assert.Equal([("com.adobe.acrobat.AcrobatDCUpd2500121184", "25.001.21184"), ("org.openvpn.client.pkg", "3.5.0")],
             packages.Select(p => (p.Name, p.Version)));
+        Assert.Single(MacParsers.Packages([new("com.adobe.acrobat.AcroRdrSCADCUpd2600322075_MUI", "26.003.22075", new DateTime(2026, 11, 1)),
+            new("com.adobe.acrobat.AcroRdrSCADCUpd2600221789_MUI", "26.002.21789", new DateTime(2026, 9, 1))]));
         // Ziffern am Ende einer gewöhnlichen Kennung sind kein Update: beide bleiben.
         Assert.Equal(2, MacParsers.Packages([new("com.vendor.tool123456", "1", null), new("com.vendor.tool654321", "2", null)]).Count);
         Assert.All(packages, p => Assert.Equal(AppKinds.InstallerPackage, p.Kind));
