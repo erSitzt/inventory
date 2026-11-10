@@ -154,7 +154,8 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
     public async Task BuildMacPackageAsync(Stream output, IReadOnlyList<MacAgentBinary> agents, string version, CancellationToken ct = default)
     {
         var (_, config) = await MacConfigAsync(ct);
-        if (agents.Count == 0)
+        // Das Paket ist für jeden Mac gedacht: ohne einen der beiden Agenten bräche die Installation auf einem Teil der Macs ab.
+        if (!new[] { RunnerRuntimes.MacArm64, RunnerRuntimes.MacX64 }.All(runtime => agents.Any(a => a.Runtime == runtime)))
             throw new InvalidOperationException(L["This server does not include the macOS agent."]);
         var hashes = string.Join("\n", agents.Select(a => $"  {a.Runtime}) HASH={Quote(a.Hash)} ;;"));
         var postinstall = Lf($$"""

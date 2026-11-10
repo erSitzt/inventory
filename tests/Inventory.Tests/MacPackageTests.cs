@@ -29,14 +29,21 @@ public class MacPackageTests
             await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildMacPackageAsync(output, binaries, "1.2.3"));
             await agents.SetServerUrlAsync("https://inventory.example.local:5100");
             await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildMacPackageAsync(output, [], "1.2.3"));
+            // Nur mit beiden Agenten: sonst bräche die Installation auf einem Teil der Macs ab.
+            await Assert.ThrowsAsync<InvalidOperationException>(() => agents.BuildMacPackageAsync(output, [binaries[0]], "1.2.3"));
             await agents.BuildMacPackageAsync(output, binaries, "1.2.3");
 
             var files = ReadXar(output.ToArray());
-            Assert.Equal(["PackageInfo", "Scripts"], files.Keys.Order());
+            Assert.Equal(["Bom", "PackageInfo", "Payload", "Scripts"], files.Keys.Order());
             var info = XDocument.Parse(Encoding.UTF8.GetString(files["PackageInfo"])).Root!;
             Assert.Equal((AgentProtocol.MacAgentLabel, "1.2.3", "/", "root"),
                 (info.Attribute("identifier")?.Value, info.Attribute("version")?.Value, info.Attribute("install-location")?.Value, info.Attribute("auth")?.Value));
             Assert.Equal("./postinstall", info.Element("scripts")?.Element("postinstall")?.Attribute("file")?.Value);
+            // Eine leere Payload (nur "."), damit macOS das Paket verbucht: daran erkennt Intune die Installation.
+            Assert.Equal("1", info.Element("payload")?.Attribute("numberOfFiles")?.Value);
+            var payload = Assert.Single(ReadCpio(files["Payload"]));
+            Assert.Equal((".", Convert.ToInt32("040755", 8)), (payload.Name, payload.Mode));
+            Assert.Equal("BOMStore"u8.ToArray(), files["Bom"][..8]);
 
             var scripts = ReadCpio(files["Scripts"]);
             Assert.Equal([".", "./postinstall", "./osx-arm64", "./osx-arm64/inventory-agent", "./osx-x64", "./osx-x64/inventory-agent"], scripts.Select(e => e.Name));
@@ -90,8 +97,8 @@ public class MacPackageTests
         await agents.SetServerUrlAsync("http://127.0.0.1:9");
         var binaries = new[] { RunnerRuntimes.MacArm64, RunnerRuntimes.MacX64 }
             .Select(runtime => new AgentService.MacAgentBinary(runtime, Path.Combine(agentDirectory, runtime, AgentProtocol.MacAgentFile), "ci"))
-            .Where(b => File.Exists(b.File)).ToList();
-        Assert.NotEmpty(binaries);
+            .ToList();
+        Assert.All(binaries, b => Assert.True(File.Exists(b.File), b.File));
         await using var output = File.Create(target);
         await agents.BuildMacPackageAsync(output, binaries, "0.0.0");
     }
@@ -165,7 +172,9 @@ public class MacPackageTests
             entries.Add((name, mode, bytes[position..(position + size)]));
             position += size;
         }
-        Assert.Equal(bytes.Length, position);
+        // Danach nur noch Nullen bis zum vollen 512-Byte-Block.
+        Assert.Equal(0, bytes.Length % 512);
+        Assert.All(bytes[position..], b => Assert.Equal(0, b));
         return entries;
     }
 }

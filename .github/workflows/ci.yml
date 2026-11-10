@@ -29,22 +29,6 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      # VORÜBERGEHEND: Referenz für ein Paket mit leerer Payload (Beleg ja/nein, Bom, Payload-Format).
-      - continue-on-error: true
-        run: |
-          mkdir -p ref2/root ref2/scripts && printf '#!/bin/bash\nexit 0\n' > ref2/scripts/postinstall && chmod +x ref2/scripts/postinstall
-          pkgbuild --root ref2/root --scripts ref2/scripts --identifier ref.empty --version 1 --install-location / ref2.pkg
-          xar --dump-toc=ref2-toc.xml -f ref2.pkg && cat ref2-toc.xml
-          pkgutil --expand ref2.pkg ref2/expanded && ls -la ref2/expanded && cat ref2/expanded/PackageInfo
-          file ref2/expanded/Payload; xxd ref2/expanded/Payload | head -20
-          lsbom -p MUGsTf ref2/expanded/Bom
-          echo BOM-GZIP-BASE64; gzip -9nc ref2/expanded/Bom | base64 -b 100; echo END
-          echo PAYLOAD-BASE64; base64 -b 100 -i ref2/expanded/Payload; echo END
-          gunzip -c ref2/expanded/Payload | xxd | head -40
-          sudo installer -pkg ref2.pkg -target /
-          pkgutil --pkg-info ref.empty; ls -la /var/db/receipts/ | grep ref.empty
-          pkgutil --files ref.empty
-          sudo pkgutil --forget ref.empty
       - run: dotnet publish src/Inventory.Agent.MacOS -c Release -r osx-arm64 -o agent
       - run: sudo ./agent/inventory-agent --collect > inventory.json
       - run: |
@@ -56,7 +40,8 @@ jobs:
           and ([.software[] | select(.architecture != null and .origin != null)] | length > 0)' inventory.json
       # Das Installationspaket (Intune, Jamf), wie es der Server baut, mit dem eben veröffentlichten Agenten: installieren wie
       # ein MDM, ohne erreichbaren Server. Der Agent muss als LaunchDaemon laufen und es weiter versuchen.
-      - run: mkdir -p agent-macos/osx-arm64 && cp agent/inventory-agent agent-macos/osx-arm64/
+      # Das Paket verlangt beide Agenten; auf diesem Runner (Apple Silicon) zählt nur der für arm64, der Platz für Intel bekommt eine Kopie.
+      - run: mkdir -p agent-macos/osx-arm64 agent-macos/osx-x64 && cp agent/inventory-agent agent-macos/osx-arm64/ && cp agent/inventory-agent agent-macos/osx-x64/
       - run: dotnet test tests/Inventory.Tests --filter "FullyQualifiedName~MacPackageTests"
         env:
           INVENTORY_MAC_AGENT_DIR: ${{ github.workspace }}/agent-macos
@@ -64,7 +49,10 @@ jobs:
       - run: |
           pkgutil --expand inventory-agent.pkg expanded
           cat expanded/PackageInfo
+          # Die leere Payload ist der Ordner "/": Rechte und Eigentümer dürfen sich dadurch nicht ändern.
+          root_before="$(stat -f '%Sp %Su:%Sg' /)"
           sudo installer -pkg inventory-agent.pkg -target /
+          [ "$(stat -f '%Sp %Su:%Sg' /)" = "$root_before" ]
           pkgutil --pkg-info inventory.agent
           sleep 10
           dir="/Library/Application Support/Inventory Agent"
@@ -74,11 +62,11 @@ jobs:
           sudo launchctl print system/inventory.agent | grep -q 'state = running'
           sudo grep -q 'Fehler' "$dir/agent.log"
           sudo codesign --verify "$dir/inventory-agent"
-      # Zum Vergleich, falls das Paket nicht durchgeht: ein Paket ohne Payload, wie Apples pkgbuild es baut.
+      # Zum Vergleich, falls das Paket nicht durchgeht: dasselbe (leere Payload, Skripte), wie Apples pkgbuild es baut.
       - if: failure()
         run: |
-          mkdir -p ref/scripts && printf '#!/bin/bash\nexit 0\n' > ref/scripts/postinstall && chmod +x ref/scripts/postinstall
-          pkgbuild --nopayload --scripts ref/scripts --identifier ref.test --version 1 ref.pkg
+          mkdir -p ref/root ref/scripts && printf '#!/bin/bash\nexit 0\n' > ref/scripts/postinstall && chmod +x ref/scripts/postinstall
+          pkgbuild --root ref/root --scripts ref/scripts --identifier ref.test --version 1 --install-location / ref.pkg
           xar --dump-toc=ref-toc.xml -f ref.pkg && cat ref-toc.xml
           pkgutil --expand ref.pkg ref/expanded && ls -la ref/expanded && cat ref/expanded/PackageInfo
           tail -60 /var/log/install.log
