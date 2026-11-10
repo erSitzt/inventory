@@ -665,10 +665,19 @@ Macs werden von einem kleinen Agenten für macOS inventarisiert (Apple Silicon u
 selbst.
 
 **Was erfasst wird:** Modell (auf Apple Silicon mit Verkaufsnamen), Seriennummer, Chip bzw. Prozessor, Arbeitsspeicher,
-macOS-Version und Build, letzter Start, angemeldeter Benutzer, Programme in `/Applications` und in `~/Applications` der
-Benutzer (mit Version, Entwickler aus der Signatur und Datum), Volumes, Netzwerkkarten, Grafik, Bildschirme, SSD, Akku,
-Drucker, lokale Benutzer und Administratoren sowie die Sicherheitseinstellungen **FileVault**, **Firewall** (und
-Tarnmodus), **Gatekeeper**, **System Integrity Protection** und die automatische Update-Suche. Änderungen erscheinen wie
+macOS-Version und Build, letzter Start, angemeldeter Benutzer, IP-Adresse der Standardroute, Programme in `/Applications`
+und in `~/Applications` der Benutzer (mit Version, Entwickler aus der Signatur, Datum, **Herkunft** – Apple, App Store,
+verifizierter oder unbekannter Entwickler – und **Architektur**, z. B. *nur Intel (Rosetta)*), **Installer-Pakete**
+(`.pkg`-Belege ohne die von Apple, Updates eines Pakets einmal) und **Homebrew**-Formeln und -Casks (Reiter *Pakete*),
+Volumes, Netzwerkkarten, Grafik, Bildschirme, SSD, Akku, Drucker, lokale Benutzer (mit letzter Anmeldung und
+Kennwortalter) und Administratoren sowie die Sicherheitseinstellungen **FileVault**, **Firewall** (und Tarnmodus),
+**Gatekeeper**, **System Integrity Protection** und die automatische Update-Suche.
+
+**macOS-Unterstützung:** Die Übersicht eines Macs zeigt die letzte macOS-Version, die sein Modell bekommt (Intel-Macs enden
+spätestens mit macOS 26; Apple Silicon bekommt die aktuelle), ob ein Upgrade möglich ist und ob die installierte Version
+noch Sicherheitsupdates erhält. Letzteres ist eine Schätzung nach Apples üblichem Vorgehen (die aktuelle Version und die
+zwei davor), keine Zusage. Sammlungen können *macOS ohne Sicherheitsupdates*, *Mac mit reinen Intel-Apps (Rosetta)* und
+*Mac mit Apps unbekannter Entwickler* verwenden; Berichte haben passende Spalten. Änderungen erscheinen wie
 bei Windows im Verlauf; die Plattform lässt sich in Sammlungen („Plattform = macOS") und Berichten verwenden.
 
 **Für Macs noch nicht:** Befehle, Pakete und Verteilungen, macOS-Updates und Fernzugriff. Inventory überspringt Macs bei

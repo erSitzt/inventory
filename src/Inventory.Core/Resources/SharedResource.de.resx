@@ -2450,6 +2450,12 @@
   <data name="Home and other networks" xml:space="preserve">
     <value>Heim- und Fremdnetze</value>
   </data>
+  <data name="Homebrew cask" xml:space="preserve">
+    <value>Homebrew-Cask</value>
+  </data>
+  <data name="Homebrew formula" xml:space="preserve">
+    <value>Homebrew-Formel</value>
+  </data>
   <data name="Host" xml:space="preserve">
     <value>Host</value>
   </data>
@@ -2515,6 +2521,9 @@
   </data>
   <data name="Id" xml:space="preserve">
     <value>Id</value>
+  </data>
+  <data name="identified developer" xml:space="preserve">
+    <value>verifizierter Entwickler</value>
   </data>
   <data name="If another installation is running (exit code 1618), the step is retried up to three times anyway." xml:space="preserve">
     <value>Läuft gerade eine andere Installation (Exitcode 1618), wird der Schritt ohnehin bis zu dreimal wiederholt.</value>
@@ -2678,6 +2687,12 @@
   <data name="Installer file" xml:space="preserve">
     <value>Installationsdatei</value>
   </data>
+  <data name="Installer package" xml:space="preserve">
+    <value>Installer-Paket</value>
+  </data>
+  <data name="Installer packages (.pkg, without those of Apple) and Homebrew formulae and casks: software that is not an app in the Applications folder, e.g. drivers, VPN and security components or command-line tools. Updates of the same package are shown once." xml:space="preserve">
+    <value>Installer-Pakete (.pkg, ohne die von Apple) sowie Homebrew-Formeln und -Casks: Software, die keine App im Programme-Ordner ist, z. B. Treiber, VPN- und Sicherheitskomponenten oder Kommandozeilenwerkzeuge. Updates desselben Pakets erscheinen einmal.</value>
+  </data>
   <data name="Installing .NET Framework 4.8 on {0} computers …" xml:space="preserve">
     <value>Installiere .NET Framework 4.8 auf {0} Rechnern …</value>
   </data>
@@ -2698,6 +2713,9 @@
   </data>
   <data name="Instance" xml:space="preserve">
     <value>Instanz</value>
+  </data>
+  <data name="Intel only (Rosetta)" xml:space="preserve">
+    <value>nur Intel (Rosetta)</value>
   </data>
   <data name="Internal download hosts" xml:space="preserve">
     <value>Interne Download-Hosts</value>
@@ -2786,6 +2804,9 @@
   <data name="IP reservation released via MCP" xml:space="preserve">
     <value>IP-Reservierung über MCP aufgehoben</value>
   </data>
+  <data name="iPhone/iPad app" xml:space="preserve">
+    <value>iPhone-/iPad-App</value>
+  </data>
   <data name="is {0}" xml:space="preserve">
     <value>ist {0}</value>
   </data>
@@ -2864,6 +2885,9 @@
   <data name="Last logon" xml:space="preserve">
     <value>Letzte Anmeldung</value>
   </data>
+  <data name="Last macOS version" xml:space="preserve">
+    <value>Letzte macOS-Version</value>
+  </data>
   <data name="last present {0}" xml:space="preserve">
     <value>zuletzt vorhanden {0}</value>
   </data>
@@ -2911,6 +2935,9 @@
   </data>
   <data name="Last used" xml:space="preserve">
     <value>Zuletzt verwendet</value>
+  </data>
+  <data name="last version: macOS {0}" xml:space="preserve">
+    <value>letzte Version: macOS {0}</value>
   </data>
   <data name="last {0} days" xml:space="preserve">
     <value>letzte {0} Tage</value>
@@ -3110,6 +3137,12 @@
   <data name="MAC vendor" xml:space="preserve">
     <value>MAC-Hersteller</value>
   </data>
+  <data name="Mac with apps from unknown developers" xml:space="preserve">
+    <value>Mac mit Apps unbekannter Entwickler</value>
+  </data>
+  <data name="Mac with Intel-only apps (Rosetta)" xml:space="preserve">
+    <value>Mac mit reinen Intel-Apps (Rosetta)</value>
+  </data>
   <data name="MAC {0}" xml:space="preserve">
     <value>MAC {0}</value>
   </data>
@@ -3122,8 +3155,20 @@
   <data name="macOS firewall" xml:space="preserve">
     <value>macOS-Firewall</value>
   </data>
+  <data name="macOS security updates (estimate)" xml:space="preserve">
+    <value>macOS-Sicherheitsupdates (Schätzung)</value>
+  </data>
+  <data name="macOS support" xml:space="preserve">
+    <value>macOS-Unterstützung</value>
+  </data>
   <data name="macOS version" xml:space="preserve">
     <value>macOS-Version</value>
+  </data>
+  <data name="macOS version unknown" xml:space="preserve">
+    <value>macOS-Version unbekannt</value>
+  </data>
+  <data name="macOS without security updates (estimate)" xml:space="preserve">
+    <value>macOS ohne Sicherheitsupdates (Schätzung)</value>
   </data>
   <data name="Macs" xml:space="preserve">
     <value>Macs</value>
@@ -3587,6 +3632,12 @@
   <data name='No schedules yet. A schedule scans regularly or deploys a package to a collection – e.g. to the dynamic collection "Chrome outdated".' xml:space="preserve">
     <value>Noch keine Zeitpläne. Ein Zeitplan scannt regelmäßig oder stellt ein Paket auf einer Sammlung bereit – z. B. auf der dynamischen Sammlung „Chrome veraltet“.</value>
   </data>
+  <data name="no security updates any more – replace (estimate)" xml:space="preserve">
+    <value>keine Sicherheitsupdates mehr – ersetzen (Schätzung)</value>
+  </data>
+  <data name="no security updates any more – upgrade needed (estimate)" xml:space="preserve">
+    <value>keine Sicherheitsupdates mehr – Upgrade nötig (Schätzung)</value>
+  </data>
   <data name="No servers found. Scan the servers with the current runner and set up the vCenter if you use VMware." xml:space="preserve">
     <value>Keine Server gefunden. Die Server mit dem aktuellen Runner scannen und bei VMware das vCenter einrichten.</value>
   </data>
@@ -4021,6 +4072,9 @@
   </data>
   <data name="Organization name" xml:space="preserve">
     <value>Name der Organisation</value>
+  </data>
+  <data name="Origin (Mac)" xml:space="preserve">
+    <value>Herkunft (Mac)</value>
   </data>
   <data name="other way of licensing than the rest of the cluster" xml:space="preserve">
     <value>andere Art der Lizenzierung als der übrige Cluster</value>
@@ -4481,6 +4535,9 @@
   <data name="Processor" xml:space="preserve">
     <value>Prozessor</value>
   </data>
+  <data name="Processor (Mac)" xml:space="preserve">
+    <value>Prozessor (Mac)</value>
+  </data>
   <data name="Processor sockets" xml:space="preserve">
     <value>Prozessorsockel</value>
   </data>
@@ -4624,6 +4681,12 @@
   </data>
   <data name="Reboot pending" xml:space="preserve">
     <value>Neustart ausstehend</value>
+  </data>
+  <data name="receives security updates (estimate)" xml:space="preserve">
+    <value>bekommt Sicherheitsupdates (Schätzung)</value>
+  </data>
+  <data name="receives the current macOS" xml:space="preserve">
+    <value>bekommt das aktuelle macOS</value>
   </data>
   <data name="Recent changes" xml:space="preserve">
     <value>Letzte Änderungen</value>
@@ -5302,6 +5365,9 @@
   </data>
   <data name="security updates missing" xml:space="preserve">
     <value>Sicherheitsupdates fehlen</value>
+  </data>
+  <data name="security updates until about autumn {0} (estimate)" xml:space="preserve">
+    <value>Sicherheitsupdates bis etwa Herbst {0} (Schätzung)</value>
   </data>
   <data name="Security-relevant" xml:space="preserve">
     <value>Sicherheitsrelevant</value>
@@ -6581,11 +6647,17 @@
   <data name="Unit" xml:space="preserve">
     <value>Einheit</value>
   </data>
+  <data name="Universal" xml:space="preserve">
+    <value>Universal</value>
+  </data>
   <data name="unknown" xml:space="preserve">
     <value>unbekannt</value>
   </data>
   <data name='Unknown column "{0}".' xml:space="preserve">
     <value>Unbekannte Spalte „{0}“.</value>
+  </data>
+  <data name="unknown developer" xml:space="preserve">
+    <value>unbekannter Entwickler</value>
   </data>
   <data name="Unknown installer" xml:space="preserve">
     <value>Unbekannter Installer</value>
@@ -6673,6 +6745,9 @@
   </data>
   <data name="updates-and-patch-status" xml:space="preserve">
     <value>updates-und-patch-stand</value>
+  </data>
+  <data name="upgrade to macOS {0} possible" xml:space="preserve">
+    <value>Upgrade auf macOS {0} möglich</value>
   </data>
   <data name="Upgrades" xml:space="preserve">
     <value>Upgrades</value>

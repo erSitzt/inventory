@@ -64,6 +64,8 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             computer.IsOnline = false;
         }
         computer.Platform = data.Platform == AgentPlatforms.MacOS ? OsPlatform.MacOS : OsPlatform.Windows;
+        if (computer.IsMac)
+            MacOsSupport.Observe(data.OsVersion);
         computer.Domain = data.Domain;
         // Ein Domänenmitglied meldet seine DNS-Domäne (eine Arbeitsgruppe hat keinen Punkt); nur als Lückenfüller, das Verzeichnis geht vor.
         if (computer.DnsName is null && data.ComputerName is { } own && data.Domain is { } domain && domain.Contains('.'))
@@ -84,6 +86,9 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         computer.CpuLogicalProcessors = data.CpuLogicalProcessors;
         computer.MemoryBytes = data.MemoryBytes;
         computer.LoggedOnUser = data.LoggedOnUser;
+        // Der Mac kennt seine Adresse selbst (eine Erreichbarkeitsprüfung gibt es für ihn nicht).
+        if (!string.IsNullOrWhiteSpace(data.PrimaryIpAddress))
+            computer.IpAddress = data.PrimaryIpAddress;
         if (data.RemoteAccess is { } remote)
         {
             computer.SessionId = remote.SessionId;
@@ -164,13 +169,14 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
             db.Apps.AddRange(apps.Select(a => new ComputerApp
             {
                 ComputerId = computerId, Name = a.Name, DisplayName = a.DisplayName, Version = a.Version, Publisher = a.Publisher,
-                Architecture = a.Architecture, Provisioned = a.Provisioned,
+                Architecture = a.Architecture, Provisioned = a.Provisioned, Kind = a.Kind,
             }));
         }
         db.Software.AddRange(data.Software.Select(s => new ComputerSoftware
         {
             ComputerId = computerId, Name = s.Name, Version = s.Version, Publisher = s.Publisher, InstallDate = s.InstallDate,
             Is64Bit = s.Is64Bit, PerUser = s.PerUser, UninstallString = s.UninstallString, UserSid = s.UserSid, CarriedOver = s.CarriedOver,
+            Origin = s.Origin, Architecture = s.Architecture,
         }));
         db.Hotfixes.AddRange(data.Hotfixes.Select(h => new ComputerHotfix
         {

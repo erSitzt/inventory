@@ -24,10 +24,13 @@ internal sealed class MacInventoryCollector(string hostName)
 
         CollectSystem(data, hardware);
         // Ohne Programmliste meldete der Scan alle Programme als entfernt: dann lieber gar kein Ergebnis.
-        using (var apps = MacParsers.Json(Shell.Run("/usr/sbin/system_profiler", ["-json", "-detailLevel", "mini", "SPApplicationsDataType"], ProfilerTimeout)))
+        // Volle Detailstufe: erst sie nennt Herkunft und Architektur jedes Programms.
+        using (var apps = MacParsers.Json(Shell.Run("/usr/sbin/system_profiler", ["-json", "SPApplicationsDataType"], ProfilerTimeout)))
             data.Software = MacParsers.Applications(apps ?? throw new InvalidOperationException("system_profiler SPApplicationsDataType failed"));
         CollectVolumes(data);
         CollectNetwork(data);
+        // Fehlt die Liste (null), behält der Server die vorige.
+        Section(data, "Packages", () => data.Apps = CollectPackages());
         Section(data, "Hardware", () => CollectHardware(hardware),
             () => hardware.Failed.AddRange([HardwareAreas.Graphics, HardwareAreas.Monitors, HardwareAreas.Memory, HardwareAreas.Disks, HardwareAreas.Battery, HardwareAreas.Printers]));
         Section(data, "FileVault", () =>
@@ -140,6 +143,8 @@ internal sealed class MacInventoryCollector(string hostName)
 
     private static void CollectNetwork(InventoryData data)
     {
+        if (MacParsers.DefaultInterface(Shell.Run("/sbin/route", "-n", "get", "default")) is { } primary)
+            data.PrimaryIpAddress = Shell.Run("/usr/sbin/ipconfig", "getifaddr", primary)?.Trim() is { Length: > 0 } ip ? ip : null;
         var ports = MacParsers.HardwarePorts(Shell.Run("/usr/sbin/networksetup", "-listallhardwareports"));
         foreach (var adapter in NetworkInterface.GetAllNetworkInterfaces())
         {
@@ -185,17 +190,49 @@ internal sealed class MacInventoryCollector(string hostName)
         hardware.Printers = MacParsers.Printers(profile);
     }
 
+    /// <summary>Installer-Pakete (ohne die von Apple) und Homebrew-Formeln und -Casks, gelesen aus den Ordnern statt mit brew.</summary>
+    private static List<AppItem> CollectPackages()
+    {
+        var ids = Shell.Run("/usr/sbin/pkgutil", "--pkgs") ?? throw new InvalidOperationException("pkgutil failed");
+        var receipts = ids.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(id => !id.StartsWith("com.apple.", StringComparison.OrdinalIgnoreCase))
+            .Select(id => MacParsers.Receipt(Shell.Run("/usr/sbin/pkgutil", "--pkg-info", id)))
+            .OfType<MacParsers.PackageReceipt>();
+        var packages = MacParsers.Packages(receipts);
+        foreach (var prefix in new[] { "/opt/homebrew", "/usr/local" })
+        {
+            foreach (var (folder, kind) in new[] { ("Cellar", AppKinds.HomebrewFormula), ("Caskroom", AppKinds.HomebrewCask) })
+            {
+                var root = Path.Combine(prefix, folder);
+                if (!Directory.Exists(root))
+                    continue;
+                foreach (var formula in Directory.GetDirectories(root))
+                {
+                    // Je Formel ein Unterordner pro installierter Version; die höchste zählt.
+                    var version = Directory.GetDirectories(formula).Select(Path.GetFileName).Where(v => !string.IsNullOrEmpty(v) && v[0] != '.')
+                        .OrderBy(v => v, Comparer<string?>.Create(VersionComparer.Compare)).LastOrDefault();
+                    packages.Add(new AppItem { Name = Path.GetFileName(formula), Version = version, Publisher = "Homebrew", Kind = kind });
+                }
+            }
+        }
+        return packages;
+    }
+
     private static void CollectUsers(InventoryData data)
     {
         var users = Shell.Run("/usr/bin/dscl", ".", "-list", "/Users", "UniqueID") ?? throw new InvalidOperationException("dscl failed");
+        var now = DateTime.UtcNow;
         foreach (var name in MacParsers.Users(users))
         {
             var record = Shell.Run("/usr/bin/dscl", ".", "-read", "/Users/" + name, "RealName", "AuthenticationAuthority");
+            var passwordSet = MacParsers.PasswordLastSet(Shell.Run("/usr/bin/dscl", ".", "-readpl", "/Users/" + name, "accountPolicyData", "passwordLastSetTime"));
             data.LocalUsers.Add(new LocalUserItem
             {
                 Name = name,
                 FullName = string.Join(" ", MacParsers.DsclValues(record, "RealName")) is { Length: > 0 } full ? full : null,
                 Disabled = MacParsers.DsclValues(record, "AuthenticationAuthority").Any(a => a.Contains("DisabledUser", StringComparison.Ordinal)),
+                LastLogonUtc = MacParsers.LastLogin(Shell.Run("/usr/bin/last", "-1", name), DateTime.Now, TimeZoneInfo.Local),
+                PasswordAgeDays = passwordSet is { } set ? (int)(now - set).TotalDays : null,
             });
         }
         foreach (var member in MacParsers.DsclValues(Shell.Run("/usr/bin/dscl", ".", "-read", "/Groups/admin", "GroupMembership"), "GroupMembership"))

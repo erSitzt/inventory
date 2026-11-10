@@ -32,8 +32,9 @@ jobs:
       - run: dotnet publish src/Inventory.Agent.MacOS -c Release -r osx-arm64 -o agent
       - run: sudo ./agent/inventory-agent --collect > inventory.json
       - run: |
-          jq '{platform, computerName, osName, osVersion, model, serialNumber, cpuName, cpuCores, memoryBytes, software: (.software | length), disks, networkAdapters: [.networkAdapters[].name], macOs, volumes: .hardware.volumes, warnings}' inventory.json
+          jq '{platform, computerName, osName, osVersion, model, serialNumber, cpuName, cpuCores, memoryBytes, primaryIpAddress, software: (.software | length), softwareKinds: ([.software[] | "\(.architecture)/\(.origin)"] | group_by(.) | map({(.[0]): length}) | add), packages: [.apps[]? | "\(.kind) \(.name)"], disks, networkAdapters: [.networkAdapters[].name], users: .localUsers, macOs, volumes: .hardware.volumes, warnings}' inventory.json
       - run: >
           jq -e '.platform == "macOS" and (.computerName | length > 0) and (.osName | startswith("macOS")) and .cpuCores > 0 and .memoryBytes > 0
           and (.software | length > 0) and (.disks | length > 0) and (.networkAdapters | length > 0) and (.hardware.volumes[0].protected != null)
-          and (.macOs.gatekeeperEnabled != null)' inventory.json
+          and (.macOs.gatekeeperEnabled != null) and (.primaryIpAddress != null) and (.apps != null)
+          and ([.software[] | select(.architecture != null and .origin != null)] | length > 0)' inventory.json

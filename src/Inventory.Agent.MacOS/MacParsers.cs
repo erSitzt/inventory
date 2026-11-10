@@ -155,6 +155,7 @@ internal static partial class MacParsers
             var path = Text(app, "path");
             if (name is null || path is null || !IsInstalledApplication(path, out var perUser))
                 continue;
+            var architecture = Architecture(Text(app, "arch_kind"));
             result.Add(new SoftwareItem
             {
                 Name = name,
@@ -162,12 +163,96 @@ internal static partial class MacParsers
                 Publisher = Publisher(app),
                 InstallDate = DateTime.TryParse(Text(app, "lastModified"), CultureInfo.InvariantCulture,
                     DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var modified) ? modified.ToString("yyyyMMdd", CultureInfo.InvariantCulture) : null,
-                // Universal-Programme und solche für Apple Silicon laufen nativ; "arch_i64" sind Intel-Programme (unter Rosetta).
-                Is64Bit = true,
+                Is64Bit = Text(app, "arch_kind") != "arch_i32",
                 PerUser = perUser,
+                Origin = Origin(Text(app, "obtained_from")),
+                Architecture = architecture,
             });
         }
         return result.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>Herkunft laut system_profiler ("obtained_from").</summary>
+    public static string? Origin(string? obtainedFrom) => obtainedFrom switch
+    {
+        "apple" => SoftwareOrigins.Apple,
+        "mac_app_store" or "ios_app_store" => SoftwareOrigins.AppStore,
+        "identified_developer" => SoftwareOrigins.IdentifiedDeveloper,
+        "unknown" => SoftwareOrigins.Unknown,
+        _ => null,
+    };
+
+    /// <summary>Architektur laut system_profiler ("arch_kind"); 32-Bit-Intel-Programme starten auf aktuellen Macs gar nicht mehr.</summary>
+    public static string? Architecture(string? archKind) => archKind switch
+    {
+        "arch_arm_i64" => SoftwareArchitectures.Universal,
+        "arch_arm" => SoftwareArchitectures.AppleSilicon,
+        "arch_i64" or "arch_i32" => SoftwareArchitectures.Intel,
+        "arch_ios" => SoftwareArchitectures.IOS,
+        _ => null,
+    };
+
+    /// <summary>Die Schnittstelle der Standardroute aus <c>route -n get default</c> ("interface: en0").</summary>
+    public static string? DefaultInterface(string? routeOutput) =>
+        KeyValues(routeOutput, ':').TryGetValue("interface", out var name) && name.Length > 0 ? name : null;
+
+    /// <summary>Ein Beleg aus <c>pkgutil --pkg-info</c>: Kennung, Version und Installationszeit.</summary>
+    public sealed record PackageReceipt(string Id, string? Version, DateTime? InstalledUtc);
+
+    public static PackageReceipt? Receipt(string? pkgInfo)
+    {
+        var values = KeyValues(pkgInfo, ':');
+        if (!values.TryGetValue("package-id", out var id) || id.Length == 0)
+            return null;
+        DateTime? installed = values.TryGetValue("install-time", out var time) && long.TryParse(time, out var seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime : null;
+        return new PackageReceipt(id, values.GetValueOrDefault("version") is { Length: > 0 } version ? version : null, installed);
+    }
+
+    /// <summary>
+    /// Die Pakete, die neben den Programmen zählen: ohne die von Apple, und Update-Belege eines Pakets
+    /// ("…AcrobatDCUpd2500121184", einer je Update) zusammengefasst zum neuesten. Andere Kennungen mit Ziffern am Ende bleiben getrennt.
+    /// </summary>
+    public static List<AppItem> Packages(IEnumerable<PackageReceipt> receipts) =>
+        receipts
+            .Where(r => !r.Id.StartsWith("com.apple.", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(r => UpdateSuffix().Replace(r.Id, ""), StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.OrderByDescending(r => r.InstalledUtc ?? DateTime.MinValue).First())
+            .OrderBy(r => r.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new AppItem { Name = r.Id, Version = r.Version, Kind = AppKinds.InstallerPackage })
+            .ToList();
+
+    // Auch mit Sprachkürzel dahinter: "…AcroRdrSCADCUpd2600322075_MUI".
+    [GeneratedRegex(@"(?<=Upd(?:ate)?)\d{4,}(?=(?:_[A-Za-z]+)?$)", RegexOptions.IgnoreCase)]
+    private static partial Regex UpdateSuffix();
+
+    /// <summary>
+    /// Zeitpunkt der letzten Anmeldung aus der ersten Zeile von <c>last -1 &lt;name&gt;</c> ("max console Mon Nov 10 08:15 …").
+    /// <c>last</c> nennt kein Jahr: es ist das Jahr, in dem der Tag zuletzt lag.
+    /// </summary>
+    public static DateTime? LastLogin(string? lastOutput, DateTime nowLocal, TimeZoneInfo zone)
+    {
+        var line = Lines(lastOutput).FirstOrDefault(l => !l.StartsWith("wtmp", StringComparison.Ordinal));
+        var match = Regex.Match(line ?? "", @"\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) +(\d{1,2}) (\d{2}):(\d{2})");
+        if (!match.Success)
+            return null;
+        var month = DateTime.ParseExact(match.Groups[1].Value, "MMM", CultureInfo.InvariantCulture).Month;
+        int day = int.Parse(match.Groups[2].Value), hour = int.Parse(match.Groups[3].Value), minute = int.Parse(match.Groups[4].Value);
+        var year = nowLocal.Year;
+        if (day > DateTime.DaysInMonth(year, month) || new DateTime(year, month, day, hour, minute, 0) > nowLocal.AddDays(1))
+            year--;
+        if (day > DateTime.DaysInMonth(year, month))
+            return null;
+        return TimeZoneInfo.ConvertTimeToUtc(new DateTime(year, month, day, hour, minute, 0, DateTimeKind.Unspecified), zone);
+    }
+
+    /// <summary>Wann das Kennwort zuletzt gesetzt wurde, aus <c>dscl . -readpl … accountPolicyData passwordLastSetTime</c>.</summary>
+    public static DateTime? PasswordLastSet(string? dsclOutput)
+    {
+        var match = Regex.Match(dsclOutput ?? "", @"passwordLastSetTime:\s*([\d.]+)");
+        return match.Success && double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) && seconds > 0
+            ? DateTimeOffset.FromUnixTimeMilliseconds((long)(seconds * 1000)).UtcDateTime
+            : null;
     }
 
     /// <summary>Oberste Programme in /Applications (auch Unterordnern) oder im Programme-Ordner eines Benutzers, nicht in anderen Programmen.</summary>

@@ -240,6 +240,10 @@ if (importedOver is not null)
 await using (var db = await app.Services.GetRequiredService<IDbContextFactory<InventoryDbContext>>().CreateDbContextAsync())
     await db.Database.MigrateAsync();
 await app.Services.GetRequiredService<InventoryStore>().BackfillPendingUpdatesAsync();
+// Meldet ein Mac schon eine neuere macOS-Version als die eingebaute, gilt sie für die Einschätzung der Sicherheitsupdates.
+await using (var db = await app.Services.GetRequiredService<IDbContextFactory<InventoryDbContext>>().CreateDbContextAsync())
+    foreach (var version in await db.Computers.Where(c => c.Platform == OsPlatform.MacOS).Select(c => c.OsVersion).ToListAsync())
+        MacOsSupport.Observe(version);
 await app.Services.GetRequiredService<HypervisorSyncService>().MigrateSettingsAsync();
 await app.Services.GetRequiredService<ExampleData>().SeedSchedulesAsync();
 await app.Services.GetRequiredService<ExampleData>().SeedReportsAsync();
