@@ -38,9 +38,9 @@ jobs:
           pkgutil --expand ref2.pkg ref2/expanded && ls -la ref2/expanded && cat ref2/expanded/PackageInfo
           file ref2/expanded/Payload; xxd ref2/expanded/Payload | head -20
           lsbom -p MUGsTf ref2/expanded/Bom
-          echo BOM-BASE64; base64 -i ref2/expanded/Bom; echo END
-          mkbom -u 0 -g 0 ref2/root ref2/mk.bom && lsbom ref2/mk.bom && echo MKBOM-BASE64 && base64 -i ref2/mk.bom && echo END
-          cmp ref2/mk.bom ref2/expanded/Bom && echo SAME-BOM || echo DIFFERENT-BOM
+          echo BOM-GZIP-BASE64; gzip -9nc ref2/expanded/Bom | base64 -b 100; echo END
+          echo PAYLOAD-BASE64; base64 -b 100 -i ref2/expanded/Payload; echo END
+          gunzip -c ref2/expanded/Payload | xxd | head -40
           sudo installer -pkg ref2.pkg -target /
           pkgutil --pkg-info ref.empty; ls -la /var/db/receipts/ | grep ref.empty
           pkgutil --files ref.empty
