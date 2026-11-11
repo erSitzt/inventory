@@ -601,10 +601,19 @@ nicht rückgängig; ihr Ergebnis wird verworfen.
   (z. B. `https://inventory.firma.local:5100`). Kein eingehender Port, keine Firewall-Regel und kein SMB/WinRM auf dem
   Client. Der Port des Servers (Standard 5100) muss aus den Client-Netzen erreichbar sein (Firewall-Regel auf dem
   Server; das Setup kann sie anlegen).
-- **HTTPS:** dringend empfohlen – über diesen Kanal erhält der Agent Befehle, die er als Lokales System ausführt. Der
-  Agent nutzt den Windows-Zertifikatspeicher; das Serverzertifikat muss also auf dem Client vertrauenswürdig sein
-  (interne CA oder öffentliches Zertifikat), einen Schalter „jedes Zertifikat akzeptieren“ gibt es nicht. TLS 1.2 wird
-  erzwungen. HTTPS am Server: siehe [HTTPS](#https).
+- **HTTPS:** Über diesen Kanal erhält der Agent Befehle, die er als Lokales System ausführt. Bietet der Server HTTPS an
+  (siehe [HTTPS](#https)), wechselt jeder Agent von selbst: Die Antwort auf seine nächste Anfrage enthält die
+  HTTPS-Adresse und einen Pin des Serverzertifikats (SHA-256 über seinen Schlüssel). Der Agent probiert die Adresse mit
+  seinem Schlüssel aus; klappt das, speichert er Adresse und Pin in `agent.json` (`secureUrl`, `certificatePins`) und
+  verbindet sich dorthin. Er nimmt das Zertifikat an, wenn das System ihm vertraut (Windows-Zertifikatspeicher,
+  Systemschlüsselbund von macOS) oder wenn der Schlüssel zum Pin passt – das selbstsignierte Zertifikat geht also, ohne
+  es zu verteilen. Einen Schalter „jedes Zertifikat akzeptieren“ gibt es nicht. Die installierte Adresse bleibt als
+  Rückfall: Scheitert die HTTPS-Adresse dreimal hintereinander (anderer Port, ein neues Zertifikat, dem der Agent nicht
+  vertraut), versucht er die installierte Adresse, erfährt dort die aktuelle HTTPS-Adresse und wechselt erneut; eine
+  Adresse, die nicht ging, probiert er frühestens nach einer Stunde wieder. Neue Installationen (Setup,
+  Installationsskripte, agentenloser Installationsjob) bekommen HTTPS-Adresse und Pin gleich mit. *Einstellungen →
+  HTTPS* zeigt, wie viele Agenten schon über HTTPS kommen, die Rechnerdetails zeigen es je Rechner. Unter Windows wird
+  TLS 1.2 erzwungen.
 - **Proxy:** Der Agent läuft als Lokales System und nutzt die WinHTTP-Proxyeinstellungen des Rechners (`netsh winhttp
   set proxy …`), nicht den Browser-Proxy eines Benutzers. Ein direkter Weg zum Server ist am einfachsten.
 - **Namensauflösung:** Der Client muss den Hostnamen der Server-Adresse auflösen (DNS oder `hosts`). Der Server muss den
@@ -698,8 +707,9 @@ diesen Aktionen mit einem Hinweis, und der Server lehnt solche Jobs für Macs ab
 
 Ein Mac meldet sich unter seinem lokalen Hostnamen an (`scutil --get LocalHostName`, z. B. `Maxs-MacBook-Pro`) und wird an
 seiner Seriennummer wiedererkannt, auch nach einer Umbenennung. Den Eintrag eines gleichnamigen Windows-Rechners übernimmt
-er nie; eine solche Anmeldung wird abgelehnt und protokolliert. Nutzt der Server HTTPS mit einem Zertifikat der eigenen
-CA, muss der Mac dieser CA im Systemschlüsselbund vertrauen (meist verteilt das MDM sie). `agent.log` im Agent-Ordner
+er nie; eine solche Anmeldung wird abgelehnt und protokolliert. Über HTTPS vertraut der Mac-Agent dem Serverzertifikat
+wie der Windows-Agent über den Pin; nur das Installationsskript (`curl`) braucht ein Zertifikat, dem der Mac vertraut –
+beim selbstsignierten Zertifikat bleibt die Agentenadresse auf `http://`, der Agent wechselt danach selbst. `agent.log` im Agent-Ordner
 zeigt, was der Agent tut; `sudo "/Library/Application Support/Inventory Agent/inventory-agent" --collect` gibt das
 Inventar aus, ohne es zu senden.
 
@@ -949,7 +959,9 @@ unter *Einstellungen → HTTPS* eingerichtet; in `appsettings.json` muss dafür 
   Umleitungs-URI HTTPS.
 - **Eine eigene Kestrel-Konfiguration** in `appsettings.json` (Abschnitt `Kestrel` oder eine `https://`-Adresse in
   `Urls`) funktioniert weiter; das eingebaute HTTPS bleibt dann aus.
-- **Agenten** nutzen weiter die Adresse, mit der sie installiert wurden (siehe [Agent](#agent)).
+- **Agenten** wechseln von selbst auf HTTPS und behalten die installierte Adresse als Rückfall (siehe [Agent](#agent)).
+- **Abgeschaltet:** `Inventory:Https:Enabled = false` in `appsettings.json`, z. B. hinter einem Reverse-Proxy, der TLS
+  übernimmt.
 
 ## Aktualisieren
 
@@ -1013,6 +1025,7 @@ nicht einspielen. Für einen Zertifikatswechsel das neue dazulegen und das alte 
 | `Inventory:Catalog:Url` | Adresse oder Pfad der `catalog.json` der Paketbibliothek |
 | `Inventory:Catalog:VersionsUrl` | Ordner mit den Versionslisten (`<winget-ID>.json`); leer = nur die aktuelle Version anbieten |
 | `Inventory:Catalog:IndexUrl` | Adresse oder Pfad des Suchindex `winget.json`; leer = Suche in ganz winget abschalten |
+| `Inventory:Https:Enabled` | `false` = kein eingebautes HTTPS (z. B. hinter einem Reverse-Proxy); Standard an, siehe [HTTPS](#https) |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 
 ### Anmeldung

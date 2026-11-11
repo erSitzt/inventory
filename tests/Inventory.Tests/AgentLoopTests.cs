@@ -30,6 +30,8 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
             builder.UseSetting("Inventory:DataDirectory", DataDirectory);
             builder.UseSetting("Inventory:Simulate", "true");
             builder.UseSetting("Inventory:Update:Enabled", "false");
+            // Kein eingebautes HTTPS: es hinge sonst davon ab, ob Port 5101 auf dem Testrechner frei ist.
+            builder.UseSetting("Inventory:Https:Enabled", "false");
             builder.UseEnvironment("Development");
         }
 
@@ -167,5 +169,66 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
             loop.Stop();
             Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "The agent loop did not stop.");
         }
+    }
+
+    [Fact]
+    public async Task An_agent_switches_to_the_offered_https_address_after_a_job_and_keeps_the_installed_one()
+    {
+        var agents = _app.Services.GetRequiredService<AgentService>();
+        var runner = _app.Services.GetRequiredService<RunnerPackage>();
+        var directory = Path.Combine(_app.DataDirectory, "agent-https");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, AgentProtocol.ConfigFile),
+            JobJson.Serialize(new AgentConfig { ServerUrl = "http://localhost", EnrollmentToken = await agents.GetEnrollmentTokenAsync() }));
+        File.WriteAllText(Path.Combine(directory, AgentProtocol.VersionFile), runner.For(RunnerRuntimes.Framework)!.Hash);
+        // Der Testserver beantwortet jede Adresse; über https:// gilt die Anfrage als HTTPS.
+        agents.OfferHttps("https://inventory.example.test:5101", ["cGlu"]);
+
+        var loop = new AgentLoop(new FakePlatform(directory, "AGENT-03", RunnerRuntimes.Framework), _app.Server.CreateHandler());
+        var thread = new Thread(loop.Run) { IsBackground = true };
+        thread.Start();
+        try
+        {
+            var factory = _app.Services.GetRequiredService<IDbContextFactory<Inventory.Data.InventoryDbContext>>();
+            async Task<Inventory.Core.Model.Computer?> Load()
+            {
+                await using var db = await factory.CreateDbContextAsync();
+                return await db.Computers.AsNoTracking().FirstOrDefaultAsync(c => c.Name == "AGENT-03" && c.AgentKeyHash != null);
+            }
+            // Die erste Abfrage kommt über die Adresse aus der Installation, also HTTP.
+            for (var i = 0; i < 100 && (await Load())?.AgentHttps is null; i++)
+                await Task.Delay(100);
+            var computer = (await Load())!;
+            Assert.False(computer.AgentHttps);
+
+            // Nach dem Job prüft der Agent die angebotene Adresse und wechselt.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            Assert.True((await _app.Services.GetRequiredService<ScanService>().ScanAsync(computer.Id, timeout.Token)).Success);
+            for (var i = 0; i < 100 && (await Load())!.AgentHttps != true; i++)
+                await Task.Delay(100);
+            Assert.True((await Load())!.AgentHttps);
+            var config = JobJson.Deserialize<AgentConfig>(File.ReadAllText(Path.Combine(directory, AgentProtocol.ConfigFile)))!;
+            Assert.Equal(("http://localhost", "https://inventory.example.test:5101"), (config.ServerUrl, config.SecureUrl));
+            Assert.Equal(["cGlu"], config.CertificatePins!);
+            Assert.Contains("Verbindung zum Server jetzt über https://inventory.example.test:5101.", File.ReadAllText(Path.Combine(directory, "agent.log")));
+
+            // Über HTTPS weiter Jobs.
+            Assert.True((await _app.Services.GetRequiredService<ScanService>().ScanAsync(computer.Id, timeout.Token)).Success);
+        }
+        finally
+        {
+            agents.OfferHttps(null, []);
+            loop.Stop();
+            Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "The agent loop did not stop.");
+        }
+    }
+
+    [Fact]
+    public void The_https_address_is_used_until_it_fails_repeatedly_then_both_take_turns()
+    {
+        var config = new AgentConfig { ServerUrl = "http://inventory:5100/", SecureUrl = "https://inventory:5101/" };
+        Assert.Equal(["https://inventory:5101", "https://inventory:5101", "https://inventory:5101", "http://inventory:5100", "http://inventory:5100",
+            "http://inventory:5100", "https://inventory:5101"], Enumerable.Range(0, 7).Select(f => AgentLoop.ChooseUrl(config, f)));
+        Assert.Equal("http://inventory:5100", AgentLoop.ChooseUrl(new AgentConfig { ServerUrl = "http://inventory:5100" }, 0));
     }
 }

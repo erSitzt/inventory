@@ -157,7 +157,9 @@ else if (_computer.ReverseDnsMismatch)
                         }
                         @Row(L["Memory"], Display.Bytes(_computer.MemoryBytes))
                         @Row(L["Collections"], string.Join(", ", _computer.Collections.Select(c => c.Name)))
-                        @Row(L["Agent"], _computer.AgentKeyHash is null ? L["not installed"] : L["Version {0}, last contact {1}", _computer.AgentVersion, Display.LocalTime(_computer.AgentLastSeenUtc)])
+                        @Row(L["Agent"], _computer.AgentKeyHash is null ? L["not installed"]
+                            : L["Version {0}, last contact {1}", _computer.AgentVersion, Display.LocalTime(_computer.AgentLastSeenUtc)]
+                              + (_computer.AgentHttps is { } secure ? ", " + (secure ? L["over HTTPS"] : L["over HTTP"]) : ""))
                         @Row(L["Description"], _computer.Description)
                         @Row(L["Owner"], _computer.Owner)
                         @Row(L["Location"], _computer.Location)

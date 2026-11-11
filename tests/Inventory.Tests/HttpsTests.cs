@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Inventory.Agent;
+using Inventory.Contracts;
 using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
 using Inventory.Data.Services;
@@ -372,6 +374,47 @@ public sealed class HttpsTests : IDisposable
         await app.StopAsync();
     }
 
+    [Fact]
+    public async Task Agents_trust_the_certificate_of_the_server_by_its_pin_also_after_a_renewal()
+    {
+        var httpsPort = FreePort();
+        await _settings.SetAsync(SettingKeys.ServerHttpsPort, httpsPort.ToString());
+        var agents = new AgentService(_db, _settings, _clock);
+        var certificates = Service();
+        var https = Endpoint(certificates, $"http://127.0.0.1:{FreePort()}", agents: agents);
+        await https.PrepareAsync();
+        await using var app = await ServeAsync(https);
+
+        // Der Server bietet den Agenten Adresse und Pin an.
+        var pin = AgentProtocol.KeyPin(certificates.Certificate!);
+        Assert.Equal([pin], https.Pins);
+        Assert.Equal((https.Address, pin), (agents.Https!.Url, agents.Https.Pins.Single()));
+
+        async Task<string?> GetAsync(IReadOnlyCollection<string>? pins)
+        {
+            try
+            {
+                using var client = new HttpClient(AgentTls.Handler(pins));
+                return await client.GetStringAsync($"https://127.0.0.1:{httpsPort}/");
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+        }
+        Assert.Equal("HTTP/1.1 True", await GetAsync([pin]));
+        Assert.Null(await GetAsync(null));
+        Assert.Null(await GetAsync(["d3Jvbmc="]));
+
+        // Erneuert (neuer Name), aber mit demselben Schlüssel: der Pin gilt weiter.
+        var before = certificates.Certificate!.Thumbprint;
+        await _settings.SetAsync(SettingKeys.AgentServerUrl, "http://renamed.example.test:5100");
+        await certificates.RefreshAsync();
+        Assert.NotEqual(before, certificates.Certificate!.Thumbprint);
+        Assert.Equal("HTTP/1.1 True", await GetAsync([pin]));
+        await app.StopAsync();
+    }
+
     private static async Task<WebApplication> ServeAsync(HttpsEndpoint https)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
@@ -403,8 +446,8 @@ public sealed class HttpsTests : IDisposable
         new(_settings, new ReversingProtector(), _protection, _audit, _clock, NullLogger<ServerCertificateService>.Instance, _dataDirectory, _alerts,
             machineStore: () => [.. _store.Select(Copy)], trusted: c => !c.Subject.Contains("untrusted"));
 
-    private HttpsEndpoint Endpoint(ServerCertificateService certificates, string urls, Dictionary<string, string?>? extra = null) =>
-        new(certificates, _settings, Configuration(urls, extra), NullLogger<HttpsEndpoint>.Instance);
+    private HttpsEndpoint Endpoint(ServerCertificateService certificates, string urls, Dictionary<string, string?>? extra = null, AgentService? agents = null) =>
+        new(certificates, _settings, Configuration(urls, extra), NullLogger<HttpsEndpoint>.Instance, agents: agents);
 
     private static IConfiguration Configuration(string? urls, Dictionary<string, string?>? extra = null)
     {

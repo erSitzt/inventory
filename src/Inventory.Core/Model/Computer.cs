@@ -38,6 +38,8 @@ public class Computer
     public string? AgentKeyHash { get; set; }
     public string? AgentVersion { get; set; }
     public DateTime? AgentLastSeenUtc { get; set; }
+    /// <summary>Ob der Agent zuletzt über HTTPS kam; null = noch nicht bekannt (oder kein Agent).</summary>
+    public bool? AgentHttps { get; set; }
 
     /// <summary>
     /// MAC-Adresse für Wake-on-LAN, von Hand eingetragen; null = die Adapter des letzten Scans.

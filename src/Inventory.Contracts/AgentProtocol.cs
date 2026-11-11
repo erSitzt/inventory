@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Inventory.Contracts
 {
@@ -29,6 +32,26 @@ namespace Inventory.Contracts
         public const string MacAgentLabel = "inventory.agent";
         /// <summary>Ordner der noch nicht abgelieferten Ergebnisse im Agent-Ordner.</summary>
         public const string PendingFolder = "pending";
+        /// <summary>
+        /// Antwort-Kopfzeile auf <see cref="PollPath"/>: die HTTPS-Adresse des Servers. Ein Agent, der noch über HTTP (oder eine
+        /// andere Adresse) kommt, prüft sie mit <see cref="PingPath"/> und wechselt, wenn sie geht.
+        /// </summary>
+        public const string HttpsHeader = "X-Inventory-Https";
+        /// <summary>Antwort-Kopfzeile auf <see cref="PollPath"/>: Pins (<see cref="KeyPin"/>) des Serverzertifikats, durch Komma getrennt.</summary>
+        public const string PinsHeader = "X-Inventory-Pins";
+        /// <summary>Antwortet mit 204, wenn der Schlüssel des Agenten gilt; ändert nichts. Zum Prüfen einer neuen Adresse.</summary>
+        public const string PingPath = "api/agent/ping";
+
+        /// <summary>
+        /// Pin auf den Schlüssel eines Zertifikats: SHA-256 über den öffentlichen Schlüssel, Base64. Bleibt bei einer Erneuerung
+        /// mit demselben Schlüssel gleich. Damit vertraut ein Agent dem selbstsignierten Zertifikat des Servers, ohne dass es im
+        /// Zertifikatspeicher stehen muss.
+        /// </summary>
+        public static string KeyPin(X509Certificate2 certificate)
+        {
+            using (var sha = SHA256.Create())
+                return Convert.ToBase64String(sha.ComputeHash(certificate.PublicKey.EncodedKeyValue.RawData));
+        }
     }
 
     /// <summary>Betriebssystem-Familien der Agenten; Windows-Agenten melden keine (null).</summary>
@@ -59,9 +82,14 @@ namespace Inventory.Contracts
     /// <summary>Liegt als <see cref="AgentProtocol.ConfigFile"/> neben dem Agenten.</summary>
     public sealed class AgentConfig
     {
+        /// <summary>Die Adresse aus der Installation; bleibt als Rückfall, wenn <see cref="SecureUrl"/> nicht erreichbar ist.</summary>
         public string ServerUrl { get; set; } = "";
         /// <summary>Gemeinsames Geheimnis für die erste Anmeldung; danach nutzt der Agent seinen eigenen Schlüssel.</summary>
         public string EnrollmentToken { get; set; } = "";
+        /// <summary>HTTPS-Adresse des Servers, sobald der Agent sie nutzt (vom Server angeboten und geprüft, oder aus der Installation).</summary>
+        public string? SecureUrl { get; set; }
+        /// <summary>Pins (<see cref="AgentProtocol.KeyPin"/>) des Serverzertifikats: so gilt es auch ohne vertrauenswürdige Kette.</summary>
+        public List<string>? CertificatePins { get; set; }
     }
 
     public sealed class AgentEnrollRequest

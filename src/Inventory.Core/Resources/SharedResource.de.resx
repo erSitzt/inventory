@@ -2573,9 +2573,6 @@
   <data name="HTTPS port" xml:space="preserve">
     <value>HTTPS-Port</value>
   </data>
-  <data name="HTTPS recommended: over this connection the agent receives commands that it runs as Local System." xml:space="preserve">
-    <value>HTTPS empfohlen: Über diese Verbindung erhält der Agent Befehle, die er als Lokales System ausführt.</value>
-  </data>
   <data name="https://… – whoever knows the address can post to the channel, so it is stored encrypted." xml:space="preserve">
     <value>https://… – wer die Adresse kennt, kann in den Kanal schreiben; sie wird deshalb verschlüsselt gespeichert.</value>
   </data>
@@ -4186,6 +4183,12 @@
   </data>
   <data name="Outside your area (collections you may act on): {0}" xml:space="preserve">
     <value>Außerhalb Ihres Bereichs (Sammlungen, auf denen Sie handeln dürfen): {0}</value>
+  </data>
+  <data name="over HTTP" xml:space="preserve">
+    <value>über HTTP</value>
+  </data>
+  <data name="over HTTPS" xml:space="preserve">
+    <value>über HTTPS</value>
   </data>
   <data name="Overrides the detection, e.g. for devices that give little away." xml:space="preserve">
     <value>Überstimmt die Erkennung, z. B. bei Geräten, die wenig über sich verraten.</value>
@@ -6134,6 +6137,9 @@
   <data name="The Active Directory synchronization fails" xml:space="preserve">
     <value>Der Active-Directory-Abgleich schlägt fehl</value>
   </data>
+  <data name="The address agents are installed with. If the server offers HTTPS (see above), they switch to it by themselves and keep this one as a fallback." xml:space="preserve">
+    <value>Die Adresse, mit der Agenten installiert werden. Bietet der Server HTTPS an (siehe oben), wechseln sie von selbst dorthin und behalten diese als Rückfall.</value>
+  </data>
   <data name="The address must start with https://." xml:space="preserve">
     <value>Die Adresse muss mit https:// beginnen.</value>
   </data>
@@ -6160,6 +6166,9 @@
   </data>
   <data name="The browser does not allow copying here." xml:space="preserve">
     <value>Der Browser erlaubt hier kein Kopieren.</value>
+  </data>
+  <data name="The built-in HTTPS is switched off in appsettings.json (Inventory:Https:Enabled = false), e.g. because a reverse proxy handles TLS." xml:space="preserve">
+    <value>Das eingebaute HTTPS ist in appsettings.json abgeschaltet (Inventory:Https:Enabled = false), z. B. weil ein Reverse-Proxy TLS übernimmt.</value>
   </data>
   <data name="The certificate cannot be reloaded, the previous one stays active: {0}" xml:space="preserve">
     <value>Das Zertifikat lässt sich nicht neu laden, das bisherige bleibt aktiv: {0}</value>
@@ -7786,6 +7795,9 @@
   </data>
   <data name="{0} not in AD" xml:space="preserve">
     <value>{0} nicht im AD</value>
+  </data>
+  <data name="{0} of {1} agents connect over HTTPS. The others switch by themselves as soon as the address works for them – with the certificate pinned, also without trusting it." xml:space="preserve">
+    <value>{0} von {1} Agenten verbinden sich über HTTPS. Die übrigen wechseln von selbst, sobald die Adresse bei ihnen funktioniert – mit dem gepinnten Zertifikat auch, ohne ihm zu vertrauen.</value>
   </data>
   <data name="{0} of {1} columns" xml:space="preserve">
     <value>{0} von {1} Spalten</value>

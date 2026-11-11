@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
+using Inventory.Contracts;
 using Inventory.Core;
 using Inventory.Core.Model;
 using Inventory.Data.Services;
@@ -20,7 +21,7 @@ namespace Inventory.Server.Https;
 /// nach einem Neustart; Zertifikat, Adresse und Umleitung sofort.
 /// </summary>
 public sealed class HttpsEndpoint(ServerCertificateService certificates, SettingsService settings, IConfiguration configuration,
-    ILogger<HttpsEndpoint> logger, IStringLocalizer<SharedResource>? localizer = null)
+    ILogger<HttpsEndpoint> logger, IStringLocalizer<SharedResource>? localizer = null, AgentService? agents = null)
 {
     public const int DefaultPort = 5101;
     /// <summary>Name der Firewall-Regel; die des Setups für HTTP heißt "Inventory".</summary>
@@ -39,6 +40,9 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
     /// <summary>HTTPS steht in appsettings.json (Abschnitt Kestrel oder eine https-Adresse); die Einstellungen ändern daran nichts.</summary>
     public bool ManagedByConfiguration { get; private set; }
 
+    /// <summary>In appsettings.json abgeschaltet (Inventory:Https:Enabled = false), etwa hinter einem Reverse-Proxy.</summary>
+    public bool Disabled { get; private set; }
+
     /// <summary>Der Port, auf dem HTTPS seit dem Start läuft (oder laufen sollte).</summary>
     public int Port { get; private set; } = DefaultPort;
 
@@ -54,10 +58,23 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
     /// <summary>Browser, die über HTTP kommen, landen auf <see cref="Address"/>.</summary>
     public bool RedirectBrowsers { get; private set; }
 
+    /// <summary>
+    /// Pins (<see cref="AgentProtocol.KeyPin"/>) des aktiven Zertifikats für die Agenten: so nutzen sie HTTPS auch, wenn sie
+    /// der Kette nicht vertrauen (selbstsigniert, Macs ohne die Zertifizierungsstelle der Domäne). Leer ohne HTTPS.
+    /// </summary>
+    public IReadOnlyList<string> Pins => Active && certificates.Certificate is { } certificate ? [AgentProtocol.KeyPin(certificate)] : [];
+
     /// <summary>Einmal beim Start, nach der Migration der Datenbank und bevor Kestrel bindet.</summary>
     public async Task PrepareAsync(CancellationToken ct = default)
     {
         _prepared = true;
+        if (!configuration.GetValue($"{InventoryOptions.SectionName}:Https:Enabled", true))
+        {
+            Disabled = true;
+            await settings.SetAsync(SettingKeys.ServerHttpsActiveUrl, null, ct);
+            logger.LogInformation("The built-in HTTPS endpoint is switched off (Inventory:Https:Enabled)");
+            return;
+        }
         var httpUrls = HttpUrls(configuration);
         if (configuration.GetSection("Kestrel:Endpoints").GetChildren().Any() || httpUrls.Any(u => u.StartsWith("https:", StringComparison.OrdinalIgnoreCase)))
         {
@@ -105,6 +122,7 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
         var redirect = await settings.GetAsync(SettingKeys.ServerHttpsRedirect, ct);
         RedirectBrowsers = Active && (bool.TryParse(redirect, out var on) ? on : certificates.Source != ServerCertificateSource.SelfSigned);
         await settings.SetAsync(SettingKeys.ServerHttpsActiveUrl, Address, ct);
+        agents?.OfferHttps(Address, Pins);
     }
 
     /// <summary>Für Kestrel (beim Start des Servers): die HTTP-Adressen aus der Konfiguration und dazu HTTPS.</summary>

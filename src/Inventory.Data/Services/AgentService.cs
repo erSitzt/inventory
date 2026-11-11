@@ -21,6 +21,33 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
 
     public Task<string?> GetServerUrlAsync(CancellationToken ct = default) => settings.GetAsync(SettingKeys.AgentServerUrl, ct);
 
+    /// <summary>HTTPS-Adresse und Pins des Serverzertifikats, die Agenten angeboten werden.</summary>
+    public sealed record HttpsOffer(string Url, IReadOnlyList<string> Pins);
+
+    private volatile HttpsOffer? _https;
+
+    /// <summary>Was der Server den Agenten an HTTPS anbietet; null ohne HTTPS.</summary>
+    public HttpsOffer? Https => _https;
+
+    /// <summary>Setzt der HTTPS-Endpunkt des Servers, beim Start und bei jeder Änderung von Adresse oder Zertifikat.</summary>
+    public void OfferHttps(string? url, IReadOnlyList<string> pins) => _https = string.IsNullOrWhiteSpace(url) ? null : new HttpsOffer(url.TrimEnd('/'), pins);
+
+    /// <summary>
+    /// agent.json für eine neue Installation: die Adresse aus den Einstellungen und, wenn der Server HTTPS anbietet, dazu dessen
+    /// Adresse und Pins. Der Agent verbindet sich dann gleich über HTTPS und nimmt die eingetragene Adresse nur als Rückfall.
+    /// </summary>
+    private async Task<string> NewConfigAsync(string serverUrl, CancellationToken ct)
+    {
+        var https = _https;
+        return JobJson.Serialize(new AgentConfig
+        {
+            ServerUrl = serverUrl,
+            EnrollmentToken = await GetEnrollmentTokenAsync(ct),
+            SecureUrl = https is not null && !string.Equals(https.Url, serverUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ? https.Url : null,
+            CertificatePins = https is { Pins.Count: > 0 } ? [.. https.Pins] : null,
+        });
+    }
+
     public Task SetServerUrlAsync(string? url, CancellationToken ct = default) =>
         settings.SetAsync(SettingKeys.AgentServerUrl, string.IsNullOrWhiteSpace(url) ? null : url.Trim().TrimEnd('/'), ct);
 
@@ -113,7 +140,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
         var token = await GetEnrollmentTokenAsync(ct);
         static string Quote(string value) => "'" + value.Replace("'", "'\\''") + "'";
-        var config = JobJson.Serialize(new AgentConfig { ServerUrl = serverUrl, EnrollmentToken = token });
+        var config = await NewConfigAsync(serverUrl, ct);
         return $$"""
             #!/bin/bash
             # Inventory-Agent für macOS: installiert oder aktualisiert den Agenten als LaunchDaemon; --uninstall entfernt ihn.
@@ -268,7 +295,16 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         string.IsNullOrEmpty(runnerHash) ? version ?? "unbekannt" : $"{version} ({runnerHash[..Math.Min(8, runnerHash.Length)]})";
 
     /// <summary>Erkennt den Rechner am Agentenschlüssel und vermerkt den Kontakt; null bei unbekanntem Schlüssel.</summary>
-    public async Task<Computer?> AuthenticateAsync(string? key, string? version, CancellationToken ct = default)
+    /// <summary>Wie viele Rechner einen Agenten haben und wie viele davon zuletzt über HTTPS kamen.</summary>
+    public async Task<(int Agents, int Https)> CountConnectionsAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var agents = db.Computers.Where(c => c.AgentKeyHash != null);
+        return (await agents.CountAsync(ct), await agents.CountAsync(c => c.AgentHttps == true, ct));
+    }
+
+    /// <param name="https">Ob die Anfrage über HTTPS kam; null = nicht vermerken.</param>
+    public async Task<Computer?> AuthenticateAsync(string? key, string? version, CancellationToken ct = default, bool? https = null)
     {
         if (string.IsNullOrWhiteSpace(key))
             return null;
@@ -279,8 +315,10 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
             return null;
 
         var now = time.GetUtcNow().UtcDateTime;
-        if (computer.AgentLastSeenUtc is null || now - computer.AgentLastSeenUtc > SeenInterval || (version is not null && computer.AgentVersion != version))
+        if (computer.AgentLastSeenUtc is null || now - computer.AgentLastSeenUtc > SeenInterval || (version is not null && computer.AgentVersion != version)
+            || (https is not null && computer.AgentHttps != https))
         {
+            computer.AgentHttps = https ?? computer.AgentHttps;
             computer.AgentLastSeenUtc = now;
             computer.LastSeenUtc = now;
             computer.DirectoryInactive = false;
@@ -325,7 +363,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         if (string.IsNullOrWhiteSpace(serverUrl))
             throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
 
-        var config = JobJson.Serialize(new AgentConfig { ServerUrl = serverUrl, EnrollmentToken = await GetEnrollmentTokenAsync(ct) });
+        var config = await NewConfigAsync(serverUrl, ct);
         var script = $$"""
             $ErrorActionPreference = 'Stop'
             $dir = Join-Path $env:ProgramFiles 'Inventory Agent'
@@ -380,7 +418,7 @@ public sealed class AgentService(IDbContextFactory<InventoryDbContext> dbFactory
         var serverUrl = await GetServerUrlAsync(ct);
         if (string.IsNullOrWhiteSpace(serverUrl))
             throw new InvalidOperationException(L["Please enter the server address for agents under Settings first."]);
-        var config = JobJson.Serialize(new AgentConfig { ServerUrl = serverUrl, EnrollmentToken = await GetEnrollmentTokenAsync(ct) });
+        var config = await NewConfigAsync(serverUrl, ct);
 
         using var buffer = new MemoryStream();
         using (var zip = new System.IO.Compression.ZipArchive(buffer, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))

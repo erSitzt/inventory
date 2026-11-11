@@ -253,7 +253,7 @@
             @L["Optional: a permanently installed agent fetches jobs over an outbound connection – useful for computers the server cannot reach directly (notebooks on the road, other networks). It is installed via \"Computers → Actions → Install agent\". After a server update the agents update themselves on their next request."]
         </MudText>
         <MudTextField @bind-Value="_agentUrl" Label="@L["Address of this server as seen by the agents"]" Variant="Variant.Outlined" Margin="Margin.Dense"
-                      Placeholder="https://inventory.example.local:5100" HelperText="@L["HTTPS recommended: over this connection the agent receives commands that it runs as Local System."]" />
+                      Placeholder="https://inventory.example.local:5100" HelperText="@L["The address agents are installed with. If the server offers HTTPS (see above), they switch to it by themselves and keep this one as a fallback."]" />
         <MudTextField Value="_agentToken" Label="@L["Enrollment secret"]" Variant="Variant.Outlined" Margin="Margin.Dense" ReadOnly="true"
                       HelperText="@L["Passed along at installation. Renewing only blocks new enrollments; existing agents stay connected."]" />
         <MudStack Row="true">

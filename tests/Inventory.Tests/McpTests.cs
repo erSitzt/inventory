@@ -39,6 +39,8 @@ public sealed class McpTests : IClassFixture<McpTests.App>
             builder.UseSetting("Inventory:Oidc:ClientId", "inventory-tests");
             builder.UseSetting("Inventory:Oidc:AllowedGroups:0", "inventory-admins");
             builder.UseSetting("Inventory:Update:Enabled", "false");
+            // Kein eingebautes HTTPS: es hinge sonst davon ab, ob Port 5101 auf dem Testrechner frei ist.
+            builder.UseSetting("Inventory:Https:Enabled", "false");
             builder.UseEnvironment("Development");
         }
 

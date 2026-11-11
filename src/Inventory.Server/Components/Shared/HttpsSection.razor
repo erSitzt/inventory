@@ -1,6 +1,7 @@
 @using Inventory.Server.Https
 @inject HttpsEndpoint Https
 @inject ServerCertificateService Certificates
+@inject AgentService Agents
 @inject SettingsService Settings
 @inject Auditor Audit
 @inject Access Access
@@ -14,7 +15,13 @@
 <MudPaper id="https" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
     <MudStack Spacing="3">
         <MudText Typo="Typo.h6">HTTPS</MudText>
-        @if (Https.ManagedByConfiguration)
+        @if (Https.Disabled)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                @L["The built-in HTTPS is switched off in appsettings.json (Inventory:Https:Enabled = false), e.g. because a reverse proxy handles TLS."]
+            </MudAlert>
+        }
+        else if (Https.ManagedByConfiguration)
         {
             <MudAlert Severity="Severity.Info" Dense="true">
                 @L["HTTPS is set up in appsettings.json (section Kestrel or an https address under Urls). To manage it here instead, remove it there and restart Inventory."]
@@ -28,6 +35,12 @@
             @if (Https.Active)
             {
                 <MudAlert Severity="Severity.Success" Dense="true">@L["HTTPS is on:"] <MudLink Href="@Https.Address" Target="_blank"><b>@Https.Address</b></MudLink></MudAlert>
+                @if (_agents > 0)
+                {
+                    <MudText Typo="Typo.body2">
+                        @L["{0} of {1} agents connect over HTTPS. The others switch by themselves as soon as the address works for them – with the certificate pinned, also without trusting it.", _httpsAgents, _agents]
+                    </MudText>
+                }
             }
             else
             {
@@ -185,6 +198,8 @@
     private string? _password;
     private List<CertificateInfo> _candidates = [];
     private bool _busy;
+    private int _agents;
+    private int _httpsAgents;
 
     protected override async Task OnInitializedAsync()
     {
@@ -204,6 +219,7 @@
                 Logger.LogWarning("The certificate store cannot be read: {Message}", ex.Message);
             }
         }
+        (_agents, _httpsAgents) = await Agents.CountConnectionsAsync();
         Certificates.Changed += OnChanged;
     }
 
