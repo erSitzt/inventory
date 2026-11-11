@@ -242,40 +242,28 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
     internal static string? PortProblem(IPAddress? address, int port)
     {
         if (address is not null)
-        {
-            try
-            {
-                var listener = new TcpListener(address, port);
-                listener.Start();
-                listener.Stop();
-                return null;
-            }
-            catch (SocketException ex)
-            {
-                return ex.Message;
-            }
-        }
+            return BindProblem(address, port, dualMode: false);
+        // Erst IPv4 für sich: Windows bindet [::] (dual mode) auch dann, wenn ein anderes Programm 0.0.0.0 schon hält, und
+        // die IPv4-Verbindungen gingen weiter dorthin.
+        if (BindProblem(IPAddress.Any, port, dualMode: false) is { } ipv4)
+            return ipv4;
+        return Socket.OSSupportsIPv6 ? BindProblem(IPAddress.IPv6Any, port, dualMode: true) : null;
+    }
+
+    private static string? BindProblem(IPAddress address, int port, bool dualMode)
+    {
         try
         {
-            var listener = new TcpListener(IPAddress.IPv6Any, port);
-            listener.Server.DualMode = true;
+            var listener = new TcpListener(address, port);
+            if (dualMode)
+                listener.Server.DualMode = true;
             listener.Start();
             listener.Stop();
             return null;
         }
-        catch (SocketException ex) when (ex.SocketErrorCode is SocketError.AddressFamilyNotSupported or SocketError.ProtocolNotSupported)
+        catch (SocketException ex) when (dualMode && ex.SocketErrorCode is SocketError.AddressFamilyNotSupported or SocketError.ProtocolNotSupported)
         {
-            // Ohne IPv6 bindet Kestrel nur IPv4.
-        }
-        catch (SocketException ex)
-        {
-            return ex.Message;
-        }
-        try
-        {
-            var listener = new TcpListener(IPAddress.Any, port);
-            listener.Start();
-            listener.Stop();
+            // IPv6 abgeschaltet: Kestrel bindet dann nur IPv4, und das ist frei.
             return null;
         }
         catch (SocketException ex)
