@@ -273,6 +273,12 @@
         <div>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Custom.Brands.Apple" Href="/download/agent-macos" Target="_blank">@L["Download macOS install script"]</MudButton>
         </div>
+        <MudText Typo="Typo.body2">
+            @L["For Intune or Jamf the package is the better choice when Macs are not always in the office: it brings the agent for Apple Silicon and Intel along, so the Mac does not need to reach this server during installation. The agent enrolls as soon as it does (office, VPN). In Intune add it as \"macOS app (PKG)\" and set \"Ignore app version\" to Yes – the agent updates itself. The package is unsigned and meant for MDM, not for double-clicking. It contains the enrollment secret."]
+        </MudText>
+        <div>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Custom.Brands.Apple" Href="/download/agent-macos-pkg" Target="_blank">@L["Download macOS package (.pkg)"]</MudButton>
+        </div>
         <MudDivider />
         <MudText Typo="Typo.subtitle2">@L["Download page without sign-in"]</MudText>
         <MudText Typo="Typo.body2">

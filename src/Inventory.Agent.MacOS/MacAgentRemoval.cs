@@ -6,7 +6,7 @@ namespace Inventory.Agent.MacOS;
 /// <summary>
 /// Entfernt den Mac-Agenten auf Anweisung des Servers. Der Agent kann sich nicht selbst beenden und zugleich sein Ergebnis
 /// melden: ein abgekoppeltes Skript wartet, bis das Ergebnis dieses Auftrags abgelegt und dann abgeliefert ist (ohne Frist:
-/// sonst wüsste der Server nie davon), löscht Ordner und plist und entlädt zuletzt den LaunchDaemon – das beendet auch den
+/// sonst wüsste der Server nie davon), löscht Ordner, plist und Paketbeleg und entlädt zuletzt den LaunchDaemon – das beendet auch den
 /// Agenten, und launchd startet ihn nicht wieder. Wird das Ergebnis gar nicht abgelegt, bleibt der Agent.
 /// </summary>
 internal static class MacAgentRemoval
@@ -27,6 +27,8 @@ internal static class MacAgentRemoval
         done
         rm -f '/Library/LaunchDaemons/{{AgentProtocol.MacAgentLabel}}.plist'
         rm -rf "$1"
+        # Kam der Agent per Installationspaket, verbucht macOS das Paket noch als installiert.
+        pkgutil --forget {{AgentProtocol.MacAgentLabel}} >/dev/null 2>&1 || true
         launchctl bootout system/{{AgentProtocol.MacAgentLabel}}
         """;
 

@@ -568,7 +568,7 @@ deployment is cancelled in the meantime, a continuation that already ran is not 
 | Running a job | The job manifest arrives with the poll answer; package files are fetched one by one (`GET /api/agent/jobs/{id}/files/{n}`) into a per-job folder below the agent folder. The same `JobExecutor` as in agentless mode runs the steps as Local System (or in the logged-on user's session for steps configured that way). Progress lines are posted every second (`POST …/progress`), the result at the end (`POST …/result`, up to 64 MB for large scans), then the job folder is deleted. |
 | Timeouts | If no agent picks up a job within 2 minutes the server marks the target as unreachable (deployments with "retry offline" try again later). While a job runs, the server waits for the sum of the step timeouts plus a margin. |
 | Self-update | The poll request contains the hash of the installed runner files. If the server ships a different runner (after a server update), the answer is an update offer instead of a job: the agent downloads all files into a staging folder first, then swaps them (running files are renamed to `*.old`, cleaned up on the next start), writes the new hash and exits with code 3 – the service recovery restarts it with the new files within seconds. Queued jobs wait meanwhile. |
-| Errors | On any error (server unreachable, invalid answer) the agent logs to `agent.log` and retries after 30 s, indefinitely. |
+| Errors | On any error (server unreachable, invalid answer) the agent logs to `agent.log` and retries after 30 s, indefinitely; the same error is logged at most once an hour. `agent.log` starts over at 1 MB, the previous one stays as `agent.log.1`. |
 
 **What the communication needs**
 
@@ -653,8 +653,8 @@ platform can be used in collections ("Platform = macOS") and reports.
 **Not yet for Macs:** commands, packages and deployments, macOS updates and remote access. Inventory skips Macs in these
 actions with a note, and the server refuses such jobs for Macs.
 
-**Installation** – run as root; the script downloads the agent for the Mac's architecture from the server, installs it
-to `/Library/Application Support/Inventory Agent` (readable by root only) and starts it as the LaunchDaemon
+**Installation** – the install script or the installer package puts the agent for the Mac's architecture into
+`/Library/Application Support/Inventory Agent` (readable by root only) and starts it as the LaunchDaemon
 `inventory.agent`:
 
 - **By hand:** open the download page (*Settings → Agents → Download page without sign-in*) and run the command shown
@@ -662,9 +662,18 @@ to `/Library/Application Support/Inventory Agent` (readable by root only) and st
   administrator rights on the Mac; a standard user cannot install the agent this way.
 - **By MDM:** *Settings → Agents → Download macOS install script* and assign it as a shell script (Intune: *Devices →
   macOS → Scripts*, run as root; Jamf: a policy with the script). The script contains the enrollment secret and fetches
-  the agent with it, so the download page does not have to be open.
+  the agent with it, so the download page does not have to be open. The Mac has to reach the server while the script
+  runs.
+- **By MDM, also for Macs outside the office:** *Settings → Agents → Download macOS package (.pkg)*. The package brings
+  the agent for Apple Silicon and Intel along and installs without a connection to the server; the agent enrolls as soon
+  as the Mac reaches the server (office, VPN) and retries every 30 seconds until then. Intune: *Apps → macOS → macOS app
+  (PKG)*, *Ignore app version* = Yes (the agent updates itself); Jamf: a policy with the package. The package is not
+  signed: it is meant for MDM, which installs it with `installer`; Gatekeeper blocks it on a double-click. It contains
+  the enrollment secret – renewing the secret locks out Macs that received the package but have not enrolled yet.
 - **Removing:** *Remove agent* in *Edit computer* or as an action for several computers; by hand the same script with
-  `--uninstall` (e.g. `curl … | sudo bash -s -- --uninstall`), then *Forget agent* in *Edit computer*.
+  `--uninstall` (e.g. `curl … | sudo bash -s -- --uninstall`), then *Forget agent* in *Edit computer*. Both also remove
+  the package receipt; if the Mac is still assigned the package as *Required* in Intune, Intune installs it again, so
+  remove the assignment first.
 
 A Mac enrolls under its local host name (`scutil --get LocalHostName`, e.g. `Maxs-MacBook-Pro`) and is found again by its
 serial number, also after a rename. It never takes over the entry of a Windows computer with the same name; such an

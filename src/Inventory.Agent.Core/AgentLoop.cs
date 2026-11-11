@@ -38,6 +38,14 @@ namespace Inventory.Agent
         /// </summary>
         private static readonly TimeSpan RemovalLimit = TimeSpan.FromMinutes(10);
 
+        /// <summary>
+        /// Ohne Server (ein Notebook unterwegs) scheitert jeder Versuch gleich: dieselbe Meldung steht nur einmal je Stunde im
+        /// Protokoll, sonst bestünde es nach Wochen nur noch aus ihr.
+        /// </summary>
+        private static readonly TimeSpan RepeatedErrorInterval = TimeSpan.FromHours(1);
+        private string? _lastError;
+        private DateTime _lastErrorLogged;
+
         /// <param name="handler">Nur für Tests: statt einer echten Verbindung zum Server.</param>
         public AgentLoop(IAgentPlatform platform, HttpMessageHandler? handler = null)
         {
@@ -75,7 +83,12 @@ namespace Inventory.Agent
                 }
                 catch (Exception ex) when (!_stop.IsCancellationRequested)
                 {
-                    Log("Fehler: " + ex.Message);
+                    if (ex.Message != _lastError || DateTime.UtcNow - _lastErrorLogged >= RepeatedErrorInterval)
+                    {
+                        Log("Fehler: " + ex.Message);
+                        _lastError = ex.Message;
+                        _lastErrorLogged = DateTime.UtcNow;
+                    }
                     _stop.Token.WaitHandle.WaitOne(RetryDelay);
                 }
                 catch (Exception) when (_stop.IsCancellationRequested)
@@ -124,7 +137,10 @@ namespace Inventory.Agent
                 using (var response = _http.PostAsync(AgentProtocol.PollPath, Json(new AgentPollRequest { Version = _version, RunnerHash = InstalledHash(), Runtime = _platform.Runtime }), _stop.Token).GetAwaiter().GetResult())
                 {
                     if (response.StatusCode == HttpStatusCode.NoContent)
+                    {
+                        _lastError = null;
                         continue;
+                    }
                     if (response.StatusCode == HttpStatusCode.Unauthorized)
                     {
                         // Der Server kennt den Schlüssel nicht mehr (Rechner dort gelöscht): neu anmelden.
@@ -132,6 +148,7 @@ namespace Inventory.Agent
                         throw new InvalidOperationException("Schlüssel vom Server abgelehnt, melde neu an");
                     }
                     response.EnsureSuccessStatusCode();
+                    _lastError = null;
                     var offer = JobJson.Deserialize<AgentJobOffer>(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
                     if (offer.Update != null)
                         ApplyUpdate(offer.Update);
@@ -551,13 +568,28 @@ namespace Inventory.Agent
 
         private static StringContent Json<T>(T value) => new StringContent(JobJson.Serialize(value), Encoding.UTF8, "application/json");
 
-        private void Log(string message)
+        private void Log(string message) => AppendLog(Path.Combine(_baseDir, LogFile), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}");
+
+        public const string LogFile = "agent.log";
+
+        /// <summary>Ab dieser Größe beginnt das Protokoll neu; das bisherige bleibt als agent.log.1 (eines, das ältere fällt weg).</summary>
+        public const long MaxLogBytes = 1024 * 1024;
+
+        /// <summary>Hängt eine Zeile an das Protokoll an und beginnt es neu, wenn es zu groß geworden ist.</summary>
+        public static void AppendLog(string path, string line, long maxBytes = MaxLogBytes)
         {
             try
             {
-                File.AppendAllText(Path.Combine(_baseDir, "agent.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+                var file = new FileInfo(path);
+                if (file.Exists && file.Length >= maxBytes)
+                {
+                    var previous = path + ".1";
+                    File.Delete(previous);
+                    File.Move(path, previous);
+                }
+                File.AppendAllText(path, line + Environment.NewLine);
             }
-            catch (IOException)
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
             }
         }
