@@ -290,6 +290,11 @@ public class MacAgentTests
         Assert.Contains("set -euo pipefail", script);
         Assert.DoesNotContain("codesign --force --sign - \"$DOWNLOAD\" >/dev/null 2>&1 || true", script);
         Assert.Contains("--uninstall", script);
+        // Apple Silicon auch unter Rosetta erkennen; beim Entfernen auch den Beleg eines Installationspakets vergessen.
+        Assert.Contains("sysctl -n hw.optional.arm64", script);
+        Assert.Contains($"pkgutil --forget {AgentProtocol.MacAgentLabel}", script);
+        Assert.DoesNotContain("\r", script);
+        Bash.AssertSyntax(script);
     }
 
     [Fact]
@@ -302,6 +307,9 @@ public class MacAgentTests
         var bootout = script.IndexOf($"launchctl bootout system/{AgentProtocol.MacAgentLabel}", StringComparison.Ordinal);
         // Erst warten, dann löschen, zuletzt entladen: das Entladen beendet auch dieses Skript.
         Assert.True(wait > 0 && removeFiles > wait && bootout > removeFiles, script);
+        var forget = script.IndexOf($"pkgutil --forget {AgentProtocol.MacAgentLabel}", StringComparison.Ordinal);
+        Assert.True(forget > removeFiles && bootout > forget, script);
+        Bash.AssertSyntax(script);
         Assert.Contains($"rm -f '/Library/LaunchDaemons/{AgentProtocol.MacAgentLabel}.plist'", script);
     }
 

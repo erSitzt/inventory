@@ -1901,6 +1901,9 @@
   <data name="Download macOS install script" xml:space="preserve">
     <value>macOS-Installationsskript herunterladen</value>
   </data>
+  <data name="Download macOS package (.pkg)" xml:space="preserve">
+    <value>macOS-Paket (.pkg) herunterladen</value>
+  </data>
   <data name="Download page" xml:space="preserve">
     <value>Download-Seite</value>
   </data>
@@ -2335,6 +2338,9 @@
   </data>
   <data name="For every host the cores to license are counted (physical cores with the minimums) and the VMs it must cover: its own, or all of its cluster if the VMs move." xml:space="preserve">
     <value>Für jeden Host werden die zu lizenzierenden Kerne gezählt (physische Kerne mit den Mindestmengen) und die VMs, die er abdecken muss: seine eigenen oder, wenn die VMs wandern, alle seines Clusters.</value>
+  </data>
+  <data name="For Intune or Jamf the package is the better choice when Macs are not always in the office: it brings the agent for Apple Silicon and Intel along, so the Mac does not need to reach this server during installation. The agent enrolls as soon as it does (office, VPN). In Intune add it as &quot;macOS app (PKG)&quot; and set &quot;Ignore app version&quot; to Yes – the agent updates itself. The package is unsigned and meant for MDM, not for double-clicking. It contains the enrollment secret." xml:space="preserve">
+    <value>Für Intune oder Jamf ist das Paket die bessere Wahl, wenn Macs nicht immer im Büro sind: Es bringt den Agenten für Apple Silicon und Intel mit, der Mac muss diesen Server bei der Installation also nicht erreichen. Der Agent meldet sich an, sobald er ihn erreicht (Büro, VPN). In Intune als „macOS-App (PKG)“ hinzufügen und „App-Version ignorieren“ auf Ja stellen – der Agent aktualisiert sich selbst. Das Paket ist unsigniert und für die Verteilung per MDM gedacht, nicht zum Doppelklicken. Es enthält das Anmeldegeheimnis.</value>
   </data>
   <data name="For scripts and other programs that use the REST API without a browser login. A token has full access to the API – like a signed-in user. Example call:" xml:space="preserve">
     <value>Für Skripte und andere Programme, die die REST-API ohne Browser-Anmeldung nutzen. Ein Token hat vollen Zugriff auf die API – wie ein angemeldeter Benutzer. Aufruf z. B.:</value>
@@ -6685,6 +6691,9 @@
   </data>
   <data name="This report does not exist (any more)." xml:space="preserve">
     <value>Diesen Bericht gibt es nicht (mehr).</value>
+  </data>
+  <data name="This server does not include the macOS agent." xml:space="preserve">
+    <value>Dieser Server bringt den macOS-Agenten nicht mit.</value>
   </data>
   <data name="This setup installs into the user profile only. The step therefore runs in the context of the logged-on user and needs a logged-on session on the target computer." xml:space="preserve">
     <value>Dieses Setup installiert nur ins Benutzerprofil. Der Schritt läuft deshalb im Kontext des angemeldeten Benutzers und braucht eine angemeldete Sitzung am Zielrechner.</value>
