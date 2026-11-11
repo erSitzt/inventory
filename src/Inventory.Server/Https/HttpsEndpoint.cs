@@ -71,7 +71,7 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
             ? port : DefaultPort;
         if (httpUrls.Any(u => PortOf(u) == Port))
             Problem = L["Port {0} is already used for HTTP.", Port];
-        else if (Scope(httpUrls).Select(a => PortProblem(a, Port)).FirstOrDefault(p => p is not null) is { } busy)
+        else if (Scope(httpUrls).Select(b => PortProblem(b, Port)).FirstOrDefault(p => p is not null) is { } busy)
             Problem = L["Port {0} cannot be used: {1}", Port, busy];
         else
         {
@@ -122,14 +122,14 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
         foreach (var url in httpUrls)
             Listen(kestrel, url);
         // HTTPS auf denselben Adressen wie HTTP: wer HTTP auf localhost oder eine Adresse beschränkt, meint HTTPS mit.
-        foreach (var address in Scope(httpUrls))
+        foreach (var binding in Scope(httpUrls))
         {
-            if (address is null)
-                kestrel.ListenAnyIP(Port, UseHttps);
-            else if (IPAddress.IsLoopback(address))
+            if (binding.Localhost)
                 kestrel.ListenLocalhost(Port, UseHttps);
+            else if (binding.Address is null)
+                kestrel.ListenAnyIP(Port, UseHttps);
             else
-                kestrel.Listen(address, Port, UseHttps);
+                kestrel.Listen(binding.Address, Port, UseHttps);
         }
     }
 
@@ -147,37 +147,49 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
         });
     }
 
-    /// <summary>
-    /// Wo HTTPS lauscht, abgeleitet aus den HTTP-Adressen: null = alle Adressen (*, +, Namen), <see cref="IPAddress.Loopback"/>
-    /// für localhost, sonst die eingetragenen Adressen. Lauscht HTTP irgendwo auf allen, dann HTTPS auch.
-    /// </summary>
-    internal static List<IPAddress?> Scope(IEnumerable<string> httpUrls)
+    /// <summary>Wo HTTPS lauscht: auf allen Adressen, auf localhost (beide Loopback-Adressen) oder auf einer bestimmten Adresse.</summary>
+    internal readonly record struct Binding(IPAddress? Address, bool Localhost = false)
     {
-        var addresses = new List<IPAddress?>();
+        public static readonly Binding AnyAddress = new(null);
+        public static readonly Binding Loopback = new(null, Localhost: true);
+    }
+
+    /// <summary>
+    /// Wo HTTPS lauscht, abgeleitet aus den HTTP-Adressen: * , + und Namen = alle Adressen, localhost = beide Loopback-Adressen,
+    /// eine IP genau diese. Lauscht HTTP irgendwo auf allen, dann HTTPS auch.
+    /// </summary>
+    internal static List<Binding> Scope(IEnumerable<string> httpUrls)
+    {
+        var bindings = new List<Binding>();
         foreach (var url in httpUrls)
         {
-            BindingAddress binding;
+            BindingAddress parsed;
             try
             {
-                binding = BindingAddress.Parse(url);
+                parsed = BindingAddress.Parse(url);
             }
             catch (FormatException)
             {
                 continue;
             }
-            if (binding.IsUnixPipe)
+            if (parsed.IsUnixPipe)
                 continue;
-            IPAddress? address = binding.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ? IPAddress.Loopback
-                : IPAddress.TryParse(binding.Host.Trim('[', ']'), out var ip) && !ip.Equals(IPAddress.Any) && !ip.Equals(IPAddress.IPv6Any) ? ip
-                : null;
-            if (address is null)
-                return [null];
-            if (IPAddress.IsLoopback(address))
-                address = IPAddress.Loopback;
-            if (!addresses.Contains(address))
-                addresses.Add(address);
+            Binding binding;
+            if (parsed.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+                binding = Binding.Loopback;
+            else if (IPAddress.TryParse(parsed.Host.Trim('[', ']'), out var ip) && !ip.Equals(IPAddress.Any) && !ip.Equals(IPAddress.IPv6Any))
+                binding = new Binding(ip);
+            else
+                return [Binding.AnyAddress];
+            if (!bindings.Contains(binding))
+                bindings.Add(binding);
         }
-        return addresses.Count == 0 ? [null] : addresses;
+        if (bindings.Count == 0)
+            return [Binding.AnyAddress];
+        // localhost deckt die einzelnen Loopback-Adressen ab; doppelt gebunden schlüge der Start fehl.
+        if (bindings.Contains(Binding.Loopback))
+            bindings.RemoveAll(b => b.Address is not null && IPAddress.IsLoopback(b.Address));
+        return bindings;
     }
 
     /// <summary>Wohin eine Anfrage umgeleitet wird; null = keine Umleitung.</summary>
@@ -238,11 +250,14 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
     }
 
     /// <summary>null, wenn sich der Port binden lässt, sonst warum nicht (belegt, von Windows reserviert).</summary>
-    /// <param name="address">null = alle Adressen; sonst nur dort, damit Windows für eine lokale Adresse nicht nach der Firewall fragt.</param>
-    internal static string? PortProblem(IPAddress? address, int port)
+    /// <param name="binding">Nur dort prüfen, wo HTTPS lauschen wird; so fragt Windows für eine lokale Adresse nicht nach der Firewall.</param>
+    internal static string? PortProblem(Binding binding, int port)
     {
-        if (address is not null)
-            return BindProblem(address, port, dualMode: false);
+        if (binding.Localhost)
+            return BindProblem(IPAddress.Loopback, port, dualMode: false)
+                   ?? (Socket.OSSupportsIPv6 ? BindProblem(IPAddress.IPv6Loopback, port, dualMode: false, ignoreMissingIpv6: true) : null);
+        if (binding.Address is not null)
+            return BindProblem(binding.Address, port, dualMode: false);
         // Erst IPv4 für sich: Windows bindet [::] (dual mode) auch dann, wenn ein anderes Programm 0.0.0.0 schon hält, und
         // die IPv4-Verbindungen gingen weiter dorthin.
         if (BindProblem(IPAddress.Any, port, dualMode: false) is { } ipv4)
@@ -250,7 +265,7 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
         return Socket.OSSupportsIPv6 ? BindProblem(IPAddress.IPv6Any, port, dualMode: true) : null;
     }
 
-    private static string? BindProblem(IPAddress address, int port, bool dualMode)
+    private static string? BindProblem(IPAddress address, int port, bool dualMode, bool ignoreMissingIpv6 = false)
     {
         try
         {
@@ -261,7 +276,8 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
             listener.Stop();
             return null;
         }
-        catch (SocketException ex) when (dualMode && ex.SocketErrorCode is SocketError.AddressFamilyNotSupported or SocketError.ProtocolNotSupported)
+        catch (SocketException ex) when ((dualMode || ignoreMissingIpv6) && ex.SocketErrorCode is SocketError.AddressFamilyNotSupported or SocketError.ProtocolNotSupported
+                                         or SocketError.AddressNotAvailable)
         {
             // IPv6 abgeschaltet: Kestrel bindet dann nur IPv4, und das ist frei.
             return null;
@@ -316,7 +332,9 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
 
     /// <summary>
     /// Als Dienst: die Regel für den HTTPS-Port anlegen oder auf den aktuellen Port setzen, aber nur, wenn das Setup die
-    /// Regel für HTTP angelegt hat (also nicht mit /NOFIREWALL installiert wurde). Eine passende Regel bleibt unangetastet.
+    /// Regel für HTTP angelegt hat (also nicht mit /NOFIREWALL installiert wurde). Woanders steht das nicht: das Setup schreibt
+    /// die Konfiguration nur bei der ersten Installation. Erkannt wird die Regel daher an Name und HTTP-Port, wie das Setup sie
+    /// anlegt; eine gleichnamige Regel für etwas anderes zählt nicht. Eine passende HTTPS-Regel bleibt unangetastet.
     /// </summary>
     private async Task EnsureFirewallRuleAsync()
     {
@@ -324,11 +342,11 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
             return;
         try
         {
-            if ((await NetshAsync($"advfirewall firewall show rule name=\"{InstallerFirewallRule}\"")).ExitCode != 0)
+            var installer = await NetshAsync($"advfirewall firewall show rule name=\"{InstallerFirewallRule}\"");
+            if (installer.ExitCode != 0 || !HttpUrls(configuration).Select(PortOf).OfType<int>().Any(p => MentionsPort(installer.Output, p)))
                 return;
             var existing = await NetshAsync($"advfirewall firewall show rule name=\"{FirewallRule}\"");
-            // Die Ausgabe ist übersetzt ("LocalPort"/"Lokaler Port"); die Portnummer als eigenes Wort genügt.
-            if (existing.ExitCode == 0 && Regex.IsMatch(existing.Output, $@"(?<![\d]){Port}(?![\d])"))
+            if (existing.ExitCode == 0 && MentionsPort(existing.Output, Port))
                 return;
             if (existing.ExitCode == 0)
                 await NetshAsync($"advfirewall firewall delete rule name=\"{FirewallRule}\"");
@@ -343,6 +361,9 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
             logger.LogWarning("Firewall rule for HTTPS could not be created: {Message}", ex.Message);
         }
     }
+
+    /// <summary>Die Ausgabe von netsh ist übersetzt ("LocalPort"/"Lokaler Port"); die Portnummer als eigenes Wort genügt.</summary>
+    internal static bool MentionsPort(string netshOutput, int port) => Regex.IsMatch(netshOutput, $@"(?<!\d){port}(?!\d)");
 
     private static async Task<(int ExitCode, string Output)> NetshAsync(string arguments)
     {

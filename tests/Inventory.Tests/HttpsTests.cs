@@ -211,6 +211,24 @@ public sealed class HttpsTests : IDisposable
     }
 
     [Fact]
+    public async Task An_undecryptable_stored_password_does_not_stop_the_start()
+    {
+        using var certificate = Certificate(Name, _clock.Now.AddDays(-1), _clock.Now.AddDays(90));
+        var pfx = Path.Combine(_dataDirectory, "inventory.pfx");
+        await File.WriteAllBytesAsync(pfx, certificate.Export(X509ContentType.Pkcs12, "geheim"));
+        await _settings.SetAsync(SettingKeys.ServerCertificateSource, nameof(ServerCertificateSource.File));
+        await _settings.SetAsync(SettingKeys.ServerCertificateFile, pfx);
+        await _settings.SetAsync(SettingKeys.ServerCertificatePassword, "von einem anderen Rechner");
+        var service = new ServerCertificateService(_settings, new BrokenProtector(), _protection, _audit, _clock, NullLogger<ServerCertificateService>.Instance,
+            _dataDirectory, _alerts);
+
+        await service.InitializeAsync();
+        Assert.Equal(ServerCertificateSource.SelfSigned, service.Source);
+        Assert.NotNull(service.Problem);
+        Assert.Null((await service.ReadChoiceAsync(includePassword: true)).Password);
+    }
+
+    [Fact]
     public async Task Port_address_and_redirect_follow_the_settings_and_scripts_are_never_redirected()
     {
         var port = FreePort();
@@ -275,13 +293,20 @@ public sealed class HttpsTests : IDisposable
         Assert.Equal(new List<string> { "http://*:8080" }, HttpsEndpoint.HttpUrls(Configuration(null, new() { ["http_ports"] = "8080" })));
         Assert.Equal(new List<string> { "http://localhost:5000" }, HttpsEndpoint.HttpUrls(Configuration(null)));
 
-        // HTTPS lauscht dort, wo HTTP lauscht.
-        Assert.Equal(new List<IPAddress?> { null }, HttpsEndpoint.Scope(["http://*:5100"]));
-        Assert.Equal(new List<IPAddress?> { null }, HttpsEndpoint.Scope(["http://0.0.0.0:5100"]));
-        Assert.Equal(new List<IPAddress?> { null }, HttpsEndpoint.Scope(["http://srv-inventory:5100"]));
-        Assert.Equal(new List<IPAddress?> { null }, HttpsEndpoint.Scope(["http://localhost:5102", "http://+:5100"]));
-        Assert.Equal(new List<IPAddress?> { IPAddress.Loopback }, HttpsEndpoint.Scope(["http://localhost:5102", "http://[::1]:5103"]));
-        Assert.Equal(new List<IPAddress?> { IPAddress.Loopback, IPAddress.Parse("10.1.2.3") }, HttpsEndpoint.Scope(["http://127.0.0.1:5100", "http://10.1.2.3:5100"]));
+        // HTTPS lauscht dort, wo HTTP lauscht; eine bestimmte Adresse bleibt genau diese.
+        var any = new List<HttpsEndpoint.Binding> { HttpsEndpoint.Binding.AnyAddress };
+        Assert.Equal(any, HttpsEndpoint.Scope(["http://*:5100"]));
+        Assert.Equal(any, HttpsEndpoint.Scope(["http://0.0.0.0:5100"]));
+        Assert.Equal(any, HttpsEndpoint.Scope(["http://srv-inventory:5100"]));
+        Assert.Equal(any, HttpsEndpoint.Scope(["http://localhost:5102", "http://+:5100"]));
+        Assert.Equal([HttpsEndpoint.Binding.Loopback], HttpsEndpoint.Scope(["http://localhost:5102", "http://[::1]:5103", "http://127.0.0.1:5104"]));
+        Assert.Equal([new HttpsEndpoint.Binding(IPAddress.Loopback), new HttpsEndpoint.Binding(IPAddress.Parse("10.1.2.3"))],
+            HttpsEndpoint.Scope(["http://127.0.0.1:5100", "http://10.1.2.3:5100"]));
+        Assert.Equal([new HttpsEndpoint.Binding(IPAddress.IPv6Loopback)], HttpsEndpoint.Scope(["http://[::1]:5100"]));
+
+        // Die Regel des Setups erkennt der Server am HTTP-Port, auch in übersetzter Ausgabe von netsh.
+        Assert.True(HttpsEndpoint.MentionsPort("Lokaler Port:                         5100\r\n", 5100));
+        Assert.False(HttpsEndpoint.MentionsPort("LocalPort:                            51000\r\n", 5100));
     }
 
     [Fact]
@@ -459,6 +484,12 @@ public sealed class HttpsTests : IDisposable
     {
         public DateTimeOffset Now { get; set; } = now;
         public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private sealed class BrokenProtector : ISecretProtector
+    {
+        public string Protect(string plaintext) => plaintext;
+        public string Unprotect(string protectedValue) => throw new CryptographicException("The key was not found in the key ring.");
     }
 
     private sealed class Alerts : IAlertSink

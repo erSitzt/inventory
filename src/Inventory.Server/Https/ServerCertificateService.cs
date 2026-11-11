@@ -112,7 +112,17 @@ public sealed class ServerCertificateService
         var source = Enum.TryParse<ServerCertificateSource>(await _settings.GetAsync(SettingKeys.ServerCertificateSource, ct), out var s) ? s : ServerCertificateSource.SelfSigned;
         string? password = null;
         if (includePassword && await _settings.GetAsync(SettingKeys.ServerCertificatePassword, ct) is { Length: > 0 } stored)
-            password = _secrets.Unprotect(stored);
+        {
+            try
+            {
+                password = _secrets.Unprotect(stored);
+            }
+            catch (CryptographicException ex)
+            {
+                // Wie ein fehlendes Passwort: das Laden der Datei scheitert dann mit einer Meldung, beim Start greift das selbstsignierte.
+                _logger.LogWarning("The stored password of the certificate file cannot be decrypted: {Message}", ex.Message);
+            }
+        }
         return new CertificateChoice(source, await _settings.GetAsync(SettingKeys.ServerCertificateStoreName, ct), await _settings.GetAsync(SettingKeys.ServerCertificateFile, ct),
             await _settings.GetAsync(SettingKeys.ServerCertificateKeyFile, ct), password);
     }
