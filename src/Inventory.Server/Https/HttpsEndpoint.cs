@@ -16,9 +16,10 @@ using Microsoft.Extensions.Localization;
 namespace Inventory.Server.Https;
 
 /// <summary>
-/// HTTPS neben HTTP: ein eigener Port mit dem Zertifikat aus <see cref="ServerCertificateService"/>. Beim Start einmal
-/// vorbereitet (<see cref="PrepareAsync"/>), danach bindet Kestrel über <see cref="Configure"/>. Port und Ein/Aus wirken erst
-/// nach einem Neustart; Zertifikat, Adresse und Umleitung sofort.
+/// HTTPS neben HTTP: ein eigener Port mit dem Zertifikat aus <see cref="ServerCertificateService"/>. Kestrel übergibt seine
+/// Optionen schon in builder.Build() (<see cref="Configure"/>; WebApplication fragt dort den Server nach seinen Features), also
+/// vor der Migration der Datenbank. Die Endpunkte kommen deshalb erst mit <see cref="PrepareAsync"/> dazu; Kestrel bindet sie
+/// beim Start. Port und Ein/Aus wirken erst nach einem Neustart; Zertifikat, Adresse und Umleitung sofort.
 /// </summary>
 public sealed class HttpsEndpoint(ServerCertificateService certificates, SettingsService settings, IConfiguration configuration,
     ILogger<HttpsEndpoint> logger, IStringLocalizer<SharedResource>? localizer = null, AgentService? agents = null)
@@ -32,7 +33,10 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
     private static readonly string[] NotRedirected = ["/api", "/agent", "/mcp", "/download", "/_blazor", "/_framework", "/_content"];
 
     private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
+    private readonly Lock _bindLock = new();
+    private KestrelServerOptions? _kestrel;
     private bool _prepared;
+    private bool _bound;
 
     /// <summary>Kestrel lauscht auf <see cref="Port"/> mit HTTPS.</summary>
     public bool Active { get; private set; }
@@ -67,7 +71,6 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
     /// <summary>Einmal beim Start, nach der Migration der Datenbank und bevor Kestrel bindet.</summary>
     public async Task PrepareAsync(CancellationToken ct = default)
     {
-        _prepared = true;
         if (!configuration.GetValue($"{InventoryOptions.SectionName}:Https:Enabled", true))
         {
             Disabled = true;
@@ -105,6 +108,8 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
         }
         if (Problem is not null)
             logger.LogWarning("HTTPS is off: {Problem}", Problem);
+        _prepared = true;
+        Bind();
 
         await UpdateAsync(ct);
         certificates.Changed += () => _ = UpdateQuietlyAsync();
@@ -125,16 +130,31 @@ public sealed class HttpsEndpoint(ServerCertificateService certificates, Setting
         agents?.OfferHttps(Address, Pins);
     }
 
-    /// <summary>Für Kestrel (beim Start des Servers): die HTTP-Adressen aus der Konfiguration und dazu HTTPS.</summary>
+    /// <summary>Für Kestrel (ConfigureKestrel): merkt sich die Optionen; die Endpunkte trägt <see cref="Bind"/> ein.</summary>
     public void Configure(KestrelServerOptions kestrel)
     {
-        if (!_prepared)
+        lock (_bindLock)
+            _kestrel = kestrel;
+        Bind();
+    }
+
+    /// <summary>
+    /// Trägt die HTTP-Adressen aus der Konfiguration und dazu HTTPS in die Optionen von Kestrel ein, sobald beides da ist: die
+    /// Optionen und das Ergebnis von <see cref="PrepareAsync"/>. Ohne HTTPS bleibt alles bei den konfigurierten Adressen.
+    /// </summary>
+    private void Bind()
+    {
+        lock (_bindLock)
         {
-            logger.LogWarning("Kestrel was configured before HTTPS was prepared; HTTPS stays off");
-            return;
+            if (_bound || !_prepared || !Active || _kestrel is not { } kestrel)
+                return;
+            _bound = true;
+            BindTo(kestrel);
         }
-        if (!Active)
-            return;
+    }
+
+    private void BindTo(KestrelServerOptions kestrel)
+    {
         // Sobald Endpunkte im Code stehen, übergeht Kestrel die konfigurierten Adressen ("Urls"); also hier selbst binden.
         var httpUrls = HttpUrls(configuration);
         foreach (var url in httpUrls)
