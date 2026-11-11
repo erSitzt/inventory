@@ -38,6 +38,8 @@ public class AgentTests
             Assert.Equal(("http://inventory.example.local:5100", "https://inventory.example.local:5101"), (secure.ServerUrl, secure.SecureUrl));
             Assert.Equal(["cGlu"], secure.CertificatePins!);
             Assert.Contains("\"secureUrl\":\"https://inventory.example.local:5101\"", (await agents.BuildInstallJobAsync()).Manifest.Steps.Single().Script);
+            // Macs: Installationsskript und Paket nehmen dasselbe agent.json.
+            Assert.Contains("\"secureUrl\":\"https://inventory.example.local:5101\"", await agents.BuildMacInstallScriptAsync());
 
             // Ist die eingetragene Adresse schon die HTTPS-Adresse, braucht es keine zweite; die Pins kommen trotzdem mit.
             await agents.SetServerUrlAsync("https://inventory.example.local:5101");
