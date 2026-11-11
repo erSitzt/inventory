@@ -297,12 +297,7 @@ public sealed class HttpsTests : IDisposable
         await https.PrepareAsync();
         Assert.True(https.Active);
 
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
-        builder.WebHost.ConfigureKestrel(kestrel => https.Configure(kestrel));
-        await using var app = builder.Build();
-        app.UseMiddleware<HttpsRedirectMiddleware>(https);
-        app.MapGet("/", (HttpContext context) => $"{context.Request.Protocol} {context.Request.IsHttps}");
-        await app.StartAsync();
+        await using var app = await ServeAsync(https);
 
         using (var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }))
         {
@@ -322,6 +317,45 @@ public sealed class HttpsTests : IDisposable
         Assert.Null(await certificates.UploadAsync(next.Export(X509ContentType.Pkcs12, "pw"), "pw", "admin"));
         Assert.Equal(next.Thumbprint, (await GetOverTlsAsync(httpsPort)).Thumbprint);
         await app.StopAsync();
+    }
+
+    /// <summary>
+    /// Nur im Windows-Job der CI: ein Zertifikat im Speicher des Computers mit nicht exportierbarem Schlüssel, wie es
+    /// Autoenrollment ablegt, über Schannel ausgeliefert. Ohne die Umgebungsvariablen geschieht nichts.
+    /// </summary>
+    [Fact]
+    public async Task A_certificate_from_the_machine_store_of_windows_is_served_over_tls()
+    {
+        var name = Environment.GetEnvironmentVariable("INVENTORY_STORE_CERTIFICATE");
+        var thumbprint = Environment.GetEnvironmentVariable("INVENTORY_STORE_THUMBPRINT");
+        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(thumbprint) || !OperatingSystem.IsWindows())
+            return;
+        var httpsPort = FreePort();
+        await _settings.SetAsync(SettingKeys.ServerHttpsPort, httpsPort.ToString());
+        var certificates = new ServerCertificateService(_settings, new ReversingProtector(), _protection, _audit, TimeProvider.System,
+            NullLogger<ServerCertificateService>.Instance, _dataDirectory, _alerts);
+        var https = Endpoint(certificates, $"http://127.0.0.1:{FreePort()}");
+        await https.PrepareAsync();
+        await using var app = await ServeAsync(https);
+
+        Assert.Contains(certificates.StoreCandidates(), c => c.Thumbprint == thumbprint && c.KeyProblem is null);
+        Assert.Null(await certificates.ApplyAsync(new CertificateChoice(ServerCertificateSource.MachineStore, StoreName: name), "admin"));
+        Assert.Equal(thumbprint, certificates.Certificate!.Thumbprint);
+        var (text, served) = await GetOverTlsAsync(httpsPort);
+        Assert.Equal("HTTP/1.1 True", text);
+        Assert.Equal(thumbprint, served);
+        await app.StopAsync();
+    }
+
+    private static async Task<WebApplication> ServeAsync(HttpsEndpoint https)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
+        builder.WebHost.ConfigureKestrel(kestrel => https.Configure(kestrel));
+        var app = builder.Build();
+        app.UseMiddleware<HttpsRedirectMiddleware>(https);
+        app.MapGet("/", (HttpContext context) => $"{context.Request.Protocol} {context.Request.IsHttps}");
+        await app.StartAsync();
+        return app;
     }
 
     private static async Task<(string Text, string Thumbprint)> GetOverTlsAsync(int port)
