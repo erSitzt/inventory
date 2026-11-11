@@ -239,6 +239,8 @@ public sealed class PluginHostTests : IClassFixture<PluginHostTests.App>
             builder.UseSetting("Inventory:Simulate", "true");
             builder.UseSetting("Inventory:Authentication", "None");
             builder.UseSetting("Inventory:Update:Enabled", "false");
+            // Kein eingebautes HTTPS: es hinge sonst davon ab, ob Port 5101 auf dem Testrechner frei ist.
+            builder.UseSetting("Inventory:Https:Enabled", "false");
             builder.UseEnvironment("Development");
         }
 

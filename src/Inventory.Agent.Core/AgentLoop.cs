@@ -39,6 +39,19 @@ namespace Inventory.Agent
         private static readonly TimeSpan RemovalLimit = TimeSpan.FromMinutes(10);
 
         /// <summary>
+        /// So oft hintereinander darf die HTTPS-Adresse scheitern, dann versucht der Agent es mit der Adresse aus der Installation
+        /// (und nach weiteren Fehlschlägen wieder mit HTTPS). So bleibt er erreichbar, wenn sich Port oder Zertifikat ändern.
+        /// </summary>
+        public const int FailuresBeforeFallback = 3;
+        /// <summary>Eine angebotene HTTPS-Adresse, die nicht ging, prüft der Agent erst nach dieser Zeit wieder.</summary>
+        private static readonly TimeSpan ProbeInterval = TimeSpan.FromHours(1);
+        private int _failures;
+        private AgentConfig _config = null!;
+        private string _baseUrl = "";
+        private string _key = "";
+        private string? _probedUrl;
+        private DateTime _probedUtc;
+        /// <summary>
         /// Ohne Server (ein Notebook unterwegs) scheitert jeder Versuch gleich: dieselbe Meldung steht nur einmal je Stunde im
         /// Protokoll, sonst bestünde es nach Wochen nur noch aus ihr.
         /// </summary>
@@ -71,11 +84,15 @@ namespace Inventory.Agent
                 {
                     var config = JobJson.Deserialize<AgentConfig>(File.ReadAllText(Path.Combine(_baseDir, AgentProtocol.ConfigFile), Encoding.UTF8))
                                  ?? throw new InvalidDataException("agent.json ist leer");
+                    _config = config;
+                    _baseUrl = ChooseUrl(config, _failures);
                     // Der Server hält die Anfrage offen, bis ein Job da ist; das Zeitlimit muss darüber liegen.
-                    _http = (_handler == null ? new HttpClient() : new HttpClient(_handler, disposeHandler: false));
-                    _http.BaseAddress = new Uri(config.ServerUrl.TrimEnd('/') + "/");
+                    _http?.Dispose();
+                    _http = (_handler == null ? new HttpClient(AgentTls.Handler(config.CertificatePins)) : new HttpClient(_handler, disposeHandler: false));
+                    _http.BaseAddress = new Uri(_baseUrl + "/");
                     _http.Timeout = TimeSpan.FromMinutes(2);
-                    _http.DefaultRequestHeaders.Add(AgentProtocol.KeyHeader, GetOrCreateKey(config));
+                    _key = GetOrCreateKey(config);
+                    _http.DefaultRequestHeaders.Add(AgentProtocol.KeyHeader, _key);
                     // Vor der ersten Abfrage: eine Fortsetzung nach dem Neustart braucht den Server nicht. Der Schlüssel liegt
                     // dann schon vor (ohne Anmeldung gibt es keinen Job und damit nichts fortzusetzen).
                     ContinueAfterRestart();
@@ -83,10 +100,12 @@ namespace Inventory.Agent
                 }
                 catch (Exception ex) when (!_stop.IsCancellationRequested)
                 {
-                    if (ex.Message != _lastError || DateTime.UtcNow - _lastErrorLogged >= RepeatedErrorInterval)
+                    _failures++;
+                    var error = Describe(ex);
+                    if (error != _lastError || DateTime.UtcNow - _lastErrorLogged >= RepeatedErrorInterval)
                     {
-                        Log("Fehler: " + ex.Message);
-                        _lastError = ex.Message;
+                        Log("Fehler: " + error);
+                        _lastError = error;
                         _lastErrorLogged = DateTime.UtcNow;
                     }
                     _stop.Token.WaitHandle.WaitOne(RetryDelay);
@@ -138,7 +157,10 @@ namespace Inventory.Agent
                 {
                     if (response.StatusCode == HttpStatusCode.NoContent)
                     {
+                        _failures = AfterSuccess(_failures);
                         _lastError = null;
+                        if (SwitchToOfferedAddress(response))
+                            return;
                         continue;
                     }
                     if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -148,12 +170,18 @@ namespace Inventory.Agent
                         throw new InvalidOperationException("Schlüssel vom Server abgelehnt, melde neu an");
                     }
                     response.EnsureSuccessStatusCode();
+                    _failures = AfterSuccess(_failures);
                     _lastError = null;
                     var offer = JobJson.Deserialize<AgentJobOffer>(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
                     if (offer.Update != null)
                         ApplyUpdate(offer.Update);
                     else
+                    {
                         RunJob(offer);
+                        // Erst nach dem Job: er ist abgeliefert, nichts geht verloren. Nicht, wenn der Agent sich gerade entfernt.
+                        if (!_removing && SwitchToOfferedAddress(response))
+                            return;
+                    }
                 }
             }
         }
@@ -333,12 +361,18 @@ namespace Inventory.Agent
         /// <summary>Über eine Zwischendatei: ein Abbruch mitten im Schreiben hinterlässt so keine halbe Datei unter dem endgültigen Namen.</summary>
         private static void WriteAtomically(string path, string content)
         {
-            File.WriteAllText(path + ".tmp", content, new UTF8Encoding(false));
+            var temp = path + ".tmp";
+            if (File.Exists(temp))
+                File.Delete(temp);
+            // Eine Kopie übernimmt die Rechte der Datei (unter macOS den Modus 600); neu angelegt gälte die umask des Dienstes.
+            if (File.Exists(path))
+                File.Copy(path, temp);
+            File.WriteAllText(temp, content, new UTF8Encoding(false));
             // Ersetzen in einem Schritt: zu keinem Zeitpunkt fehlt die Datei.
             if (File.Exists(path))
-                File.Replace(path + ".tmp", path, null);
+                File.Replace(temp, path, null);
             else
-                File.Move(path + ".tmp", path);
+                File.Move(temp, path);
         }
 
         private const string ResumeFile = "resume.json";
@@ -564,6 +598,108 @@ namespace Inventory.Agent
             {
                 Monitor.Exit(_progressLock);
             }
+        }
+
+        /// <summary>Die HTTPS-Adresse, solange sie nicht wiederholt scheitert; dann abwechselnd die Adresse aus der Installation.</summary>
+        public static string ChooseUrl(AgentConfig config, int failures) =>
+            !string.IsNullOrWhiteSpace(config.SecureUrl) && failures / FailuresBeforeFallback % 2 == 0
+                ? config.SecureUrl!.Trim().TrimEnd('/')
+                : config.ServerUrl.Trim().TrimEnd('/');
+
+        /// <summary>
+        /// Nach einer erfolgreichen Abfrage: der Zähler beginnt die laufende Runde neu. Wer gerade über die installierte Adresse
+        /// kommt, bleibt nach einer Störung zuerst bei ihr; zurück zu HTTPS geht es über die Prüfung der angebotenen Adresse.
+        /// </summary>
+        public static int AfterSuccess(int failures) => failures / FailuresBeforeFallback % 2 * FailuresBeforeFallback;
+
+        /// <summary>
+        /// Bietet der Server eine HTTPS-Adresse an, die der Agent noch nicht nutzt, prüft er sie (höchstens stündlich) mit seinem
+        /// Schlüssel und den angebotenen Pins. Geht sie, merkt er sie sich in agent.json und verbindet sich neu (true).
+        /// </summary>
+        private bool SwitchToOfferedAddress(HttpResponseMessage response)
+        {
+            if (!response.Headers.TryGetValues(AgentProtocol.HttpsHeader, out var values))
+                return false;
+            var offered = values.FirstOrDefault()?.Trim().TrimEnd('/');
+            if (string.IsNullOrEmpty(offered) || !offered!.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || !Uri.TryCreate(offered, UriKind.Absolute, out _))
+                return false;
+            var pins = response.Headers.TryGetValues(AgentProtocol.PinsHeader, out var pinValues)
+                ? pinValues.SelectMany(v => v.Split(',')).Select(v => v.Trim()).Where(v => v.Length > 0).Distinct().ToList()
+                : new List<string>();
+
+            if (string.Equals(_baseUrl, offered, StringComparison.OrdinalIgnoreCase))
+            {
+                // Schon dort: nur die Pins nachziehen, etwa nach einem neuen Zertifikat.
+                if (new HashSet<string>(_config.CertificatePins ?? new List<string>()).SetEquals(pins))
+                    return false;
+                _config.CertificatePins = pins.Count == 0 ? null : pins;
+                return SaveConfig();
+            }
+
+            var now = DateTime.UtcNow;
+            if (offered == _probedUrl && now - _probedUtc < ProbeInterval)
+                return false;
+            _probedUrl = offered;
+            _probedUtc = now;
+            if (Probe(offered!, pins) is { } problem)
+            {
+                Log($"HTTPS-Adresse {offered} ist nicht nutzbar, weiter über {_baseUrl}: {problem}");
+                return false;
+            }
+            var previous = (_config.SecureUrl, _config.CertificatePins);
+            _config.SecureUrl = offered;
+            _config.CertificatePins = pins.Count == 0 ? null : pins;
+            if (!SaveConfig())
+            {
+                (_config.SecureUrl, _config.CertificatePins) = previous;
+                return false;
+            }
+            Log($"Verbindung zum Server jetzt über {offered}.");
+            _failures = 0;
+            return true;
+        }
+
+        /// <summary>null, wenn die Adresse den Schlüssel des Agenten annimmt, sonst warum nicht.</summary>
+        private string? Probe(string url, List<string> pins)
+        {
+            try
+            {
+                using (var client = _handler == null ? new HttpClient(AgentTls.Handler(pins)) : new HttpClient(_handler, disposeHandler: false))
+                {
+                    client.BaseAddress = new Uri(url + "/");
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                    client.DefaultRequestHeaders.Add(AgentProtocol.KeyHeader, _key);
+                    using (var response = client.GetAsync(AgentProtocol.PingPath, _stop.Token).GetAwaiter().GetResult())
+                        return response.IsSuccessStatusCode ? null : $"Antwort {(int)response.StatusCode}";
+                }
+            }
+            catch (Exception ex) when (!_stop.IsCancellationRequested)
+            {
+                return Describe(ex);
+            }
+        }
+
+        private bool SaveConfig()
+        {
+            try
+            {
+                // Über eine Zwischendatei: ein Abbruch mitten im Schreiben hinterlässt kein halbes agent.json. Der Agent-Ordner ist
+                // nur für das System bzw. root zugänglich, die neue Datei also ebenso.
+                WriteAtomically(Path.Combine(_baseDir, AgentProtocol.ConfigFile), JobJson.Serialize(_config));
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                Log("agent.json lässt sich nicht schreiben: " + ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>Die Meldung samt Ursache: bei TLS-Fehlern steht das Wesentliche in der inneren Ausnahme.</summary>
+        private static string Describe(Exception ex)
+        {
+            var inner = ex.GetBaseException();
+            return ReferenceEquals(inner, ex) || inner.Message == ex.Message ? ex.Message : $"{ex.Message} ({inner.Message})";
         }
 
         private static StringContent Json<T>(T value) => new StringContent(JobJson.Serialize(value), Encoding.UTF8, "application/json");

@@ -576,10 +576,21 @@ deployment is cancelled in the meantime, a continuation that already ran is not 
   (e.g. `https://inventory.example.local:5100`). No inbound port, no firewall rule and no SMB/WinRM on the client. The
   server's port (default 5100) must be reachable from the client networks (firewall rule on the server; the setup can
   create it).
-- **HTTPS:** strongly recommended – over this channel the agent receives commands it executes as Local System. The
-  agent uses the Windows certificate store; the server certificate must therefore be trusted by the client (internal
-  CA or a public certificate), there is no "accept any certificate" switch. TLS 1.2 is enforced. HTTPS on the
-  server: see [HTTPS](#https).
+- **HTTPS:** over this channel the agent receives commands it executes as Local System. When the server offers HTTPS
+  (see [HTTPS](#https)), every agent switches by itself: the answer to its next request carries the HTTPS address and
+  a pin of the server certificate (SHA-256 of its key). The agent tries the address with its key; if that works, it
+  stores address and pin in `agent.json` (`secureUrl`, `certificatePins`) and connects there. It accepts the
+  certificate if the system trusts it (Windows certificate store, macOS system keychain) or if the key matches the
+  pin – so the self-signed certificate works without distributing it. There is no "accept any certificate" switch.
+  The installed address stays as a fallback: if the HTTPS address fails three times in a row (another port, a new
+  certificate the agent does not trust), the agent tries the installed address, learns the current HTTPS address there
+  and switches again; an address that did not work is tried again after an hour at the earliest. That fallback needs
+  an `http://` agent address: if the agent address under *Settings* is `https://` itself, a certificate the agents do
+  not trust cuts them off. A renewed self-signed certificate keeps its key and pin; a switch to another certificate
+  (for example from an internal CA on Macs without its root) does not. New installations (setup, install scripts, Mac
+  package, agentless install job) get the HTTPS address and the pin right away. *Settings → HTTPS*
+  shows how many agents already connect over HTTPS, the computer details show it per computer. TLS 1.2 is enforced
+  on Windows.
 - **Proxy:** the agent runs as Local System and uses the WinHTTP proxy settings of the machine (`netsh winhttp set
   proxy …`), not a user's browser proxy. A direct route to the server is simplest.
 - **Name resolution:** the client must resolve the host name in the server address (DNS or `hosts`). The server does
@@ -677,8 +688,9 @@ actions with a note, and the server refuses such jobs for Macs.
 
 A Mac enrolls under its local host name (`scutil --get LocalHostName`, e.g. `Maxs-MacBook-Pro`) and is found again by its
 serial number, also after a rename. It never takes over the entry of a Windows computer with the same name; such an
-enrollment is refused and written to the audit log. If the server uses HTTPS with a certificate of your own CA, the Mac
-has to trust that CA in the system keychain (usually done by the MDM). `agent.log` in the agent folder shows what the
+enrollment is refused and written to the audit log. Over HTTPS the Mac agent trusts the server certificate by its pin
+like the Windows agent; only the install script (`curl`) needs a certificate the Mac trusts – with the self-signed
+certificate, keep the agent address on `http://`, the agent switches afterwards. `agent.log` in the agent folder shows what the
 agent does; `sudo "/Library/Application Support/Inventory Agent/inventory-agent" --collect` prints the inventory without
 sending it.
 
@@ -920,7 +932,9 @@ set up under *Settings → HTTPS*; nothing has to be edited in `appsettings.json
   speaks HTTP/1.1, because Negotiate does not work over HTTP/2. Microsoft Entra ID requires HTTPS for the redirect URI.
 - **An own Kestrel configuration** in `appsettings.json` (section `Kestrel` or an `https://` address in `Urls`) keeps
   working; the built-in HTTPS then stays off.
-- **Agents** keep using the address they were installed with (see [Agent](#agent)).
+- **Agents** switch to HTTPS by themselves and keep the installed address as a fallback (see [Agent](#agent)).
+- **Switched off:** `Inventory:Https:Enabled = false` in `appsettings.json`, e.g. behind a reverse proxy that handles
+  TLS.
 
 ## Updating
 
@@ -981,6 +995,7 @@ the certificate, add the new one and keep the old one for one more release (see 
 | `Inventory:Catalog:Url` | address or path of the package library's `catalog.json` |
 | `Inventory:Catalog:VersionsUrl` | folder with the version lists (`<winget-ID>.json`); empty = offer only the current version |
 | `Inventory:Catalog:IndexUrl` | address or path of the search index `winget.json`; empty = disable the search over all of winget |
+| `Inventory:Https:Enabled` | `false` = no built-in HTTPS (e.g. behind a reverse proxy); default on, see [HTTPS](#https) |
 | `Inventory:Simulate` | `true` = no real access |
 
 ### Sign-in

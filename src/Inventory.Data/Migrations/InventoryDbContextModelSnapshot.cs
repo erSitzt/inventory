@@ -216,6 +216,9 @@ namespace Inventory.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("AgentHttps")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("AgentKeyHash")
                         .HasColumnType("TEXT");
 

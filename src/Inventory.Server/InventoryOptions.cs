@@ -25,6 +25,8 @@ public sealed class InventoryOptions
 
     public CatalogOptions Catalog { get; set; } = new();
 
+    public HttpsOptions Https { get; set; } = new();
+
     private string[] Modes => (Authentication ?? "").Split([',', ';', ' ', '+'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     public bool OidcEnabled => Modes.Contains("Oidc", StringComparer.OrdinalIgnoreCase);
@@ -252,4 +254,11 @@ public sealed class CatalogOptions
 
     /// <summary>Ordner mit je einer Datei "&lt;winget-ID&gt;.json" für die älteren Versionen eines Programms; leer = nur die aktuelle Version anbieten.</summary>
     public string? VersionsUrl { get; set; } = "https://raw.githubusercontent.com/erSitzt/inventory/catalog/versions";
+}
+
+/// <summary>Das eingebaute HTTPS (Einstellungen → HTTPS).</summary>
+public sealed class HttpsOptions
+{
+    /// <summary>false = kein eingebautes HTTPS, etwa hinter einem Reverse-Proxy, der TLS übernimmt. Standard: an.</summary>
+    public bool Enabled { get; set; } = true;
 }

@@ -64,9 +64,16 @@ public static class AgentEndpoints
         {
             var request = await ReadAsync<AgentPollRequest>(http, ct);
             var version = request is null ? null : AgentService.DescribeVersion(request.Version, request.RunnerHash);
-            var computer = await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], version, ct);
+            var computer = await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], version, ct, https: http.Request.IsHttps);
             if (computer is null)
                 return Results.Unauthorized();
+            // Bietet der Server HTTPS an, wechselt der Agent dorthin, sobald die Adresse mit den Pins bei ihm funktioniert.
+            if (agents.Https is { } offer)
+            {
+                http.Response.Headers[AgentProtocol.HttpsHeader] = offer.Url;
+                if (offer.Pins.Count > 0)
+                    http.Response.Headers[AgentProtocol.PinsHeader] = string.Join(",", offer.Pins);
+            }
             // Veraltete Agenten aktualisieren sich zuerst; Jobs bleiben so lange in der Warteschlange. Jeder bleibt bei seiner
             // Laufzeit: ein Agent mit eigenständigem .NET 10 läuft auf einem Rechner ohne .NET Framework 4.8.
             // Fehlt dem Server die Variante des Agenten, bleibt der Agent bei seinen Dateien, statt die andere zu bekommen.
@@ -78,6 +85,10 @@ public static class AgentEndpoints
                 ? Results.NoContent()
                 : Json(new AgentJobOffer { Manifest = job.Manifest, Files = job.Files.Select(f => f.RelativePath).ToList() });
         });
+
+        // Prüft eine neue Adresse (HTTPS), bevor der Agent wechselt: gilt der Schlüssel, antwortet der Server ohne Inhalt.
+        group.MapGet("ping", async (HttpContext http, AgentService agents, CancellationToken ct) =>
+            await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], null, ct) is null ? Results.Unauthorized() : Results.NoContent());
 
         group.MapGet("update/files/{index:int}", async (int index, string? runtime, HttpContext http, AgentService agents, RunnerPackage runner, CancellationToken ct) =>
             await agents.AuthenticateAsync(http.Request.Headers[AgentProtocol.KeyHeader], null, ct) is not null && runner.For(runtime) is { } files && index >= 0 && index < files.Files.Count

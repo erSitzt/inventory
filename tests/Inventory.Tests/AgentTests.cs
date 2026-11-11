@@ -12,6 +12,48 @@ public class AgentTests
     private static readonly JobManifest Job = new() { Steps = [new JobStep { Type = StepType.Command, Script = "whoami", TimeoutSeconds = 60 }] };
 
     [Fact]
+    public async Task New_installations_get_the_https_address_and_pins_the_server_offers()
+    {
+        using var db = new TestDb();
+        var agents = new AgentService(db, new SettingsService(db), TimeProvider.System);
+        await agents.SetServerUrlAsync("http://inventory.example.local:5100");
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var runner = Path.Combine(dir, JobFiles.RunnerExe);
+            File.WriteAllText(runner, "exe");
+            async Task<AgentConfig> SetupConfigAsync()
+            {
+                using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(await agents.BuildSetupAsync([runner], "abc123")));
+                using var reader = new StreamReader(zip.GetEntry(AgentProtocol.ConfigFile)!.Open());
+                return JobJson.Deserialize<AgentConfig>(reader.ReadToEnd())!;
+            }
+
+            // Ohne HTTPS bleibt agent.json, wie es war.
+            var plain = await SetupConfigAsync();
+            Assert.Equal(("http://inventory.example.local:5100", null, null), (plain.ServerUrl, plain.SecureUrl, plain.CertificatePins));
+
+            agents.OfferHttps("https://inventory.example.local:5101/", ["cGlu"]);
+            var secure = await SetupConfigAsync();
+            Assert.Equal(("http://inventory.example.local:5100", "https://inventory.example.local:5101"), (secure.ServerUrl, secure.SecureUrl));
+            Assert.Equal(["cGlu"], secure.CertificatePins!);
+            Assert.Contains("\"secureUrl\":\"https://inventory.example.local:5101\"", (await agents.BuildInstallJobAsync()).Manifest.Steps.Single().Script);
+            // Macs: Installationsskript und Paket nehmen dasselbe agent.json.
+            Assert.Contains("\"secureUrl\":\"https://inventory.example.local:5101\"", await agents.BuildMacInstallScriptAsync());
+
+            // Ist die eingetragene Adresse schon die HTTPS-Adresse, braucht es keine zweite; die Pins kommen trotzdem mit.
+            await agents.SetServerUrlAsync("https://inventory.example.local:5101");
+            var same = await SetupConfigAsync();
+            Assert.Equal(("https://inventory.example.local:5101", null), (same.ServerUrl, same.SecureUrl));
+            Assert.Equal(["cGlu"], same.CertificatePins!);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Setup_package_carries_runner_configuration_and_start_script()
     {
         using var db = new TestDb();
