@@ -38,6 +38,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         Inventory.Core.Model.AlertKind.LicenseExceeded => T("A licence is exceeded"),
         Inventory.Core.Model.AlertKind.PluginFailed => T("A plugin job fails"),
         Inventory.Core.Model.AlertKind.ApprovalRequested => T("A deployment waits for approval"),
+        Inventory.Core.Model.AlertKind.ServerCertificate => T("The HTTPS certificate of the server expires soon or cannot be loaded"),
         _ => kind.ToString(),
     };
 

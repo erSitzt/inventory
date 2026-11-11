@@ -188,6 +188,25 @@ public class AlertTests
     }
 
     [Fact]
+    public async Task Plugin_failures_approvals_and_the_server_certificate_are_events_too_and_links_prefer_https()
+    {
+        using var rig = new Rig();
+        await rig.ChannelAsync();
+        var settings = new SettingsService(rig.Db);
+        await settings.SetAsync(SettingKeys.AgentServerUrl, "http://inventory.example.local:5100");
+        await settings.SetAsync(SettingKeys.ServerHttpsActiveUrl, "https://inventory.example.local:5101");
+        foreach (var kind in new[] { AlertKind.PluginFailed, AlertKind.ApprovalRequested, AlertKind.ServerCertificate })
+            await rig.Alerts.SaveAsync(new AlertRule { Name = kind.ToString(), Kind = kind }, []);
+
+        rig.Queue.Raise(new AlertEvent(AlertKind.PluginFailed, "Plugin job failed", "…", "plugins"));
+        rig.Queue.Raise(new AlertEvent(AlertKind.ApprovalRequested, "Deployment waiting for approval", "…", "deployments"));
+        rig.Queue.Raise(new AlertEvent(AlertKind.ServerCertificate, "HTTPS certificate expires soon", "…", "settings"));
+        Assert.Equal(3, await rig.Alerts.EvaluateAsync());
+        Assert.Equal(["PluginFailed: Plugin job failed", "ApprovalRequested: Deployment waiting for approval", "ServerCertificate: HTTPS certificate expires soon"], rig.Titles);
+        Assert.Contains("https://inventory.example.local:5101/settings", rig.Webhook.Sent[^1].Json);
+    }
+
+    [Fact]
     public async Task What_no_channel_accepts_is_tried_again_instead_of_being_lost()
     {
         using var rig = new Rig();

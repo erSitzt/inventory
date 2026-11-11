@@ -32,6 +32,24 @@ public static class SettingKeys
     public const string DefenderAllowedHash = "Defender.AllowedHash";
     public const string AgentServerUrl = "Agent.ServerUrl";
     public const string AgentEnrollmentToken = "Agent.EnrollmentToken";
+    /// <summary>Port für HTTPS; leer = <c>HttpsEndpoint.DefaultPort</c>. Eine Änderung wirkt nach einem Neustart.</summary>
+    public const string ServerHttpsPort = "Server.HttpsPort";
+    /// <summary>Adresse, unter der Browser den Server über HTTPS erreichen; leer = aus <see cref="AgentServerUrl"/> und dem Zertifikat abgeleitet.</summary>
+    public const string ServerHttpsAddress = "Server.HttpsAddress";
+    /// <summary>"True"/"False": Browser von HTTP auf HTTPS umleiten; leer = ja, außer beim selbstsignierten Zertifikat.</summary>
+    public const string ServerHttpsRedirect = "Server.HttpsRedirect";
+    /// <summary>Die HTTPS-Adresse, unter der der Server gerade erreichbar ist; setzt der Server selbst beim Start, leer = ohne HTTPS.</summary>
+    public const string ServerHttpsActiveUrl = "Server.HttpsActiveUrl";
+    /// <summary>Herkunft des HTTPS-Zertifikats (Name aus <c>ServerCertificateSource</c>); leer = selbstsigniert.</summary>
+    public const string ServerCertificateSource = "Server.Certificate.Source";
+    /// <summary>Zertifikatspeicher des Computers: der DNS-Name, für den das jeweils neueste gültige Zertifikat gilt.</summary>
+    public const string ServerCertificateStoreName = "Server.Certificate.StoreName";
+    /// <summary>Datei auf dem Server: PFX oder PEM mit Zertifikat (und Kette).</summary>
+    public const string ServerCertificateFile = "Server.Certificate.File";
+    /// <summary>Datei auf dem Server: Schlüsseldatei zur PEM-Datei; leer = der Schlüssel steht in derselben Datei.</summary>
+    public const string ServerCertificateKeyFile = "Server.Certificate.KeyFile";
+    /// <summary>Passwort der Zertifikatsdatei, verschlüsselt über <see cref="Abstractions.ISecretProtector"/>.</summary>
+    public const string ServerCertificatePassword = "Server.Certificate.Password";
     /// <summary>SNMP-Communities für den Gerätescan (eine je Zeile), verschlüsselt über <see cref="Abstractions.ISecretProtector"/>; leer = "public".</summary>
     public const string DeviceSnmpCommunities = "Devices.SnmpCommunities";
     /// <summary>Relevante Netze (CIDR, kommagetrennt): Netzwerkkarte, Traceroute und Gateway-Prüfung beschränken sich darauf; leer = alle.</summary>

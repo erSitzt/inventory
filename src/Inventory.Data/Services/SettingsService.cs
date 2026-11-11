@@ -156,6 +156,18 @@ public sealed class SettingsService(IDbContextFactory<InventoryDbContext> dbFact
         return SetAsync(SettingKeys.ReportLogo, data is null ? null : Convert.ToBase64String(data), ct);
     }
 
+    /// <summary>
+    /// Anfang der Links in Benachrichtigungen: die HTTPS-Adresse, wenn der Server über HTTPS erreichbar ist, sonst die Adresse
+    /// für die Agenten; null, wenn keine eingetragen ist.
+    /// </summary>
+    public async Task<string?> GetLinkBaseAsync(CancellationToken ct = default)
+    {
+        var url = await GetAsync(SettingKeys.ServerHttpsActiveUrl, ct);
+        if (string.IsNullOrWhiteSpace(url))
+            url = await GetAsync(SettingKeys.AgentServerUrl, ct);
+        return string.IsNullOrWhiteSpace(url) ? null : url.Trim().TrimEnd('/');
+    }
+
     public async Task<string?> GetAsync(string key, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

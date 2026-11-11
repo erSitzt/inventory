@@ -51,6 +51,10 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
     [
         SettingKeys.AgentServerUrl, SettingKeys.NetworkMapServerAddresses,
         SettingKeys.HeartbeatLastRunUtc, SettingKeys.HeartbeatLastResult, SettingKeys.AdSyncLastRunUtc, SettingKeys.AdSyncLastResult,
+        // HTTPS gehört zum Rechner: Port, Adresse und Zertifikat (Speicher, Dateien, selbstsigniert) gibt es auf einem anderen nicht.
+        SettingKeys.ServerHttpsPort, SettingKeys.ServerHttpsAddress, SettingKeys.ServerHttpsRedirect, SettingKeys.ServerHttpsActiveUrl,
+        SettingKeys.ServerCertificateSource, SettingKeys.ServerCertificateStoreName, SettingKeys.ServerCertificateFile,
+        SettingKeys.ServerCertificateKeyFile, SettingKeys.ServerCertificatePassword,
     ];
 
     /// <summary>

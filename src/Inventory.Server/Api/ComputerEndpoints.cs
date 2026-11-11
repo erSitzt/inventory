@@ -56,6 +56,12 @@ public static class ComputerEndpoints
             return File.Exists(path) ? Results.File(path, "application/octet-stream", "InventoryLauncher.exe") : Results.NotFound();
         }).WithTags("Downloads").WithSummary("Launcher for admin PCs").WithDescription("InventoryLauncher.exe: registers inventory:// links through which the UI opens Remote Assistance, RDP and RDP shadowing directly.");
 
+        // Ohne Schlüssel und damit kein Geheimnis: zum Verteilen als vertrauenswürdiges Zertifikat (Gruppenrichtlinie, MDM).
+        app.MapGet("/download/server-certificate", (Https.ServerCertificateService certificates) =>
+                certificates.ExportPublic() is { } data ? Results.File(data, "application/pkix-cert", "inventory-server.cer") : Results.NotFound())
+            .WithTags("Downloads").WithSummary("HTTPS certificate of the server")
+            .WithDescription("The certificate the server currently uses for HTTPS, without its private key (DER), e.g. to trust a self-signed certificate on the clients by group policy or MDM.");
+
         // Enthält das Anmeldegeheimnis für Agenten, daher nur für Administratoren und mit Protokolleintrag.
         app.MapGet("/download/agent-setup", async (HttpContext http, AgentService agents, Inventory.Remoting.RunnerPackage runner, AuditService audit, CancellationToken ct) =>
         {

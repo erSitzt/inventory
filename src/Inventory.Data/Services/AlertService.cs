@@ -83,7 +83,7 @@ public sealed class AlertService(IDbContextFactory<InventoryDbContext> dbFactory
         if (rules.Count == 0)
             return 0;
 
-        var baseUrl = (await settings.GetAsync(SettingKeys.AgentServerUrl, ct))?.TrimEnd('/');
+        var baseUrl = await settings.GetLinkBaseAsync(ct);
         var sent = 0;
         // Ereignisse, die eine Regel verschicken wollte, und ob irgendein Kanal sie angenommen hat.
         var attempted = new HashSet<AlertEvent>();
