@@ -1,0 +1,313 @@
+@using Inventory.Server.Https
+@inject HttpsEndpoint Https
+@inject ServerCertificateService Certificates
+@inject SettingsService Settings
+@inject Auditor Audit
+@inject Access Access
+@inject ISnackbar Snackbar
+@inject Display Display
+@inject ILogger<HttpsSection> Logger
+@inject IStringLocalizer<SharedResource> L
+@implements IDisposable
+
+@* HTTPS des Servers: Port, Adresse, Umleitung und das Zertifikat; ein Zertifikatswechsel wirkt sofort, ein neuer Port nach einem Neustart. *@
+<MudPaper id="https" Class="pa-4 mt-4" Style="max-width: 640px" Outlined="true">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">HTTPS</MudText>
+        @if (Https.ManagedByConfiguration)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                @L["HTTPS is set up in appsettings.json (section Kestrel or an https address under Urls). To manage it here instead, remove it there and restart Inventory."]
+            </MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">
+                @L["Inventory answers over HTTP and HTTPS at the same time. Changing the certificate takes effect immediately; a new port after a restart."]
+            </MudText>
+            @if (Https.Active)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">@L["HTTPS is on:"] <MudLink Href="@Https.Address" Target="_blank"><b>@Https.Address</b></MudLink></MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@L["HTTPS is off: {0}", Https.Problem ?? "–"]</MudAlert>
+            }
+            @if (Certificates.Problem is { } problem)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@problem</MudAlert>
+            }
+            @if (Https.FirewallProblem is { } firewall)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@firewall</MudAlert>
+            }
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudNumericField T="int" @bind-Value="_port" Min="1" Max="65535" Label="@L["HTTPS port"]" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 160px" />
+                <MudButton Variant="Variant.Outlined" Disabled="@(_port == _savedPort)" OnClick="SavePortAsync">
+                    @(ServiceRestart.Available ? L["Save and restart"] : L["Save"])
+                </MudButton>
+            </MudStack>
+            @if (_savedPort != Https.Port)
+            {
+                <MudText Typo="Typo.caption">@L["Port {0} takes effect after a restart of Inventory; until then HTTPS stays on port {1}.", _savedPort, Https.Port]</MudText>
+            }
+            <MudTextField @bind-Value="_address" Label="@L["HTTPS address"]" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="@Https.Address"
+                          HelperText="@L["Optional, e.g. https://inventory.example.local:5101. Empty: derived from the address for the agents and the certificate. Used for the redirect and for links in notifications."]" />
+            <MudSwitch T="bool" @bind-Value="_redirect" Color="Color.Primary" Label="@L["Redirect browsers from HTTP to HTTPS"]" />
+            <MudText Typo="Typo.caption">
+                @L["Only page views in the browser are redirected; agents, scripts, the API and MCP keep working over HTTP. Turn this on for a self-signed certificate only once the browsers trust it."]
+            </MudText>
+            <div>
+                <MudButton Variant="Variant.Outlined" OnClick="SaveAddressAsync">@L["Save"]</MudButton>
+            </div>
+
+            <MudDivider />
+            <MudText Typo="Typo.subtitle2">@L["Certificate"]</MudText>
+            @if (Certificates.Certificate is { } active)
+            {
+                var info = CertificateInfo.From(active);
+                <MudSimpleTable Dense="true" Elevation="0" Outlined="true">
+                    <tbody>
+                        <tr><td>@L["Source"]</td><td>@SourceName(Certificates.Source)</td></tr>
+                        <tr><td>@L["Names"]</td><td>@string.Join(", ", info.Names)</td></tr>
+                        <tr><td>@L["Issuer"]</td><td>@(info.SelfSigned ? L["self-signed"] : info.Issuer)</td></tr>
+                        <tr><td>@L["Valid until"]</td><td>@Display.LocalTime(info.NotAfterUtc)</td></tr>
+                        <tr><td>@L["Thumbprint"]</td><td style="word-break: break-all">@info.Thumbprint</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+                @if (Https.Address is { } address && Uri.TryCreate(address, UriKind.Absolute, out var uri) && !ServerCertificates.Covers(active, uri.IdnHost))
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">@L["The certificate does not cover {0}: browsers and agents will refuse the connection under this name.", uri.Host]</MudAlert>
+                }
+                @if (!info.SelfSigned && info.NotAfterUtc - DateTime.UtcNow <= ServerCertificateService.ExpiryWarning)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">@L["The certificate expires on {0}.", Display.LocalTime(info.NotAfterUtc)]</MudAlert>
+                }
+                <div>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Href="/download/server-certificate" Target="_blank">@L["Download certificate (.cer)"]</MudButton>
+                </div>
+            }
+
+            <MudText Typo="Typo.subtitle2" Class="mt-2">@L["Change certificate"]</MudText>
+            <MudRadioGroup T="ServerCertificateSource" @bind-Value="_source">
+                <MudRadio T="ServerCertificateSource" Value="ServerCertificateSource.SelfSigned" Color="Color.Primary">@SourceName(ServerCertificateSource.SelfSigned)</MudRadio>
+                @if (OperatingSystem.IsWindows())
+                {
+                    <MudRadio T="ServerCertificateSource" Value="ServerCertificateSource.MachineStore" Color="Color.Primary">@SourceName(ServerCertificateSource.MachineStore)</MudRadio>
+                }
+                <MudRadio T="ServerCertificateSource" Value="ServerCertificateSource.File" Color="Color.Primary">@SourceName(ServerCertificateSource.File)</MudRadio>
+                <MudRadio T="ServerCertificateSource" Value="ServerCertificateSource.Upload" Color="Color.Primary">@SourceName(ServerCertificateSource.Upload)</MudRadio>
+            </MudRadioGroup>
+            @switch (_source)
+            {
+                case ServerCertificateSource.SelfSigned:
+                    <MudText Typo="Typo.body2">
+                        @L["Inventory creates the certificate itself (names of this computer and of the addresses above) and renews it with the same key before it expires. Browsers and agents do not trust it by themselves: download it and distribute it as a trusted root certificate by group policy or MDM."]
+                    </MudText>
+                    break;
+                case ServerCertificateSource.MachineStore:
+                    <MudText Typo="Typo.body2">
+                        @L["Uses a certificate from the certificate store of this computer (Local Computer → Personal), e.g. from your Active Directory certification authority by autoenrollment or a Let's Encrypt certificate that win-acme stores there. Inventory always takes the newest valid certificate for the chosen name, so renewals take effect by themselves."]
+                    </MudText>
+                    @if (_candidates.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption">@L["The store has no valid server certificate with a private key."]</MudText>
+                    }
+                    else
+                    {
+                        <MudSimpleTable Dense="true" Elevation="0" Outlined="true">
+                            <thead><tr><th></th><th>@L["Names"]</th><th>@L["Issuer"]</th><th>@L["Valid until"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var candidate in _candidates)
+                                {
+                                    var name = candidate.Names.FirstOrDefault() ?? candidate.Subject;
+                                    <tr>
+                                        <td><MudButton Size="Size.Small" Variant="@(_storeName == name ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" OnClick="@(() => _storeName = name)">@L["Choose"]</MudButton></td>
+                                        <td>
+                                            @string.Join(", ", candidate.Names.DefaultIfEmpty(candidate.Subject))
+                                            @if (candidate.KeyProblem is { } keyProblem)
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Warning">@keyProblem</MudText>
+                                            }
+                                        </td>
+                                        <td>@(candidate.SelfSigned ? L["self-signed"] : candidate.Issuer)</td>
+                                        <td>@Display.LocalTime(candidate.NotAfterUtc)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                    <MudTextField @bind-Value="_storeName" Label="@L["Name in the certificate"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  HelperText="@L["Host name the certificate must cover, e.g. inventory.example.local."]" />
+                    break;
+                case ServerCertificateSource.File:
+                    <MudText Typo="Typo.body2">
+                        @L["A PFX or PEM file on this server that another tool creates and renews (e.g. certbot or a script). Inventory reloads it as soon as it changes (checked hourly). A PEM file contains the certificate followed by its chain; the key is in the same file or in a key file."]
+                    </MudText>
+                    <MudTextField @bind-Value="_file" Label="@L["Certificate file"]" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="C:\certificates\inventory.pfx" />
+                    <MudTextField @bind-Value="_keyFile" Label="@L["Key file (PEM only, optional)"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_password" Label="@L["Password"]" Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Password" autocomplete="new-password"
+                                  HelperText="@L["Leave empty to keep the stored password."]" />
+                    break;
+                case ServerCertificateSource.Upload:
+                    <MudText Typo="Typo.body2">
+                        @L["A PFX file with the certificate and its private key, e.g. requested manually from your certification authority. It is stored encrypted in the data directory. It is not renewed: upload the next one before it expires."]
+                    </MudText>
+                    <MudTextField @bind-Value="_password" Label="@L["Password of the PFX file"]" Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Password" autocomplete="new-password" />
+                    <div>
+                        <MudButton HtmlTag="label" for="https-upload" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="_busy">@L["Choose PFX file and use it"]</MudButton>
+                        <InputFile id="https-upload" OnChange="UploadAsync" accept=".pfx,.p12" hidden />
+                    </div>
+                    break;
+            }
+            @if (_source != ServerCertificateSource.Upload)
+            {
+                <div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="ApplyAsync">@L["Use this certificate"]</MudButton>
+                </div>
+            }
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    private const long MaxCertificateBytes = 1 << 20;
+
+    private int _port;
+    private int _savedPort;
+    private string? _address;
+    private bool _redirect;
+    private ServerCertificateSource _source;
+    private string? _storeName;
+    private string? _file;
+    private string? _keyFile;
+    private string? _password;
+    private List<CertificateInfo> _candidates = [];
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _savedPort = _port = int.TryParse(await Settings.GetAsync(SettingKeys.ServerHttpsPort), out var port) ? port : HttpsEndpoint.DefaultPort;
+        _address = await Settings.GetAsync(SettingKeys.ServerHttpsAddress);
+        _redirect = Https.RedirectBrowsers;
+        var choice = await Certificates.ReadChoiceAsync();
+        (_source, _storeName, _file, _keyFile) = (choice.Source, choice.StoreName, choice.File, choice.KeyFile);
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                _candidates = Certificates.StoreCandidates();
+            }
+            catch (Exception ex) when (ex is System.Security.Cryptography.CryptographicException or UnauthorizedAccessException)
+            {
+                Logger.LogWarning("The certificate store cannot be read: {Message}", ex.Message);
+            }
+        }
+        Certificates.Changed += OnChanged;
+    }
+
+    public void Dispose() => Certificates.Changed -= OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private string SourceName(ServerCertificateSource? source) => source switch
+    {
+        ServerCertificateSource.SelfSigned => L["Self-signed (created by Inventory)"],
+        ServerCertificateSource.MachineStore => L["Certificate store of the computer (Active Directory CA, win-acme)"],
+        ServerCertificateSource.File => L["File on the server"],
+        ServerCertificateSource.Upload => L["Uploaded PFX file"],
+        _ => "–",
+    };
+
+    private async Task SavePortAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (_port is < 1 or > 65535)
+            return;
+        await Settings.SetAsync(SettingKeys.ServerHttpsPort, _port == HttpsEndpoint.DefaultPort ? null : _port.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        _savedPort = _port;
+        await Audit.LogAsync(L["Setting changed"], $"{L["HTTPS port"]}: {_port}");
+        if (ServiceRestart.Available)
+        {
+            ServiceRestart.Schedule(Logger, "to use the new HTTPS port");
+            Snackbar.Add(L["Inventory restarts. Reload the page in about half a minute."], Severity.Info);
+        }
+        else
+        {
+            Snackbar.Add(L["Saved. Restart Inventory to use the new port."], Severity.Success);
+        }
+    }
+
+    private async Task SaveAddressAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var address = HttpsEndpoint.NormalizeAddress(_address);
+        if (!string.IsNullOrWhiteSpace(_address) && address is null)
+        {
+            Snackbar.Add(L["Enter an address that starts with https://."], Severity.Error);
+            return;
+        }
+        await Settings.SetAsync(SettingKeys.ServerHttpsAddress, address);
+        await Settings.SetAsync(SettingKeys.ServerHttpsRedirect, _redirect.ToString());
+        await Https.UpdateAsync();
+        _address = address;
+        await Audit.LogAsync(L["Setting changed"], $"{L["HTTPS address"]}: {address ?? "–"}, {L["Redirect browsers from HTTP to HTTPS"]}: {(_redirect ? L["yes"] : L["no"])}");
+        // Neue Namen kommen ins selbstsignierte Zertifikat, beim nächsten stündlichen Durchlauf oder gleich hier.
+        if (Https.Active && Certificates.Source == ServerCertificateSource.SelfSigned)
+            await Certificates.RefreshAsync();
+        Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private async Task ApplyAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        _busy = true;
+        try
+        {
+            var choice = new CertificateChoice(_source, _storeName, _file, _keyFile, string.IsNullOrEmpty(_password) ? null : _password);
+            if (await Certificates.ApplyAsync(choice, await Audit.ActorAsync()) is { } error)
+            {
+                Snackbar.Add(error, Severity.Error);
+                return;
+            }
+            _password = null;
+            Snackbar.Add(L["The certificate is in use."], Severity.Success);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        if (e.File.Size > MaxCertificateBytes)
+        {
+            Snackbar.Add(L["{0} is too large for the browser upload.", e.File.Name], Severity.Error);
+            return;
+        }
+        _busy = true;
+        try
+        {
+            using var buffer = new MemoryStream();
+            await e.File.OpenReadStream(MaxCertificateBytes).CopyToAsync(buffer);
+            if (await Certificates.UploadAsync(buffer.ToArray(), _password, await Audit.ActorAsync()) is { } error)
+            {
+                Snackbar.Add(error, Severity.Error);
+                return;
+            }
+            _password = null;
+            Snackbar.Add(L["The certificate is in use."], Severity.Success);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

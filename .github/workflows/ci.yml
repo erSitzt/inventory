@@ -20,6 +20,30 @@ jobs:
       - run: dotnet build -c Release
       - run: dotnet test -c Release --no-build
 
+  # HTTPS unter Windows: TLS über Schannel und ein Zertifikat im Speicher des Computers mit nicht exportierbarem Schlüssel,
+  # wie es Autoenrollment einer AD-Zertifizierungsstelle ablegt. Die übrigen Tests laufen oben unter Linux.
+  windows-https:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Server certificate in the machine store
+        shell: pwsh
+        run: |
+          $name = "inventory-ci.example.test"
+          $cert = New-SelfSignedCertificate -DnsName $name -CertStoreLocation Cert:\LocalMachine\My -KeyExportPolicy NonExportable `
+            -KeyUsage DigitalSignature,KeyEncipherment -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.1") -NotAfter (Get-Date).AddDays(90)
+          # Als Stammzertifikat vertraut, damit die Kette aufgeht wie bei einer Zertifizierungsstelle der Domäne.
+          $root = [System.Security.Cryptography.X509Certificates.X509Store]::new("Root", "LocalMachine")
+          $root.Open("ReadWrite")
+          $root.Add([System.Security.Cryptography.X509Certificates.X509Certificate2]::new($cert.RawData))
+          $root.Close()
+          "INVENTORY_STORE_CERTIFICATE=$name" >> $env:GITHUB_ENV
+          "INVENTORY_STORE_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+      - run: dotnet test tests/Inventory.Tests -c Release --filter "FullyQualifiedName~HttpsTests"
+
   # Der Mac-Agent auf einem echten Mac (GitHub-Runner, Apple Silicon): als root wie im Betrieb, und das Inventar muss die
   # wichtigsten Bereiche enthalten. Die Parser selbst prüfen die Tests oben mit aufgezeichneten Ausgaben.
   macos-agent:

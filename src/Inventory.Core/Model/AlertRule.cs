@@ -27,6 +27,8 @@ public enum AlertKind
     PluginFailed = 11,
     /// <summary>Ein KI-Assistent möchte ein noch nicht freigegebenes Paket verteilen.</summary>
     ApprovalRequested = 12,
+    /// <summary>Das HTTPS-Zertifikat des Servers läuft bald ab oder lässt sich nicht laden.</summary>
+    ServerCertificate = 13,
 }
 
 /// <summary>Eine Regel, die bei einem Ereignis oder Zustand eine Nachricht über die Benachrichtigungskanäle schickt.</summary>
@@ -56,5 +58,6 @@ public class AlertRule
     public static bool NeedsCollection(AlertKind kind) => kind is AlertKind.CollectionEntered or AlertKind.CollectionCount;
     public static bool NeedsThreshold(AlertKind kind) => kind is AlertKind.CollectionCount or AlertKind.ScanErrors;
     /// <summary>Wird von einem Dienst gemeldet, statt aus dem Datenbestand abgelesen zu werden.</summary>
-    public static bool IsEvent(AlertKind kind) => kind is AlertKind.ScheduleFailed or AlertKind.AdSyncFailed or AlertKind.BackupFailed or AlertKind.UpdateFailed;
+    public static bool IsEvent(AlertKind kind) => kind is AlertKind.ScheduleFailed or AlertKind.AdSyncFailed or AlertKind.BackupFailed or AlertKind.UpdateFailed
+        or AlertKind.PluginFailed or AlertKind.ApprovalRequested or AlertKind.ServerCertificate;
 }

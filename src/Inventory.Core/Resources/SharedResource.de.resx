@@ -239,6 +239,12 @@
   <data name='A range named "{0}" already exists.' xml:space="preserve">
     <value>Ein Bereich namens „{0}“ existiert bereits.</value>
   </data>
+  <data name="A PFX file with the certificate and its private key, e.g. requested manually from your certification authority. It is stored encrypted in the data directory. It is not renewed: upload the next one before it expires." xml:space="preserve">
+    <value>Eine PFX-Datei mit dem Zertifikat und seinem privaten Schlüssel, z. B. von Hand bei Ihrer Zertifizierungsstelle beantragt. Sie wird verschlüsselt im Datenverzeichnis abgelegt. Erneuert wird sie nicht: Laden Sie das nächste Zertifikat hoch, bevor dieses abläuft.</value>
+  </data>
+  <data name="A PFX or PEM file on this server that another tool creates and renews (e.g. certbot or a script). Inventory reloads it as soon as it changes (checked hourly). A PEM file contains the certificate followed by its chain; the key is in the same file or in a key file." xml:space="preserve">
+    <value>Eine PFX- oder PEM-Datei auf diesem Server, die ein anderes Werkzeug anlegt und erneuert (z. B. certbot oder ein Skript). Inventory lädt sie neu, sobald sie sich ändert (stündlich geprüft). Eine PEM-Datei enthält das Zertifikat und danach seine Kette; der Schlüssel steht in derselben Datei oder in einer Schlüsseldatei.</value>
+  </data>
   <data name="A plugin job fails" xml:space="preserve">
     <value>Ein Auftrag eines Plugins schlägt fehl</value>
   </data>
@@ -983,11 +989,23 @@
   <data name="Cancelling …" xml:space="preserve">
     <value>Wird abgebrochen …</value>
   </data>
+  <data name="Certificate" xml:space="preserve">
+    <value>Zertifikat</value>
+  </data>
+  <data name="Certificate file" xml:space="preserve">
+    <value>Zertifikatsdatei</value>
+  </data>
+  <data name="Certificate store of the computer (Active Directory CA, win-acme)" xml:space="preserve">
+    <value>Zertifikatspeicher des Computers (Active-Directory-Zertifizierungsstelle, win-acme)</value>
+  </data>
   <data name="Certificate thumbprint (SHA-256)" xml:space="preserve">
     <value>Zertifikat-Fingerabdruck (SHA-256)</value>
   </data>
   <data name="Change" xml:space="preserve">
     <value>Änderung</value>
+  </data>
+  <data name="Change certificate" xml:space="preserve">
+    <value>Zertifikat wechseln</value>
   </data>
   <data name="change-history" xml:space="preserve">
     <value>änderungsverlauf</value>
@@ -1046,11 +1064,20 @@
   <data name="Checks the reachability of all computers at fixed intervals so the online status in the computer list and on the overview stays current. Computers with name anomalies – a different computer responds under the name, or reverse DNS names another – are skipped until the discrepancy is resolved." xml:space="preserve">
     <value>Prüft in festen Abständen die Erreichbarkeit aller Rechner, damit der Online-Status in der Rechnerliste und auf der Übersicht aktuell bleibt. Rechner mit Namensauffälligkeiten – ein anderer Rechner antwortet unter dem Namen oder Reverse-DNS nennt einen anderen – werden übersprungen, bis die Abweichung geklärt ist.</value>
   </data>
+  <data name="Choose" xml:space="preserve">
+    <value>Wählen</value>
+  </data>
+  <data name="Choose a certificate from the certificate store." xml:space="preserve">
+    <value>Wählen Sie ein Zertifikat aus dem Zertifikatspeicher.</value>
+  </data>
   <data name="Choose export file" xml:space="preserve">
     <value>Exportdatei auswählen</value>
   </data>
   <data name="Choose file" xml:space="preserve">
     <value>Datei wählen</value>
+  </data>
+  <data name="Choose PFX file and use it" xml:space="preserve">
+    <value>PFX-Datei auswählen und verwenden</value>
   </data>
   <data name="chosen" xml:space="preserve">
     <value>gewählt</value>
@@ -1865,6 +1892,9 @@
   <data name="Download agent setup" xml:space="preserve">
     <value>Agent-Setup herunterladen</value>
   </data>
+  <data name="Download certificate (.cer)" xml:space="preserve">
+    <value>Zertifikat herunterladen (.cer)</value>
+  </data>
   <data name="Download InventoryLauncher.exe" xml:space="preserve">
     <value>InventoryLauncher.exe herunterladen</value>
   </data>
@@ -2000,6 +2030,9 @@
   <data name="Enrollment secret for agents renewed" xml:space="preserve">
     <value>Anmeldegeheimnis für Agenten erneuert</value>
   </data>
+  <data name="Enter an address that starts with https://." xml:space="preserve">
+    <value>Geben Sie eine Adresse ein, die mit https:// beginnt.</value>
+  </data>
   <data name="Enter names, or import them from Active Directory under Settings." xml:space="preserve">
     <value>Namen eingeben oder unter Einstellungen aus dem Active Directory importieren.</value>
   </data>
@@ -2008,6 +2041,9 @@
   </data>
   <data name="Enter the network as CIDR, e.g. 10.0.1.0/24." xml:space="preserve">
     <value>Das Netz bitte als CIDR angeben, z. B. 10.0.1.0/24.</value>
+  </data>
+  <data name="Enter the path of the certificate file." xml:space="preserve">
+    <value>Geben Sie den Pfad der Zertifikatsdatei ein.</value>
   </data>
   <data name="Entry from the winget search, not from the base selection: test the silent parameters on a single computer before deploying." xml:space="preserve">
     <value>Eintrag aus der winget-Suche, nicht aus der Grundauswahl: die Silent-Parameter vor dem Verteilen an einem einzelnen Rechner testen.</value>
@@ -2176,6 +2212,9 @@
   </data>
   <data name="File" xml:space="preserve">
     <value>Datei</value>
+  </data>
+  <data name="File on the server" xml:space="preserve">
+    <value>Datei auf dem Server</value>
   </data>
   <data name="File or folder from the package's files" xml:space="preserve">
     <value>Datei oder Ordner aus den Dateien des Pakets</value>
@@ -2465,6 +2504,9 @@
   <data name="Host" xml:space="preserve">
     <value>Host</value>
   </data>
+  <data name="Host name the certificate must cover, e.g. inventory.example.local." xml:space="preserve">
+    <value>Hostname, für den das Zertifikat gelten muss, z. B. inventory.example.local.</value>
+  </data>
   <data name="Hosts" xml:space="preserve">
     <value>Hosts</value>
   </data>
@@ -2506,6 +2548,36 @@
   </data>
   <data name="how-access-works" xml:space="preserve">
     <value>so-funktioniert-der-zugriff</value>
+  </data>
+  <data name="HTTPS" xml:space="preserve">
+    <value>HTTPS</value>
+  </data>
+  <data name="HTTPS address" xml:space="preserve">
+    <value>HTTPS-Adresse</value>
+  </data>
+  <data name="HTTPS certificate cannot be loaded" xml:space="preserve">
+    <value>HTTPS-Zertifikat lässt sich nicht laden</value>
+  </data>
+  <data name="HTTPS certificate changed" xml:space="preserve">
+    <value>HTTPS-Zertifikat geändert</value>
+  </data>
+  <data name="HTTPS certificate expires soon" xml:space="preserve">
+    <value>HTTPS-Zertifikat läuft bald ab</value>
+  </data>
+  <data name="HTTPS certificate replaced" xml:space="preserve">
+    <value>HTTPS-Zertifikat ersetzt</value>
+  </data>
+  <data name="HTTPS is off: {0}" xml:space="preserve">
+    <value>HTTPS ist aus: {0}</value>
+  </data>
+  <data name="HTTPS is on:" xml:space="preserve">
+    <value>HTTPS ist an:</value>
+  </data>
+  <data name="HTTPS is set up in appsettings.json (section Kestrel or an https address under Urls). To manage it here instead, remove it there and restart Inventory." xml:space="preserve">
+    <value>HTTPS ist in appsettings.json eingerichtet (Abschnitt Kestrel oder eine https-Adresse unter Urls). Um es stattdessen hier zu verwalten, entfernen Sie es dort und starten Inventory neu.</value>
+  </data>
+  <data name="HTTPS port" xml:space="preserve">
+    <value>HTTPS-Port</value>
   </data>
   <data name="HTTPS recommended: over this connection the agent receives commands that it runs as Local System." xml:space="preserve">
     <value>HTTPS empfohlen: Über diese Verbindung erhält der Agent Befehle, die er als Lokales System ausführt.</value>
@@ -2747,6 +2819,12 @@
   <data name="Inventoried VMs without a known host" xml:space="preserve">
     <value>Inventarisierte VMs ohne bekannten Host</value>
   </data>
+  <data name="Inventory answers over HTTP and HTTPS at the same time. Changing the certificate takes effect immediately; a new port after a restart." xml:space="preserve">
+    <value>Inventory antwortet gleichzeitig über HTTP und HTTPS. Ein anderes Zertifikat gilt sofort, ein neuer Port nach einem Neustart.</value>
+  </data>
+  <data name="Inventory creates the certificate itself (names of this computer and of the addresses above) and renews it with the same key before it expires. Browsers and agents do not trust it by themselves: download it and distribute it as a trusted root certificate by group policy or MDM." xml:space="preserve">
+    <value>Inventory erzeugt das Zertifikat selbst (Namen dieses Computers und der Adressen oben) und erneuert es vor dem Ablauf mit demselben Schlüssel. Browser und Agenten vertrauen ihm nicht von sich aus: Laden Sie es herunter und verteilen Sie es per Gruppenrichtlinie oder MDM als vertrauenswürdiges Stammzertifikat.</value>
+  </data>
   <data name="Inventory does not run as a Windows service here. Stop and start it to apply the import." xml:space="preserve">
     <value>Inventory läuft hier nicht als Windows-Dienst. Beenden und starten Sie es, um den Import einzusetzen.</value>
   </data>
@@ -2816,6 +2894,9 @@
   <data name="is {0}" xml:space="preserve">
     <value>ist {0}</value>
   </data>
+  <data name="Issuer" xml:space="preserve">
+    <value>Aussteller</value>
+  </data>
   <data name="It is shown only this once and cannot be retrieved later." xml:space="preserve">
     <value>Es wird nur dieses eine Mal angezeigt und lässt sich später nicht mehr abrufen.</value>
   </data>
@@ -2848,6 +2929,9 @@
   </data>
   <data name="Key" xml:space="preserve">
     <value>Schlüssel</value>
+  </data>
+  <data name="Key file (PEM only, optional)" xml:space="preserve">
+    <value>Schlüsseldatei (nur PEM, optional)</value>
   </data>
   <data name="Keys for scripts and other systems that use the REST API." xml:space="preserve">
     <value>Schlüssel für Skripte und andere Systeme, die die REST-API nutzen.</value>
@@ -2959,6 +3043,9 @@
   </data>
   <data name="Leave empty to keep the stored password" xml:space="preserve">
     <value>Leer lassen, um das gespeicherte Passwort zu behalten</value>
+  </data>
+  <data name="Leave empty to keep the stored password." xml:space="preserve">
+    <value>Leer lassen, um das gespeicherte Passwort zu behalten.</value>
   </data>
   <data name="less than" xml:space="preserve">
     <value>kleiner als</value>
@@ -3341,8 +3428,14 @@
   <data name="Name as the computer's &quot;Apps&quot; tab shows it. * stands for any text, e.g. Microsoft.Xbox*." xml:space="preserve">
     <value>Name, wie ihn der Reiter „Apps“ des Rechners zeigt. * steht für beliebigen Text, z. B. Microsoft.Xbox*.</value>
   </data>
+  <data name="Name in the certificate" xml:space="preserve">
+    <value>Name im Zertifikat</value>
+  </data>
   <data name="Name is missing" xml:space="preserve">
     <value>Name fehlt</value>
+  </data>
+  <data name="Names" xml:space="preserve">
+    <value>Namen</value>
   </data>
   <data name="Names as DISM lists them (dism /online /get-features), separated by commas." xml:space="preserve">
     <value>Namen, wie DISM sie auflistet (dism /online /get-features), durch Komma getrennt.</value>
@@ -3481,6 +3574,9 @@
   </data>
   <data name="No block of {0} contiguous free addresses." xml:space="preserve">
     <value>Kein Block aus {0} zusammenhängenden freien Adressen.</value>
+  </data>
+  <data name="No certificate could be loaded: {0}" xml:space="preserve">
+    <value>Es ließ sich kein Zertifikat laden: {0}</value>
   </data>
   <data name="No changes recorded yet. The first scan of a computer is the baseline; the history starts with the second." xml:space="preserve">
     <value>Noch keine Änderungen erfasst. Der erste Scan eines Rechners ist die Ausgangslage; ab dem zweiten entsteht der Verlauf.</value>
@@ -3977,6 +4073,9 @@
   <data name="only if someone is logged on" xml:space="preserve">
     <value>nur wenn jemand angemeldet ist</value>
   </data>
+  <data name="Only page views in the browser are redirected; agents, scripts, the API and MCP keep working over HTTP. Turn this on for a self-signed certificate only once the browsers trust it." xml:space="preserve">
+    <value>Umgeleitet werden nur Seitenaufrufe im Browser; Agenten, Skripte, die API und MCP arbeiten weiter über HTTP. Bei einem selbstsignierten Zertifikat erst einschalten, wenn die Browser ihm vertrauen.</value>
+  </data>
   <data name="Only physical cores of the host count, hyperthreading does not. Every processor counts at least {0} cores, every server at least {1}; licences come in packs of {2} cores." xml:space="preserve">
     <value>Es zählen nur die physischen Kerne des Hosts, Hyperthreading nicht. Jeder Prozessor zählt mindestens {0} Kerne, jeder Server mindestens {1}; Lizenzen gibt es in Paketen zu {2} Kernen.</value>
   </data>
@@ -4057,6 +4156,9 @@
   </data>
   <data name='Optional: a permanently installed agent fetches jobs over an outbound connection – useful for computers the server cannot reach directly (notebooks on the road, other networks). It is installed via "Computers → Actions → Install agent". After a server update the agents update themselves on their next request.' xml:space="preserve">
     <value>Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“. Nach einem Update des Servers aktualisieren sich die Agenten bei ihrer nächsten Anfrage selbst.</value>
+  </data>
+  <data name="Optional, e.g. https://inventory.example.local:5101. Empty: derived from the address for the agents and the certificate. Used for the redirect and for links in notifications." xml:space="preserve">
+    <value>Optional, z. B. https://inventory.example.local:5101. Leer: abgeleitet aus der Adresse für die Agenten und dem Zertifikat. Gilt für die Umleitung und für Links in Benachrichtigungen.</value>
   </data>
   <data name="Optional: allows the runner file in Microsoft Defender for Endpoint by its hash, so that it is no longer rated as malware. You sign in at Microsoft with your own account; the server stores neither password nor token. This needs an application registration in your tenant (see docs/defender.md) and has to be repeated after every server update. Alerts about the agentless way itself are tuned in the Defender portal." xml:space="preserve">
     <value>Optional: gibt die Runner-Datei in Microsoft Defender for Endpoint über ihren Hash frei, damit sie nicht mehr als Schadsoftware eingestuft wird. Sie melden sich mit Ihrem eigenen Konto bei Microsoft an; der Server speichert weder Kennwort noch Token. Das setzt eine Anwendungsregistrierung in Ihrem Mandanten voraus (siehe docs/defender.de.md) und muss nach jedem Server-Update wiederholt werden. Meldungen über den agentenlosen Weg selbst werden im Defender-Portal abgestimmt.</value>
@@ -4253,6 +4355,9 @@
   <data name="Password is missing" xml:space="preserve">
     <value>Passwort fehlt</value>
   </data>
+  <data name="Password of the PFX file" xml:space="preserve">
+    <value>Passwort der PFX-Datei</value>
+  </data>
   <data name="password reset" xml:space="preserve">
     <value>Passwort neu gesetzt</value>
   </data>
@@ -4447,6 +4552,15 @@
   </data>
   <data name="Port" xml:space="preserve">
     <value>Anschluss</value>
+  </data>
+  <data name="Port {0} cannot be used: {1}" xml:space="preserve">
+    <value>Port {0} lässt sich nicht verwenden: {1}</value>
+  </data>
+  <data name="Port {0} is already used for HTTP." xml:space="preserve">
+    <value>Port {0} wird schon für HTTP verwendet.</value>
+  </data>
+  <data name="Port {0} takes effect after a restart of Inventory; until then HTTPS stays on port {1}." xml:space="preserve">
+    <value>Port {0} gilt nach einem Neustart von Inventory; bis dahin bleibt HTTPS auf Port {1}.</value>
   </data>
   <data name="Possibly decommissioned" xml:space="preserve">
     <value>Möglicherweise außer Betrieb</value>
@@ -4714,6 +4828,9 @@
   </data>
   <data name='Record the stock under "Stock" by hand or import it as CSV; Software Assurance allows licensing per VM.' xml:space="preserve">
     <value>Den Bestand unter „Bestand“ von Hand erfassen oder als CSV importieren; Software Assurance erlaubt die Lizenzierung je VM.</value>
+  </data>
+  <data name="Redirect browsers from HTTP to HTTPS" xml:space="preserve">
+    <value>Browser von HTTP auf HTTPS umleiten</value>
   </data>
   <data name="Registered but off: {0}" xml:space="preserve">
     <value>Registriert, aber aus: {0}</value>
@@ -5174,6 +5291,9 @@
   <data name="Save" xml:space="preserve">
     <value>Speichern</value>
   </data>
+  <data name="Save and restart" xml:space="preserve">
+    <value>Speichern und neu starten</value>
+  </data>
   <data name="Save as PNG" xml:space="preserve">
     <value>Als PNG speichern</value>
   </data>
@@ -5188,6 +5308,9 @@
   </data>
   <data name="Saved." xml:space="preserve">
     <value>Gespeichert.</value>
+  </data>
+  <data name="Saved. Restart Inventory to use the new port." xml:space="preserve">
+    <value>Gespeichert. Starten Sie Inventory neu, damit der neue Port gilt.</value>
   </data>
   <data name="Scan" xml:space="preserve">
     <value>Scannen</value>
@@ -5401,6 +5524,12 @@
   </data>
   <data name="Selects all computers of the collection (as of now)." xml:space="preserve">
     <value>Wählt alle Rechner der Sammlung aus (Stand jetzt).</value>
+  </data>
+  <data name="self-signed" xml:space="preserve">
+    <value>selbstsigniert</value>
+  </data>
+  <data name="Self-signed (created by Inventory)" xml:space="preserve">
+    <value>Selbstsigniert (von Inventory erzeugt)</value>
   </data>
   <data name="Self-update is only available on Windows." xml:space="preserve">
     <value>Die Selbstaktualisierung gibt es nur unter Windows.</value>
@@ -6038,6 +6167,30 @@
   <data name="The browser does not allow copying here." xml:space="preserve">
     <value>Der Browser erlaubt hier kein Kopieren.</value>
   </data>
+  <data name="The certificate cannot be reloaded, the previous one stays active: {0}" xml:space="preserve">
+    <value>Das Zertifikat lässt sich nicht neu laden, das bisherige bleibt aktiv: {0}</value>
+  </data>
+  <data name="The certificate does not cover {0}: browsers and agents will refuse the connection under this name." xml:space="preserve">
+    <value>Das Zertifikat gilt nicht für {0}: Browser und Agenten lehnen die Verbindung unter diesem Namen ab.</value>
+  </data>
+  <data name="The certificate expired on {0:yyyy-MM-dd}." xml:space="preserve">
+    <value>Das Zertifikat ist am {0:dd.MM.yyyy} abgelaufen.</value>
+  </data>
+  <data name="The certificate expires on {0}." xml:space="preserve">
+    <value>Das Zertifikat läuft am {0} ab.</value>
+  </data>
+  <data name="The certificate is in use." xml:space="preserve">
+    <value>Das Zertifikat ist in Gebrauch.</value>
+  </data>
+  <data name="The certificate is not meant for servers (server authentication is missing)." xml:space="preserve">
+    <value>Das Zertifikat ist nicht für Server gedacht (Serverauthentifizierung fehlt).</value>
+  </data>
+  <data name="The certificate is only valid from {0:yyyy-MM-dd}." xml:space="preserve">
+    <value>Das Zertifikat gilt erst ab {0:dd.MM.yyyy}.</value>
+  </data>
+  <data name="The certificate store of the computer has no valid, trusted certificate with a private key for {0}." xml:space="preserve">
+    <value>Im Zertifikatspeicher des Computers gibt es für {0} kein gültiges, vertrauenswürdiges Zertifikat mit privatem Schlüssel.</value>
+  </data>
   <data name="The check is lightweight (port 445, a few packets per computer); 5 minutes is a good value" xml:space="preserve">
     <value>Die Prüfung ist leichtgewichtig (Port 445, wenige Pakete je Rechner); 5 Minuten sind ein guter Wert</value>
   </data>
@@ -6049,6 +6202,9 @@
   </data>
   <data name='The collection "{0}" now has {1} members (threshold {2}).' xml:space="preserve">
     <value>Die Sammlung „{0}“ hat jetzt {1} Mitglieder (Schwelle {2}).</value>
+  </data>
+  <data name="The chosen certificate cannot be loaded, the self-signed one is used instead: {0}" xml:space="preserve">
+    <value>Das gewählte Zertifikat lässt sich nicht laden, stattdessen gilt das selbstsignierte: {0}</value>
   </data>
   <data name="The collection for the pilot group no longer exists." xml:space="preserve">
     <value>Die Sammlung für die Pilotgruppe gibt es nicht mehr.</value>
@@ -6140,11 +6296,17 @@
   <data name="The file can be downloaded once; keep it in a safe place." xml:space="preserve">
     <value>Die Datei lässt sich einmal herunterladen; bewahren Sie sie sicher auf.</value>
   </data>
+  <data name="The file {0} does not exist on the server." xml:space="preserve">
+    <value>Die Datei {0} gibt es auf dem Server nicht.</value>
+  </data>
   <data name="The filters and the search narrow the list; the CSV export can be edited and imported again for asset data." xml:space="preserve">
     <value>Filter und Suche grenzen die Liste ein; der CSV-Export lässt sich für Bestandsdaten bearbeiten und wieder importieren.</value>
   </data>
   <data name="The firewall is off" xml:space="preserve">
     <value>Die Firewall ist aus</value>
+  </data>
+  <data name="The firewall rule for port {0} could not be created: {1}" xml:space="preserve">
+    <value>Die Firewall-Regel für Port {0} ließ sich nicht anlegen: {1}</value>
   </data>
   <data name="The gateway must be an address in {0}." xml:space="preserve">
     <value>Das Gateway muss eine Adresse in {0} sein.</value>
@@ -6154,6 +6316,12 @@
   </data>
   <data name="The host is licensed for {0} VMs of its cluster, since they may move to it." xml:space="preserve">
     <value>Der Host wird für {0} VMs seines Clusters lizenziert, da sie auf ihn wandern können.</value>
+  </data>
+  <data name="The HTTPS certificate of the server expires soon or cannot be loaded" xml:space="preserve">
+    <value>Das HTTPS-Zertifikat des Servers läuft bald ab oder lässt sich nicht laden</value>
+  </data>
+  <data name="The HTTPS certificate {0} expires on {1:yyyy-MM-dd}." xml:space="preserve">
+    <value>Das HTTPS-Zertifikat {0} läuft am {1:dd.MM.yyyy} ab.</value>
   </data>
   <data name="The image could not be read. Please use a PNG (8 bit per channel, not interlaced) or a JPEG with at most {0} pixels." xml:space="preserve">
     <value>Das Bild ließ sich nicht lesen. Bitte ein PNG (8 Bit je Kanal, ohne Interlacing) oder ein JPEG mit höchstens {0} Pixeln verwenden.</value>
@@ -6272,6 +6440,9 @@
   <data name="The prefix must be between /{0} and /{1}." xml:space="preserve">
     <value>Das Präfix muss zwischen /{0} und /{1} liegen.</value>
   </data>
+  <data name="The private key of the certificate cannot be used – does the service account have access to it? {0}" xml:space="preserve">
+    <value>Der private Schlüssel des Zertifikats lässt sich nicht verwenden – hat das Dienstkonto Zugriff darauf? {0}</value>
+  </data>
   <data name="The progress of one deployment, per computer and per step." xml:space="preserve">
     <value>Der Fortschritt eines Deployments, je Rechner und je Schritt.</value>
   </data>
@@ -6352,6 +6523,9 @@
   </data>
   <data name="The steps of the selected package run at this point; its files are copied along." xml:space="preserve">
     <value>Die Schritte des gewählten Pakets laufen an dieser Stelle; seine Dateien werden mitkopiert.</value>
+  </data>
+  <data name="The store has no valid server certificate with a private key." xml:space="preserve">
+    <value>Im Speicher gibt es kein gültiges Serverzertifikat mit privatem Schlüssel.</value>
   </data>
   <data name="The stored secret of {0} &quot;{1}&quot; cannot be decrypted. Enter it again and repeat the export." xml:space="preserve">
     <value>Das gespeicherte Geheimnis von {0} „{1}“ lässt sich nicht entschlüsseln. Geben Sie es neu ein und wiederholen Sie den Export.</value>
@@ -6527,6 +6701,9 @@
   <data name="Threshold (number of computers)" xml:space="preserve">
     <value>Schwelle (Anzahl Rechner)</value>
   </data>
+  <data name="Thumbprint" xml:space="preserve">
+    <value>Fingerabdruck</value>
+  </data>
   <data name="Time" xml:space="preserve">
     <value>Zeit</value>
   </data>
@@ -6619,6 +6796,9 @@
   </data>
   <data name='Under "{0}" {1} responds, which is already listed as "{2}".' xml:space="preserve">
     <value>Unter „{0}“ antwortet {1}, der bereits als „{2}“ eingetragen ist.</value>
+  </data>
+  <data name="Under &quot;HTTPS&quot; you choose the certificate of the server – self-signed, from the certificate store of the computer, a file or an upload; a new one takes effect at once." xml:space="preserve">
+    <value>Unter „HTTPS“ wählen Sie das Zertifikat des Servers – selbstsigniert, aus dem Zertifikatspeicher des Computers, eine Datei oder ein Upload; ein neues gilt sofort.</value>
   </data>
   <data name="Under the name {0} the computer {1} responds (address {2}). Probably a stale DNS entry or an alias (CNAME) points to this computer; existing inventory data belongs to {1}. Commands and deployments are not executed on this entry while the names differ. Scans still run – but they capture {1}, not {0}." xml:space="preserve">
     <value>Unter dem Namen {0} antwortet der Rechner {1} (Adresse {2}). Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias (CNAME) auf diesen Rechner; vorhandene Inventardaten gehören zu {1}. Befehle und Deployments werden auf diesem Eintrag nicht ausgeführt, solange die Namen abweichen. Scans laufen weiterhin – sie erfassen dann aber {1}, nicht {0}.</value>
@@ -6764,6 +6944,9 @@
   <data name="Upload" xml:space="preserve">
     <value>Hochladen</value>
   </data>
+  <data name="Upload a PFX file first." xml:space="preserve">
+    <value>Laden Sie zuerst eine PFX-Datei hoch.</value>
+  </data>
   <data name="Upload failed: {0}" xml:space="preserve">
     <value>Upload fehlgeschlagen: {0}</value>
   </data>
@@ -6772,6 +6955,9 @@
   </data>
   <data name='Upload the setup files under "Files"; installation steps pick them from there.' xml:space="preserve">
     <value>Die Setup-Dateien unter „Dateien“ hochladen; Installationsschritte nehmen sie von dort.</value>
+  </data>
+  <data name="Uploaded PFX file" xml:space="preserve">
+    <value>Hochgeladene PFX-Datei</value>
   </data>
   <data name="Uploading {0} of {1} …" xml:space="preserve">
     <value>Lade {0} von {1} …</value>
@@ -6790,6 +6976,9 @@
   </data>
   <data name="Use the general communities again" xml:space="preserve">
     <value>Wieder die allgemeinen Communities verwenden</value>
+  </data>
+  <data name="Use this certificate" xml:space="preserve">
+    <value>Dieses Zertifikat verwenden</value>
   </data>
   <data name="Used and free addresses per subnet, from ping, ARP, DNS and the inventory. Finds free IPs – also as a contiguous block – and reserves them." xml:space="preserve">
     <value>Belegte und freie Adressen je Subnetz, aus Ping, ARP, DNS und dem Inventar. Findet freie IPs – auch als zusammenhängenden Block – und reserviert sie.</value>
@@ -6824,11 +7013,17 @@
   <data name="Users" xml:space="preserve">
     <value>Benutzer</value>
   </data>
+  <data name="Uses a certificate from the certificate store of this computer (Local Computer → Personal), e.g. from your Active Directory certification authority by autoenrollment or a Let's Encrypt certificate that win-acme stores there. Inventory always takes the newest valid certificate for the chosen name, so renewals take effect by themselves." xml:space="preserve">
+    <value>Verwendet ein Zertifikat aus dem Zertifikatspeicher dieses Computers (Lokaler Computer → Eigene Zertifikate), z. B. von Ihrer Active-Directory-Zertifizierungsstelle per Autoenrollment oder ein Let's-Encrypt-Zertifikat, das win-acme dort ablegt. Inventory nimmt immer das neueste gültige Zertifikat für den gewählten Namen, Erneuerungen greifen also von selbst.</value>
+  </data>
   <data name="Usually empty: MSI, Inno Setup and NSIS setups and programs with a registered silent command are removed silently on their own. For other setups enter the parameters for a silent uninstall here." xml:space="preserve">
     <value>Meist leer: MSI-, Inno-Setup- und NSIS-Setups sowie Programme mit eingetragenem stillen Befehl werden von selbst still entfernt. Für andere Setups hier die Parameter für eine stille Deinstallation eintragen.</value>
   </data>
   <data name="Valid until" xml:space="preserve">
     <value>Gültig bis</value>
+  </data>
+  <data name="valid until {0:yyyy-MM-dd}" xml:space="preserve">
+    <value>gültig bis {0:dd.MM.yyyy}</value>
   </data>
   <data name="valid without limit" xml:space="preserve">
     <value>gültig unbegrenzt</value>

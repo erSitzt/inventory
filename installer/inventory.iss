@@ -92,6 +92,8 @@ Filename: "{sys}\sc.exe"; Parameters: "stop {#ServiceName}"; Flags: runhidden; R
 Filename: "{sys}\cmd.exe"; Parameters: "/c timeout /t 5 /nobreak >nul"; Flags: runhidden; RunOnceId: "WaitService"
 Filename: "{sys}\sc.exe"; Parameters: "delete {#ServiceName}"; Flags: runhidden; RunOnceId: "DeleteService"
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""{#FirewallRule}"""; Flags: runhidden; RunOnceId: "DeleteFirewallRule"
+; Die Regel für HTTPS legt der Server selbst an (siehe HttpsEndpoint), solange die Regel oben besteht.
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""{#FirewallRule} HTTPS"""; Flags: runhidden; RunOnceId: "DeleteFirewallRuleHttps"
 
 [Code]
 var

@@ -18,7 +18,7 @@ public sealed class ReportMailer(SavedReportService saved, NotificationService n
         var report = await saved.GetAsync(reportId, ct) ?? throw new InvalidOperationException(L["Report {0} not found", reportId]);
         var table = await saved.RunAsync(report, ct);
         var local = TimeZoneInfo.ConvertTime(time.GetUtcNow(), time.LocalTimeZone);
-        var baseUrl = (await settings.GetAsync(SettingKeys.AgentServerUrl, ct))?.TrimEnd('/');
+        var baseUrl = await settings.GetLinkBaseAsync(ct);
         var branding = format == ReportFormat.Pdf ? await saved.BrandingAsync(ct) : null;
         var text = L["{0} rows, as of {1}.", table.Rows.Count, local.ToString("g")] + (report.Description is null ? "" : "\n" + report.Description);
 

@@ -11,6 +11,7 @@ using Inventory.Server.Api;
 using Inventory.Server.Mcp;
 using Inventory.Server.Plugins;
 using Inventory.Server.Components;
+using Inventory.Server.Https;
 using Inventory.Server.Services;
 using System.Globalization;
 using Inventory.Core;
@@ -179,6 +180,13 @@ builder.Services.AddSingleton<IAlertSink>(sp => sp.GetRequiredService<AlertQueue
 builder.Services.AddSingleton<AlertService>();
 builder.Services.AddSingleton<ReportMailer>();
 builder.Services.AddSingleton<SettingsService>();
+// HTTPS neben HTTP: eigener Port, Zertifikat aus den Einstellungen; Kestrel holt es bei jedem Verbindungsaufbau.
+builder.Services.AddSingleton(sp => new ServerCertificateService(sp.GetRequiredService<SettingsService>(), sp.GetRequiredService<ISecretProtector>(),
+    sp.GetRequiredService<IDataProtectionProvider>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, sp.GetRequiredService<ILogger<ServerCertificateService>>(),
+    dataDirectory, sp.GetRequiredService<IAlertSink>(), sp.GetRequiredService<IStringLocalizer<SharedResource>>()));
+builder.Services.AddSingleton<HttpsEndpoint>();
+builder.Services.AddHostedService<CertificateWorker>();
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.ApplicationServices.GetRequiredService<HttpsEndpoint>().Configure(kestrel));
 builder.Services.AddSingleton<ExampleData>();
 
 // Enums in der REST-API als Namen statt Zahlen.
@@ -250,6 +258,7 @@ await app.Services.GetRequiredService<ExampleData>().SeedReportsAsync();
 await app.Services.GetRequiredService<DeploymentService>().MarkInterruptedAsync();
 await app.Services.GetRequiredService<UpdateService>().ReportPreviousAsync(startup: true);
 await PluginLoader.StartAsync(plugins, app.Services, app.Logger, app.Lifetime.ApplicationStopping);
+await app.Services.GetRequiredService<HttpsEndpoint>().PrepareAsync(app.Lifetime.ApplicationStopping);
 
 app.Logger.LogInformation("Inventory {Version}. Data directory: {DataDirectory}, simulation: {Simulate}, sign-in: {Authentication}",
     AppVersion.Current, dataDirectory, options.ResolveSimulate(), string.Join(" + ", new[]
@@ -264,6 +273,8 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
+// Seitenaufrufe über HTTP auf HTTPS umleiten (wenn eingeschaltet); Skripte, API und Agenten bleiben bei HTTP.
+app.UseMiddleware<HttpsRedirectMiddleware>();
 // Vor den Statusseiten: deren erneute Ausführung der Anfrage würde den mehrstufigen Negotiate-Handshake zerstören.
 app.UseRequestLocalization();
 if (options.AuthenticationEnabled)

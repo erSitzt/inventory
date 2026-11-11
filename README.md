@@ -578,8 +578,8 @@ deployment is cancelled in the meantime, a continuation that already ran is not 
   create it).
 - **HTTPS:** strongly recommended – over this channel the agent receives commands it executes as Local System. The
   agent uses the Windows certificate store; the server certificate must therefore be trusted by the client (internal
-  CA or a public certificate), there is no "accept any certificate" switch. TLS 1.2 is enforced. Kestrel HTTPS
-  configuration: see [Configuration](#configuration-cprogramdatainventoryappsettingsjson).
+  CA or a public certificate), there is no "accept any certificate" switch. TLS 1.2 is enforced. HTTPS on the
+  server: see [HTTPS](#https).
 - **Proxy:** the agent runs as Local System and uses the WinHTTP proxy settings of the machine (`netsh winhttp set
   proxy …`), not a user's browser proxy. A direct route to the server is simplest.
 - **Name resolution:** the client must resolve the host name in the server address (DNS or `hosts`). The server does
@@ -872,7 +872,7 @@ dotnet run --project src/Inventory.Server --launch-profile http   # simulation, 
 1. Download `Inventory-Setup-x.y.z.exe` from the [releases page](https://github.com/erSitzt/inventory/releases/latest).
 2. Run it as administrator on the Windows server. The wizard asks for port, allowed Windows groups and service
    account, creates the service "Inventory" and optionally opens the port in the firewall.
-3. Open the interface at `http://<server>:5100`.
+3. Open the interface at `http://<server>:5100` – or at `https://<server>:5101`, see [HTTPS](#https).
 
 Program files live under `C:\Program Files\Inventory`, data and settings under `C:\ProgramData\Inventory`. Nothing
 else needs to be installed on the server (.NET is included).
@@ -885,6 +885,42 @@ Inventory-Setup-x.y.z.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /PORT=5100 /G
 
 More switches: `/SERVICEACCOUNT="COMPANY\svc-inventory" /SERVICEPASSWORD=…`, `/NOFIREWALL`, `/LOG=setup.log`.
 The SHA-256 checksum of every release file is listed in `SHA256SUMS.txt`.
+
+### HTTPS
+
+The server answers over HTTP (`Urls`, default port 5100) and over HTTPS (default port 5101) at the same time. HTTPS is
+set up under *Settings → HTTPS*; nothing has to be edited in `appsettings.json`.
+
+- **Certificate**, one of:
+  - **Self-signed** (default): Inventory creates it for the names of the server (full name, short name, `localhost`)
+    and of the addresses entered for the agents and for HTTPS, valid for 824 days, and renews it with the same key 60
+    days before it expires. Browsers do not trust it by themselves: *Download certificate (.cer)* and distribute it to
+    *Trusted Root Certification Authorities* by group policy (Macs: a certificate profile of the MDM).
+  - **Certificate store of the computer** (*Local Computer → Personal*, Windows only): choose a certificate from the
+    list. Inventory remembers its name and always uses the newest valid certificate for it whose chain the server
+    trusts – certificates of your Active Directory certification authority (autoenrollment) and Let's Encrypt
+    certificates that [win-acme](https://www.win-acme.com/) puts there are renewed without any further step. The
+    service account needs access to the private key (Local System has it).
+  - **File on the server:** PFX/P12 with password, or PEM (the certificate followed by its chain; the key in the same
+    file or a key file), e.g. from certbot or a script. Reloaded within an hour when it changes.
+  - **Uploaded PFX file:** stored encrypted in the data directory; not renewed.
+
+  A new certificate applies to new connections immediately, without a restart. An unusable one (expired, without
+  private key, not meant for servers) is refused and the previous one stays. If the chosen certificate cannot be
+  loaded at start, the self-signed one steps in and the page says why. The alert *The HTTPS certificate of the server
+  expires soon or cannot be loaded* warns 14 days before the end.
+- **Port:** changing it restarts the service. If the setup created the firewall rule for HTTP (`Inventory`), the server
+  creates `Inventory HTTPS` for the HTTPS port itself; after `/NOFIREWALL` it leaves the firewall alone. If the port is
+  taken, Inventory runs without HTTPS and the page says so.
+- **Address and redirect:** the HTTPS address (e.g. `https://inventory.example.local:5101`) is derived from the address
+  for the agents and the certificate, or entered. Links in notifications use it. *Redirect browsers from HTTP to HTTPS*
+  sends page views there (off by default with the self-signed certificate); agents, scripts, the API, MCP and downloads
+  keep working over HTTP. There is no HSTS – it would apply to every port of the host.
+- **Sign-in:** Windows sign-in (Kerberos) works over HTTPS with the same SPN (`HTTP/<server>`). The HTTPS endpoint only
+  speaks HTTP/1.1, because Negotiate does not work over HTTP/2. Microsoft Entra ID requires HTTPS for the redirect URI.
+- **An own Kestrel configuration** in `appsettings.json` (section `Kestrel` or an `https://` address in `Urls`) keeps
+  working; the built-in HTTPS then stays off.
+- **Agents** keep using the address they were installed with (see [Agent](#agent)).
 
 ## Updating
 
@@ -931,7 +967,7 @@ the certificate, add the new one and keep the old one for one more release (see 
 
 | Key | Meaning |
 |---|---|
-| `Urls` | addresses of the web interface, e.g. `http://*:5100` |
+| `Urls` | HTTP addresses of the web interface, e.g. `http://*:5100`; HTTPS is set up in the interface (see [HTTPS](#https)) |
 | `Inventory:DataDirectory` | database, keys, package files (`repository`), backups (`backups`) |
 | `Inventory:Language` | default language of the interface and of background jobs (`en` or `de`); users can switch in the top bar |
 | `Inventory:Authentication` | `Windows` (default on Windows), `Oidc`, both (`Windows,Oidc`) or `None` |
@@ -1022,7 +1058,8 @@ started from the operator's own PC with their own Windows rights; the area only 
 }
 ```
 
-HTTPS for Kestrel: `"Kestrel": { "Endpoints": { "Https": { "Url": "https://*:5100", "Certificate": { "Subject": "<server>", "Store": "My", "Location": "LocalMachine" } } } }`.
+HTTPS is set up under *Settings → HTTPS* (see [HTTPS](#https)). An own `Kestrel` section in `appsettings.json` still
+works and turns the built-in HTTPS off.
 
 **API tokens** for scripts are created in the interface under *API tokens* and work in every sign-in mode:
 
@@ -1261,8 +1298,9 @@ Not part of the export:
 - the configuration of the server (`appsettings.json`: port, sign-in, allowed groups and roles, OIDC, certificate) –
   set it up on the new server;
 - the daily backups, downloads and caches;
-- settings that belong to the old computer when the import comes from another one: the agent server address, the
-  server addresses of the network map and the last run of the AD synchronization and of the heartbeat;
+- settings that belong to the old computer when the import comes from another one: the agent server address, HTTPS
+  (port, address, certificate), the server addresses of the network map and the last run of the AD synchronization
+  and of the heartbeat;
 - the agent download page without sign-in: it is closed after every import and has to be opened again on purpose;
 - agents: their computers come along, but installed agents keep reporting to the old server until they are rolled out
   again from the new one (*Settings → Agents*).
