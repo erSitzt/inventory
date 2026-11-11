@@ -610,8 +610,11 @@ nicht rückgängig; ihr Ergebnis wird verworfen.
   es zu verteilen. Einen Schalter „jedes Zertifikat akzeptieren“ gibt es nicht. Die installierte Adresse bleibt als
   Rückfall: Scheitert die HTTPS-Adresse dreimal hintereinander (anderer Port, ein neues Zertifikat, dem der Agent nicht
   vertraut), versucht er die installierte Adresse, erfährt dort die aktuelle HTTPS-Adresse und wechselt erneut; eine
-  Adresse, die nicht ging, probiert er frühestens nach einer Stunde wieder. Neue Installationen (Setup,
-  Installationsskripte, agentenloser Installationsjob) bekommen HTTPS-Adresse und Pin gleich mit. *Einstellungen →
+  Adresse, die nicht ging, probiert er frühestens nach einer Stunde wieder. Dieser Rückfall braucht eine
+  `http://`-Agentenadresse: Steht unter *Einstellungen* selbst eine `https://`-Adresse, schneidet ein Zertifikat, dem
+  die Agenten nicht vertrauen, sie ab. Ein erneuertes selbstsigniertes Zertifikat behält Schlüssel und Pin, ein Wechsel
+  auf ein anderes Zertifikat (etwa einer internen CA auf Macs ohne deren Stammzertifikat) nicht. Neue Installationen
+  (Setup, Installationsskripte, Mac-Paket, agentenloser Installationsjob) bekommen HTTPS-Adresse und Pin gleich mit. *Einstellungen →
   HTTPS* zeigt, wie viele Agenten schon über HTTPS kommen, die Rechnerdetails zeigen es je Rechner. Unter Windows wird
   TLS 1.2 erzwungen.
 - **Proxy:** Der Agent läuft als Lokales System und nutzt die WinHTTP-Proxyeinstellungen des Rechners (`netsh winhttp

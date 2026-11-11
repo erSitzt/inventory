@@ -361,12 +361,18 @@ namespace Inventory.Agent
         /// <summary>Über eine Zwischendatei: ein Abbruch mitten im Schreiben hinterlässt so keine halbe Datei unter dem endgültigen Namen.</summary>
         private static void WriteAtomically(string path, string content)
         {
-            File.WriteAllText(path + ".tmp", content, new UTF8Encoding(false));
+            var temp = path + ".tmp";
+            if (File.Exists(temp))
+                File.Delete(temp);
+            // Eine Kopie übernimmt die Rechte der Datei (unter macOS den Modus 600); neu angelegt gälte die umask des Dienstes.
+            if (File.Exists(path))
+                File.Copy(path, temp);
+            File.WriteAllText(temp, content, new UTF8Encoding(false));
             // Ersetzen in einem Schritt: zu keinem Zeitpunkt fehlt die Datei.
             if (File.Exists(path))
-                File.Replace(path + ".tmp", path, null);
+                File.Replace(temp, path, null);
             else
-                File.Move(path + ".tmp", path);
+                File.Move(temp, path);
         }
 
         private const string ResumeFile = "resume.json";
