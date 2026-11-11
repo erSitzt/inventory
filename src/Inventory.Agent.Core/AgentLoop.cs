@@ -144,7 +144,7 @@ namespace Inventory.Agent
                 {
                     if (response.StatusCode == HttpStatusCode.NoContent)
                     {
-                        _failures = 0;
+                        _failures = AfterSuccess(_failures);
                         if (SwitchToOfferedAddress(response))
                             return;
                         continue;
@@ -156,7 +156,7 @@ namespace Inventory.Agent
                         throw new InvalidOperationException("Schlüssel vom Server abgelehnt, melde neu an");
                     }
                     response.EnsureSuccessStatusCode();
-                    _failures = 0;
+                    _failures = AfterSuccess(_failures);
                     var offer = JobJson.Deserialize<AgentJobOffer>(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
                     if (offer.Update != null)
                         ApplyUpdate(offer.Update);
@@ -586,6 +586,12 @@ namespace Inventory.Agent
                 : config.ServerUrl.Trim().TrimEnd('/');
 
         /// <summary>
+        /// Nach einer erfolgreichen Abfrage: der Zähler beginnt die laufende Runde neu. Wer gerade über die installierte Adresse
+        /// kommt, bleibt nach einer Störung zuerst bei ihr; zurück zu HTTPS geht es über die Prüfung der angebotenen Adresse.
+        /// </summary>
+        public static int AfterSuccess(int failures) => failures / FailuresBeforeFallback % 2 * FailuresBeforeFallback;
+
+        /// <summary>
         /// Bietet der Server eine HTTPS-Adresse an, die der Agent noch nicht nutzt, prüft er sie (höchstens stündlich) mit seinem
         /// Schlüssel und den angebotenen Pins. Geht sie, merkt er sie sich in agent.json und verbindet sich neu (true).
         /// </summary>
@@ -656,8 +662,9 @@ namespace Inventory.Agent
         {
             try
             {
-                // In die vorhandene Datei schreiben: ihre Rechte (auf dem Mac nur root) bleiben.
-                File.WriteAllText(Path.Combine(_baseDir, AgentProtocol.ConfigFile), JobJson.Serialize(_config), new UTF8Encoding(false));
+                // Über eine Zwischendatei: ein Abbruch mitten im Schreiben hinterlässt kein halbes agent.json. Der Agent-Ordner ist
+                // nur für das System bzw. root zugänglich, die neue Datei also ebenso.
+                WriteAtomically(Path.Combine(_baseDir, AgentProtocol.ConfigFile), JobJson.Serialize(_config));
                 return true;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)

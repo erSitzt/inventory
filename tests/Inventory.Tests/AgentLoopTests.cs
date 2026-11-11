@@ -230,5 +230,9 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
         Assert.Equal(["https://inventory:5101", "https://inventory:5101", "https://inventory:5101", "http://inventory:5100", "http://inventory:5100",
             "http://inventory:5100", "https://inventory:5101"], Enumerable.Range(0, 7).Select(f => AgentLoop.ChooseUrl(config, f)));
         Assert.Equal("http://inventory:5100", AgentLoop.ChooseUrl(new AgentConfig { ServerUrl = "http://inventory:5100" }, 0));
+
+        // Nach einem Erfolg bleibt der Agent in der Runde, die gerade gilt: über HTTPS bei HTTPS, im Rückfall bei der installierten Adresse.
+        Assert.Equal([0, 0, 0, 3, 3, 3, 0], Enumerable.Range(0, 7).Select(AgentLoop.AfterSuccess));
+        Assert.Equal("http://inventory:5100", AgentLoop.ChooseUrl(config, AgentLoop.AfterSuccess(4) + 1));
     }
 }
