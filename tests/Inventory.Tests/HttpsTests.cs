@@ -321,10 +321,8 @@ public sealed class HttpsTests : IDisposable
         await _settings.SetAsync(SettingKeys.ServerHttpsAddress, $"https://localhost:{httpsPort}");
         var certificates = Service();
         var https = Endpoint(certificates, $"http://127.0.0.1:{httpPort}");
-        await https.PrepareAsync();
-        Assert.True(https.Active);
-
         await using var app = await ServeAsync(https);
+        Assert.True(https.Active);
 
         using (var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }))
         {
@@ -362,7 +360,6 @@ public sealed class HttpsTests : IDisposable
         var certificates = new ServerCertificateService(_settings, new ReversingProtector(), _protection, _audit, TimeProvider.System,
             NullLogger<ServerCertificateService>.Instance, _dataDirectory, _alerts);
         var https = Endpoint(certificates, $"http://127.0.0.1:{FreePort()}");
-        await https.PrepareAsync();
         await using var app = await ServeAsync(https);
 
         Assert.Contains(certificates.StoreCandidates(), c => c.Thumbprint == thumbprint && c.KeyProblem is null);
@@ -382,7 +379,6 @@ public sealed class HttpsTests : IDisposable
         var agents = new AgentService(_db, _settings, _clock);
         var certificates = Service();
         var https = Endpoint(certificates, $"http://127.0.0.1:{FreePort()}", agents: agents);
-        await https.PrepareAsync();
         await using var app = await ServeAsync(https);
 
         // Der Server bietet den Agenten Adresse und Pin an.
@@ -415,11 +411,16 @@ public sealed class HttpsTests : IDisposable
         await app.StopAsync();
     }
 
+    /// <summary>
+    /// In der Reihenfolge von Program.cs: Kestrel übergibt seine Optionen schon in Build(), vorbereitet wird danach (nach der
+    /// Migration), gebunden beim Start.
+    /// </summary>
     private static async Task<WebApplication> ServeAsync(HttpsEndpoint https)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
         builder.WebHost.ConfigureKestrel(kestrel => https.Configure(kestrel));
         var app = builder.Build();
+        await https.PrepareAsync();
         app.UseMiddleware<HttpsRedirectMiddleware>(https);
         app.MapGet("/", (HttpContext context) => $"{context.Request.Protocol} {context.Request.IsHttps}");
         await app.StartAsync();
