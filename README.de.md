@@ -954,6 +954,13 @@ unter *Einstellungen → HTTPS* eingerichtet; in `appsettings.json` muss dafür 
     derselben Datei oder einer Schlüsseldatei), z. B. von certbot oder einem Skript. Wird innerhalb einer Stunde neu
     geladen, wenn sie sich ändert.
   - **Hochgeladene PFX-Datei:** verschlüsselt im Datenverzeichnis abgelegt; wird nicht erneuert.
+  - **Let's Encrypt, eingebaut:** Inventory beantragt das Zertifikat selbst mit der DNS-Prüfung (dns-01) und erneuert
+    es, wenn ein Drittel der Laufzeit übrig ist (bei 90 Tagen: 30 Tage vor dem Ende); eine gescheiterte Erneuerung wird
+    alle 6 Stunden wiederholt und löst den Zertifikatsalarm aus. Für die Prüfung setzt Inventory kurz einen TXT-Eintrag
+    `_acme-challenge.<name>` in **Azure DNS**; der Server muss also aus dem Internet nicht erreichbar sein. Die Namen
+    (z. B. `inventory.example.com`, auch `*.example.com`) müssen in einer öffentlichen DNS-Zone in Azure liegen und im
+    internen DNS auf den Server zeigen – die Einstellungsseite warnt, wenn nicht. *Testzertifikat* nutzt die
+    Testumgebung von Let's Encrypt (ohne Vertrauen, großzügige Grenzen) – am besten zuerst damit probieren.
 
   Ein neues Zertifikat gilt sofort für neue Verbindungen, ohne Neustart. Ein unbrauchbares (abgelaufen, ohne privaten
   Schlüssel, nicht für Server gedacht) wird abgelehnt, das bisherige bleibt. Lässt sich das gewählte Zertifikat beim
@@ -969,6 +976,12 @@ unter *Einstellungen → HTTPS* eingerichtet; in `appsettings.json` muss dafür 
 - **Anmeldung:** Die Windows-Anmeldung (Kerberos) funktioniert über HTTPS mit demselben SPN (`HTTP/<server>`). Der
   HTTPS-Endpunkt spricht nur HTTP/1.1, weil Negotiate nicht über HTTP/2 geht. Microsoft Entra ID verlangt für die
   Umleitungs-URI HTTPS.
+- **Azure DNS für Let's Encrypt:** Im Entra Admin Center eine App-Registrierung anlegen (*App-Registrierungen → Neue
+  Registrierung*, ohne Umleitungs-URI) und unter *Zertifikate & Geheimnisse* einen geheimen Clientschlüssel erzeugen. Im
+  Azure-Portal die DNS-Zone öffnen, *Zugriffssteuerung (IAM) → Rollenzuweisung hinzufügen*, Rolle **DNS Zone
+  Contributor**, Mitglied: die App-Registrierung – nur auf der Zone, nicht auf dem Abonnement. Mandanten-ID, Client-ID,
+  Geheimnis, Abonnement-ID, Ressourcengruppe und Zone unter *Einstellungen → HTTPS* eintragen. Das Geheimnis wird
+  verschlüsselt gespeichert; der Schlüssel des ACME-Kontos bleibt im Datenverzeichnis.
 - **Eine eigene Kestrel-Konfiguration** in `appsettings.json` (Abschnitt `Kestrel` oder eine `https://`-Adresse in
   `Urls`) funktioniert weiter; das eingebaute HTTPS bleibt dann aus.
 - **Agenten** wechseln von selbst auf HTTPS und behalten die installierte Adresse als Rückfall (siehe [Agent](#agent)).
@@ -1038,6 +1051,7 @@ nicht einspielen. Für einen Zertifikatswechsel das neue dazulegen und das alte 
 | `Inventory:Catalog:VersionsUrl` | Ordner mit den Versionslisten (`<winget-ID>.json`); leer = nur die aktuelle Version anbieten |
 | `Inventory:Catalog:IndexUrl` | Adresse oder Pfad des Suchindex `winget.json`; leer = Suche in ganz winget abschalten |
 | `Inventory:Https:Enabled` | `false` = kein eingebautes HTTPS (z. B. hinter einem Reverse-Proxy); Standard an, siehe [HTTPS](#https) |
+| `Inventory:Https:AcmeDirectory` | ACME-Verzeichnis einer anderen Zertifizierungsstelle statt Let's Encrypt (z. B. einer internen ACME-CA) |
 | `Inventory:Simulate` | `true` = keine echten Zugriffe |
 
 ### Anmeldung

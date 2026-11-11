@@ -2,6 +2,7 @@
 @inject HttpsEndpoint Https
 @inject ServerCertificateService Certificates
 @inject AgentService Agents
+@inject AcmeService Acme
 @inject SettingsService Settings
 @inject Auditor Audit
 @inject Access Access
@@ -111,6 +112,7 @@
                 }
                 <MudRadio T="ServerCertificateSource" Value="ServerCertificateSource.File" Color="Color.Primary">@SourceName(ServerCertificateSource.File)</MudRadio>
                 <MudRadio T="ServerCertificateSource" Value="ServerCertificateSource.Upload" Color="Color.Primary">@SourceName(ServerCertificateSource.Upload)</MudRadio>
+                <MudRadio T="ServerCertificateSource" Value="ServerCertificateSource.Acme" Color="Color.Primary">@SourceName(ServerCertificateSource.Acme)</MudRadio>
             </MudRadioGroup>
             @switch (_source)
             {
@@ -173,8 +175,48 @@
                         <InputFile id="https-upload" OnChange="UploadAsync" accept=".pfx,.p12" hidden />
                     </div>
                     break;
+                case ServerCertificateSource.Acme:
+                    <MudText Typo="Typo.body2">
+                        @L["Inventory requests the certificate from Let's Encrypt itself and renews it when a third of its lifetime is left. Let's Encrypt checks a TXT record that Inventory sets in Azure DNS for a moment, so this server does not have to be reachable from the internet. The names must lie in a public DNS zone in Azure and point to this server in your internal DNS. The app registration needs the role \"DNS Zone Contributor\" on the zone."]
+                    </MudText>
+                    @if (Acme.CustomDirectory is { } custom)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">@L["Certification authority from appsettings.json: {0}", custom]</MudAlert>
+                    }
+                    <MudTextField @bind-Value="_acmeNames" Label="@L["Names"]" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="inventory.example.com"
+                                  HelperText="@L["One or more host names, separated by commas; *.example.com for a wildcard."]" />
+                    @foreach (var warning in _nameWarnings)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">@warning</MudAlert>
+                    }
+                    <MudTextField @bind-Value="_acmeEmail" Label="@L["E-mail address (optional)"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  HelperText="@L["Contact for the Let's Encrypt account."]" />
+                    <MudSwitch T="bool" @bind-Value="_acmeStaging" Color="Color.Primary" Label="@L["Test certificate (Let's Encrypt staging, not trusted by browsers)"]" />
+                    <MudText Typo="Typo.subtitle2">Azure DNS</MudText>
+                    <MudTextField @bind-Value="_azureTenant" Label="@L["Tenant ID"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_azureClient" Label="@L["Client ID"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_azureSecret" Label="@L["Client secret"]" Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Password" autocomplete="new-password"
+                                  HelperText="@L["Leave empty to keep the stored secret."]" />
+                    <MudTextField @bind-Value="_azureSubscription" Label="@L["Subscription ID"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_azureGroup" Label="@L["Resource group"]" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_azureZone" Label="@L["DNS zone"]" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="example.com" />
+                    @if (_acmeLast is { } last)
+                    {
+                        <MudText Typo="Typo.caption">@L["Last request {0}: {1}", Display.LocalTime(_acmeLastRun), last]</MudText>
+                    }
+                    @if (_acmeSteps.Count > 0)
+                    {
+                        <pre style="white-space: pre-wrap; font-size: 12px; margin: 0">@string.Join("\n", _acmeSteps)</pre>
+                    }
+                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_busy || Acme.Running)" OnClick="RequestAsync">
+                            @(Acme.Running ? L["Requesting …"] : L["Save and request certificate"])
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Disabled="_busy" OnClick="SaveAcmeAsync">@L["Save"]</MudButton>
+                    </MudStack>
+                    break;
             }
-            @if (_source != ServerCertificateSource.Upload)
+            @if (_source != ServerCertificateSource.Upload && (_source != ServerCertificateSource.Acme || Certificates.HasIssued))
             {
                 <div>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="ApplyAsync">@L["Use this certificate"]</MudButton>
@@ -200,6 +242,19 @@
     private bool _busy;
     private int _agents;
     private int _httpsAgents;
+    private string? _acmeNames;
+    private string? _acmeEmail;
+    private bool _acmeStaging;
+    private string? _azureTenant;
+    private string? _azureClient;
+    private string? _azureSecret;
+    private string? _azureSubscription;
+    private string? _azureGroup;
+    private string? _azureZone;
+    private string? _acmeLast;
+    private DateTime? _acmeLastRun;
+    private List<string> _acmeSteps = [];
+    private List<string> _nameWarnings = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -220,7 +275,69 @@
             }
         }
         (_agents, _httpsAgents) = await Agents.CountConnectionsAsync();
+        var acme = await Acme.ReadAsync();
+        (_acmeNames, _acmeEmail, _acmeStaging) = (string.Join(", ", acme.Names), acme.Email, acme.Staging);
+        (_azureTenant, _azureClient, _azureSubscription, _azureGroup, _azureZone) =
+            (acme.Azure.TenantId, acme.Azure.ClientId, acme.Azure.SubscriptionId, acme.Azure.ResourceGroup, acme.Azure.Zone);
+        (_acmeLast, _acmeLastRun) = await Acme.LastAsync();
+        if (_source == ServerCertificateSource.Acme)
+            await CheckNamesAsync(acme.Names);
         Certificates.Changed += OnChanged;
+    }
+
+    private async Task CheckNamesAsync(IEnumerable<string> names)
+    {
+        var warnings = new List<string>();
+        foreach (var name in names)
+            if (await Acme.CheckNameAsync(name) is { } warning)
+                warnings.Add(warning);
+        _nameWarnings = warnings;
+    }
+
+    private async Task<bool> SaveAcmeSettingsAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return false;
+        var names = AcmeSettings.ParseNames(_acmeNames);
+        await Acme.SaveAsync(new AcmeSettings(names, _acmeEmail, _acmeStaging,
+            new Inventory.Remoting.Acme.AzureDnsSettings(_azureTenant ?? "", _azureClient ?? "", _azureSecret ?? "", _azureSubscription ?? "", _azureGroup ?? "", _azureZone ?? "")));
+        _azureSecret = null;
+        _acmeNames = string.Join(", ", names);
+        await Audit.LogAsync(L["Setting changed"], $"Let's Encrypt: {_acmeNames}{(_acmeStaging ? " (staging)" : "")}, Azure DNS {_azureZone}");
+        await CheckNamesAsync(names);
+        return true;
+    }
+
+    private async Task SaveAcmeAsync()
+    {
+        if (await SaveAcmeSettingsAsync())
+            Snackbar.Add(L["Saved."], Severity.Success);
+    }
+
+    private async Task RequestAsync()
+    {
+        if (!await SaveAcmeSettingsAsync())
+            return;
+        _busy = true;
+        _acmeSteps = [];
+        try
+        {
+            var progress = new Progress<string>(step =>
+            {
+                _acmeSteps.Add(step);
+                _ = InvokeAsync(StateHasChanged);
+            });
+            var error = await Acme.RequestAsync(await Audit.ActorAsync(), progress);
+            (_acmeLast, _acmeLastRun) = await Acme.LastAsync();
+            if (error is not null)
+                Snackbar.Add(error, Severity.Error);
+            else
+                Snackbar.Add(L["The certificate is in use."], Severity.Success);
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     public void Dispose() => Certificates.Changed -= OnChanged;
@@ -233,6 +350,7 @@
         ServerCertificateSource.MachineStore => L["Certificate store of the computer (Active Directory CA, win-acme)"],
         ServerCertificateSource.File => L["File on the server"],
         ServerCertificateSource.Upload => L["Uploaded PFX file"],
+        ServerCertificateSource.Acme => L["Let's Encrypt (built in, DNS check via Azure DNS)"],
         _ => "–",
     };
 

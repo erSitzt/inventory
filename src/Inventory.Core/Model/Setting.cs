@@ -50,6 +50,22 @@ public static class SettingKeys
     public const string ServerCertificateKeyFile = "Server.Certificate.KeyFile";
     /// <summary>Passwort der Zertifikatsdatei, verschlüsselt über <see cref="Abstractions.ISecretProtector"/>.</summary>
     public const string ServerCertificatePassword = "Server.Certificate.Password";
+    /// <summary>Let's Encrypt: Namen des Zertifikats (Komma oder Leerzeichen), z. B. "inventory.firma.de".</summary>
+    public const string ServerAcmeNames = "Server.Acme.Names";
+    /// <summary>Let's Encrypt: Kontakt für das ACME-Konto; leer = ohne.</summary>
+    public const string ServerAcmeEmail = "Server.Acme.Email";
+    /// <summary>"True" = Testumgebung von Let's Encrypt (Zertifikate ohne Vertrauen, großzügige Grenzen).</summary>
+    public const string ServerAcmeStaging = "Server.Acme.Staging";
+    public const string ServerAcmeAzureTenant = "Server.Acme.Azure.TenantId";
+    public const string ServerAcmeAzureClientId = "Server.Acme.Azure.ClientId";
+    /// <summary>Geheimnis der App-Registrierung, verschlüsselt über <see cref="Abstractions.ISecretProtector"/>.</summary>
+    public const string ServerAcmeAzureSecret = "Server.Acme.Azure.ClientSecret";
+    public const string ServerAcmeAzureSubscription = "Server.Acme.Azure.SubscriptionId";
+    public const string ServerAcmeAzureResourceGroup = "Server.Acme.Azure.ResourceGroup";
+    public const string ServerAcmeAzureZone = "Server.Acme.Azure.Zone";
+    /// <summary>Ergebnis des letzten Antrags (Text für die Oberfläche).</summary>
+    public const string ServerAcmeLastResult = "Server.Acme.LastResult";
+    public const string ServerAcmeLastRunUtc = "Server.Acme.LastRunUtc";
     /// <summary>SNMP-Communities für den Gerätescan (eine je Zeile), verschlüsselt über <see cref="Abstractions.ISecretProtector"/>; leer = "public".</summary>
     public const string DeviceSnmpCommunities = "Devices.SnmpCommunities";
     /// <summary>Relevante Netze (CIDR, kommagetrennt): Netzwerkkarte, Traceroute und Gateway-Prüfung beschränken sich darauf; leer = alle.</summary>

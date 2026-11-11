@@ -185,6 +185,10 @@ builder.Services.AddSingleton(sp => new ServerCertificateService(sp.GetRequiredS
     sp.GetRequiredService<IDataProtectionProvider>(), sp.GetRequiredService<AuditService>(), TimeProvider.System, sp.GetRequiredService<ILogger<ServerCertificateService>>(),
     dataDirectory, sp.GetRequiredService<IAlertSink>(), sp.GetRequiredService<IStringLocalizer<SharedResource>>()));
 builder.Services.AddSingleton<HttpsEndpoint>();
+builder.Services.AddSingleton(sp => new AcmeService(sp.GetRequiredService<ServerCertificateService>(), sp.GetRequiredService<SettingsService>(),
+    sp.GetRequiredService<ISecretProtector>(), sp.GetRequiredService<IDataProtectionProvider>(), sp.GetRequiredService<AuditService>(), TimeProvider.System,
+    sp.GetRequiredService<ILogger<AcmeService>>(), dataDirectory, options.Https.AcmeDirectory, sp.GetRequiredService<IAlertSink>(),
+    sp.GetRequiredService<IStringLocalizer<SharedResource>>()));
 builder.Services.AddHostedService<CertificateWorker>();
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.ApplicationServices.GetRequiredService<HttpsEndpoint>().Configure(kestrel));
 builder.Services.AddSingleton<ExampleData>();

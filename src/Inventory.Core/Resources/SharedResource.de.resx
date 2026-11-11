@@ -269,6 +269,9 @@
   <data name='A rule sends a message when something happens: a computer enters a collection, a deployment finishes with failures, a schedule or the directory synchronization fails. Dynamic collections are the rule language – "computers without antivirus" is a collection, and the rule reports who enters it. Only changes are reported; what already applies when a rule is created is the starting point.' xml:space="preserve">
     <value>Eine Regel schickt eine Nachricht, wenn etwas passiert: ein Rechner kommt in eine Sammlung, eine Verteilung endet mit Fehlern, ein Zeitplan oder der Verzeichnisabgleich schlägt fehl. Dynamische Sammlungen sind die Regelsprache – „Rechner ohne Virenschutz“ ist eine Sammlung, und die Regel meldet, wer hineinkommt. Gemeldet werden nur Veränderungen; was beim Anlegen einer Regel schon zutrifft, ist der Ausgangsstand.</value>
   </data>
+  <data name="A request is already running." xml:space="preserve">
+    <value>Ein Antrag läuft bereits.</value>
+  </data>
   <data name="A running computer that does not answer the cancellation within a few seconds (for example because it restarted during the job) is ended anyway, so the deployment no longer blocks an update." xml:space="preserve">
     <value>Ein laufender Rechner, der auf den Abbruch nicht binnen weniger Sekunden reagiert (etwa weil er mitten im Job neu gestartet ist), wird trotzdem beendet – so blockiert das Deployment kein Update mehr.</value>
   </data>
@@ -1001,6 +1004,9 @@
   <data name="Certificate thumbprint (SHA-256)" xml:space="preserve">
     <value>Zertifikat-Fingerabdruck (SHA-256)</value>
   </data>
+  <data name="Certification authority from appsettings.json: {0}" xml:space="preserve">
+    <value>Zertifizierungsstelle aus appsettings.json: {0}</value>
+  </data>
   <data name="Change" xml:space="preserve">
     <value>Änderung</value>
   </data>
@@ -1105,6 +1111,12 @@
   </data>
   <data name="Click to show the computers" xml:space="preserve">
     <value>Klicken, um die Rechner zu zeigen</value>
+  </data>
+  <data name="Client ID" xml:space="preserve">
+    <value>Client-ID</value>
+  </data>
+  <data name="Client secret" xml:space="preserve">
+    <value>Geheimer Clientschlüssel</value>
   </data>
   <data name="Close" xml:space="preserve">
     <value>Schließen</value>
@@ -1303,6 +1315,9 @@
   </data>
   <data name="Contact" xml:space="preserve">
     <value>Kontakt</value>
+  </data>
+  <data name="Contact for the Let's Encrypt account." xml:space="preserve">
+    <value>Kontakt für das Let's-Encrypt-Konto.</value>
   </data>
   <data name="contains" xml:space="preserve">
     <value>enthält</value>
@@ -1859,6 +1874,9 @@
   <data name="DNS via the resolver." xml:space="preserve">
     <value>DNS über den Resolver.</value>
   </data>
+  <data name="DNS zone" xml:space="preserve">
+    <value>DNS-Zone</value>
+  </data>
   <data name="DNS zones from Active Directory not readable ({0}); the resolver was used instead." xml:space="preserve">
     <value>DNS-Zonen aus dem Active Directory nicht lesbar ({0}); stattdessen wurde der Resolver gefragt.</value>
   </data>
@@ -1948,6 +1966,9 @@
   </data>
   <data name="E-mail" xml:space="preserve">
     <value>E-Mail</value>
+  </data>
+  <data name="E-mail address (optional)" xml:space="preserve">
+    <value>E-Mail-Adresse (optional)</value>
   </data>
   <data name="E-mail channels get the report as an attachment, webhooks a note with the number of rows and a link." xml:space="preserve">
     <value>E-Mail-Kanäle bekommen den Bericht als Anhang, Webhooks einen Hinweis mit der Zeilenzahl und einem Link.</value>
@@ -2039,11 +2060,17 @@
   <data name='Enter the SNMP communities of your network ("SNMP communities"); without them, only "public" is tried and many devices give less away.' xml:space="preserve">
     <value>Die SNMP-Communities des Netzes eintragen („SNMP-Communities“); ohne sie wird nur „public“ versucht, und viele Geräte verraten weniger.</value>
   </data>
+  <data name="Enter the names of the certificate." xml:space="preserve">
+    <value>Geben Sie die Namen des Zertifikats ein.</value>
+  </data>
   <data name="Enter the network as CIDR, e.g. 10.0.1.0/24." xml:space="preserve">
     <value>Das Netz bitte als CIDR angeben, z. B. 10.0.1.0/24.</value>
   </data>
   <data name="Enter the path of the certificate file." xml:space="preserve">
     <value>Geben Sie den Pfad der Zertifikatsdatei ein.</value>
+  </data>
+  <data name="Enter {0} for Azure DNS." xml:space="preserve">
+    <value>Geben Sie für Azure DNS {0} ein.</value>
   </data>
   <data name="Entry from the winget search, not from the base selection: test the silent parameters on a single computer before deploying." xml:space="preserve">
     <value>Eintrag aus der winget-Suche, nicht aus der Grundauswahl: die Silent-Parameter vor dem Verteilen an einem einzelnen Rechner testen.</value>
@@ -2831,6 +2858,9 @@
   <data name="Inventory number" xml:space="preserve">
     <value>Inventarnummer</value>
   </data>
+  <data name="Inventory requests the certificate from Let's Encrypt itself and renews it when a third of its lifetime is left. Let's Encrypt checks a TXT record that Inventory sets in Azure DNS for a moment, so this server does not have to be reachable from the internet. The names must lie in a public DNS zone in Azure and point to this server in your internal DNS. The app registration needs the role &quot;DNS Zone Contributor&quot; on the zone." xml:space="preserve">
+    <value>Inventory beantragt das Zertifikat selbst bei Let's Encrypt und erneuert es, wenn ein Drittel der Laufzeit übrig ist. Let's Encrypt prüft einen TXT-Eintrag, den Inventory dafür kurz in Azure DNS setzt; dieser Server muss also aus dem Internet nicht erreichbar sein. Die Namen müssen in einer öffentlichen DNS-Zone in Azure liegen und im internen DNS auf diesen Server zeigen. Die App-Registrierung braucht die Rolle „DNS Zone Contributor“ auf der Zone.</value>
+  </data>
   <data name="Inventory restarts. Reload the page in about half a minute." xml:space="preserve">
     <value>Inventory startet neu. Laden Sie die Seite in etwa einer halben Minute neu.</value>
   </data>
@@ -2890,6 +2920,9 @@
   </data>
   <data name="is {0}" xml:space="preserve">
     <value>ist {0}</value>
+  </data>
+  <data name="Issued for {0}, valid until {1:yyyy-MM-dd}." xml:space="preserve">
+    <value>Ausgestellt für {0}, gültig bis {1:dd.MM.yyyy}.</value>
   </data>
   <data name="Issuer" xml:space="preserve">
     <value>Aussteller</value>
@@ -2984,6 +3017,9 @@
   <data name="Last reported {0}" xml:space="preserve">
     <value>Zuletzt gemeldet {0}</value>
   </data>
+  <data name="Last request {0}: {1}" xml:space="preserve">
+    <value>Letzter Antrag {0}: {1}</value>
+  </data>
   <data name="Last run" xml:space="preserve">
     <value>Letzter Lauf</value>
   </data>
@@ -3044,8 +3080,23 @@
   <data name="Leave empty to keep the stored password." xml:space="preserve">
     <value>Leer lassen, um das gespeicherte Passwort zu behalten.</value>
   </data>
+  <data name="Leave empty to keep the stored secret." xml:space="preserve">
+    <value>Leer lassen, um das gespeicherte Geheimnis zu behalten.</value>
+  </data>
   <data name="less than" xml:space="preserve">
     <value>kleiner als</value>
+  </data>
+  <data name="Let's Encrypt (built in, DNS check via Azure DNS)" xml:space="preserve">
+    <value>Let's Encrypt (eingebaut, DNS-Prüfung über Azure DNS)</value>
+  </data>
+  <data name="Let's Encrypt certificate could not be renewed" xml:space="preserve">
+    <value>Let's-Encrypt-Zertifikat ließ sich nicht erneuern</value>
+  </data>
+  <data name="Let's Encrypt certificate issued" xml:space="preserve">
+    <value>Let's-Encrypt-Zertifikat ausgestellt</value>
+  </data>
+  <data name="Let's Encrypt has not issued a certificate yet." xml:space="preserve">
+    <value>Let's Encrypt hat noch kein Zertifikat ausgestellt.</value>
   </data>
   <data name="Licence" xml:space="preserve">
     <value>Lizenz</value>
@@ -4024,6 +4075,9 @@
   </data>
   <data name='One per line. Empty = "public".' xml:space="preserve">
     <value>Eine je Zeile. Leer = „public“.</value>
+  </data>
+  <data name="One or more host names, separated by commas; *.example.com for a wildcard." xml:space="preserve">
+    <value>Ein oder mehrere Hostnamen, durch Komma getrennt; *.example.com für einen Platzhalter.</value>
   </data>
   <data name="One per line. Empty = the general communities on the Devices page." xml:space="preserve">
     <value>Eine je Zeile. Leer = die allgemeinen Communities der Geräteseite.</value>
@@ -5054,6 +5108,9 @@
   <data name="Requested by {0} on {1}." xml:space="preserve">
     <value>Angefragt von {0} am {1}.</value>
   </data>
+  <data name="Requesting …" xml:space="preserve">
+    <value>Beantrage …</value>
+  </data>
   <data name="Required deployments give each member of a collection the package once, including computers that join later." xml:space="preserve">
     <value>Pflicht-Verteilungen geben jedem Mitglied einer Sammlung das Paket einmal, auch Rechnern, die später hinzukommen.</value>
   </data>
@@ -5098,6 +5155,9 @@
   </data>
   <data name="Reset the arrangement (forget moved nodes)" xml:space="preserve">
     <value>Anordnung zurücksetzen (verschobene Knoten vergessen)</value>
+  </data>
+  <data name="Resource group" xml:space="preserve">
+    <value>Ressourcengruppe</value>
   </data>
   <data name="Responds to ping" xml:space="preserve">
     <value>Antwortet auf Ping</value>
@@ -5293,6 +5353,9 @@
   </data>
   <data name="Save" xml:space="preserve">
     <value>Speichern</value>
+  </data>
+  <data name="Save and request certificate" xml:space="preserve">
+    <value>Speichern und Zertifikat beantragen</value>
   </data>
   <data name="Save and restart" xml:space="preserve">
     <value>Speichern und neu starten</value>
@@ -6008,6 +6071,9 @@
   <data name="Subnets, routers, network devices and computers as an interactive diagram, derived from the inventory and the device scan." xml:space="preserve">
     <value>Subnetze, Router, Netzwerkgeräte und Rechner als interaktives Diagramm, abgeleitet aus dem Inventar und dem Gerätescan.</value>
   </data>
+  <data name="Subscription ID" xml:space="preserve">
+    <value>Abonnement-ID</value>
+  </data>
   <data name="succeeded" xml:space="preserve">
     <value>erfolgreich</value>
   </data>
@@ -6109,6 +6175,9 @@
   </data>
   <data name="Tenant ID" xml:space="preserve">
     <value>Mandanten-ID</value>
+  </data>
+  <data name="Test certificate (Let's Encrypt staging, not trusted by browsers)" xml:space="preserve">
+    <value>Testzertifikat (Let's-Encrypt-Staging, Browser vertrauen ihm nicht)</value>
   </data>
   <data name="Test message from Inventory" xml:space="preserve">
     <value>Testnachricht von Inventory</value>
@@ -6806,8 +6875,8 @@
   <data name='Under "{0}" {1} responds, which is already listed as "{2}".' xml:space="preserve">
     <value>Unter „{0}“ antwortet {1}, der bereits als „{2}“ eingetragen ist.</value>
   </data>
-  <data name="Under &quot;HTTPS&quot; you choose the certificate of the server – self-signed, from the certificate store of the computer, a file or an upload; a new one takes effect at once." xml:space="preserve">
-    <value>Unter „HTTPS“ wählen Sie das Zertifikat des Servers – selbstsigniert, aus dem Zertifikatspeicher des Computers, eine Datei oder ein Upload; ein neues gilt sofort.</value>
+  <data name="Under &quot;HTTPS&quot; you choose the certificate of the server – self-signed, from the certificate store of the computer, a file, an upload or Let's Encrypt; a new one takes effect at once." xml:space="preserve">
+    <value>Unter „HTTPS“ wählen Sie das Zertifikat des Servers – selbstsigniert, aus dem Zertifikatspeicher des Computers, eine Datei, ein Upload oder Let's Encrypt; ein neues gilt sofort.</value>
   </data>
   <data name="Under the name {0} the computer {1} responds (address {2}). Probably a stale DNS entry or an alias (CNAME) points to this computer; existing inventory data belongs to {1}. Commands and deployments are not executed on this entry while the names differ. Scans still run – but they capture {1}, not {0}." xml:space="preserve">
     <value>Unter dem Namen {0} antwortet der Rechner {1} (Adresse {2}). Vermutlich zeigt ein veralteter DNS-Eintrag oder ein Alias (CNAME) auf diesen Rechner; vorhandene Inventardaten gehören zu {1}. Befehle und Deployments werden auf diesem Eintrag nicht ausgeführt, solange die Namen abweichen. Scans laufen weiterhin – sie erfassen dann aber {1}, nicht {0}.</value>
@@ -7616,6 +7685,9 @@
   <data name="{0} at {1}" xml:space="preserve">
     <value>{0} um {1}</value>
   </data>
+  <data name="{0} cannot be resolved here. Add it to the internal DNS so that it points to this server." xml:space="preserve">
+    <value>{0} lässt sich hier nicht auflösen. Tragen Sie den Namen im internen DNS ein, sodass er auf diesen Server zeigt.</value>
+  </data>
   <data name="{0} computer accounts found ({1} disabled). To be created: {2}{3}. Not in AD: {4}{5}." xml:space="preserve">
     <value>{0} Computerkonten gefunden ({1} deaktiviert). Neu anzulegen: {2}{3}. Nicht im AD: {4}{5}.</value>
   </data>
@@ -7846,6 +7918,9 @@
   </data>
   <data name="{0} per licence" xml:space="preserve">
     <value>{0} je Lizenz</value>
+  </data>
+  <data name="{0} points to {1}, not to this server. Browsers and agents would end up there." xml:space="preserve">
+    <value>{0} zeigt auf {1}, nicht auf diesen Server. Browser und Agenten landeten dort.</value>
   </data>
   <data name="{0} postponements, {1} minutes each" xml:space="preserve">
     <value>{0} Verschiebungen, je {1} Minuten</value>
