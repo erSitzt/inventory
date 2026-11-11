@@ -28,9 +28,11 @@ public sealed class ServerCertificateService
     /// <summary>So lange vor dem Ablauf meldet sich der Alarm „Serverzertifikat“; das selbstsignierte erneuert sich selbst.</summary>
     public static readonly TimeSpan ExpiryWarning = TimeSpan.FromDays(14);
     private static readonly TimeSpan AlertInterval = TimeSpan.FromDays(1);
+    private static readonly TimeSpan ClockSkew = TimeSpan.FromMinutes(5);
     private const string SelfSignedKeyFile = "self-signed.key";
     private const string SelfSignedCertificateFile = "self-signed.cer";
     private const string UploadFile = "upload.pfx";
+    private const string AcmeFile = "acme.pfx";
 
     private sealed record Active(X509Certificate2 Certificate, SslStreamCertificateContext Context, ServerCertificateSource Source);
 
@@ -183,6 +185,27 @@ public sealed class ServerCertificateService
         return await ApplyAsync(new CertificateChoice(ServerCertificateSource.Upload), actor, ct);
     }
 
+    /// <summary>Gibt es schon ein von Let's Encrypt ausgestelltes Zertifikat?</summary>
+    public bool HasIssued => System.IO.File.Exists(Path.Combine(_folder, AcmeFile));
+
+    /// <summary>Legt ein von Let's Encrypt ausgestelltes Zertifikat (PKCS#12 mit Schlüssel und Kette) ab und wechselt darauf.</summary>
+    /// <returns>null bei Erfolg, sonst die Meldung für die Oberfläche.</returns>
+    public async Task<string?> UseIssuedAsync(byte[] pkcs12, AuditActor actor, CancellationToken ct = default)
+    {
+        try
+        {
+            var (certificate, _) = ServerCertificates.LoadPkcs12(pkcs12, null);
+            using (certificate)
+                Validate(certificate);
+        }
+        catch (Exception ex) when (IsCertificateError(ex))
+        {
+            return ex.Message;
+        }
+        WriteProtected(AcmeFile, pkcs12);
+        return await ApplyAsync(new CertificateChoice(ServerCertificateSource.Acme), actor, ct);
+    }
+
     /// <summary>
     /// Stündlich: erneuert das selbstsignierte, nimmt ein erneuertes aus dem Speicher oder eine geänderte Datei, versucht nach
     /// einem Fehler das gewählte wieder und meldet ein bald ablaufendes Zertifikat.
@@ -306,6 +329,14 @@ public sealed class ServerCertificateService
                 return Prepare(certificate, chain, ServerCertificateSource.Upload);
             }
 
+            case ServerCertificateSource.Acme:
+            {
+                var data = ReadProtected(AcmeFile) ?? throw new CertificateException(L["Let's Encrypt has not issued a certificate yet."]);
+                var (certificate, chain) = ServerCertificates.LoadPkcs12(data, null);
+                Validate(certificate);
+                return Prepare(certificate, chain, ServerCertificateSource.Acme);
+            }
+
             default:
                 throw new CertificateException(choice.Source.ToString());
         }
@@ -396,7 +427,9 @@ public sealed class ServerCertificateService
             throw new CertificateException(L["The certificate is not meant for servers (server authentication is missing)."]);
         if (certificate.NotAfter.ToUniversalTime() <= now)
             throw new CertificateException(L["The certificate expired on {0:yyyy-MM-dd}.", certificate.NotAfter.ToUniversalTime()]);
-        if (certificate.NotBefore.ToUniversalTime() > now)
+        // Etwas Spielraum: ein gerade ausgestelltes Zertifikat gilt ab dem Moment der Ausstellung, und die Uhr des Servers kann
+        // ein wenig hinter der der Zertifizierungsstelle liegen.
+        if (certificate.NotBefore.ToUniversalTime() > now + ClockSkew)
             throw new CertificateException(L["The certificate is only valid from {0:yyyy-MM-dd}.", certificate.NotBefore.ToUniversalTime()]);
     }
 

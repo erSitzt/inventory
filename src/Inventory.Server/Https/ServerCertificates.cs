@@ -16,6 +16,8 @@ public enum ServerCertificateSource
     File,
     /// <summary>Im Browser hochgeladene PFX-Datei.</summary>
     Upload,
+    /// <summary>Von Inventory selbst bei Let's Encrypt beantragt (DNS-Prüfung über Azure DNS) und erneuert.</summary>
+    Acme,
 }
 
 /// <summary>Angaben zu einem Zertifikat für die Oberfläche.</summary>

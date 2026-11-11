@@ -261,4 +261,10 @@ public sealed class HttpsOptions
 {
     /// <summary>false = kein eingebautes HTTPS, etwa hinter einem Reverse-Proxy, der TLS übernimmt. Standard: an.</summary>
     public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// Adresse des ACME-Verzeichnisses statt Let's Encrypt, z. B. einer eigenen ACME-Zertifizierungsstelle; leer = Let's Encrypt
+    /// (oder dessen Testumgebung, wenn in den Einstellungen gewählt).
+    /// </summary>
+    public string? AcmeDirectory { get; set; }
 }

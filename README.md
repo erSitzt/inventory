@@ -904,6 +904,13 @@ set up under *Settings → HTTPS*; nothing has to be edited in `appsettings.json
   - **File on the server:** PFX/P12 with password, or PEM (the certificate followed by its chain; the key in the same
     file or a key file), e.g. from certbot or a script. Reloaded within an hour when it changes.
   - **Uploaded PFX file:** stored encrypted in the data directory; not renewed.
+  - **Let's Encrypt, built in:** Inventory requests the certificate itself with the DNS check (dns-01) and renews it
+    when a third of its lifetime is left (with 90-day certificates: 30 days before the end); a failed renewal is
+    retried every 6 hours and raises the certificate alert. For the check Inventory sets a TXT record
+    `_acme-challenge.<name>` in **Azure DNS** for a moment, so the server does not have to be reachable from the
+    internet. The names (e.g. `inventory.example.com`, also `*.example.com`) must be in a public DNS zone hosted in
+    Azure and point to the server in the internal DNS – the settings page warns if they don't. *Test certificate* uses
+    the staging environment of Let's Encrypt (not trusted, generous limits) – try that first.
 
   A new certificate applies to new connections immediately, without a restart. An unusable one (expired, without
   private key, not meant for servers) is refused and the previous one stays. If the chosen certificate cannot be
@@ -918,6 +925,11 @@ set up under *Settings → HTTPS*; nothing has to be edited in `appsettings.json
   keep working over HTTP. There is no HSTS – it would apply to every port of the host.
 - **Sign-in:** Windows sign-in (Kerberos) works over HTTPS with the same SPN (`HTTP/<server>`). The HTTPS endpoint only
   speaks HTTP/1.1, because Negotiate does not work over HTTP/2. Microsoft Entra ID requires HTTPS for the redirect URI.
+- **Azure DNS for Let's Encrypt:** in the Entra admin center create an app registration (*App registrations → New
+  registration*, no redirect URI) and a client secret under *Certificates & secrets*. In the Azure portal, open the
+  DNS zone, *Access control (IAM) → Add role assignment*, role **DNS Zone Contributor**, member: the app registration –
+  on the zone only, not on the subscription. Enter tenant ID, client ID, secret, subscription ID, resource group and
+  zone under *Settings → HTTPS*. The secret is stored encrypted; the ACME account key stays in the data directory.
 - **An own Kestrel configuration** in `appsettings.json` (section `Kestrel` or an `https://` address in `Urls`) keeps
   working; the built-in HTTPS then stays off.
 - **Agents** switch to HTTPS by themselves and keep the installed address as a fallback (see [Agent](#agent)).
@@ -984,6 +996,7 @@ the certificate, add the new one and keep the old one for one more release (see 
 | `Inventory:Catalog:VersionsUrl` | folder with the version lists (`<winget-ID>.json`); empty = offer only the current version |
 | `Inventory:Catalog:IndexUrl` | address or path of the search index `winget.json`; empty = disable the search over all of winget |
 | `Inventory:Https:Enabled` | `false` = no built-in HTTPS (e.g. behind a reverse proxy); default on, see [HTTPS](#https) |
+| `Inventory:Https:AcmeDirectory` | ACME directory of another certification authority instead of Let's Encrypt (e.g. an internal ACME CA) |
 | `Inventory:Simulate` | `true` = no real access |
 
 ### Sign-in

@@ -55,6 +55,9 @@ public sealed class DataTransferService(IDbContextFactory<InventoryDbContext> db
         SettingKeys.ServerHttpsPort, SettingKeys.ServerHttpsAddress, SettingKeys.ServerHttpsRedirect, SettingKeys.ServerHttpsActiveUrl,
         SettingKeys.ServerCertificateSource, SettingKeys.ServerCertificateStoreName, SettingKeys.ServerCertificateFile,
         SettingKeys.ServerCertificateKeyFile, SettingKeys.ServerCertificatePassword,
+        SettingKeys.ServerAcmeNames, SettingKeys.ServerAcmeEmail, SettingKeys.ServerAcmeStaging, SettingKeys.ServerAcmeAzureTenant,
+        SettingKeys.ServerAcmeAzureClientId, SettingKeys.ServerAcmeAzureSecret, SettingKeys.ServerAcmeAzureSubscription,
+        SettingKeys.ServerAcmeAzureResourceGroup, SettingKeys.ServerAcmeAzureZone, SettingKeys.ServerAcmeLastResult, SettingKeys.ServerAcmeLastRunUtc,
     ];
 
     /// <summary>
