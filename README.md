@@ -584,8 +584,11 @@ deployment is cancelled in the meantime, a continuation that already ran is not 
   pin – so the self-signed certificate works without distributing it. There is no "accept any certificate" switch.
   The installed address stays as a fallback: if the HTTPS address fails three times in a row (another port, a new
   certificate the agent does not trust), the agent tries the installed address, learns the current HTTPS address there
-  and switches again; an address that did not work is tried again after an hour at the earliest. New installations
-  (setup, install scripts, agentless install job) get the HTTPS address and the pin right away. *Settings → HTTPS*
+  and switches again; an address that did not work is tried again after an hour at the earliest. That fallback needs
+  an `http://` agent address: if the agent address under *Settings* is `https://` itself, a certificate the agents do
+  not trust cuts them off. A renewed self-signed certificate keeps its key and pin; a switch to another certificate
+  (for example from an internal CA on Macs without its root) does not. New installations (setup, install scripts, Mac
+  package, agentless install job) get the HTTPS address and the pin right away. *Settings → HTTPS*
   shows how many agents already connect over HTTPS, the computer details show it per computer. TLS 1.2 is enforced
   on Windows.
 - **Proxy:** the agent runs as Local System and uses the WinHTTP proxy settings of the machine (`netsh winhttp set

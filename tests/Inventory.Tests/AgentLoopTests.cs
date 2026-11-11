@@ -181,6 +181,10 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
         File.WriteAllText(Path.Combine(directory, AgentProtocol.ConfigFile),
             JobJson.Serialize(new AgentConfig { ServerUrl = "http://localhost", EnrollmentToken = await agents.GetEnrollmentTokenAsync() }));
         File.WriteAllText(Path.Combine(directory, AgentProtocol.VersionFile), runner.For(RunnerRuntimes.Framework)!.Hash);
+        // Wie der Mac-Installer: agent.json nur für root lesbar, das bleibt auch nach dem Umschreiben so.
+        const UnixFileMode Protected = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(Path.Combine(directory, AgentProtocol.ConfigFile), Protected);
         // Der Testserver beantwortet jede Adresse; über https:// gilt die Anfrage als HTTPS.
         agents.OfferHttps("https://inventory.example.test:5101", ["cGlu"]);
 
@@ -210,6 +214,8 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
             var config = JobJson.Deserialize<AgentConfig>(File.ReadAllText(Path.Combine(directory, AgentProtocol.ConfigFile)))!;
             Assert.Equal(("http://localhost", "https://inventory.example.test:5101"), (config.ServerUrl, config.SecureUrl));
             Assert.Equal(["cGlu"], config.CertificatePins!);
+            if (!OperatingSystem.IsWindows())
+                Assert.Equal(Protected, File.GetUnixFileMode(Path.Combine(directory, AgentProtocol.ConfigFile)));
             Assert.Contains("Verbindung zum Server jetzt über https://inventory.example.test:5101.", File.ReadAllText(Path.Combine(directory, "agent.log")));
 
             // Über HTTPS weiter Jobs.
