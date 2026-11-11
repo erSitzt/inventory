@@ -155,7 +155,8 @@ public sealed class AcmeService
                 chain.RemoveAt(0);
                 pkcs12 = ServerCertificates.ExportPkcs12(leaf, chain);
             }
-            catch (Exception ex) when (ex is AcmeException or HttpRequestException or CryptographicException or TaskCanceledException && !ct.IsCancellationRequested)
+            catch (Exception ex) when (ex is AcmeException or HttpRequestException or CryptographicException or System.Text.Json.JsonException
+                                           or TaskCanceledException && !ct.IsCancellationRequested)
             {
                 return await FailAsync(ex.Message, ct);
             }
@@ -260,8 +261,10 @@ public sealed class AcmeService
                 _logger.LogWarning("The ACME account key cannot be read, creating a new account: {Message}", ex.Message);
             }
         }
+        // Über eine Zwischendatei: ein Absturz beim Schreiben hinterlässt keinen halben Schlüssel, der ein neues Konto erzwänge.
         Directory.CreateDirectory(_folder);
-        File.WriteAllBytes(path, _files.Protect(key.ExportPkcs8PrivateKey()));
+        File.WriteAllBytes(path + ".tmp", _files.Protect(key.ExportPkcs8PrivateKey()));
+        File.Move(path + ".tmp", path, overwrite: true);
         return key;
     }
 

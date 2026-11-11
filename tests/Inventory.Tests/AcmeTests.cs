@@ -140,31 +140,37 @@ public sealed class AcmeTests
     }
 
     [Fact]
-    public async Task Azure_dns_gets_a_token_sets_and_removes_the_txt_record_of_the_zone()
+    public async Task Azure_dns_adds_and_removes_only_its_own_txt_values()
     {
-        var handler = new RecordingHandler(request => request.RequestUri!.Host switch
-        {
-            "login.microsoftonline.com" => Json(new JsonObject { ["access_token"] = "token-1", ["expires_in"] = 3599 }),
-            _ when request.Method == HttpMethod.Delete => new HttpResponseMessage(HttpStatusCode.NotFound),
-            _ => Json(new JsonObject()),
-        });
-        var dns = new AzureDnsChallenge(new HttpClient(handler),
-            new AzureDnsSettings("contoso.onmicrosoft.com", "client-id", "secret", "sub-1", "rg-dns", "example.com."));
+        var zone = new FakeAzureZone();
+        var handler = new RecordingHandler(zone.Respond);
+        var settings = new AzureDnsSettings("contoso.onmicrosoft.com", "client-id", "secret", "sub-1", "rg-dns", "example.com.");
+        const string record = "https://management.azure.com/subscriptions/sub-1/resourceGroups/rg-dns/providers/Microsoft.Network/dnsZones/example.com/TXT/_acme-challenge.inventory?api-version=2018-05-01";
 
+        // Ohne vorhandenen Eintrag: anlegen, danach ganz entfernen.
+        var dns = new AzureDnsChallenge(new HttpClient(handler), settings);
         await dns.SetTxtAsync("_acme-challenge.inventory.example.com", ["value-a", "value-b"], default);
+        Assert.Equal(["value-a", "value-b"], zone.Records[record]);
         await dns.RemoveTxtAsync("_acme-challenge.inventory.example.com", default);
+        Assert.False(zone.Records.ContainsKey(record));
 
         var (tokenRequest, tokenBody) = handler.Requests[0];
         Assert.Equal("https://login.microsoftonline.com/contoso.onmicrosoft.com/oauth2/v2.0/token", tokenRequest.RequestUri!.ToString());
         Assert.Contains("grant_type=client_credentials", tokenBody);
         Assert.Contains("scope=https%3A%2F%2Fmanagement.azure.com%2F.default", tokenBody);
-        var record = "https://management.azure.com/subscriptions/sub-1/resourceGroups/rg-dns/providers/Microsoft.Network/dnsZones/example.com/TXT/_acme-challenge.inventory?api-version=2018-05-01";
-        var (put, putBody) = handler.Requests[1];
-        Assert.Equal((HttpMethod.Put, record, "Bearer token-1"), (put.Method, put.RequestUri!.ToString(), put.Headers.Authorization!.ToString()));
-        Assert.Equal("""{"properties":{"TTL":60,"TXTRecords":[{"value":["value-a"]},{"value":["value-b"]}]}}""", putBody);
-        // Das Token gilt weiter; ein schon entfernter Eintrag ist kein Fehler.
-        Assert.Equal((HttpMethod.Delete, record), (handler.Requests[2].Request.Method, handler.Requests[2].Request.RequestUri!.ToString()));
-        Assert.Equal(3, handler.Requests.Count);
+        var put = handler.Requests.Single(r => r.Request.Method == HttpMethod.Put);
+        Assert.Equal("Bearer token-1", put.Request.Headers.Authorization!.ToString());
+        Assert.Equal("""{"properties":{"TTL":60,"TXTRecords":[{"value":["value-a"]},{"value":["value-b"]}]}}""", put.Body);
+        // Ein Token für alle Aufrufe.
+        Assert.Single(handler.Requests, r => r.Request.RequestUri!.Host == "login.microsoftonline.com");
+
+        // Ein Wert eines anderen ACME-Clients bleibt, auch nach dem Aufräumen.
+        zone.Records[record] = ["other-client"];
+        dns = new AzureDnsChallenge(new HttpClient(handler), settings);
+        await dns.SetTxtAsync("_acme-challenge.inventory.example.com", ["mine"], default);
+        Assert.Equal(["other-client", "mine"], zone.Records[record]);
+        await dns.RemoveTxtAsync("_acme-challenge.inventory.example.com", default);
+        Assert.Equal(["other-client"], zone.Records[record]);
 
         Assert.Equal("@", AzureDnsChallenge.RelativeName("example.com", "example.com"));
         Assert.Throws<AcmeException>(() => AzureDnsChallenge.RelativeName("_acme-challenge.inventory.example.org", "example.com"));
@@ -185,6 +191,37 @@ public sealed class AcmeTests
             new AzureDnsSettings("t", "c", "s", "s", "r", "example.com"));
         Assert.Equal("Azure DNS: The client does not have authorization.",
             (await Assert.ThrowsAsync<AcmeException>(() => azure.SetTxtAsync("_acme-challenge.example.com", ["v"], default))).Message);
+
+        // Ein Gateway antwortet mit einer HTML-Seite statt JSON.
+        var gateway = new AzureDnsChallenge(new HttpClient(new RecordingHandler(_ =>
+                new HttpResponseMessage(HttpStatusCode.BadGateway) { Content = new StringContent("<html>Bad Gateway</html>", System.Text.Encoding.UTF8, "text/html") })),
+            new AzureDnsSettings("t", "c", "s", "s", "r", "example.com"));
+        Assert.Equal("Microsoft Entra ID: 502 Bad Gateway",
+            (await Assert.ThrowsAsync<AcmeException>(() => gateway.SetTxtAsync("_acme-challenge.example.com", ["v"], default))).Message);
+    }
+
+    /// <summary>Eine DNS-Zone in Azure, so weit die Prüfung sie braucht: Token, TXT-Einträge lesen, schreiben, löschen.</summary>
+    private sealed class FakeAzureZone
+    {
+        public Dictionary<string, List<string>> Records { get; } = [];
+
+        public HttpResponseMessage Respond(HttpRequestMessage request)
+        {
+            if (request.RequestUri!.Host == "login.microsoftonline.com")
+                return Json(new JsonObject { ["access_token"] = "token-1", ["expires_in"] = 3599 });
+            var url = request.RequestUri.ToString();
+            if (request.Method == HttpMethod.Get)
+                return Records.TryGetValue(url, out var values)
+                    ? Json(new JsonObject { ["properties"] = new JsonObject { ["TXTRecords"] = new JsonArray([.. values.Select(v => (JsonNode)new JsonObject { ["value"] = new JsonArray(v) })]) } })
+                    : new HttpResponseMessage(HttpStatusCode.NotFound);
+            if (request.Method == HttpMethod.Put)
+            {
+                var body = JsonNode.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult())!;
+                Records[url] = [.. body["properties"]!["TXTRecords"]!.AsArray().Select(r => r!["value"]![0]!.GetValue<string>())];
+                return Json(new JsonObject());
+            }
+            return Records.Remove(url) ? new HttpResponseMessage(HttpStatusCode.OK) : new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
     }
 
     private sealed class Clock(DateTimeOffset now) : TimeProvider

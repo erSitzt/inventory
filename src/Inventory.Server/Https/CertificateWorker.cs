@@ -18,16 +18,18 @@ public sealed class CertificateWorker(HttpsEndpoint https, ServerCertificateServ
             using var timer = new PeriodicTimer(Tick);
             do
             {
-                if (!https.Active)
-                    continue;
-                try
+                // Ohne HTTPS (abgeschaltet, Port belegt) gibt es nichts zu prüfen; der Takt läuft trotzdem weiter.
+                if (https.Active)
                 {
-                    await acme.RenewIfDueAsync(stoppingToken);
-                    await certificates.RefreshAsync(stoppingToken);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    logger.LogError(ex, "Error while checking the HTTPS certificate");
+                    try
+                    {
+                        await acme.RenewIfDueAsync(stoppingToken);
+                        await certificates.RefreshAsync(stoppingToken);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        logger.LogError(ex, "Error while checking the HTTPS certificate");
+                    }
                 }
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
