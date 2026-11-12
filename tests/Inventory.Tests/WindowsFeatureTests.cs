@@ -24,10 +24,30 @@ public sealed class WindowsFeatureTests : IDisposable
     // Nur ein Dateiname gehört in VhdFileName; ein Pfad führte aus dem Ordner der Distribution hinaus.
     [InlineData(@"C:\WSL", @"..\..\Windows\System32\config\SAM", null)]
     [InlineData(@"C:\WSL", @"D:\other.vhdx", null)]
+    [InlineData(@"C:\WSL", "..", null)]
+    [InlineData(@"C:\WSL", ".", null)]
     [InlineData(null, "ext4.vhdx", null)]
     [InlineData("  ", null, null)]
     public void The_virtual_disk_of_a_distribution_is_found_from_its_registration(string? basePath, string? vhdFileName, string? expected) =>
         Assert.Equal(expected, WslNames.DiskPath(basePath, vhdFileName));
+
+    [Theory]
+    [InlineData("S-1-5-21-1004336348-1177238915-682003330-1001", true)]
+    // Entra ID (Azure AD): Geräte ohne Domäne, etwa über Intune eingerichtet.
+    [InlineData("S-1-12-1-3923156398-1263362411-3346549668-2399553540", true)]
+    [InlineData("S-1-5-18", false)]
+    [InlineData("S-1-5-80-1234", false)]
+    [InlineData(".DEFAULT", false)]
+    [InlineData(null, false)]
+    public void Local_domain_and_entra_accounts_count_as_users(string? sid, bool expected)
+    {
+        Assert.Equal(expected, UserSids.IsUser(sid));
+        if (sid != null)
+        {
+            Assert.Equal(expected, UserSids.IsUserHive(sid));
+            Assert.False(UserSids.IsUserHive(sid + "_Classes"));
+        }
+    }
 
     private static InventoryData Scan(bool wslInstalled = true, params (string Sid, bool Loaded)[] profiles) => new()
     {

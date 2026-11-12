@@ -26,7 +26,7 @@ namespace Inventory.Runner
             var wsl = new WslInfo { Version = PackageVersion(data.Apps) };
             using (var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64))
             {
-                var loaded = users.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal) && !n.EndsWith("_Classes", StringComparison.Ordinal));
+                var loaded = users.GetSubKeyNames().Where(UserSids.IsUserHive);
                 foreach (var sid in loaded)
                 {
                     using (var lxss = users.OpenSubKey(sid + "\\" + LxssKey))

@@ -556,8 +556,8 @@ namespace Inventory.Contracts
             else if (folder.StartsWith(@"\\?\", StringComparison.Ordinal))
                 folder = folder.Substring(4);
             var file = string.IsNullOrWhiteSpace(vhdFileName) ? "ext4.vhdx" : vhdFileName!.Trim();
-            // Nur ein Dateiname: Ein Pfad im Wert führte sonst aus dem Ordner der Distribution hinaus.
-            if (file.IndexOfAny(new[] { '\\', '/', ':' }) >= 0)
+            // Nur ein Dateiname: Ein Pfad (auch . oder ..) führte sonst aus dem Ordner der Distribution hinaus.
+            if (file == "." || file == ".." || file.IndexOfAny(new[] { '\\', '/', ':' }) >= 0)
                 return null;
             return folder.TrimEnd('\\') + "\\" + file;
         }

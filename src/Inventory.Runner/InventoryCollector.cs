@@ -155,7 +155,7 @@ namespace Inventory.Runner
             // Pro Benutzer installierte Programme; sichtbar sind nur die Profile, deren Registry gerade geladen ist.
             using (var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64))
             {
-                var loaded = users.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal) && !n.EndsWith("_Classes", StringComparison.Ordinal)).ToList();
+                var loaded = users.GetSubKeyNames().Where(UserSids.IsUserHive).ToList();
                 foreach (var sid in loaded)
                     ReadUninstall(data, users.OpenSubKey(sid + "\\" + UninstallKey), is64Bit: Environment.Is64BitOperatingSystem, perUser: true, userSid: sid);
 
@@ -164,7 +164,7 @@ namespace Inventory.Runner
                 using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
                 using (var profiles = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"))
                 {
-                    var known = profiles?.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal)) ?? Enumerable.Empty<string>();
+                    var known = profiles?.GetSubKeyNames().Where(UserSids.IsUser) ?? Enumerable.Empty<string>();
                     foreach (var sid in known.Union(loaded, StringComparer.OrdinalIgnoreCase))
                         data.UserProfiles.Add(new UserProfileState { Sid = sid, Loaded = loaded.Contains(sid, StringComparer.OrdinalIgnoreCase) });
                 }
@@ -218,7 +218,7 @@ namespace Inventory.Runner
             foreach (var o in Query("SELECT SID, LocalPath, LastUseTime, Loaded FROM Win32_UserProfile WHERE Special = FALSE"))
             {
                 var sid = Text(o, "SID");
-                if (sid == null || !sid.StartsWith("S-1-5-21-", StringComparison.Ordinal))
+                if (sid == null || !UserSids.IsUser(sid))
                     continue;
                 var profile = profiles.FirstOrDefault(p => string.Equals(p.Sid, sid, StringComparison.OrdinalIgnoreCase));
                 if (profile == null)
