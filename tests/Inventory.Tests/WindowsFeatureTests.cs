@@ -128,6 +128,8 @@ public sealed class WindowsFeatureTests : IDisposable
         var computer = new Computer
         {
             Name = "PC",
+            FeaturesScanUtc = now,
+            WslScanUtc = now,
             OptionalFeatures = [new ComputerOptionalFeature { Name = "Microsoft-Windows-Subsystem-Linux", Caption = "Windows-Subsystem für Linux" }, new ComputerOptionalFeature { Name = "NetFx3" }],
             WslInstalled = true,
             WslDistros = [new ComputerWslDistro { Name = "Ubuntu-24.04", LastUsedUtc = now.AddDays(-40) }, new ComputerWslDistro { Name = "docker-desktop", LastUsedUtc = now.AddDays(-2).AddHours(-1) }, new ComputerWslDistro { Name = "Alt" }],
@@ -147,10 +149,15 @@ public sealed class WindowsFeatureTests : IDisposable
         Assert.True(Matches(RuleField.WslDistro, RuleOperator.StartsWith, "ubuntu"));
         Assert.True(Matches(RuleField.WslDistro, RuleOperator.NotContains, "kali"));
 
-        // Noch nicht erfasst: weder "eingerichtet" noch "nicht eingerichtet", und ohne Datum keine Tage.
+        // Noch nicht erfasst: weder "eingerichtet" noch "nicht eingerichtet", ohne Datum keine Tage, und auch eine verneinte
+        // Regel trifft nicht, nur weil die Listen leer sind.
         var unknown = new Computer { Name = "ALT", WslDistros = [new ComputerWslDistro { Name = "Ubuntu" }] };
         Assert.False(Matches(RuleField.WslInstalled, RuleOperator.Equals, "true", unknown));
         Assert.False(Matches(RuleField.WslInstalled, RuleOperator.Equals, "false", unknown));
+        Assert.False(Matches(RuleField.WindowsFeature, RuleOperator.NotContains, "Hyper-V", unknown));
+        Assert.False(Matches(RuleField.WindowsFeature, RuleOperator.NotEquals, "NetFx3", unknown));
+        Assert.False(Matches(RuleField.WslDistro, RuleOperator.NotContains, "kali", new Computer { Name = "MAC" }));
+        Assert.False(Matches(RuleField.WslDistro, RuleOperator.NotEquals, "Ubuntu", new Computer { Name = "MAC" }));
         Assert.False(Matches(RuleField.WslDaysSinceUse, RuleOperator.GreaterOrEqual, "0", unknown));
         Assert.False(Matches(RuleField.WslDaysSinceUse, RuleOperator.LessThan, "100000", unknown));
     }
