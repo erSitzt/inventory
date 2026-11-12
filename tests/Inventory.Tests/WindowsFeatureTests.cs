@@ -86,6 +86,18 @@ public sealed class WindowsFeatureTests : IDisposable
     }
 
     [Fact]
+    public void Without_the_profile_list_all_earlier_distributions_stay()
+    {
+        // Der Bereich Software ist gescheitert, WSL nicht: Wessen Registry geladen war, ist unbekannt, also geht nichts verloren.
+        var partial = Scan(true);
+        partial.UserProfiles = null;
+        partial.Wsl!.Distros.Add(new WslDistroItem { Name = "Debian", UserSid = Ben, WslVersion = 2 });
+        Assert.Equal(2, WslDistros.CarryOver([Stored("Ubuntu", Anna), Stored("Debian", Ben), Stored("Kali", Ben)], partial));
+        Assert.Equal(["Debian", "Kali", "Ubuntu"], partial.Wsl.Distros.Select(d => d.Name).Order());
+        Assert.False(partial.Wsl.Distros.Single(d => d.Name == "Debian").CarriedOver);
+    }
+
+    [Fact]
     public async Task Features_and_wsl_are_stored_kept_for_older_runners_and_compared_from_the_second_scan_on()
     {
         var computers = new ComputerService(_db, new SimulatedHostProbe());

@@ -14,17 +14,21 @@ public static class WslDistros
     public static int CarryOver(IEnumerable<ComputerWslDistro> previous, InventoryData current)
     {
         // Ist WSL selbst nicht mehr da, laufen auch die Distributionen nicht mehr, deren Einträge noch in den Profilen stehen.
-        if (current.Wsl is not { Installed: true } wsl || current.UserProfiles is not { } profiles)
+        if (current.Wsl is not { Installed: true } wsl)
             return 0;
-        var existing = profiles.Select(p => p.Sid).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var loaded = profiles.Where(p => p.Loaded).Select(p => p.Sid).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Ohne Profilliste (der Bereich Software ist gescheitert) ist unbekannt, wessen Registry geladen war: Dann bleiben alle
+        // bisherigen, bis ein vollständiger Scan wieder sagt, welche Profile lesbar und welche gelöscht sind.
+        var profiles = current.UserProfiles;
+        var existing = profiles?.Select(p => p.Sid).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var loaded = profiles?.Where(p => p.Loaded).Select(p => p.Sid).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var present = wsl.Distros.Select(d => Key(d.UserSid, d.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var kept = 0;
         foreach (var item in previous)
         {
             // Ein gelesenes Profil ist maßgeblich, ein gelöschtes nimmt seine Distributionen mit.
-            if (item.UserSid is null || !existing.Contains(item.UserSid) || loaded.Contains(item.UserSid) || !present.Add(Key(item.UserSid, item.Name)))
+            if (item.UserSid is null || (existing is not null && (!existing.Contains(item.UserSid) || loaded!.Contains(item.UserSid)))
+                || !present.Add(Key(item.UserSid, item.Name)))
                 continue;
             wsl.Distros.Add(new WslDistroItem
             {
