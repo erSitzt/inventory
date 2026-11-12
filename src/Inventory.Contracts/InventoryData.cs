@@ -537,24 +537,27 @@ namespace Inventory.Contracts
     {
         /// <summary>Das in Windows enthaltene WSL (für WSL 1 nötig, früher auch für WSL 2).</summary>
         public const string Feature = "Microsoft-Windows-Subsystem-Linux";
-        /// <summary>Dienst des in Windows enthaltenen WSL.</summary>
+        /// <summary>Dienst des in Windows enthaltenen WSL; es gibt ihn, sobald das Feature eingeschaltet ist.</summary>
         public const string LegacyService = "LxssManager";
+        /// <summary>Dienst des WSL-Pakets (MSI, seit WSL 2.0).</summary>
+        public const string PackageService = "WSLService";
         /// <summary>App-Paket des WSL aus dem Store (vor der Umstellung auf MSI).</summary>
         public const string StorePackage = "MicrosoftCorporationII.WindowsSubsystemForLinux";
 
         /// <summary>
         /// Pfad der virtuellen Festplatte einer WSL-2-Distribution: BasePath aus der Registry (oft mit \\?\ davor) plus
-        /// VhdFileName, ohne diesen Wert ext4.vhdx.
+        /// VhdFileName, ohne diesen Wert ext4.vhdx. Nur auf einem Laufwerk (X:\…): Den Pfad bestimmt der Benutzer, und ein
+        /// Netzwerkpfad brächte den Runner (Lokales System) dazu, sich mit dem Computerkonto bei einem fremden Server anzumelden.
         /// </summary>
         public static string? DiskPath(string? basePath, string? vhdFileName)
         {
             if (string.IsNullOrWhiteSpace(basePath))
                 return null;
             var folder = basePath!.Trim();
-            if (folder.StartsWith(@"\\?\UNC\", StringComparison.Ordinal))
-                folder = @"\\" + folder.Substring(8);
-            else if (folder.StartsWith(@"\\?\", StringComparison.Ordinal))
+            if (folder.StartsWith(@"\\?\", StringComparison.Ordinal))
                 folder = folder.Substring(4);
+            if (folder.Length < 3 || !char.IsLetter(folder[0]) || folder[1] != ':' || folder[2] != '\\')
+                return null;
             var file = string.IsNullOrWhiteSpace(vhdFileName) ? "ext4.vhdx" : vhdFileName!.Trim();
             // Nur ein Dateiname: Ein Pfad (auch . oder ..) führte sonst aus dem Ordner der Distribution hinaus.
             if (file == "." || file == ".." || file.IndexOfAny(new[] { '\\', '/', ':' }) >= 0)

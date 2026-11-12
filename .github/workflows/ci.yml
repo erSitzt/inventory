@@ -44,8 +44,10 @@ jobs:
           "INVENTORY_STORE_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
       - run: dotnet test tests/Inventory.Tests -c Release --filter "FullyQualifiedName~HttpsTests"
 
-  # Der Runner auf einem echten Windows: das Inventar muss die Windows-Features und WSL enthalten. Eine Distribution legt der
-  # Job selbst an (Registrierung im Profil des Benutzers, virtuelle Festplatte mit festem Datum), wie WSL es täte.
+  # Der Runner auf einem echten Windows: das Inventar muss die Windows-Features und WSL enthalten. Die Distributionen legt der
+  # Job selbst an (Registrierung im Profil des Benutzers, virtuelle Festplatte mit festem Datum), wie WSL es täte. Zwei davon
+  # liegen hinter einem Netzwerkpfad, direkt und über einen symbolischen Link: Der Runner darf sie nicht anfassen, sonst
+  # meldete er sich als Lokales System mit dem Computerkonto bei einem Server an, den ein Benutzer bestimmt.
   windows-runner:
     runs-on: windows-latest
     steps:
@@ -54,20 +56,31 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - run: dotnet build src/Inventory.Runner -c Release -f net48
-      - name: WSL distribution of the current user
+      - name: WSL distributions of the current user
         shell: pwsh
         run: |
-          $base = Join-Path $env:RUNNER_TEMP "wsl-ci"
-          New-Item -ItemType Directory $base | Out-Null
-          $disk = Join-Path $base "ext4.vhdx"
-          Set-Content $disk ("x" * 1024) -NoNewline
-          (Get-Item $disk).LastWriteTimeUtc = [datetime]::new(2026, 1, 2, 3, 4, 5, [DateTimeKind]::Utc)
-          $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss\{6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f60}"
-          New-Item -Path $key -Force | Out-Null
-          New-ItemProperty $key -Name DistributionName -Value "Inventory-CI" | Out-Null
-          New-ItemProperty $key -Name Version -PropertyType DWord -Value 2 | Out-Null
-          New-ItemProperty $key -Name State -PropertyType DWord -Value 1 | Out-Null
-          New-ItemProperty $key -Name BasePath -Value "\\?\$base" | Out-Null
+          function Disk($folder) {
+            New-Item -ItemType Directory $folder -Force | Out-Null
+            $disk = Join-Path $folder "ext4.vhdx"
+            Set-Content $disk ("x" * 1024) -NoNewline
+            (Get-Item $disk).LastWriteTimeUtc = [datetime]::new(2026, 1, 2, 3, 4, 5, [DateTimeKind]::Utc)
+          }
+          function Distro($id, $name, $basePath) {
+            $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss\{$id}"
+            New-Item -Path $key -Force | Out-Null
+            New-ItemProperty $key -Name DistributionName -Value $name | Out-Null
+            New-ItemProperty $key -Name Version -PropertyType DWord -Value 2 | Out-Null
+            New-ItemProperty $key -Name State -PropertyType DWord -Value 1 | Out-Null
+            New-ItemProperty $key -Name BasePath -Value $basePath | Out-Null
+          }
+          Disk "C:\wsl-ci"
+          Disk "C:\wsl-ci-remote"
+          New-Item -ItemType SymbolicLink -Path "C:\wsl-ci\link" -Target "\\localhost\C$\wsl-ci-remote" | Out-Null
+          # Ohne die Prüfung im Runner wären beide lesbar.
+          if (-not (Test-Path "\\localhost\C$\wsl-ci-remote\ext4.vhdx") -or -not (Test-Path "C:\wsl-ci\link\ext4.vhdx")) { throw "network disk not reachable" }
+          Distro "6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f60" "Inventory-CI" "\\?\C:\wsl-ci"
+          Distro "6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f61" "Inventory-CI-UNC" "\\?\UNC\localhost\C$\wsl-ci-remote"
+          Distro "6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f62" "Inventory-CI-Link" "C:\wsl-ci\link"
       - name: Collect the inventory
         shell: pwsh
         run: |
@@ -84,6 +97,11 @@ jobs:
           if ($distro.Count -ne 1) { throw "distribution missing" }
           if ($distro[0].wslVersion -ne 2 -or -not $distro[0].userSid -or $distro[0].sizeBytes -ne 1024) { throw "distribution incomplete" }
           if (([datetime]$distro[0].lastUsedUtc).ToUniversalTime() -ne [datetime]::new(2026, 1, 2, 3, 4, 5, [DateTimeKind]::Utc)) { throw "last use: $($distro[0].lastUsedUtc)" }
+          foreach ($name in "Inventory-CI-UNC", "Inventory-CI-Link") {
+            $remote = @($inventory.wsl.distros | Where-Object name -eq $name)
+            if ($remote.Count -ne 1) { throw "$name missing" }
+            if ($remote[0].lastUsedUtc -or $remote[0].sizeBytes) { throw "${name}: the runner read a disk behind a network path" }
+          }
 
   # Let's Encrypt eingebaut: der ACME-Ablauf gegen Pebble, den Testserver von Let's Encrypt, mit dessen DNS-Testserver statt
   # Azure DNS (den Zugriff auf Azure prüfen die Tests oben mit nachgebildeten Antworten).

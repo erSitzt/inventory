@@ -20,7 +20,13 @@ public sealed class WindowsFeatureTests : IDisposable
     [InlineData(@"\\?\D:\WSL2", null, @"D:\WSL2\ext4.vhdx")]
     [InlineData(@"\\?\C:\Users\anna\AppData\Local\Docker\wsl\main", "ext4.vhdx", @"C:\Users\anna\AppData\Local\Docker\wsl\main\ext4.vhdx")]
     [InlineData(@"C:\WSL\Ubuntu\", "", @"C:\WSL\Ubuntu\ext4.vhdx")]
-    [InlineData(@"\\?\UNC\server\share\wsl", "disk.vhdx", @"\\server\share\wsl\disk.vhdx")]
+    // Nur lokale Laufwerke: Ein Netzwerkpfad brächte den Runner dazu, sich mit dem Computerkonto bei einem fremden Server anzumelden.
+    [InlineData(@"\\?\UNC\server\share\wsl", "disk.vhdx", null)]
+    [InlineData(@"\\server\share\wsl", null, null)]
+    [InlineData(@"\\.\C:\wsl", null, null)]
+    [InlineData(@"\\?\GLOBALROOT\Device\Mup\server\share", null, null)]
+    [InlineData(@"C:/wsl", null, null)]
+    [InlineData(@"wsl\ubuntu", null, null)]
     // Nur ein Dateiname gehört in VhdFileName; ein Pfad führte aus dem Ordner der Distribution hinaus.
     [InlineData(@"C:\WSL", @"..\..\Windows\System32\config\SAM", null)]
     [InlineData(@"C:\WSL", @"D:\other.vhdx", null)]

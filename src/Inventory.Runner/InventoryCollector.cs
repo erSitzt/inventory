@@ -30,7 +30,7 @@ namespace Inventory.Runner
             Section(data, "Netzwerk", () => ReadNetwork(data));
             Section(data, "Dienste", () => ReadServices(data));
             Section(data, "Windows-Features", () => ReadOptionalFeatures(data));
-            // Nach Apps, Profilen, Diensten und Features: aus ihnen ergibt sich, ob und welches WSL eingerichtet ist.
+            // Nach Apps und Profilen: Das WSL aus dem Store ist ein App-Paket, und die Distributionen bekommen die Namen ihrer Benutzer.
             Section(data, "WSL", () => data.Wsl = WslCollector.Read(data));
             Section(data, "Lokale Benutzer", () => ReadLocalUsers(data));
             Section(data, "Lokale Administratoren", () => ReadLocalAdmins(data));
