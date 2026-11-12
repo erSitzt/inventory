@@ -125,6 +125,22 @@ public static partial class InventoryDiff
             previous.LocalAdmins.Select(a => (a.Name, (string?)null)),
             current.LocalAdmins.Select(a => (a.Name, (string?)null)));
 
+        // Wie die Hardware erst ab dem zweiten Scan, der sie liefert: sonst wäre beim ersten alles "neu".
+        if (current.OptionalFeatures is { } optionalFeatures && previous.FeaturesScanUtc is not null)
+            Set("Windows feature", previous.OptionalFeatures.Select(f => (f.Name, (string?)null)), optionalFeatures.Select(f => (f.Name, (string?)null)));
+        if (current.Wsl is { } wsl && previous.WslScanUtc is not null)
+        {
+            // Ohne Paketversion ist es das in Windows enthaltene WSL.
+            static string WslState(bool? installed, string? version) => installed == true ? version ?? "built into Windows" : "not installed";
+            var before = WslState(previous.WslInstalled, previous.WslVersion);
+            var after = WslState(wsl.Installed, wsl.Version);
+            if (!string.Equals(before, after, StringComparison.OrdinalIgnoreCase))
+                Add("System", ChangeKind.Changed, "WSL", before, after);
+            Set("WSL distribution",
+                previous.WslDistros.Select(d => (WslDistros.Label(d.Name, d.UserName, d.UserSid), (string?)(d.WslVersion is { } v ? $"WSL {v}" : null))),
+                wsl.Distros.Select(d => (WslDistros.Label(d.Name, d.UserName, d.UserSid), (string?)(d.WslVersion is { } v ? $"WSL {v}" : null))));
+        }
+
         if (current.Hardware is { } hardware)
         {
             // Wie beim Sicherheitsstatus: der erste Scan mit Hardware-Details ist die Ausgangslage.

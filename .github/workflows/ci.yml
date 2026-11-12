@@ -44,6 +44,47 @@ jobs:
           "INVENTORY_STORE_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
       - run: dotnet test tests/Inventory.Tests -c Release --filter "FullyQualifiedName~HttpsTests"
 
+  # Der Runner auf einem echten Windows: das Inventar muss die Windows-Features und WSL enthalten. Eine Distribution legt der
+  # Job selbst an (Registrierung im Profil des Benutzers, virtuelle Festplatte mit festem Datum), wie WSL es täte.
+  windows-runner:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build src/Inventory.Runner -c Release -f net48
+      - name: WSL distribution of the current user
+        shell: pwsh
+        run: |
+          $base = Join-Path $env:RUNNER_TEMP "wsl-ci"
+          New-Item -ItemType Directory $base | Out-Null
+          $disk = Join-Path $base "ext4.vhdx"
+          Set-Content $disk ("x" * 1024) -NoNewline
+          (Get-Item $disk).LastWriteTimeUtc = [datetime]::new(2026, 1, 2, 3, 4, 5, [DateTimeKind]::Utc)
+          $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss\{6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f60}"
+          New-Item -Path $key -Force | Out-Null
+          New-ItemProperty $key -Name DistributionName -Value "Inventory-CI" | Out-Null
+          New-ItemProperty $key -Name Version -PropertyType DWord -Value 2 | Out-Null
+          New-ItemProperty $key -Name State -PropertyType DWord -Value 1 | Out-Null
+          New-ItemProperty $key -Name BasePath -Value "\\?\$base" | Out-Null
+      - name: Collect the inventory
+        shell: pwsh
+        run: |
+          & src\Inventory.Runner\bin\Release\net48\InventoryRunner.exe --collect > inventory.json
+          if ($LASTEXITCODE -ne 0) { throw "--collect: $LASTEXITCODE" }
+          $inventory = Get-Content inventory.json -Raw | ConvertFrom-Json
+          $inventory.optionalFeatures | Format-Table name, caption -AutoSize | Out-String -Width 200
+          $inventory.wsl | ConvertTo-Json -Depth 4
+          $inventory.warnings
+          if (-not $inventory.optionalFeatures -or $inventory.optionalFeatures.Count -eq 0) { throw "no optional features" }
+          if ($inventory.warnings | Where-Object { $_ -like "Windows-Features:*" -or $_ -like "WSL:*" }) { throw "warnings for features or WSL" }
+          if (-not $inventory.wsl.installed) { throw "WSL not reported as installed" }
+          $distro = @($inventory.wsl.distros | Where-Object name -eq "Inventory-CI")
+          if ($distro.Count -ne 1) { throw "distribution missing" }
+          if ($distro[0].wslVersion -ne 2 -or -not $distro[0].userSid -or $distro[0].sizeBytes -ne 1024) { throw "distribution incomplete" }
+          if (([datetime]$distro[0].lastUsedUtc).ToUniversalTime() -ne [datetime]::new(2026, 1, 2, 3, 4, 5, [DateTimeKind]::Utc)) { throw "last use: $($distro[0].lastUsedUtc)" }
+
   # Let's Encrypt eingebaut: der ACME-Ablauf gegen Pebble, den Testserver von Let's Encrypt, mit dessen DNS-Testserver statt
   # Azure DNS (den Zugriff auf Azure prüfen die Tests oben mit nachgebildeten Antworten).
   acme:

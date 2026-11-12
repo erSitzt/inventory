@@ -115,12 +115,20 @@ a registered silent command, followed by a check that it is really gone.
 users; collections can filter on them, and a *remove app* step removes an app for all users and, if wanted, for future
 ones. Parts of Windows and runtime libraries are left alone, and a name that matches too much removes nothing.
 
+**Windows features and WSL**: the scan records which optional Windows features are turned on, named as DISM lists them
+(e.g. `NetFx3`, `Microsoft-Hyper-V-All`), on the computer's *Windows features* tab. If the Windows Subsystem for Linux is
+set up, the *WSL* tab shows its version and the users' distributions with WSL version, size and last use – the last
+change of the distribution's virtual disk, so WSL 2 only. Distributions belong to one user and can only be read while
+that user is logged on; those of other users are kept from an earlier scan. Collections can filter on *Windows feature*,
+*WSL installed*, *WSL: days since last use* and *WSL distribution*, for example all computers on which WSL ran in the
+last 30 days.
+
 ### Change history
 
 ![Changes](docs/screenshots/en/changes.png)
 
 Every scan is compared with the previous one: installed, removed and updated software, hotfixes, services, local
-administrators, hardware and system configuration appear as changes with time – per computer on its *History* tab and
+administrators, Windows features, WSL distributions, hardware and system configuration appear as changes with time – per computer on its *History* tab and
 for all computers on *Changes*.
 
 ### Network devices

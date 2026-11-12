@@ -29,6 +29,9 @@ namespace Inventory.Runner
             Section(data, "Datenträger", () => ReadDisks(data));
             Section(data, "Netzwerk", () => ReadNetwork(data));
             Section(data, "Dienste", () => ReadServices(data));
+            Section(data, "Windows-Features", () => ReadOptionalFeatures(data));
+            // Nach Apps, Profilen, Diensten und Features: aus ihnen ergibt sich, ob und welches WSL eingerichtet ist.
+            Section(data, "WSL", () => data.Wsl = WslCollector.Read(data));
             Section(data, "Lokale Benutzer", () => ReadLocalUsers(data));
             Section(data, "Lokale Administratoren", () => ReadLocalAdmins(data));
             data.Security = new SecurityStatus();
@@ -333,6 +336,19 @@ namespace Inventory.Runner
                 });
             }
             data.Services = data.Services.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>Nur die eingeschalteten; die Liste bleibt null, wenn die Abfrage scheitert (sonst sähe es aus, als wären alle aus).</summary>
+        private static void ReadOptionalFeatures(InventoryData data)
+        {
+            var features = new List<OptionalFeatureItem>();
+            foreach (var o in Query("SELECT Name, Caption FROM Win32_OptionalFeature WHERE InstallState = 1"))
+            {
+                var name = Text(o, "Name");
+                if (name != null)
+                    features.Add(new OptionalFeatureItem { Name = name, Caption = Text(o, "Caption") });
+            }
+            data.OptionalFeatures = features.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         private static void ReadLocalUsers(InventoryData data)

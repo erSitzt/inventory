@@ -52,7 +52,8 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
     }
 
     [McpServerTool(Name = "get_computer", Title = "Computer details", ReadOnly = true, Idempotent = true, OpenWorld = false)]
-    [Description("Master data, status, hardware, security (Defender, firewall, BitLocker, TPM, Secure Boot; on Macs FileVault, firewall, Gatekeeper, SIP) and update state of one computer.")]
+    [Description("Master data, status, hardware, security (Defender, firewall, BitLocker, TPM, Secure Boot; on Macs FileVault, firewall, Gatekeeper, SIP), update state, "
+        + "optional Windows features that are turned on and WSL (Windows Subsystem for Linux: version and the users' distributions with their last use) of one computer.")]
     public async Task<object> GetComputer([Description("Computer name, DNS name or id.")] string computer, CancellationToken ct = default)
     {
         var c = await computerService.GetDetailAsync((await caller.ComputerAsync(computer, ct)).Id, ct) ?? throw new McpException("The computer no longer exists.");
@@ -71,6 +72,13 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
             disks = c.Disks.Select(d => new { d.Drive, d.SizeBytes, d.FreeBytes }),
             network = c.NetworkAdapters.Select(a => new { a.Name, a.MacAddress, a.IpAddresses, a.Gateways, a.DhcpEnabled }),
             agent = new { c.AgentVersion, c.AgentLastSeenUtc },
+            // null = noch nicht erfasst (älterer Runner, Mac).
+            windowsFeatures = c.FeaturesScanUtc is null ? null : c.OptionalFeatures.Select(f => f.Name).Order(StringComparer.OrdinalIgnoreCase),
+            wsl = c.WslScanUtc is null ? null : new
+            {
+                installed = c.WslInstalled, version = c.WslVersion,
+                distributions = c.WslDistros.Select(d => new { d.Name, user = d.UserName ?? d.UserSid, d.WslVersion, d.LastUsedUtc, d.SizeBytes, fromEarlierScan = d.CarriedOver }),
+            },
             customFields = (await customValues.GetAsync(c.Id, ct)).Select(v => new
             {
                 key = v.Key, title = customValues.Fields.FirstOrDefault(f => f.Key.Equals(v.Key, StringComparison.OrdinalIgnoreCase))?.Title, value = v.Value, v.UpdatedUtc,

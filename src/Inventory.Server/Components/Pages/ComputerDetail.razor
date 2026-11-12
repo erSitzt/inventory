@@ -578,6 +578,54 @@ else if (_computer.ReverseDnsMismatch)
                 </PagerContent>
             </MudDataGrid>
         </MudTabPanel>
+
+        <MudTabPanel Text="@($"{L["Windows features"]} ({_computer.OptionalFeatures.Count})")">
+            <MudText Typo="Typo.body2" Class="mb-2">
+                @L["Optional Windows features that are turned on, named as DISM lists them. A \"Windows feature\" step in a package turns them on or off."]
+            </MudText>
+            <MudDataGrid T="ComputerOptionalFeature" Items="@_computer.OptionalFeatures.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)" Dense="true" Hover="true" SortMode="SortMode.Single">
+                <Columns>
+                    <PropertyColumn Property="f => f.Name" Title="@L["Name"]" />
+                    <PropertyColumn Property="f => f.Caption" Title="@L["Display name"]" />
+                </Columns>
+                <NoRecordsContent>
+                    <MudText Class="pa-4">@(_computer.FeaturesScanUtc is null ? L["Not captured yet. Windows features are read with the next scan by a current runner."] : L["No optional features are turned on."])</MudText>
+                </NoRecordsContent>
+            </MudDataGrid>
+        </MudTabPanel>
+
+        @if (_computer.WslInstalled == true || _computer.WslDistros.Count > 0)
+        {
+            <MudTabPanel Text="@($"WSL ({_computer.WslDistros.Count})")">
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    @(_computer.WslVersion is { } wslVersion ? L["Windows Subsystem for Linux {0}.", wslVersion] : L["Windows Subsystem for Linux, the version built into Windows."])
+                    @L["Each user has their own distributions. They can only be read while the user is logged on; those of other users come from an earlier scan. Last used is the last change of the distribution's virtual disk (WSL 2 only)."]
+                </MudText>
+                <MudDataGrid T="ComputerWslDistro" Items="@_computer.WslDistros.OrderByDescending(d => d.LastUsedUtc)" Dense="true" Hover="true" SortMode="SortMode.Single">
+                    <Columns>
+                        <PropertyColumn Property="d => d.Name" Title="@L["Distribution"]" />
+                        <TemplateColumn Sortable="true" Title="@L["User"]" SortBy="@(d => d.UserName ?? d.UserSid)">
+                            <CellTemplate>@(context.Item.UserName ?? context.Item.UserSid)</CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Sortable="true" Title="WSL" SortBy="@(d => d.WslVersion)">
+                            <CellTemplate>@(context.Item.WslVersion?.ToString() ?? "–")</CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Sortable="true" Title="@L["Last used"]" SortBy="@(d => d.LastUsedUtc)">
+                            <CellTemplate>@(context.Item.LastUsedUtc is null ? "–" : Display.LocalTime(context.Item.LastUsedUtc))</CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Sortable="true" Title="@L["Size"]" SortBy="@(d => d.SizeBytes)">
+                            <CellTemplate>@(context.Item.SizeBytes is { } size ? Display.FileSize(size) : "–")</CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Sortable="false" Title="">
+                            <CellTemplate>@(context.Item.CarriedOver ? L["from an earlier scan, user not logged on"] : "")</CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                    <NoRecordsContent>
+                        <MudText Class="pa-4">@L["No distributions found for the users logged on during the scan."]</MudText>
+                    </NoRecordsContent>
+                </MudDataGrid>
+            </MudTabPanel>
+        }
     }
 
     <MudTabPanel Text="@L["Security"]">

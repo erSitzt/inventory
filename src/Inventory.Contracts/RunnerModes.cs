@@ -20,7 +20,7 @@ namespace Inventory.Contracts
         /// und zuletzt die Kopie selbst.
         /// </summary>
         public const string RemoveAgent = "--remove-agent";
-        /// <summary>Mac-Agent: das Inventar als JSON ausgeben, ohne Server.</summary>
+        /// <summary>Das Inventar als JSON ausgeben, ohne Server (Runner unter Windows und Mac-Agent).</summary>
         public const string Collect = "--collect";
     }
 }

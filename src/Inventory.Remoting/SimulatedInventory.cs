@@ -99,6 +99,49 @@ internal static class SimulatedInventory
         return data;
     }
 
+    /// <summary>Wie die Apps ohne den Zufallsgenerator. Etwa jeder vierte Rechner hat WSL, einer davon noch das alte aus Windows.</summary>
+    private static void AddFeaturesAndWsl(InventoryData data, string host)
+    {
+        var hash = StableHash(host);
+        data.OptionalFeatures =
+        [
+            new OptionalFeatureItem { Name = "MediaPlayback", Caption = "Media Features" },
+            new OptionalFeatureItem { Name = "MSRDC-Infrastructure", Caption = "Remote Differential Compression API Support" },
+            new OptionalFeatureItem { Name = "NetFx4-AdvSrvs", Caption = ".NET Framework 4.8 Advanced Services" },
+            new OptionalFeatureItem { Name = "Printing-PrintToPDFServices-Features", Caption = "Microsoft Print to PDF" },
+            new OptionalFeatureItem { Name = "SearchEngine-Client-Package", Caption = "Windows Search" },
+            new OptionalFeatureItem { Name = "WCF-Services45", Caption = "WCF Services" },
+        ];
+        if (hash % 3 == 0)
+            data.OptionalFeatures.Add(new OptionalFeatureItem { Name = "NetFx3", Caption = ".NET Framework 3.5 (includes .NET 2.0 and 3.0)" });
+        if (hash % 4 != 0 || data.LoggedOnUser is not { } user)
+        {
+            data.Wsl = new WslInfo();
+            return;
+        }
+        var legacy = hash % 16 == 0;
+        data.OptionalFeatures.Add(legacy
+            ? new OptionalFeatureItem { Name = WslNames.Feature, Caption = "Windows Subsystem for Linux" }
+            : new OptionalFeatureItem { Name = "VirtualMachinePlatform", Caption = "Virtual Machine Platform" });
+        var sid = $"S-1-5-21-1000000000-2000000000-3000000000-{1100 + (int)(hash % 900)}";
+        data.Wsl = new WslInfo
+        {
+            Installed = true,
+            Version = legacy ? null : "2.6.1.0",
+            Distros =
+            [
+                new WslDistroItem
+                {
+                    Name = legacy ? "Ubuntu-20.04" : "Ubuntu-24.04", UserSid = sid, UserName = user, WslVersion = legacy ? 1 : 2,
+                    LastUsedUtc = legacy ? null : DateTime.UtcNow.AddDays(-(int)(hash % 40)).AddHours(-(int)(hash % 9)),
+                    SizeBytes = legacy ? null : (8 + (long)(hash % 30)) * 1024 * 1024 * 1024,
+                },
+            ],
+        };
+        if (!legacy && hash % 8 == 0)
+            data.Wsl.Distros.Add(new WslDistroItem { Name = "docker-desktop", UserSid = sid, UserName = user, WslVersion = 2, LastUsedUtc = DateTime.UtcNow.AddDays(-(int)(hash % 60)), SizeBytes = 140L * 1024 * 1024 });
+    }
+
     public static InventoryData Create(string host)
     {
         // Namen mit "MAC" vorn sind Macs mit Agent: so lässt sich die Mac-Ansicht ohne Mac ausprobieren.
@@ -182,6 +225,7 @@ internal static class SimulatedInventory
         ];
         if (host.Length % 2 == 0)
             data.Apps.Add(new AppItem { Name = "Microsoft.XboxGamingOverlay", DisplayName = "Game Bar", Version = "7.124.5142.0", Publisher = "Microsoft Corporation", Architecture = "x64", Provisioned = true });
+        AddFeaturesAndWsl(data, host);
         var laptop = model.Contains("Book") || model.Contains("Latitude") || model.Contains("ThinkPad");
         var modules = memoryGb >= 16 ? 2 : 1;
         data.Hardware = new HardwareInfo

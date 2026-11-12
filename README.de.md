@@ -118,12 +118,20 @@ bereitgestellt sind; Sammlungen können danach filtern, und ein Schritt *App ent
 Benutzer und auf Wunsch auch für künftige. Bestandteile von Windows und Laufzeitbibliotheken bleiben unberührt, und ein
 zu weit gefasster Name entfernt nichts.
 
+**Windows-Features und WSL**: Der Scan erfasst, welche optionalen Windows-Features eingeschaltet sind, benannt wie bei
+DISM (z. B. `NetFx3`, `Microsoft-Hyper-V-All`), im Reiter *Windows-Features* des Rechners. Ist das Windows-Subsystem für
+Linux eingerichtet, zeigt der Reiter *WSL* dessen Version und die Distributionen der Benutzer mit WSL-Version, Größe und
+letzter Nutzung – das ist die letzte Änderung der virtuellen Festplatte der Distribution, also nur bei WSL 2.
+Distributionen gehören einem Benutzer und sind nur lesbar, solange er angemeldet ist; die der übrigen Benutzer bleiben
+aus einem früheren Scan erhalten. Sammlungen können nach *Windows-Feature*, *WSL eingerichtet*, *WSL: Tage seit der
+letzten Nutzung* und *WSL-Distribution* filtern, etwa nach allen Rechnern, auf denen WSL in den letzten 30 Tagen lief.
+
 ### Änderungsverlauf
 
 ![Änderungen](docs/screenshots/de/changes.png)
 
 Jeder Scan wird mit dem vorigen verglichen: installierte, entfernte und aktualisierte Software, Hotfixes, Dienste,
-lokale Administratoren, Hardware und Systemkonfiguration erscheinen als Änderungen mit Zeitpunkt – je Rechner im Reiter
+lokale Administratoren, Windows-Features, WSL-Distributionen, Hardware und Systemkonfiguration erscheinen als Änderungen mit Zeitpunkt – je Rechner im Reiter
 *Verlauf* und für alle Rechner unter *Änderungen*.
 
 ### Netzwerkgeräte
