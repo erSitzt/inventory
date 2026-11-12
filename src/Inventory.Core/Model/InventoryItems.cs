@@ -175,6 +175,34 @@ public class ComputerApp
     public string? Kind { get; set; }
 }
 
+/// <summary>Eingeschaltetes optionales Windows-Feature (Win32_OptionalFeature).</summary>
+public class ComputerOptionalFeature
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    /// <summary>Name wie bei DISM, z. B. Microsoft-Windows-Subsystem-Linux.</summary>
+    public required string Name { get; set; }
+    /// <summary>Anzeigename in der Sprache des Rechners.</summary>
+    public string? Caption { get; set; }
+}
+
+/// <summary>WSL-Distribution eines Benutzers.</summary>
+public class ComputerWslDistro
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    public required string Name { get; set; }
+    public string? UserSid { get; set; }
+    public string? UserName { get; set; }
+    /// <summary>1 oder 2.</summary>
+    public int? WslVersion { get; set; }
+    /// <summary>Letzte Änderung der virtuellen Festplatte (WSL 2), ungefähr die letzte Nutzung.</summary>
+    public DateTime? LastUsedUtc { get; set; }
+    public long? SizeBytes { get; set; }
+    /// <summary>Aus einem früheren Scan übernommen, weil der Benutzer nicht angemeldet war.</summary>
+    public bool CarriedOver { get; set; }
+}
+
 public class ComputerPrinter
 {
     public int Id { get; set; }

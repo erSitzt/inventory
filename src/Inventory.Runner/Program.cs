@@ -56,6 +56,13 @@ namespace Inventory.Runner
                 return 0;
             }
 
+            // Inventar auf der Konsole: zum Prüfen auf einem Rechner, ohne Server.
+            if (args.Length == 1 && args[0] == RunnerModes.Collect)
+            {
+                Console.WriteLine(JobJson.Serialize(InventoryCollector.Collect(), indented: true));
+                return 0;
+            }
+
             if (args.Length >= 1 && args.Length <= 2 && args[0] == RunnerModes.InstallAgent && (args.Length == 1 || args[1] == RunnerModes.Force))
                 return AgentInstaller.Install(RunnerInfo.Directory, args.Length == 2);
 
@@ -65,7 +72,7 @@ namespace Inventory.Runner
             if (args.Length == 2 && args[0] == RunnerModes.RemoveAgent)
                 return AgentInstaller.RemoveDeferred(args[1]);
 
-            Console.Error.WriteLine("Usage: InventoryRunner --service [<jobdir|job-id>] | --console <jobdir|job-id> | --agent | --agent-console | --install-agent [--force] | --uninstall-agent | --version");
+            Console.Error.WriteLine("Usage: InventoryRunner --service [<jobdir|job-id>] | --console <jobdir|job-id> | --agent | --agent-console | --install-agent [--force] | --uninstall-agent | --collect | --version");
             return 2;
         }
 

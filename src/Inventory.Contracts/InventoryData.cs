@@ -64,6 +64,15 @@ namespace Inventory.Contracts
         /// <summary>Sicherheitseinstellungen eines Macs; null unter Windows.</summary>
         public MacOsInfo? MacOs { get; set; }
 
+        /// <summary>
+        /// Eingeschaltete optionale Windows-Features (Win32_OptionalFeature, wie DISM sie nennt); null = nicht gelesen
+        /// (ältere Runner, Mac, oder die Abfrage ist gescheitert).
+        /// </summary>
+        public List<OptionalFeatureItem>? OptionalFeatures { get; set; }
+
+        /// <summary>Windows-Subsystem für Linux; null = nicht gelesen (ältere Runner, Mac).</summary>
+        public WslInfo? Wsl { get; set; }
+
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
         /// <summary>
@@ -481,6 +490,80 @@ namespace Inventory.Contracts
         public string? BiosUuid { get; set; }
         public int? VirtualCpus { get; set; }
         public bool Running { get; set; }
+    }
+
+    public sealed class OptionalFeatureItem
+    {
+        /// <summary>Name wie bei DISM, z. B. Microsoft-Windows-Subsystem-Linux.</summary>
+        public string Name { get; set; } = "";
+        /// <summary>Anzeigename in der Sprache des Rechners, z. B. "Windows-Subsystem für Linux".</summary>
+        public string? Caption { get; set; }
+    }
+
+    public sealed class WslInfo
+    {
+        /// <summary>WSL ist eingerichtet: als Paket (Store/MSI), als Windows-Feature oder mit registrierten Distributionen.</summary>
+        public bool Installed { get; set; }
+        /// <summary>Version des WSL-Pakets, z. B. 2.3.26.0; null = nur das in Windows enthaltene WSL (oder keins).</summary>
+        public string? Version { get; set; }
+        /// <summary>
+        /// Distributionen der Benutzer, deren Registry beim Scan geladen war (wie bei der Software pro Benutzer, siehe
+        /// <see cref="InventoryData.UserProfiles"/>).
+        /// </summary>
+        public List<WslDistroItem> Distros { get; set; } = new List<WslDistroItem>();
+    }
+
+    public sealed class WslDistroItem
+    {
+        public string Name { get; set; } = "";
+        /// <summary>Der Benutzer, der sie eingerichtet hat; jeder Benutzer hat seine eigenen Distributionen.</summary>
+        public string? UserSid { get; set; }
+        public string? UserName { get; set; }
+        /// <summary>1 oder 2 (WSL 1 übersetzt Systemaufrufe, WSL 2 läuft in einer leichten VM).</summary>
+        public int? WslVersion { get; set; }
+        /// <summary>
+        /// Letzte Änderung der virtuellen Festplatte (nur WSL 2): Solange die Distribution läuft, schreibt sie darauf, das
+        /// Datum zeigt also ungefähr die letzte Nutzung.
+        /// </summary>
+        public DateTime? LastUsedUtc { get; set; }
+        /// <summary>Größe der virtuellen Festplatte (nur WSL 2).</summary>
+        public long? SizeBytes { get; set; }
+        /// <summary>Aus einem früheren Scan übernommen: Die Registry des Benutzers war diesmal nicht geladen.</summary>
+        public bool CarriedOver { get; set; }
+    }
+
+    /// <summary>Gemeinsame Regeln zu WSL für Runner und Server.</summary>
+    public static class WslNames
+    {
+        /// <summary>Das in Windows enthaltene WSL (für WSL 1 nötig, früher auch für WSL 2).</summary>
+        public const string Feature = "Microsoft-Windows-Subsystem-Linux";
+        /// <summary>Dienst des in Windows enthaltenen WSL; es gibt ihn, sobald das Feature eingeschaltet ist.</summary>
+        public const string LegacyService = "LxssManager";
+        /// <summary>Dienst des WSL-Pakets (MSI, seit WSL 2.0).</summary>
+        public const string PackageService = "WSLService";
+        /// <summary>App-Paket des WSL aus dem Store (vor der Umstellung auf MSI).</summary>
+        public const string StorePackage = "MicrosoftCorporationII.WindowsSubsystemForLinux";
+
+        /// <summary>
+        /// Pfad der virtuellen Festplatte einer WSL-2-Distribution: BasePath aus der Registry (oft mit \\?\ davor) plus
+        /// VhdFileName, ohne diesen Wert ext4.vhdx. Nur auf einem Laufwerk (X:\…): Den Pfad bestimmt der Benutzer, und ein
+        /// Netzwerkpfad brächte den Runner (Lokales System) dazu, sich mit dem Computerkonto bei einem fremden Server anzumelden.
+        /// </summary>
+        public static string? DiskPath(string? basePath, string? vhdFileName)
+        {
+            if (string.IsNullOrWhiteSpace(basePath))
+                return null;
+            var folder = basePath!.Trim();
+            if (folder.StartsWith(@"\\?\", StringComparison.Ordinal))
+                folder = folder.Substring(4);
+            if (folder.Length < 3 || !char.IsLetter(folder[0]) || folder[1] != ':' || folder[2] != '\\')
+                return null;
+            var file = string.IsNullOrWhiteSpace(vhdFileName) ? "ext4.vhdx" : vhdFileName!.Trim();
+            // Nur ein Dateiname: Ein Pfad (auch . oder ..) führte sonst aus dem Ordner der Distribution hinaus.
+            if (file == "." || file == ".." || file.IndexOfAny(new[] { '\\', '/', ':' }) >= 0)
+                return null;
+            return folder.TrimEnd('\\') + "\\" + file;
+        }
     }
 
     /// <summary>Sicherheitseinstellungen eines Macs. FileVault steht wie BitLocker in <see cref="HardwareInfo.Volumes"/>.</summary>

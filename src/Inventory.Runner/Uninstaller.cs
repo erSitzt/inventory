@@ -62,7 +62,7 @@ namespace Inventory.Runner
                 Read(entries, RegistryHive.LocalMachine, RegistryView.Registry32, UninstallKey, null);
             using (var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64))
             {
-                foreach (var sid in users.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal) && !n.EndsWith("_Classes", StringComparison.Ordinal)))
+                foreach (var sid in users.GetSubKeyNames().Where(UserSids.IsUserHive))
                     Read(entries, RegistryHive.Users, RegistryView.Registry64, sid + "\\" + UninstallKey, sid);
             }
             return entries;

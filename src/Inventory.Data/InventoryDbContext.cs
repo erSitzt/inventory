@@ -30,6 +30,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ComputerApp> Apps => Set<ComputerApp>();
     public DbSet<ComputerServerFeature> ServerFeatures => Set<ComputerServerFeature>();
     public DbSet<ComputerSqlInstance> SqlInstances => Set<ComputerSqlInstance>();
+    public DbSet<ComputerOptionalFeature> OptionalFeatures => Set<ComputerOptionalFeature>();
+    public DbSet<ComputerWslDistro> WslDistros => Set<ComputerWslDistro>();
     public DbSet<HostedVirtualMachine> HostedVirtualMachines => Set<HostedVirtualMachine>();
     public DbSet<HypervisorManager> HypervisorManagers => Set<HypervisorManager>();
     public DbSet<HypervisorHost> HypervisorHosts => Set<HypervisorHost>();
@@ -86,6 +88,8 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             e.HasMany(c => c.Apps).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.ServerFeatures).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.SqlInstances).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.OptionalFeatures).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(c => c.WslDistros).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(c => c.VirtualMachines).WithOne().HasForeignKey(s => s.ComputerId).OnDelete(DeleteBehavior.Cascade);
             // Verschwindet der Host aus dem Inventar, ist die VM nur nicht mehr zugeordnet.
             e.HasOne<Computer>().WithMany().HasForeignKey(c => c.HostComputerId).OnDelete(DeleteBehavior.SetNull);

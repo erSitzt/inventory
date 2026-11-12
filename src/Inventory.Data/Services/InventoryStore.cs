@@ -39,12 +39,14 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
                            .Include(c => c.Services).Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
                            .Include(c => c.MemoryModules).Include(c => c.PhysicalDisks).Include(c => c.Volumes).Include(c => c.Monitors).Include(c => c.Printers)
                            .Include(c => c.ServerFeatures).Include(c => c.SqlInstances).Include(c => c.VirtualMachines)
+                           .Include(c => c.OptionalFeatures).Include(c => c.WslDistros)
                            .FirstOrDefaultAsync(c => c.Id == computerId, ct)
                        ?? throw new KeyNotFoundException(L["Computer {0} not found", computerId]);
 
         var now = DateTime.UtcNow;
         // Vor dem Vergleich: Programme abgemeldeter Benutzer sind nicht verschwunden, nur gerade nicht lesbar.
         PerUserSoftware.CarryOver(computer.Software, data);
+        WslDistros.CarryOver(computer.WslDistros, data);
         if (data.Hardware is not null)
             HardwareCarryOver.Apply(computer, data.Hardware);
         db.InventoryChanges.AddRange(InventoryDiff.Compare(computer, data, now));
@@ -258,6 +260,26 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
 
         if (data.Licensing is { } licensing)
             await SaveLicensingAsync(db, computer, licensing, now, ct);
+
+        // null = nicht gelesen (älterer Runner, Mac, Abfrage gescheitert): dann bleibt der bisherige Stand.
+        if (data.OptionalFeatures is { } features)
+        {
+            computer.FeaturesScanUtc = now;
+            await db.OptionalFeatures.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            db.OptionalFeatures.AddRange(features.Select(f => new ComputerOptionalFeature { ComputerId = computerId, Name = f.Name, Caption = f.Caption }));
+        }
+        if (data.Wsl is { } wsl)
+        {
+            computer.WslScanUtc = now;
+            computer.WslInstalled = wsl.Installed;
+            computer.WslVersion = wsl.Version;
+            await db.WslDistros.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            db.WslDistros.AddRange(wsl.Distros.Select(d => new ComputerWslDistro
+            {
+                ComputerId = computerId, Name = d.Name, UserSid = d.UserSid, UserName = d.UserName, WslVersion = d.WslVersion,
+                LastUsedUtc = d.LastUsedUtc, SizeBytes = d.SizeBytes, CarriedOver = d.CarriedOver,
+            }));
+        }
 
         await db.SaveChangesAsync(ct);
         await VirtualHosts.ResolveAsync(db, computer.Id, ct);

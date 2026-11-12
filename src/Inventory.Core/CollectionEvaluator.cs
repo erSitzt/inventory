@@ -107,6 +107,12 @@ public static class CollectionEvaluator
         RuleField.SqlInstance => AnyOrNone(rule, computer.SqlInstances.SelectMany(i => new[] { i.Name, i.Edition ?? "" })),
         RuleField.ServerFeature => AnyOrNone(rule, computer.ServerFeatures.Select(f => f.Name)),
         RuleField.CpuSockets => Number(rule, computer.CpuSockets),
+        // Noch nicht erfasst (Mac, älterer Runner): die leere Liste hieße sonst "kein solches Feature", und eine verneinte Regel passte.
+        RuleField.WindowsFeature => computer.FeaturesScanUtc is not null
+            && AnyOrNone(rule, computer.OptionalFeatures.SelectMany(f => f.Caption is null ? [f.Name] : new[] { f.Name, f.Caption })),
+        RuleField.WslInstalled => Known(rule, computer.WslInstalled),
+        RuleField.WslDaysSinceUse => Number(rule, WslDistros.DaysSinceUse(computer.WslDistros, DateTime.UtcNow)),
+        RuleField.WslDistro => computer.WslScanUtc is not null && AnyOrNone(rule, computer.WslDistros.Select(d => d.Name)),
         _ => false,
     };
 
@@ -216,6 +222,8 @@ public static class CollectionEvaluator
         RuleField.DiskHealthProblem => [nameof(Computer.PhysicalDisks)],
         RuleField.SqlInstance => [nameof(Computer.SqlInstances)],
         RuleField.ServerFeature => [nameof(Computer.ServerFeatures)],
+        RuleField.WindowsFeature => [nameof(Computer.OptionalFeatures)],
+        RuleField.WslDaysSinceUse or RuleField.WslDistro => [nameof(Computer.WslDistros)],
         RuleField.CustomField => [nameof(Computer.CustomValues)],
         RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps => [nameof(Computer.Software)],
         _ => [],

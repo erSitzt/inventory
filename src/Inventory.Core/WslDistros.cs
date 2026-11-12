@@ -1,0 +1,65 @@
+using Inventory.Contracts;
+using Inventory.Core.Model;
+
+namespace Inventory.Core;
+
+/// <summary>
+/// WSL-Distributionen stehen in der Registry ihres Benutzers und sind wie die Software pro Benutzer nur lesbar, solange er
+/// angemeldet ist. Damit sie nach einer Abmeldung nicht verschwinden, bleiben die Einträge nicht lesbarer Profile aus dem
+/// vorigen Scan erhalten (siehe <see cref="PerUserSoftware"/>).
+/// </summary>
+public static class WslDistros
+{
+    /// <summary>Ergänzt die Distributionen in <paramref name="current"/> um die zu behaltenden und liefert deren Zahl.</summary>
+    public static int CarryOver(IEnumerable<ComputerWslDistro> previous, InventoryData current)
+    {
+        // Ist WSL selbst nicht mehr da, laufen auch die Distributionen nicht mehr, deren Einträge noch in den Profilen stehen.
+        if (current.Wsl is not { Installed: true } wsl)
+            return 0;
+        // Ohne Profilliste (der Bereich Software ist gescheitert) ist unbekannt, wessen Registry geladen war: Dann bleiben alle
+        // bisherigen, bis ein vollständiger Scan wieder sagt, welche Profile lesbar und welche gelöscht sind.
+        var profiles = current.UserProfiles;
+        var existing = profiles?.Select(p => p.Sid).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var loaded = profiles?.Where(p => p.Loaded).Select(p => p.Sid).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var present = wsl.Distros.Select(d => Key(d.UserSid, d.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Gelesen, aber ohne Datum (der Runner liest die Festplatte nur mit dem Token des Benutzers, und ohne Sitzung gibt es
+        // keins): Das bisherige Datum bleibt, statt die Nutzung zu vergessen.
+        var earlier = previous.Where(p => p.UserSid is not null).GroupBy(p => Key(p.UserSid, p.Name), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        foreach (var distro in wsl.Distros.Where(d => d.LastUsedUtc is null && d.WslVersion == 2))
+        {
+            if (earlier.TryGetValue(Key(distro.UserSid, distro.Name), out var before) && before.LastUsedUtc is not null)
+            {
+                distro.LastUsedUtc = before.LastUsedUtc;
+                distro.SizeBytes ??= before.SizeBytes;
+            }
+        }
+
+        var kept = 0;
+        foreach (var item in previous)
+        {
+            // Ein gelesenes Profil ist maßgeblich, ein gelöschtes nimmt seine Distributionen mit.
+            if (item.UserSid is null || (existing is not null && (!existing.Contains(item.UserSid) || loaded!.Contains(item.UserSid)))
+                || !present.Add(Key(item.UserSid, item.Name)))
+                continue;
+            wsl.Distros.Add(new WslDistroItem
+            {
+                Name = item.Name, UserSid = item.UserSid, UserName = item.UserName, WslVersion = item.WslVersion,
+                LastUsedUtc = item.LastUsedUtc, SizeBytes = item.SizeBytes, CarriedOver = true,
+            });
+            kept++;
+        }
+        return kept;
+    }
+
+    /// <summary>Tage seit der jüngsten Nutzung irgendeiner Distribution; null, wenn keine ein Datum hat.</summary>
+    public static int? DaysSinceUse(IEnumerable<ComputerWslDistro> distros, DateTime nowUtc) =>
+        distros.Max(d => d.LastUsedUtc) is { } last ? Math.Max(0, (int)(nowUtc - last).TotalDays) : null;
+
+    /// <summary>Bezeichnung im Verlauf: Name und Benutzer, denn jeder Benutzer hat eigene Distributionen.</summary>
+    public static string Label(string name, string? userName, string? userSid) =>
+        (userName ?? userSid) is { } user ? $"{name} ({user})" : name;
+
+    private static string Key(string? sid, string name) => $"{sid}|{name}";
+}

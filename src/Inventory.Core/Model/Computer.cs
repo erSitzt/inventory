@@ -215,6 +215,15 @@ public class Computer
     /// <summary>BitLocker-Schutz des Systemlaufwerks (beim Mac FileVault); null = nicht ermittelt.</summary>
     public bool? SystemDriveProtected { get; set; }
 
+    /// <summary>Wann zuletzt ein Scan die Windows-Features geliefert hat; null = noch nie (älterer Runner, Mac oder nicht gescannt).</summary>
+    public DateTime? FeaturesScanUtc { get; set; }
+    /// <summary>Wann zuletzt ein Scan die Angaben zu WSL geliefert hat; null = noch nie.</summary>
+    public DateTime? WslScanUtc { get; set; }
+    /// <summary>Windows-Subsystem für Linux eingerichtet; null = nicht ermittelt.</summary>
+    public bool? WslInstalled { get; set; }
+    /// <summary>Version des WSL-Pakets (Store/MSI); null bei dem in Windows enthaltenen WSL oder ohne WSL.</summary>
+    public string? WslVersion { get; set; }
+
     // Angaben für die Lizenzberechnung aus dem letzten Scan; null = nicht ermittelt
     /// <summary>Wann zuletzt ein Scan diese Angaben geliefert hat; null = noch nie (älterer Runner oder nicht gescannt).</summary>
     public DateTime? LicensingScanUtc { get; set; }
@@ -282,6 +291,10 @@ public class Computer
     public List<ComputerApp> Apps { get; set; } = [];
     public List<ComputerServerFeature> ServerFeatures { get; set; } = [];
     public List<ComputerSqlInstance> SqlInstances { get; set; } = [];
+    /// <summary>Eingeschaltete optionale Windows-Features.</summary>
+    public List<ComputerOptionalFeature> OptionalFeatures { get; set; } = [];
+    /// <summary>WSL-Distributionen der Benutzer.</summary>
+    public List<ComputerWslDistro> WslDistros { get; set; } = [];
     /// <summary>Werte eigener Inventarfelder aus Plugins.</summary>
     public List<ComputerCustomValue> CustomValues { get; set; } = [];
     /// <summary>Auf diesem Hyper-V-Host gefundene virtuelle Maschinen.</summary>

@@ -29,6 +29,10 @@ namespace Inventory.Runner
             Section(data, "Datenträger", () => ReadDisks(data));
             Section(data, "Netzwerk", () => ReadNetwork(data));
             Section(data, "Dienste", () => ReadServices(data));
+            Section(data, "Windows-Features", () => ReadOptionalFeatures(data));
+            // Nach Apps, Profilen und Features: Das WSL aus dem Store ist ein App-Paket, das alte ein Feature, und die Distributionen
+            // bekommen die Namen ihrer Benutzer.
+            Section(data, "WSL", () => data.Wsl = WslCollector.Read(data));
             Section(data, "Lokale Benutzer", () => ReadLocalUsers(data));
             Section(data, "Lokale Administratoren", () => ReadLocalAdmins(data));
             data.Security = new SecurityStatus();
@@ -152,7 +156,7 @@ namespace Inventory.Runner
             // Pro Benutzer installierte Programme; sichtbar sind nur die Profile, deren Registry gerade geladen ist.
             using (var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64))
             {
-                var loaded = users.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal) && !n.EndsWith("_Classes", StringComparison.Ordinal)).ToList();
+                var loaded = users.GetSubKeyNames().Where(UserSids.IsUserHive).ToList();
                 foreach (var sid in loaded)
                     ReadUninstall(data, users.OpenSubKey(sid + "\\" + UninstallKey), is64Bit: Environment.Is64BitOperatingSystem, perUser: true, userSid: sid);
 
@@ -161,7 +165,7 @@ namespace Inventory.Runner
                 using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
                 using (var profiles = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"))
                 {
-                    var known = profiles?.GetSubKeyNames().Where(n => n.StartsWith("S-1-5-21-", StringComparison.Ordinal)) ?? Enumerable.Empty<string>();
+                    var known = profiles?.GetSubKeyNames().Where(UserSids.IsUser) ?? Enumerable.Empty<string>();
                     foreach (var sid in known.Union(loaded, StringComparer.OrdinalIgnoreCase))
                         data.UserProfiles.Add(new UserProfileState { Sid = sid, Loaded = loaded.Contains(sid, StringComparer.OrdinalIgnoreCase) });
                 }
@@ -215,7 +219,7 @@ namespace Inventory.Runner
             foreach (var o in Query("SELECT SID, LocalPath, LastUseTime, Loaded FROM Win32_UserProfile WHERE Special = FALSE"))
             {
                 var sid = Text(o, "SID");
-                if (sid == null || !sid.StartsWith("S-1-5-21-", StringComparison.Ordinal))
+                if (sid == null || !UserSids.IsUser(sid))
                     continue;
                 var profile = profiles.FirstOrDefault(p => string.Equals(p.Sid, sid, StringComparison.OrdinalIgnoreCase));
                 if (profile == null)
@@ -333,6 +337,19 @@ namespace Inventory.Runner
                 });
             }
             data.Services = data.Services.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>Nur die eingeschalteten; die Liste bleibt null, wenn die Abfrage scheitert (sonst sähe es aus, als wären alle aus).</summary>
+        private static void ReadOptionalFeatures(InventoryData data)
+        {
+            var features = new List<OptionalFeatureItem>();
+            foreach (var o in Query("SELECT Name, Caption FROM Win32_OptionalFeature WHERE InstallState = 1"))
+            {
+                var name = Text(o, "Name");
+                if (name != null)
+                    features.Add(new OptionalFeatureItem { Name = name, Caption = Text(o, "Caption") });
+            }
+            data.OptionalFeatures = features.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         private static void ReadLocalUsers(InventoryData data)

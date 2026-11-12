@@ -351,6 +351,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("Domain")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("FeaturesScanUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool?>("FirewallDomain")
                         .HasColumnType("INTEGER");
 
@@ -581,6 +584,15 @@ namespace Inventory.Data.Migrations
 
                     b.Property<bool?>("WindowsActivated")
                         .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("WslInstalled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("WslScanUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WslVersion")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -920,6 +932,29 @@ namespace Inventory.Data.Migrations
                     b.ToTable("NetworkAdapters");
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerOptionalFeature", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Caption")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("OptionalFeatures");
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerPendingUpdate", b =>
                 {
                     b.Property<int>("Id")
@@ -1245,6 +1280,44 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("ComputerId");
 
                     b.ToTable("Services");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerWslDistro", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("CarriedOver")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastUsedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserSid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("WslVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("WslDistros");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Credential", b =>
@@ -2713,6 +2786,15 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerOptionalFeature", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("OptionalFeatures")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerPendingUpdate", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -2798,6 +2880,15 @@ namespace Inventory.Data.Migrations
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
                         .WithMany("Services")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerWslDistro", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("WslDistros")
                         .HasForeignKey("ComputerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -3056,6 +3147,8 @@ namespace Inventory.Data.Migrations
 
                     b.Navigation("NetworkAdapters");
 
+                    b.Navigation("OptionalFeatures");
+
                     b.Navigation("PendingUpdates");
 
                     b.Navigation("PhysicalDisks");
@@ -3075,6 +3168,8 @@ namespace Inventory.Data.Migrations
                     b.Navigation("VirtualMachines");
 
                     b.Navigation("Volumes");
+
+                    b.Navigation("WslDistros");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.Deployment", b =>

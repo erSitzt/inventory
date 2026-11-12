@@ -941,6 +941,9 @@
   <data name="BitLocker: no volume reported." xml:space="preserve">
     <value>BitLocker: kein Laufwerk gemeldet.</value>
   </data>
+  <data name="built into Windows" xml:space="preserve">
+    <value>in Windows enthalten</value>
+  </data>
   <data name="Built-in administrator account" xml:space="preserve">
     <value>Vordefiniertes Administratorkonto</value>
   </data>
@@ -1862,6 +1865,12 @@
   <data name="Display name" xml:space="preserve">
     <value>Anzeigename</value>
   </data>
+  <data name="Distribution" xml:space="preserve">
+    <value>Distribution</value>
+  </data>
+  <data name="Distribution name" xml:space="preserve">
+    <value>Name der Distribution</value>
+  </data>
   <data name="DNS name" xml:space="preserve">
     <value>DNS-Name</value>
   </data>
@@ -1987,6 +1996,9 @@
   </data>
   <data name="e.g. new SQL server, ticket 4711" xml:space="preserve">
     <value>z. B. neuer SQL-Server, Ticket 4711</value>
+  </data>
+  <data name="Each user has their own distributions. They can only be read while the user is logged on; those of other users come from an earlier scan. Last used is the last change of the distribution's virtual disk (WSL 2 only)." xml:space="preserve">
+    <value>Jeder Benutzer hat eigene Distributionen. Lesbar sind sie nur, solange er angemeldet ist; die der übrigen Benutzer stammen aus einem früheren Scan. „Zuletzt verwendet“ ist die letzte Änderung der virtuellen Festplatte der Distribution (nur WSL 2).</value>
   </data>
   <data name="Each virtual machine is matched to its inventoried computer by the BIOS UUID, otherwise by its name; expand a host to see its machines." xml:space="preserve">
     <value>Jede virtuelle Maschine wird über die BIOS-UUID ihrem inventarisierten Rechner zugeordnet, sonst über den Namen; ein aufgeklappter Host zeigt seine Maschinen.</value>
@@ -2221,6 +2233,9 @@
   </data>
   <data name="Fallback transport" xml:space="preserve">
     <value>Ausweich-Transport</value>
+  </data>
+  <data name="Feature name" xml:space="preserve">
+    <value>Feature-Name</value>
   </data>
   <data name="Feature Packs" xml:space="preserve">
     <value>Feature Packs</value>
@@ -3689,6 +3704,9 @@
   <data name="No devices yet. Add an address range on the second tab and start a scan." xml:space="preserve">
     <value>Noch keine Geräte. Lege auf dem zweiten Reiter einen Adressbereich an und starte einen Scan.</value>
   </data>
+  <data name="No distributions found for the users logged on during the scan." xml:space="preserve">
+    <value>Bei den während des Scans angemeldeten Benutzern keine Distributionen gefunden.</value>
+  </data>
   <data name="No enabled notification channel to send the report to." xml:space="preserve">
     <value>Kein eingeschalteter Benachrichtigungskanal, an den der Bericht gehen könnte.</value>
   </data>
@@ -3745,6 +3763,9 @@
   </data>
   <data name="No open items." xml:space="preserve">
     <value>Keine offenen Punkte.</value>
+  </data>
+  <data name="No optional features are turned on." xml:space="preserve">
+    <value>Keine optionalen Features eingeschaltet.</value>
   </data>
   <data name="No package selected" xml:space="preserve">
     <value>Kein Paket gewählt</value>
@@ -3901,6 +3922,9 @@
   </data>
   <data name="Not captured yet. Profiles are read with the next scan." xml:space="preserve">
     <value>Noch nicht erfasst. Die Profile werden mit dem nächsten Scan gelesen.</value>
+  </data>
+  <data name="Not captured yet. Windows features are read with the next scan by a current runner." xml:space="preserve">
+    <value>Noch nicht erfasst. Die Windows-Features liest der nächste Scan mit einem aktuellen Runner.</value>
   </data>
   <data name="Not counted ({0}): switched off or not Windows Server" xml:space="preserve">
     <value>Nicht gezählt ({0}): ausgeschaltet oder kein Windows Server</value>
@@ -4207,6 +4231,9 @@
   </data>
   <data name='Optional: a permanently installed agent fetches jobs over an outbound connection – useful for computers the server cannot reach directly (notebooks on the road, other networks). It is installed via "Computers → Actions → Install agent". After a server update the agents update themselves on their next request.' xml:space="preserve">
     <value>Optional: Ein fest installierter Agent holt Jobs über eine ausgehende Verbindung ab – sinnvoll für Rechner, die der Server nicht direkt erreicht (Notebooks unterwegs, andere Netze). Installiert wird er über „Rechner → Aktionen → Agent installieren“. Nach einem Update des Servers aktualisieren sich die Agenten bei ihrer nächsten Anfrage selbst.</value>
+  </data>
+  <data name="Optional Windows features that are turned on, named as DISM lists them. A &quot;Windows feature&quot; step in a package turns them on or off." xml:space="preserve">
+    <value>Eingeschaltete optionale Windows-Features, benannt wie bei DISM. Ein- und ausschalten lassen sie sich mit dem Schritt „Windows-Feature“ in einem Paket.</value>
   </data>
   <data name="Optional, e.g. https://inventory.example.local:5101. Empty: derived from the address for the agents and the certificate. Used for the redirect and for links in notifications." xml:space="preserve">
     <value>Optional, z. B. https://inventory.example.local:5101. Leer: abgeleitet aus der Adresse für die Agenten und dem Zertifikat. Gilt für die Umleitung und für Links in Benachrichtigungen.</value>
@@ -7454,6 +7481,12 @@
   <data name="Windows feature" xml:space="preserve">
     <value>Windows-Feature</value>
   </data>
+  <data name="Windows feature (optional feature)" xml:space="preserve">
+    <value>Windows-Feature (optionales Feature)</value>
+  </data>
+  <data name="Windows features" xml:space="preserve">
+    <value>Windows-Features</value>
+  </data>
   <data name="Windows Firewall" xml:space="preserve">
     <value>Windows-Firewall</value>
   </data>
@@ -7519,6 +7552,12 @@
   </data>
   <data name="Windows sign-in, allowed for {0}." xml:space="preserve">
     <value>Windows-Anmeldung, erlaubt für {0}.</value>
+  </data>
+  <data name="Windows Subsystem for Linux {0}." xml:space="preserve">
+    <value>Windows-Subsystem für Linux {0}.</value>
+  </data>
+  <data name="Windows Subsystem for Linux, the version built into Windows." xml:space="preserve">
+    <value>Windows-Subsystem für Linux, die in Windows enthaltene Version.</value>
   </data>
   <data name="Windows Update" xml:space="preserve">
     <value>Windows Update</value>
@@ -7594,6 +7633,15 @@
   </data>
   <data name="Wrong computer responds" xml:space="preserve">
     <value>Falscher Rechner antwortet</value>
+  </data>
+  <data name="WSL distribution" xml:space="preserve">
+    <value>WSL-Distribution</value>
+  </data>
+  <data name="WSL installed" xml:space="preserve">
+    <value>WSL eingerichtet</value>
+  </data>
+  <data name="WSL: days since last use" xml:space="preserve">
+    <value>WSL: Tage seit der letzten Nutzung</value>
   </data>
   <data name="Xen Orchestra address" xml:space="preserve">
     <value>Adresse von Xen Orchestra</value>

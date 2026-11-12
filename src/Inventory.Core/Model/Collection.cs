@@ -122,6 +122,14 @@ public enum RuleField
     IntelOnlyApps = 162,
     /// <summary>Mac mit mindestens einem Programm, das weder von Apple noch von einem verifizierten Entwickler signiert ist.</summary>
     UnknownDeveloperApps = 163,
+    /// <summary>Eingeschaltetes optionales Windows-Feature (Name wie bei DISM oder Anzeigename); verneint = nicht eingeschaltet.</summary>
+    WindowsFeature = 164,
+    /// <summary>Windows-Subsystem für Linux eingerichtet.</summary>
+    WslInstalled = 165,
+    /// <summary>Tage seit der letzten Nutzung einer WSL-Distribution (nach dem Datum ihrer virtuellen Festplatte).</summary>
+    WslDaysSinceUse = 166,
+    /// <summary>WSL-Distribution nach Name, z. B. Ubuntu; verneint = keine solche.</summary>
+    WslDistro = 167,
     Online = 1,
     Scanned,
     OsName,

@@ -344,6 +344,10 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.SqlInstance => T("SQL Server instance or edition"),
         RuleField.ServerFeature => T("Server role or feature"),
         RuleField.CpuSockets => T("Processor sockets"),
+        RuleField.WindowsFeature => T("Windows feature (optional feature)"),
+        RuleField.WslInstalled => T("WSL installed"),
+        RuleField.WslDaysSinceUse => T("WSL: days since last use"),
+        RuleField.WslDistro => T("WSL distribution"),
         _ => field.ToString(),
     };
 
@@ -367,9 +371,11 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
             or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
             or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
             or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem
-            or RuleField.IsVirtual or RuleField.MacOsSecurityUpdatesEnded or RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps => [RuleOperator.Equals],
+            or RuleField.IsVirtual or RuleField.MacOsSecurityUpdatesEnded or RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps
+            or RuleField.WslInstalled => [RuleOperator.Equals],
         RuleField.InCollection or RuleField.DeviceType or RuleField.Platform => [RuleOperator.Equals, RuleOperator.NotEquals],
-        RuleField.DiskFreeGb or RuleField.BatteryHealthPercent or RuleField.DaysSinceBoot or RuleField.ScanAgeDays => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
+        RuleField.DiskFreeGb or RuleField.BatteryHealthPercent or RuleField.DaysSinceBoot or RuleField.ScanAgeDays
+            or RuleField.WslDaysSinceUse => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
         RuleField.CpuSockets => [RuleOperator.Equals, RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
         RuleField.Service => [RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains],
         RuleField.IpAddress => [RuleOperator.StartsWith, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains],
@@ -381,7 +387,8 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.WarrantyDaysLeft => [RuleOperator.LessThan, RuleOperator.GreaterOrEqual],
         RuleField.Tag => [RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.Contains, RuleOperator.NotContains],
         RuleField.PendingUpdate => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals],
-        RuleField.Software or RuleField.LocalAdmin or RuleField.SqlInstance or RuleField.ServerFeature => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
+        RuleField.Software or RuleField.LocalAdmin or RuleField.SqlInstance or RuleField.ServerFeature
+            or RuleField.WindowsFeature or RuleField.WslDistro => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
         _ => [RuleOperator.Contains, RuleOperator.NotContains, RuleOperator.Equals, RuleOperator.NotEquals, RuleOperator.StartsWith],
     };
 
@@ -584,7 +591,8 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         or RuleField.RdpEnabled or RuleField.RdpWithoutNla or RuleField.UacOff or RuleField.Smb1Enabled or RuleField.CredentialGuard or RuleField.MemoryIntegrity
         or RuleField.LsaProtection or RuleField.BuiltinAdminEnabled or RuleField.NotActivated
         or RuleField.AgentPresent or RuleField.SecureBoot or RuleField.TpmReady or RuleField.SystemDriveProtected or RuleField.DiskHealthProblem
-        or RuleField.IsVirtual or RuleField.MacOsSecurityUpdatesEnded or RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps;
+        or RuleField.IsVirtual or RuleField.MacOsSecurityUpdatesEnded or RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps
+        or RuleField.WslInstalled;
 
     /// <summary>Der Wert einer Regel, wie er in Listen erscheint: Namen statt Kennungen, übersetzte feste Werte.</summary>
     public string RuleValue(CollectionRule rule, Func<int, string?> collectionName) => rule.Field switch
