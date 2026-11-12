@@ -23,6 +23,19 @@ public static class WslDistros
         var loaded = profiles?.Where(p => p.Loaded).Select(p => p.Sid).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var present = wsl.Distros.Select(d => Key(d.UserSid, d.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // Gelesen, aber ohne Datum (der Runner liest die Festplatte nur mit dem Token des Benutzers, und ohne Sitzung gibt es
+        // keins): Das bisherige Datum bleibt, statt die Nutzung zu vergessen.
+        var earlier = previous.Where(p => p.UserSid is not null).GroupBy(p => Key(p.UserSid, p.Name), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        foreach (var distro in wsl.Distros.Where(d => d.LastUsedUtc is null && d.WslVersion == 2))
+        {
+            if (earlier.TryGetValue(Key(distro.UserSid, distro.Name), out var before) && before.LastUsedUtc is not null)
+            {
+                distro.LastUsedUtc = before.LastUsedUtc;
+                distro.SizeBytes ??= before.SizeBytes;
+            }
+        }
+
         var kept = 0;
         foreach (var item in previous)
         {

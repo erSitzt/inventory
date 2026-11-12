@@ -102,6 +102,41 @@ jobs:
             if ($remote.Count -ne 1) { throw "$name missing" }
             if ($remote[0].lastUsedUtc -or $remote[0].sizeBytes) { throw "${name}: the runner read a disk behind a network path" }
           }
+      # Wie im Betrieb als Lokales System: Die Festplatte liest der Runner nur mit dem Token des Benutzers aus dessen Sitzung.
+      # Hat der Benutzer des Jobs eine, stimmt das Datum; hat er keine, darf es keins geben (Lokales System liest nie selbst).
+      - name: Collect as Local System
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path src\Inventory.Runner\bin\Release\net48\InventoryRunner.exe).Path
+          $out = "C:\wsl-ci\system.json"
+          $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"`"$exe`" --collect > `"$out`"`""
+          Register-ScheduledTask -TaskName InventoryCollect -Action $action -User "NT AUTHORITY\SYSTEM" -RunLevel Highest | Out-Null
+          $started = Get-Date
+          Start-ScheduledTask -TaskName InventoryCollect
+          do {
+            Start-Sleep 5
+            $info = Get-ScheduledTaskInfo -TaskName InventoryCollect
+            $state = (Get-ScheduledTask -TaskName InventoryCollect).State
+          } while (($state -eq "Running" -or $info.LastRunTime -lt $started) -and (Get-Date) -lt $started.AddMinutes(10))
+          if ($info.LastTaskResult -ne 0) { throw "--collect as SYSTEM: $($info.LastTaskResult)" }
+          $inventory = Get-Content $out -Raw | ConvertFrom-Json
+          $inventory.wsl | ConvertTo-Json -Depth 4
+          $inventory.warnings
+          quser
+          if ($inventory.warnings | Where-Object { $_ -like "WSL:*" }) { throw "warning for WSL" }
+          foreach ($name in "Inventory-CI-UNC", "Inventory-CI-Link") {
+            $remote = @($inventory.wsl.distros | Where-Object name -eq $name)
+            if ($remote.Count -ne 1) { throw "$name missing" }
+            if ($remote[0].lastUsedUtc -or $remote[0].sizeBytes) { throw "${name}: the runner read a disk behind a network path" }
+          }
+          $distro = @($inventory.wsl.distros | Where-Object name -eq "Inventory-CI")
+          if ($distro.Count -ne 1) { throw "distribution missing" }
+          $session = @(quser 2>$null) -match [regex]::Escape($env:USERNAME)
+          if ($session) {
+            if (([datetime]$distro[0].lastUsedUtc).ToUniversalTime() -ne [datetime]::new(2026, 1, 2, 3, 4, 5, [DateTimeKind]::Utc)) { throw "with the user's token: $($distro[0].lastUsedUtc)" }
+          } elseif ($distro[0].lastUsedUtc -or $distro[0].sizeBytes) {
+            throw "Local System read the disk itself"
+          }
 
   # Let's Encrypt eingebaut: der ACME-Ablauf gegen Pebble, den Testserver von Let's Encrypt, mit dessen DNS-Testserver statt
   # Azure DNS (den Zugriff auf Azure prüfen die Tests oben mit nachgebildeten Antworten).

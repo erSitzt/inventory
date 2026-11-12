@@ -92,6 +92,20 @@ public sealed class WindowsFeatureTests : IDisposable
     }
 
     [Fact]
+    public void A_distribution_read_without_a_date_keeps_its_earlier_one()
+    {
+        // Ben ist angemeldet, hat aber keine Sitzung (nur geladene Registry): Der Runner liest die Festplatte dann nicht.
+        var current = Scan(true, (Ben, true));
+        current.Wsl!.Distros.Add(new WslDistroItem { Name = "Ubuntu", UserSid = Ben, WslVersion = 2 });
+        current.Wsl.Distros.Add(new WslDistroItem { Name = "Debian", UserSid = Ben, WslVersion = 2, LastUsedUtc = new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc), SizeBytes = 7 });
+        Assert.Equal(0, WslDistros.CarryOver([Stored("Ubuntu", Ben), Stored("Debian", Ben)], current));
+        var ubuntu = current.Wsl.Distros.Single(d => d.Name == "Ubuntu");
+        Assert.Equal((new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc), 42L, false), (ubuntu.LastUsedUtc, ubuntu.SizeBytes, ubuntu.CarriedOver));
+        // Ein frisch gelesenes Datum geht vor.
+        Assert.Equal(new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc), current.Wsl.Distros.Single(d => d.Name == "Debian").LastUsedUtc);
+    }
+
+    [Fact]
     public void Without_the_profile_list_all_earlier_distributions_stay()
     {
         // Der Bereich Software ist gescheitert, WSL nicht: Wessen Registry geladen war, ist unbekannt, also geht nichts verloren.

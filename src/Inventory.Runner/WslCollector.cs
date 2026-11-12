@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Principal;
 using Inventory.Contracts;
 using Microsoft.Win32;
+using Microsoft.Win32.SafeHandles;
 
 namespace Inventory.Runner
 {
@@ -24,31 +26,21 @@ namespace Inventory.Runner
         public static WslInfo Read(InventoryData data)
         {
             var wsl = new WslInfo { Version = PackageVersion(data.Apps) };
-            using (var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64))
+            var tokens = UserSession.UserTokens();
+            try
             {
-                var loaded = users.GetSubKeyNames().Where(UserSids.IsUserHive);
-                foreach (var sid in loaded)
-                {
-                    using (var lxss = users.OpenSubKey(sid + "\\" + LxssKey))
-                    {
-                        if (lxss == null)
-                            continue;
-                        foreach (var id in lxss.GetSubKeyNames())
-                        {
-                            using (var key = lxss.OpenSubKey(id))
-                            {
-                                if (key != null && Distro(key, sid, data.UserProfiles) is { } distro)
-                                    wsl.Distros.Add(distro);
-                            }
-                        }
-                    }
-                }
+                ReadDistros(wsl, data.UserProfiles, tokens);
+            }
+            finally
+            {
+                foreach (var token in tokens.Values)
+                    token.Dispose();
             }
             wsl.Distros = wsl.Distros.OrderBy(d => d.UserName ?? d.UserSid, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
             // Die Dienste direkt aus der Registry: WMI-Abfragen, die in diesem Scan scheitern, ergäben sonst "kein WSL", und der
-            // Server würde die Distributionen abgemeldeter Benutzer verwerfen. LxssManager gibt es mit dem Feature des alten WSL.
-            // Das Feature des alten WSL zählt zusätzlich, wenn die Liste gelesen wurde.
+            // Server würde die Distributionen abgemeldeter Benutzer verwerfen. LxssManager gibt es mit dem Feature des alten WSL;
+            // das Feature selbst zählt zusätzlich, wenn die Liste gelesen wurde.
             var feature = data.OptionalFeatures?.Any(f => string.Equals(f.Name, WslNames.Feature, StringComparison.OrdinalIgnoreCase)) == true;
             wsl.Installed = wsl.Version != null || feature || ServiceExists(WslNames.LegacyService) || ServiceExists(WslNames.PackageService) || wsl.Distros.Count > 0;
             // Ohne die App-Pakete lässt sich das WSL aus dem Store (vor 2.0, ohne eigenen Dienst) nicht ausschließen: dann lieber
@@ -58,7 +50,30 @@ namespace Inventory.Runner
             return wsl;
         }
 
-        private static WslDistroItem? Distro(RegistryKey key, string sid, List<UserProfileState>? profiles)
+        private static void ReadDistros(WslInfo wsl, List<UserProfileState>? profiles, Dictionary<string, SafeAccessTokenHandle> tokens)
+        {
+            using (var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64))
+            {
+                foreach (var sid in users.GetSubKeyNames().Where(UserSids.IsUserHive))
+                {
+                    using (var lxss = users.OpenSubKey(sid + "\\" + LxssKey))
+                    {
+                        if (lxss == null)
+                            continue;
+                        foreach (var id in lxss.GetSubKeyNames())
+                        {
+                            using (var key = lxss.OpenSubKey(id))
+                            {
+                                if (key != null && Distro(key, sid, profiles, tokens) is { } distro)
+                                    wsl.Distros.Add(distro);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static WslDistroItem? Distro(RegistryKey key, string sid, List<UserProfileState>? profiles, Dictionary<string, SafeAccessTokenHandle> tokens)
         {
             if (!(key.GetValue("DistributionName") is string name) || string.IsNullOrWhiteSpace(name))
                 return null;
@@ -71,9 +86,30 @@ namespace Inventory.Runner
                     : key.GetValue("Flags") is int flags ? ((flags & VmModeFlag) != 0 ? 2 : 1)
                     : (int?)null,
             };
-            if (distro.WslVersion == 2)
-                ReadDisk(distro, WslNames.DiskPath(key.GetValue("BasePath") as string, key.GetValue("VhdFileName") as string));
+            if (distro.WslVersion == 2 && WslNames.DiskPath(key.GetValue("BasePath") as string, key.GetValue("VhdFileName") as string) is { } path)
+                ReadDiskAs(sid, tokens, () => ReadDisk(distro, path));
             return distro;
+        }
+
+        /// <summary>
+        /// Den Pfad zur virtuellen Festplatte bestimmt der Benutzer. Gelesen wird darum mit seinem eigenen Token und nie als
+        /// Lokales System: Führte der Pfad (auch über einen Link, der erst zwischen Prüfung und Zugriff entsteht) auf einen
+        /// fremden Server, meldete sich dort höchstens der Benutzer selbst an, nicht das Computerkonto. Ohne Sitzung des Benutzers
+        /// gibt es kein Token und kein Datum; der Server behält dann das bisherige.
+        /// </summary>
+        private static void ReadDiskAs(string sid, Dictionary<string, SafeAccessTokenHandle> tokens, Action read)
+        {
+            // Läuft der Runner selbst unter diesem Benutzer (--collect von Hand), gibt es nichts zu leihen.
+            using (var current = WindowsIdentity.GetCurrent())
+            {
+                if (string.Equals(current.User?.Value, sid, StringComparison.OrdinalIgnoreCase))
+                {
+                    read();
+                    return;
+                }
+            }
+            if (tokens.TryGetValue(sid, out var token))
+                WindowsIdentity.RunImpersonated(token, read);
         }
 
         private static bool ServiceExists(string name)
@@ -84,13 +120,11 @@ namespace Inventory.Runner
         }
 
         /// <summary>
-        /// Die virtuelle Festplatte ändert sich, solange die Distribution läuft: ihr Datum ist die letzte Nutzung. Den Pfad
-        /// bestimmt der Benutzer; gelesen wird nur auf einem lokalen Laufwerk und ohne Verweise im Pfad, siehe <see cref="IsLocal"/>.
+        /// Die virtuelle Festplatte ändert sich, solange die Distribution läuft: ihr Datum ist die letzte Nutzung. Zusätzlich zum
+        /// Token des Benutzers nur auf einem lokalen Laufwerk und ohne Verweise im Pfad, siehe <see cref="IsLocal"/>.
         /// </summary>
-        private static void ReadDisk(WslDistroItem distro, string? path)
+        private static void ReadDisk(WslDistroItem distro, string path)
         {
-            if (path == null)
-                return;
             try
             {
                 if (!IsLocal(path))
@@ -108,9 +142,8 @@ namespace Inventory.Runner
         }
 
         /// <summary>
-        /// Lokales Laufwerk, und kein Abschnitt des Pfads ist ein symbolischer Link oder eine Junction: Ein Link auf eine
-        /// Netzwerkfreigabe (anlegen darf ihn im Entwicklermodus jeder Benutzer) brächte den Runner als Lokales System dazu, sich
-        /// mit dem Computerkonto bei einem fremden Server anzumelden. Die Attribute eines Links liest Windows, ohne ihm zu folgen.
+        /// Lokales Laufwerk, und kein Abschnitt des Pfads ist ein symbolischer Link oder eine Junction (anlegen darf solche Links
+        /// im Entwicklermodus jeder Benutzer). Die Attribute eines Links liest Windows, ohne ihm zu folgen.
         /// </summary>
         private static bool IsLocal(string path)
         {

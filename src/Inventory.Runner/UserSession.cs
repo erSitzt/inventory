@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -155,6 +156,41 @@ namespace Inventory.Runner
         [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "WTSSendMessageW")]
         private static extern bool WTSSendMessage(IntPtr server, int sessionId, string title, int titleBytes, string message, int messageBytes,
             uint style, int timeoutSeconds, out int response, bool wait);
+
+        /// <summary>
+        /// Die Anmeldetoken aller Benutzer mit einer Sitzung (auch getrennter), je SID: um etwas mit den Rechten des Benutzers zu
+        /// tun statt als Lokales System. Benutzer ohne Sitzung (nur geladene Registry) fehlen; ohne das Recht, Token abzurufen
+        /// (Runner läuft nicht als Lokales System), ist die Liste leer.
+        /// </summary>
+        public static Dictionary<string, SafeAccessTokenHandle> UserTokens()
+        {
+            var tokens = new Dictionary<string, SafeAccessTokenHandle>(StringComparer.OrdinalIgnoreCase);
+            if (!WTSEnumerateSessions(IntPtr.Zero, 0, 1, out var buffer, out var count))
+                return tokens;
+            try
+            {
+                var size = Marshal.SizeOf(typeof(WTS_SESSION_INFO));
+                for (var i = 0; i < count; i++)
+                {
+                    var info = (WTS_SESSION_INFO)Marshal.PtrToStructure(buffer + i * size, typeof(WTS_SESSION_INFO));
+                    if (info.SessionId == 0 || !WTSQueryUserToken(info.SessionId, out var raw))
+                        continue;
+                    var token = new SafeAccessTokenHandle(raw);
+                    string? sid;
+                    using (var identity = new WindowsIdentity(raw))
+                        sid = identity.User?.Value;
+                    if (sid == null || tokens.ContainsKey(sid))
+                        token.Dispose();
+                    else
+                        tokens[sid] = token;
+                }
+            }
+            finally
+            {
+                WTSFreeMemory(buffer);
+            }
+            return tokens;
+        }
 
         private static int? FindActiveSession()
         {
