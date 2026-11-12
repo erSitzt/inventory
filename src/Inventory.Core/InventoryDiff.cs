@@ -205,6 +205,13 @@ public static partial class InventoryDiff
         return MergeUpdates(changes);
     }
 
+    /// <summary>
+    /// Ein Hotfix, der nicht mehr in der Liste steht, ist fast immer ersetzt: Win32_QuickFixEngineering führt vom kumulativen
+    /// Update nur den aktuellen Stand, das des Vormonats verschwindet mit dem neuen (oft im selben Scan, sonst bei der Bereinigung
+    /// ein paar Tage später). Eine echte Deinstallation sieht in den Daten genauso aus, ist aber selten.
+    /// </summary>
+    public static bool IsSuperseded(InventoryChange change) => change is { Category: "Hotfix", Kind: ChangeKind.Removed };
+
     private static string? SqlDescription(string? edition, string? version) =>
         string.Join(" ", new[] { edition, version }.Where(p => !string.IsNullOrWhiteSpace(p)));
 

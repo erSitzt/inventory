@@ -234,7 +234,7 @@
             {
                 <div class="feed-row">
                     <span class="time">@Display.LocalTime(change.TimeUtc)</span>
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@Display.ChangeColor(change)" Style="margin: 0">@Display.Change(change)</MudChip>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@Display.ChangeColor(change)" Style="margin: 0" title="@Display.ChangeHint(change)">@Display.Change(change)</MudChip>
                     <span class="text"><MudLink Href="@($"computers/{change.ComputerId}")">@computer</MudLink> · @L[change.Category]: @L[change.Item] @Display.ChangeValues(change, v => L[v])</span>
                 </div>
             }

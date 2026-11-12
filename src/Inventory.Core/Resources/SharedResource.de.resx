@@ -6113,6 +6113,9 @@
   <data name="Summary" xml:space="preserve">
     <value>Zusammenfassung</value>
   </data>
+  <data name="superseded" xml:space="preserve">
+    <value>ersetzt</value>
+  </data>
   <data name="Supplies" xml:space="preserve">
     <value>Verbrauchsmaterial</value>
   </data>
@@ -7498,6 +7501,9 @@
   </data>
   <data name="Windows Installer patch (MSP)" xml:space="preserve">
     <value>Windows-Installer-Patch (MSP)</value>
+  </data>
+  <data name="Windows no longer lists an update once a newer cumulative update replaces it. A real uninstall looks the same in the data, but is rare." xml:space="preserve">
+    <value>Windows führt ein Update nicht mehr auf, sobald ein neueres kumulatives Update es ersetzt. Eine echte Deinstallation sieht in den Daten genauso aus, ist aber selten.</value>
   </data>
   <data name="Windows not activated" xml:space="preserve">
     <value>Windows nicht aktiviert</value>

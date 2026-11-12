@@ -326,7 +326,8 @@ public sealed partial class ReportService
         new("time", L["Time"], r => Stamp(r.Change.TimeUtc, zone)),
         new("computer", L["Computer"], r => r.Computer),
         new("category", L["Area"], r => L[r.Change.Category]),
-        new("kind", L["Change"], r => r.Change.Kind switch { ChangeKind.Added => L["new"], ChangeKind.Removed => L["removed"], _ => L["changed"] }),
+        new("kind", L["Change"], r => InventoryDiff.IsSuperseded(r.Change) ? L["superseded"]
+            : r.Change.Kind switch { ChangeKind.Added => L["new"], ChangeKind.Removed => L["removed"], _ => L["changed"] }),
         new("item", L["Item"], r => r.Change.Item),
         new("old", L["Before"], r => r.Change.OldValue),
         new("new", L["After"], r => r.Change.NewValue),

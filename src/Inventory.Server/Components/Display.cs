@@ -662,14 +662,22 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         _ => kind.ToString(),
     };
 
-    /// <summary>Bei Software sagt "aktualisiert" mehr als "geändert".</summary>
-    public string Change(InventoryChange change) => IsDowngrade(change) ? T("older version") : IsUpgrade(change) ? T("updated") : Change(change.Kind);
+    /// <summary>Bei Software sagt "aktualisiert" mehr als "geändert", bei einem Hotfix "ersetzt" mehr als "entfernt".</summary>
+    public string Change(InventoryChange change) =>
+        InventoryDiff.IsSuperseded(change) ? T("superseded") : IsDowngrade(change) ? T("older version") : IsUpgrade(change) ? T("updated") : Change(change.Kind);
+
+    /// <summary>Erklärung zur Art der Änderung, wo das Wort allein in die Irre führen könnte; sonst null.</summary>
+    public string? ChangeHint(InventoryChange change) => InventoryDiff.IsSuperseded(change)
+        ? T("Windows no longer lists an update once a newer cumulative update replaces it. A real uninstall looks the same in the data, but is rare.")
+        : null;
 
     private static bool IsUpgrade(InventoryChange c) => c is { Category: "Software", Kind: ChangeKind.Changed, OldValue: { } old, NewValue: { } updated } && VersionComparer.Compare(old, updated) < 0;
 
     private static bool IsDowngrade(InventoryChange c) => c is { Category: "Software", Kind: ChangeKind.Changed, OldValue: { } old, NewValue: { } updated } && VersionComparer.Compare(old, updated) > 0;
 
-    public Color ChangeColor(InventoryChange change) => IsDowngrade(change) ? Color.Warning : ChangeColor(change.Kind);
+    /// <summary>Ein ersetzter Hotfix ist der normale Lauf der Dinge, kein Verlust: neutral statt rot.</summary>
+    public Color ChangeColor(InventoryChange change) =>
+        InventoryDiff.IsSuperseded(change) ? Color.Default : IsDowngrade(change) ? Color.Warning : ChangeColor(change.Kind);
 
     public Color ChangeColor(ChangeKind kind) => kind switch
     {
