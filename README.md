@@ -129,7 +129,8 @@ last 30 days.
 
 Every scan is compared with the previous one: installed, removed and updated software, hotfixes, services, local
 administrators, Windows features, WSL distributions, hardware and system configuration appear as changes with time – per computer on its *History* tab and
-for all computers on *Changes*.
+for all computers on *Changes*. A hotfix that drops out of the list is shown as *superseded*: Windows lists only the
+current cumulative update, so last month's one disappears with the new one.
 
 ### Network devices
 

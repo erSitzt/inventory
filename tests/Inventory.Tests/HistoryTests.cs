@@ -21,6 +21,33 @@ public class HistoryTests
     };
 
     [Fact]
+    public async Task A_hotfix_that_a_newer_cumulative_update_replaces_counts_as_superseded_not_removed()
+    {
+        using var db = new TestDb();
+        var store = new InventoryStore(db);
+        var id = (await new ComputerService(db, new SimulatedHostProbe()).ImportAsync("pc-01"))[0].Id;
+        InventoryData With(params string[] hotfixes) => new()
+        {
+            ComputerName = "PC-01", Software = [new SoftwareItem { Name = "7-Zip", Version = "24.08" }],
+            Hotfixes = hotfixes.Select(kb => new HotfixItem { Id = kb, Description = "Security Update" }).ToList(),
+        };
+        await store.SaveAsync(id, With("KB5127647"));
+        // Patchday: Das neue kumulative Update ersetzt das des Vormonats, Windows führt nur noch das neue.
+        var replaced = With("KB5132688");
+        replaced.Software.Clear();
+        await store.SaveAsync(id, replaced);
+
+        var changes = (await store.ChangesAsync(id)).Select(c => c.Change).ToList();
+        Assert.True(InventoryDiff.IsSuperseded(changes.Single(c => c.Item == "KB5127647")));
+        Assert.False(InventoryDiff.IsSuperseded(changes.Single(c => c.Item == "KB5132688")));
+        // Ein entferntes Programm bleibt "entfernt".
+        Assert.False(InventoryDiff.IsSuperseded(changes.Single(c => c.Item == "7-Zip")));
+
+        var report = await new ReportService(db).TableAsync(new ReportQuery(ReportSource.Changes, Columns: ["kind", "item"]));
+        Assert.Equal(["new|KB5132688", "removed|7-Zip", "superseded|KB5127647"], report.Rows.Select(r => string.Join('|', r)).Order());
+    }
+
+    [Fact]
     public async Task An_update_of_a_program_with_the_version_in_its_name_is_one_change_and_changes_are_grouped()
     {
         using var db = new TestDb();

@@ -132,7 +132,8 @@ letzten Nutzung* und *WSL-Distribution* filtern, etwa nach allen Rechnern, auf d
 
 Jeder Scan wird mit dem vorigen verglichen: installierte, entfernte und aktualisierte Software, Hotfixes, Dienste,
 lokale Administratoren, Windows-Features, WSL-Distributionen, Hardware und Systemkonfiguration erscheinen als Änderungen mit Zeitpunkt – je Rechner im Reiter
-*Verlauf* und für alle Rechner unter *Änderungen*.
+*Verlauf* und für alle Rechner unter *Änderungen*. Ein Hotfix, der aus der Liste fällt, erscheint als *ersetzt*: Windows
+führt vom kumulativen Update nur den aktuellen Stand, das des Vormonats verschwindet mit dem neuen.
 
 ### Netzwerkgeräte
 
