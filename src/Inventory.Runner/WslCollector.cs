@@ -20,7 +20,7 @@ namespace Inventory.Runner
         /// <summary>Distribution läuft als VM (WSL 2); gesetzt bei Registrierungen ohne den Wert Version.</summary>
         private const int VmModeFlag = 0x8;
 
-        /// <param name="data">Mit gelesenen Apps und Profilen.</param>
+        /// <param name="data">Mit gelesenen Apps, Profilen und Features.</param>
         public static WslInfo Read(InventoryData data)
         {
             var wsl = new WslInfo { Version = PackageVersion(data.Apps) };
@@ -48,7 +48,9 @@ namespace Inventory.Runner
 
             // Die Dienste direkt aus der Registry: WMI-Abfragen, die in diesem Scan scheitern, ergäben sonst "kein WSL", und der
             // Server würde die Distributionen abgemeldeter Benutzer verwerfen. LxssManager gibt es mit dem Feature des alten WSL.
-            wsl.Installed = wsl.Version != null || ServiceExists(WslNames.LegacyService) || ServiceExists(WslNames.PackageService) || wsl.Distros.Count > 0;
+            // Das Feature des alten WSL zählt zusätzlich, wenn die Liste gelesen wurde.
+            var feature = data.OptionalFeatures?.Any(f => string.Equals(f.Name, WslNames.Feature, StringComparison.OrdinalIgnoreCase)) == true;
+            wsl.Installed = wsl.Version != null || feature || ServiceExists(WslNames.LegacyService) || ServiceExists(WslNames.PackageService) || wsl.Distros.Count > 0;
             // Ohne die App-Pakete lässt sich das WSL aus dem Store (vor 2.0, ohne eigenen Dienst) nicht ausschließen: dann lieber
             // gar keine Angabe als ein falsches "nicht eingerichtet".
             if (!wsl.Installed && data.Apps == null)
