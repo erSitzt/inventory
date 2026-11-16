@@ -1282,7 +1282,7 @@ Ein Administrator schaltet ihn unter *Einstellungen → KI-Assistenten (MCP)* ei
 
 | Rolle | Werkzeuge |
 |---|---|
-| Betrachter | Rechner suchen und Details, Software eines Rechners, Software finden und wer sie hat, fehlende Updates, Sammlungen, Pakete, Deployments, Netzwerkgeräte, IP-Subnetze und ihre Adressen, Microsoft-Lizenzierung |
+| Betrachter | Rechner suchen und Details, Software eines Rechners, Software finden und wer sie hat, fehlende Updates, Sammlungen, Pakete, Deployments, Netzwerkgeräte, IP-Subnetze und ihre Adressen, Virtualisierungshosts mit ihren VMs (auf welchem ESXi-, XCP-ng- oder Hyper-V-Host eine VM läuft, auch VMs ohne Agent), Microsoft-Lizenzierung |
 | Operator | zusätzlich: Rechner scannen, Erreichbarkeit prüfen, aufwecken; Pakete verteilen und Deployments abbrechen; Pakete anlegen und Dateien hinzufügen; ein Skript auf Rechnern ausführen (`deploy_script`); freie IPs suchen, reservieren und freigeben; IP- und Gerätescan starten; Protokoll lesen |
 
 **Pakete eines Assistenten brauchen einen Menschen.** Über MCP angelegte Pakete (`create_package`, `deploy_script`)

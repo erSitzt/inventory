@@ -14,7 +14,7 @@ namespace Inventory.Server.Mcp;
 /// <summary>Lesende Werkzeuge zu Rechnern, Software, Updates, Paketen und Deployments; für jede Rolle.</summary>
 [McpServerToolType, Authorize(Policy = AccessControl.ViewerPolicy)]
 public sealed class InventoryTools(McpCaller caller, IDbContextFactory<InventoryDbContext> dbFactory, CustomValueService customValues, ComputerService computerService, CollectionService collections, ReportService reports, PackageService packages,
-    DeploymentService deployments)
+    DeploymentService deployments, VirtualizationService virtualization)
 {
     public sealed record ComputerSummary(int Id, string Name, bool IsOnline, string? OsName, string? OsVersion, string? IpAddress, string? LoggedOnUser,
         string? Model, DateTime? LastSeenUtc, DateTime? LastScanUtc, string? LastScanError, int? PendingUpdates, int? PendingSecurityUpdates, bool? RebootRequired);
@@ -53,10 +53,12 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
 
     [McpServerTool(Name = "get_computer", Title = "Computer details", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description("Master data, status, hardware, security (Defender, firewall, BitLocker, TPM, Secure Boot; on Macs FileVault, firewall, Gatekeeper, SIP), update state, "
-        + "optional Windows features that are turned on and WSL (Windows Subsystem for Linux: version and the users' distributions with their last use) of one computer.")]
+        + "optional Windows features that are turned on, WSL (Windows Subsystem for Linux: version and the users' distributions with their last use) of one computer, "
+        + "and for a virtual machine the host it runs on (ESXi host from vCenter, XCP-ng host or Hyper-V host). For VMs without an agent use list_virtual_hosts.")]
     public async Task<object> GetComputer([Description("Computer name, DNS name or id.")] string computer, CancellationToken ct = default)
     {
         var c = await computerService.GetDetailAsync((await caller.ComputerAsync(computer, ct)).Id, ct) ?? throw new McpException("The computer no longer exists.");
+        var host = await virtualization.HostOfAsync(c, ct);
         return new
         {
             computer = ComputerEndpoints.ToDto(c),
@@ -72,6 +74,7 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
             disks = c.Disks.Select(d => new { d.Drive, d.SizeBytes, d.FreeBytes }),
             network = c.NetworkAdapters.Select(a => new { a.Name, a.MacAddress, a.IpAddresses, a.Gateways, a.DhcpEnabled }),
             agent = new { c.AgentVersion, c.AgentLastSeenUtc },
+            virtualization = new { isVirtual = c.IsVirtual || host is not null, host, hostReportedByGuest = c.ReportedHostName },
             // null = noch nicht erfasst (älterer Runner, Mac).
             windowsFeatures = c.FeaturesScanUtc is null ? null : c.OptionalFeatures.Select(f => f.Name).Order(StringComparer.OrdinalIgnoreCase),
             wsl = c.WslScanUtc is null ? null : new

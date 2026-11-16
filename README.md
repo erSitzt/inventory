@@ -1232,7 +1232,7 @@ and the token's role decides what the assistant may do:
 
 | Role | Tools |
 |---|---|
-| Viewer | search computers and their details, software on a computer, find software and who has it, missing updates, collections, packages, deployments, network devices, IP subnets and their addresses, Microsoft licensing |
+| Viewer | search computers and their details, software on a computer, find software and who has it, missing updates, collections, packages, deployments, network devices, IP subnets and their addresses, virtualization hosts with their VMs (which ESXi, XCP-ng or Hyper-V host a VM runs on, also VMs without an agent), Microsoft licensing |
 | Operator | additionally: scan, check reachability, wake computers; deploy packages and cancel deployments; create packages and add files to them; run a script on computers (`deploy_script`); find free IPs, reserve and release them; start the IP and device scans; read the audit log |
 
 **Packages from an assistant need a person.** Packages created over MCP (`create_package`, `deploy_script`) are named
