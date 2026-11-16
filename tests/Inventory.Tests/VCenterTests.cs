@@ -443,4 +443,67 @@ public class VCenterTests
         await Assert.ThrowsAsync<RemoteException>(() => new XenOrchestraSource(_ => new FakeXenOrchestra())
             .ReadAsync(token with { Credential = new NetworkCredential("token", "") }));
     }
+
+    [Fact]
+    public async Task Assistants_see_which_host_runs_a_vm_also_for_vms_without_an_agent()
+    {
+        using var db = new TestDb();
+        var credentials = new CredentialService(db, new ReversingProtector());
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var ids = (await computers.ImportAsync("vm-sql01\npc-01\nhv-01\nvm-guest\nvm-orphan")).ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+        var uuid = Guid.NewGuid().ToString();
+        await store.SaveAsync(ids["vm-sql01"], VmwareGuest("VM-SQL01", uuid));
+        // Eine VMware-VM, die das angebundene vCenter nicht führt (z. B. aus einem zweiten vCenter).
+        await store.SaveAsync(ids["vm-orphan"], VmwareGuest("VM-ORPHAN", Guid.NewGuid().ToString()));
+        var source = new FixedSource(new HypervisorInventory(
+            [new("host-11", "esx01", "PROD", 2, 32, null, true, ClusterDrs: true, ClusterHa: true), new("host-12", "esx02", "PROD", 2, 32, null, true, ClusterDrs: true, ClusterHa: true)],
+            [
+                new("vm-1", "VM-SQL01", uuid, 8, "host-11", true, "vm-sql01.corp.example", "Microsoft Windows Server 2022"),
+                new("vm-2", "k8s-agent-2", Guid.NewGuid().ToString(), 4, "host-12", true, null, "Ubuntu Linux (64-bit)"),
+                new("vm-3", "db-linux", Guid.NewGuid().ToString(), 4, "host-12", false, null, null),
+            ], "test"));
+        var credential = await credentials.SaveAsync(null, "vCenter", "reader@vsphere.local", "secret", null);
+        var sync = new HypervisorSyncService(db, [source], new SettingsService(db), credentials, TimeProvider.System);
+        var manager = await sync.SaveAsync(new HypervisorManager { Kind = HypervisorKind.VCenter, Name = "vcenter1", Url = "https://vcenter.corp.example", CredentialId = credential.Id });
+        await sync.SyncAsync(manager.Id);
+        var virtualization = new VirtualizationService(db);
+
+        // get_computer: der ESXi-Host der VM, wie auf der Rechnerseite.
+        var host = await virtualization.HostOfAsync((await computers.GetAsync(ids["vm-sql01"]))!);
+        Assert.Equal(("esx01", "VMware", "PROD", "vCenter vcenter1", "BIOS UUID", true), (host!.Name, host.Platform, host.Cluster, host.ManagedBy, host.MatchedBy, host.ClusterDrs));
+        Assert.NotNull(host.SeenUtc);
+        Assert.Null(await virtualization.HostOfAsync((await computers.GetAsync(ids["pc-01"]))!));
+        // Ein Hyper-V-Gast, dessen Host die Gastdienste nennen.
+        await using (var context = db.CreateDbContext())
+        {
+            var guest = await context.Computers.FindAsync(ids["vm-guest"]);
+            (guest!.HostComputerId, guest.HostSource) = (ids["hv-01"], HostSources.GuestReport);
+            await context.SaveChangesAsync();
+        }
+        Assert.Equal(new GuestHostView("hv-01", "Hyper-V", null, null, ids["hv-01"], "guest report"), await virtualization.HostOfAsync((await computers.GetAsync(ids["vm-guest"]))!));
+
+        // list_virtual_hosts: auch VMs ohne Agent, gefiltert nach VM, Host oder Cluster.
+        var tools = new Inventory.Server.Mcp.NetworkTools(null!, null!, null!, virtualization, sync);
+        var json = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+        System.Text.Json.Nodes.JsonNode Call(object result) => System.Text.Json.Nodes.JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(result, json))!;
+
+        var all = Call(await tools.ListVirtualHosts());
+        Assert.Equal(("vcenter1", "vCenter", true), ((string)all["managers"]![0]!["name"]!, (string)all["managers"]![0]!["kind"]!, all["managers"]![0]!["lastSyncUtc"] is not null));
+        Assert.Equal(3, (int)all["hosts"]!["total"]!);  // esx01, esx02 und der Hyper-V-Host hv-01
+        Assert.Equal(["vm-orphan"], all["virtualMachinesWithoutKnownHost"]!["items"]!.AsArray().Select(n => ((string)n!).ToLowerInvariant()));
+
+        var vm = Call(await tools.ListVirtualHosts("AGENT-2"));
+        var esx02 = Assert.Single(vm["hosts"]!["items"]!.AsArray())!;
+        Assert.Equal(("esx02", "VCenter", "vcenter1"), ((string)esx02["name"]!, (string)esx02["source"]!, (string)esx02["managedBy"]!));
+        var agent = Assert.Single(esx02["virtualMachines"]!.AsArray())!;
+        Assert.Equal(("k8s-agent-2", true, null), ((string)agent["name"]!, (bool)agent["running"]!, (string?)agent["inventoriedAs"]));
+
+        var inventoried = Call(await tools.ListVirtualHosts("vm-sql01"));
+        Assert.Equal(ids["vm-sql01"], (int)Assert.Single(Assert.Single(inventoried["hosts"]!["items"]!.AsArray())!["virtualMachines"]!.AsArray())!["computerId"]!);
+
+        var cluster = Call(await tools.ListVirtualHosts("prod"));
+        Assert.Equal([1, 2], cluster["hosts"]!["items"]!.AsArray().Select(h => h!["virtualMachines"]!.AsArray().Count));
+        Assert.Equal(0, (int)Call(await tools.ListVirtualHosts("nothing"))["hosts"]!["total"]!);
+    }
 }

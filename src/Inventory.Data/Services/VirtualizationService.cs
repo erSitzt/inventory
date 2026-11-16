@@ -27,6 +27,15 @@ public sealed record VirtualMachineView(string Name, int? VirtualCpus, bool? Run
 public sealed record VirtualHostView(VirtualHostSource Source, int Id, string Name, string? Cluster, int? CpuSockets, int? CpuCores, string? Model, int? ComputerId,
     IReadOnlyList<VirtualMachineView> VirtualMachines, int? ManagerId = null, string? ManagerName = null, bool? ClusterDrs = null, bool? ClusterHa = null);
 
+/// <summary>Der Host, auf dem ein inventarisierter Rechner als VM läuft.</summary>
+/// <param name="Platform">VMware, XCP-ng oder Hyper-V.</param>
+/// <param name="ManagedBy">Die Verwaltung, z. B. "vCenter vcenter1"; null bei Hyper-V.</param>
+/// <param name="ComputerId">Bei Hyper-V der inventarisierte Host.</param>
+/// <param name="MatchedBy">Woran die VM erkannt wurde: "BIOS UUID", "name" oder "guest report".</param>
+/// <param name="SeenUtc">Stand des letzten Abgleichs mit der Verwaltung; mit DRS kann die VM seitdem gewandert sein.</param>
+public sealed record GuestHostView(string Name, string Platform, string? Cluster, string? ManagedBy, int? ComputerId, string MatchedBy, bool? ClusterDrs = null,
+    bool? ClusterHa = null, DateTime? SeenUtc = null);
+
 /// <summary>Hosts und ihre virtuellen Maschinen aus allen Quellen (Hyper-V-Hosts im Inventar, vCenter) in einer Sicht.</summary>
 public sealed class VirtualizationService(IDbContextFactory<InventoryDbContext> dbFactory)
 {
@@ -65,6 +74,25 @@ public sealed class VirtualizationService(IDbContextFactory<InventoryDbContext> 
                 host.CpuSockets is { } sockets && host.CpuCoresPerSocket is { } perSocket ? sockets * perSocket : host.CpuCores, host.Model, host.Id, vms));
         }
         return result.OrderBy(h => h.Cluster is null).ThenBy(h => h.Cluster, StringComparer.OrdinalIgnoreCase).ThenBy(h => h.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>
+    /// Wie auf der Rechnerseite: zuerst der Host aus einer Virtualisierungsverwaltung, sonst der inventarisierte Hyper-V-Host;
+    /// null = keine VM oder Host unbekannt.
+    /// </summary>
+    public async Task<GuestHostView?> HostOfAsync(Computer computer, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (computer.HypervisorHostId is { } id && await db.HypervisorHosts.AsNoTracking().FirstOrDefaultAsync(h => h.Id == id, ct) is { } host)
+        {
+            var manager = await db.HypervisorManagers.Where(m => m.Id == host.ManagerId).Select(m => m.Name).FirstOrDefaultAsync(ct);
+            return new GuestHostView(host.Name, HypervisorSyncService.Platform(host.Kind), host.Cluster, $"{HypervisorSyncService.Name(host.Kind)} {manager}".Trim(), null,
+                computer.HostSource == HostSources.HypervisorName ? "name" : "BIOS UUID", host.ClusterDrs, host.ClusterHa, DateTime.SpecifyKind(host.SeenUtc, DateTimeKind.Utc));
+        }
+        if (computer.HostComputerId is { } hostId
+            && await db.Computers.AsNoTracking().Where(c => c.Id == hostId).Select(c => new { c.Name, c.ClusterName }).FirstOrDefaultAsync(ct) is { } hyperV)
+            return new GuestHostView(hyperV.Name, "Hyper-V", hyperV.ClusterName, null, hostId, computer.HostSource == HostSources.BiosUuid ? "BIOS UUID" : "guest report");
+        return null;
     }
 
     /// <summary>Inventarisierte virtuelle Maschinen ohne bekannten Host: Lücken für die Lizenzberechnung.</summary>
