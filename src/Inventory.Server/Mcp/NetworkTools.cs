@@ -72,8 +72,10 @@ public sealed class NetworkTools(DeviceService devices, IpAddressService ipAddre
         var hosts = new List<object>();
         foreach (var host in await virtualization.HostsAsync(ct))
         {
-            var vms = Match(host.Name) || Match(host.Cluster) ? host.VirtualMachines : host.VirtualMachines.Where(v => Match(v.Name) || Match(v.GuestName)).ToList();
-            if (vms.Count == 0 && !string.IsNullOrEmpty(q))
+            // Ein Treffer auf Host oder Cluster zeigt den Host auch ohne VMs.
+            var hostMatch = Match(host.Name) || Match(host.Cluster);
+            var vms = hostMatch ? host.VirtualMachines : host.VirtualMachines.Where(v => Match(v.Name) || Match(v.GuestName)).ToList();
+            if (!hostMatch && vms.Count == 0)
                 continue;
             hosts.Add(new
             {

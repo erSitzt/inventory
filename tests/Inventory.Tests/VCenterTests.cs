@@ -457,7 +457,8 @@ public class VCenterTests
         // Eine VMware-VM, die das angebundene vCenter nicht führt (z. B. aus einem zweiten vCenter).
         await store.SaveAsync(ids["vm-orphan"], VmwareGuest("VM-ORPHAN", Guid.NewGuid().ToString()));
         var source = new FixedSource(new HypervisorInventory(
-            [new("host-11", "esx01", "PROD", 2, 32, null, true, ClusterDrs: true, ClusterHa: true), new("host-12", "esx02", "PROD", 2, 32, null, true, ClusterDrs: true, ClusterHa: true)],
+            [new("host-11", "esx01", "PROD", 2, 32, null, true, ClusterDrs: true, ClusterHa: true), new("host-12", "esx02", "PROD", 2, 32, null, true, ClusterDrs: true, ClusterHa: true),
+                new("host-13", "esx03", "PROD", 2, 32, null, true, ClusterDrs: true, ClusterHa: true)],
             [
                 new("vm-1", "VM-SQL01", uuid, 8, "host-11", true, "vm-sql01.corp.example", "Microsoft Windows Server 2022"),
                 new("vm-2", "k8s-agent-2", Guid.NewGuid().ToString(), 4, "host-12", true, null, "Ubuntu Linux (64-bit)"),
@@ -490,7 +491,7 @@ public class VCenterTests
 
         var all = Call(await tools.ListVirtualHosts());
         Assert.Equal(("vcenter1", "vCenter", true), ((string)all["managers"]![0]!["name"]!, (string)all["managers"]![0]!["kind"]!, all["managers"]![0]!["lastSyncUtc"] is not null));
-        Assert.Equal(3, (int)all["hosts"]!["total"]!);  // esx01, esx02 und der Hyper-V-Host hv-01
+        Assert.Equal(4, (int)all["hosts"]!["total"]!);  // esx01 bis esx03 und der Hyper-V-Host hv-01
         Assert.Equal(["vm-orphan"], all["virtualMachinesWithoutKnownHost"]!["items"]!.AsArray().Select(n => ((string)n!).ToLowerInvariant()));
 
         var vm = Call(await tools.ListVirtualHosts("AGENT-2"));
@@ -503,7 +504,10 @@ public class VCenterTests
         Assert.Equal(ids["vm-sql01"], (int)Assert.Single(Assert.Single(inventoried["hosts"]!["items"]!.AsArray())!["virtualMachines"]!.AsArray())!["computerId"]!);
 
         var cluster = Call(await tools.ListVirtualHosts("prod"));
-        Assert.Equal([1, 2], cluster["hosts"]!["items"]!.AsArray().Select(h => h!["virtualMachines"]!.AsArray().Count));
+        Assert.Equal([1, 2, 0], cluster["hosts"]!["items"]!.AsArray().Select(h => h!["virtualMachines"]!.AsArray().Count));
+        // Ein Host ohne VMs (z. B. im Wartungsmodus) bleibt bei einer Suche nach seinem Namen sichtbar.
+        var empty = Assert.Single(Call(await tools.ListVirtualHosts("esx03"))["hosts"]!["items"]!.AsArray())!;
+        Assert.Equal(("esx03", 0), ((string)empty["name"]!, empty["virtualMachines"]!.AsArray().Count));
         Assert.Equal(0, (int)Call(await tools.ListVirtualHosts("nothing"))["hosts"]!["total"]!);
     }
 }
