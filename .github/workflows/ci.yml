@@ -200,10 +200,13 @@ jobs:
         run: |
           $exe = (Resolve-Path src\Inventory.Runner\bin\Release\net48\InventoryRunner.exe).Path
           $user = "invci"
-          $password = [guid]::NewGuid().ToString("N") + "Aa1"
+          # Höchstens 14 Zeichen: Bei längeren fragt net user nach und legt ohne Antwort nichts an.
+          $password = "Aa1" + [guid]::NewGuid().ToString("N").Substring(0, 11)
           Write-Output "::add-mask::$password"
           net user $user $password /add | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "net user: $LASTEXITCODE" }
           net localgroup Administrators $user /add | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "net localgroup: $LASTEXITCODE" }
 
           # Wie JobSecrets.Answer auf dem Server: RSA-OAEP mit SHA-256, in Blöcken.
           function Send-Secret($dir, $account, $secret) {

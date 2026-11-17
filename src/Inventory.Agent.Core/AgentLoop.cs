@@ -573,15 +573,21 @@ namespace Inventory.Agent
                 using (var content = new StringContent(File.ReadAllText(requestPath, Encoding.UTF8), Encoding.UTF8, "application/json"))
                 using (var response = _http.PostAsync($"{AgentProtocol.JobsPath}/{jobId}/secret", content, _stop.Token).GetAwaiter().GetResult())
                 {
-                    // Ohne Antwort wartet der Runner bis zu seiner Frist und meldet dann, dass nichts kam.
-                    _secretJob = jobId;
+                    var status = (int)response.StatusCode;
                     if (!response.IsSuccessStatusCode)
+                    {
+                        // Endgültig (Job unbekannt, Zugangsdaten schon abgeholt): Der Runner wartet bis zu seiner Frist und meldet
+                        // dann, dass nichts kam. Vorübergehende Fehler (5xx, 408, 429) im nächsten Takt erneut.
+                        if (status >= 400 && status < 500 && status != 408 && status != 429)
+                            _secretJob = jobId;
                         return;
+                    }
                     var answerPath = Path.Combine(jobDir, JobFiles.SecretAnswer);
                     File.WriteAllText(answerPath + ".tmp", response.Content.ReadAsStringAsync().GetAwaiter().GetResult(), new UTF8Encoding(false));
                     if (File.Exists(answerPath))
                         File.Delete(answerPath);
                     File.Move(answerPath + ".tmp", answerPath);
+                    _secretJob = jobId;
                 }
             }
             catch (Exception)
