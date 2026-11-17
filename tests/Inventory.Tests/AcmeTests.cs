@@ -15,7 +15,8 @@ namespace Inventory.Tests;
 
 /// <summary>
 /// Let's Encrypt über die DNS-Prüfung. Der ACME-Ablauf läuft gegen Pebble, den Testserver von Let's Encrypt, mit dessen
-/// DNS-Testserver statt Azure (in der CI als Container, lokal mit denselben Umgebungsvariablen). Azure DNS prüft ein
+/// DNS-Testserver statt Azure (in der CI als Container, lokal mit denselben Umgebungsvariablen und Pebble mit
+/// <c>.github/pebble-config.json</c>: nur ein Profil, sonst wählt Pebble die Laufzeit je Auftrag zufällig). Azure DNS prüft ein
 /// nachgebildeter HTTP-Handler; gegen Azure selbst läuft kein Test.
 /// </summary>
 public sealed class AcmeTests
