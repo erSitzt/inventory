@@ -44,7 +44,7 @@ public sealed partial class SmbServiceTransport(RunnerPackage runner, IStringLoc
 
     public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct) =>
         // Eigener Thread: die Impersonation hängt am Thread, und alle Aufrufe darunter sind blockierend.
-        Task.Factory.StartNew(() => RunImpersonated(target, () => RunCore(target.Host, job, files, progress, ct)),
+        Task.Factory.StartNew(() => RunImpersonated(target, () => RunCore(target.Host, job, files, progress, ct, JobSecrets.Needed(job) ? target.Credential : null)),
             ct, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
     private T RunImpersonated<T>(RemoteTarget target, Func<T> action)
@@ -74,7 +74,9 @@ public sealed partial class SmbServiceTransport(RunnerPackage runner, IStringLoc
         return name.Contains('@') ? (name, null) : (name, string.IsNullOrEmpty(credential.Domain) ? host : credential.Domain);
     }
 
-    private JobResult RunCore(string host, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
+    /// <param name="secret">Zugangsdaten, nach denen der Runner für <see cref="StepRunAs.CredentialsUser"/> fragt; sonst null.</param>
+    private JobResult RunCore(string host, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct,
+        NetworkCredential? secret)
     {
         var root = $@"\\{host}\ADMIN$\{JobFiles.RemoteRoot}";
         var jobDir = Path.Combine(root, JobFiles.JobsFolder, job.JobId);
@@ -126,7 +128,7 @@ public sealed partial class SmbServiceTransport(RunnerPackage runner, IStringLoc
             service = OpenRunnerService(scm, host, package);
             StartRunner(service, host, job.JobId, ct);
             released = false;
-            return WaitForResult(host, jobDir, service, job, progress, ct, ref released);
+            return WaitForResult(host, jobDir, service, job, progress, ct, ref released, secret);
         }
         finally
         {
@@ -217,7 +219,8 @@ public sealed partial class SmbServiceTransport(RunnerPackage runner, IStringLoc
                || name.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host is "127.0.0.1" or "::1";
     }
 
-    private JobResult WaitForResult(string host, string jobDir, ServiceHandle service, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct, ref bool released)
+    private JobResult WaitForResult(string host, string jobDir, ServiceHandle service, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct, ref bool released,
+        NetworkCredential? secret)
     {
         var resultPath = Path.Combine(jobDir, JobFiles.Result);
         var progressPath = Path.Combine(jobDir, JobFiles.Progress);
@@ -247,6 +250,9 @@ public sealed partial class SmbServiceTransport(RunnerPackage runner, IStringLoc
                 throw new RemoteException(L["No result from {0} within {1} minutes – the computer probably restarted or lost the connection during the job.", host, (int)(deadline - started).TotalMinutes], resultMayFollow: true);
 
             progressOffset = PumpProgress(progressPath, progressOffset, progress);
+            // Einmal je Job: Der Runner fragt erst, wenn er den ersten Schritt als Konto der Zugangsdaten startet.
+            if (secret is not null && JobSecrets.AnswerFile(jobDir, JobSecrets.Account(secret), secret.Password))
+                secret = null;
 
             if (File.Exists(resultPath))
             {

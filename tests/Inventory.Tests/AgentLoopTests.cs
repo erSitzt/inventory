@@ -70,6 +70,8 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
             {
                 var manifest = JobJson.Deserialize<JobManifest>(File.ReadAllText(Path.Combine(jobDir, JobFiles.Manifest), Encoding.UTF8))!;
                 var step = manifest.Steps.Single();
+                if (step.RunAs == StepRunAs.CredentialsUser)
+                    return AsCredentialsUser(manifest);
                 return new JobResult
                 {
                     JobId = manifest.JobId, Success = step.Type is StepType.InventoryScan or StepType.UninstallAgent, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow,
@@ -80,7 +82,67 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
                 };
             }
 
+            /// <summary>Wie der Runner: Schlüssel ablegen, auf die Antwort warten, entschlüsseln.</summary>
+            private JobResult AsCredentialsUser(JobManifest manifest)
+            {
+                using var key = System.Security.Cryptography.RSA.Create(JobSecrets.KeySize);
+                File.WriteAllText(Path.Combine(jobDir, JobFiles.SecretRequest), JobJson.Serialize(JobSecrets.CreateRequest(key)));
+                var answerPath = Path.Combine(jobDir, JobFiles.SecretAnswer);
+                for (var i = 0; i < 300 && !File.Exists(answerPath); i++)
+                    Thread.Sleep(50);
+                var output = File.Exists(answerPath)
+                    ? JobSecrets.Decrypt(key, JobJson.Deserialize<SecretAnswer>(File.ReadAllText(answerPath, Encoding.UTF8))!) is var (user, password) ? $"{user} / {password}" : null
+                    : null;
+                return new JobResult
+                {
+                    JobId = manifest.JobId, Success = output != null, Error = output == null ? "no answer" : null, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow,
+                    Steps = [new StepResult { Index = 0, Name = manifest.Steps[0].Name, Status = output == null ? StepStatus.Failed : StepStatus.Succeeded, Output = output }],
+                };
+            }
+
             public void Cancel() { }
+        }
+    }
+
+    [Fact]
+    public async Task A_step_as_the_credentials_user_gets_user_and_password_through_the_agent_once()
+    {
+        var agents = _app.Services.GetRequiredService<AgentService>();
+        var runner = _app.Services.GetRequiredService<RunnerPackage>();
+        var directory = Path.Combine(_app.DataDirectory, "agent-secret");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, AgentProtocol.ConfigFile),
+            JobJson.Serialize(new AgentConfig { ServerUrl = "http://localhost", EnrollmentToken = await agents.GetEnrollmentTokenAsync() }));
+        File.WriteAllText(Path.Combine(directory, AgentProtocol.VersionFile), runner.For(RunnerRuntimes.Framework)!.Hash);
+
+        var loop = new AgentLoop(new FakePlatform(directory, "AGENT-04", RunnerRuntimes.Framework), _app.Server.CreateHandler());
+        var thread = new Thread(loop.Run) { IsBackground = true };
+        thread.Start();
+        try
+        {
+            var factory = _app.Services.GetRequiredService<IDbContextFactory<Inventory.Data.InventoryDbContext>>();
+            int? id = null;
+            for (var i = 0; i < 100 && id is null; i++)
+            {
+                await using (var db = await factory.CreateDbContextAsync())
+                    id = (await db.Computers.FirstOrDefaultAsync(c => c.Name == "AGENT-04" && c.AgentKeyHash != null))?.Id;
+                if (id is null)
+                    await Task.Delay(100);
+            }
+            Assert.NotNull(id);
+            var chosen = await _app.Services.GetRequiredService<CredentialService>().SaveAsync(null, "Deploy (agent test)", @"CORP\deploy", "Pässwort", null);
+
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            var job = new JobManifest { Steps = [new JobStep { Name = "whoami", Type = StepType.PowerShell, Script = "whoami", RunAs = StepRunAs.CredentialsUser, TimeoutSeconds = 60 }] };
+            var result = await _app.Services.GetRequiredService<RemoteJobService>().RunAsync(id.Value, job, null, timeout.Token, credentialId: chosen.Id);
+            Assert.True(result.Success, result.Error);
+            Assert.Equal(@"CORP\deploy / Pässwort", result.Steps[0].Output);
+            Assert.False(File.Exists(Path.Combine(directory, JobFiles.JobsFolder, job.JobId, JobFiles.SecretAnswer)));
+        }
+        finally
+        {
+            loop.Stop();
+            Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "The agent loop did not stop.");
         }
     }
 

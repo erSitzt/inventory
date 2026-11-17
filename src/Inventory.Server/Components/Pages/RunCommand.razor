@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = AccessControl.AdminPolicy)]
 @implements IDisposable
 @inject ComputerService ComputerService
+@inject CredentialService CredentialService
 @inject RemoteJobService Jobs
 @inject Auditor Audit
 @inject Display Display
@@ -29,13 +30,32 @@
                 </MudRadioGroup>
                 <MudSelect T="StepRunAs" @bind-Value="_runAs" Label="@L["Run as"]" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="_running">
                     <MudSelectItem T="StepRunAs" Value="StepRunAs.System">@Display.RunAs(StepRunAs.System)</MudSelectItem>
+                    <MudSelectItem T="StepRunAs" Value="StepRunAs.CredentialsUser">@Display.RunAs(StepRunAs.CredentialsUser)</MudSelectItem>
                     <MudSelectItem T="StepRunAs" Value="StepRunAs.LoggedOnUser">@Display.RunAs(StepRunAs.LoggedOnUser)</MudSelectItem>
                 </MudSelect>
+                <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="1">
+                    <MudSelect T="int?" @bind-Value="_credentialId" Label="@L["Credentials"]" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="_running" Class="flex-grow-1"
+                               HelperText="@(_runAs == StepRunAs.CredentialsUser
+                                   ? L["Reaches the computers with this account, and the command runs as it."]
+                                   : L["Reaches the computers with this account."])">
+                        <MudSelectItem T="int?" Value="null">@L["(as set on each computer)"]</MudSelectItem>
+                        @foreach (var credential in _credentials)
+                        {
+                            <MudSelectItem T="int?" Value="credential.Id">@(credential.Name == credential.Username ? credential.Name : $"{credential.Name} ({credential.Username})")</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudTooltip Text="@L["Edit credentials"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Key" Href="/credentials" Target="_blank" Class="mt-1" aria-label="@L["Edit credentials"]" />
+                    </MudTooltip>
+                </MudStack>
                 <MudTextField @bind-Value="_script" Label="@(_type == StepType.Command ? L["Command"] : L["Script"])" Variant="Variant.Outlined" Immediate="true"
                               Lines="@(_type == StepType.Command ? 2 : 8)" Sizing="InputSizing.Auto" MaxLines="25" Disabled="_running" Style="font-family: monospace"
-                              HelperText="@(_runAs == StepRunAs.LoggedOnUser
-                                  ? L["Runs in the session of the logged-on user; nothing runs without a logged-on user."]
-                                  : L["Runs on the target computer as Local System."])" />
+                              HelperText="@(_runAs switch
+                                  {
+                                      StepRunAs.LoggedOnUser => L["Runs in the session of the logged-on user; nothing runs without a logged-on user."],
+                                      StepRunAs.CredentialsUser => L["Runs on the target computer as the account of the credentials, with its profile and its own network access (shares). Via WinRM it runs as that account without access to shares."],
+                                      _ => L["Runs on the target computer as Local System."],
+                                  })" />
                 <MudNumericField T="int" @bind-Value="_timeoutSeconds" Label="@L["Timeout (seconds)"]" Variant="Variant.Outlined" Min="1" Max="86400" Disabled="_running" />
                 <MudStack Row="true">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
@@ -121,6 +141,8 @@
     private IReadOnlyCollection<Computer> _targets = [];
     private StepType _type = StepType.Command;
     private StepRunAs _runAs = StepRunAs.System;
+    private List<Credential> _credentials = [];
+    private int? _credentialId;
     private string _script = "";
     private int _timeoutSeconds = 600;
     private bool _running;
@@ -131,6 +153,7 @@
     protected override async Task OnInitializedAsync()
     {
         _computers = await ComputerService.ListAsync();
+        _credentials = await CredentialService.ListAsync();
         var ids = (Ids ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => int.TryParse(s, out var id) ? id : 0).ToHashSet();
         _targets = _computers.Where(c => ids.Contains(c.Id)).ToList();
     }
@@ -138,7 +161,10 @@
     private async Task RunAsync()
     {
         _runs = _targets.OrderBy(c => c.Name).Select(c => new TargetRun(c)).ToList();
-        await Audit.LogAsync(L["Remote command ({0}, {1})", _type, Display.RunAs(_runAs)], $"{string.Join(", ", _runs.Select(r => r.Computer.Name))}: {_script}");
+        var action = _credentials.FirstOrDefault(c => c.Id == _credentialId) is { } credential
+            ? L["Remote command ({0}, {1}, credentials {2})", _type, Display.RunAs(_runAs), credential.Name]
+            : L["Remote command ({0}, {1})", _type, Display.RunAs(_runAs)];
+        await Audit.LogAsync(action, $"{string.Join(", ", _runs.Select(r => r.Computer.Name))}: {_script}");
         _running = true;
         _cts = new CancellationTokenSource();
         // Ausgabe trifft aus Hintergrund-Threads ein; gebündelt neu zeichnen statt je Zeile.
@@ -172,7 +198,7 @@
             }
         });
 
-        var result = await Jobs.RunAsync(run.Computer.Id, job, progress, ct);
+        var result = await Jobs.RunAsync(run.Computer.Id, job, progress, ct, credentialId: _credentialId);
         var step = result.Steps.FirstOrDefault();
         run.ExitCode = step?.ExitCode;
         if (step is { Status: StepStatus.Skipped, Output.Length: > 0 })

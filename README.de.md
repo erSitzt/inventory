@@ -380,9 +380,11 @@ später hinzukommende Rechner folgen von selbst, und der Zeitplan zeigt, wie vie
 
 ![Remote-Befehl](docs/screenshots/de/run.png)
 
-Ein Befehl (cmd oder PowerShell) läuft auf mehreren Rechnern zugleich, als Lokales System oder als angemeldeter
-Benutzer, mit Live-Ausgabe je Rechner. Je Rechner bietet das Menü *Fernzugriff* Remoteunterstützung, das Spiegeln einer
-Sitzung, Remotedesktop und TeamViewer/AnyDesk ([Details](#fernzugriff)).
+Ein Befehl (cmd oder PowerShell) läuft auf mehreren Rechnern zugleich, als Lokales System, als Konto der Zugangsdaten
+oder als angemeldeter Benutzer, mit Live-Ausgabe je Rechner. Er erreicht die Rechner mit den dort eingetragenen
+Zugangsdaten oder mit beliebigen hinterlegten, die für diesen Lauf gewählt werden ([als Konto der
+Zugangsdaten](#konto-für-den-agentenlosen-zugriff)). Je Rechner bietet das Menü *Fernzugriff* Remoteunterstützung, das
+Spiegeln einer Sitzung, Remotedesktop und TeamViewer/AnyDesk ([Details](#fernzugriff)).
 
 ### Gespeicherte Berichte
 
@@ -502,14 +504,20 @@ Alles Folgende gilt für die Rechner, die der Server agentenlos erreicht, nicht 
 | Nur WinRM: voller Sprachmodus | PowerShell darf für dieses Konto auf dem Ziel nicht im eingeschränkten Sprachmodus laufen (AppLocker/WDAC); dasselbe gilt auf dem Server für dessen Dienstkonto. |
 
 Es braucht **keine** domänenweiten Rechte: nicht *Domänen-Admins*, keine Rechte auf dem Server, keine lokale oder
-Remotedesktop-Anmeldung, keine Anmeldung als Dienst oder Stapelverarbeitungsauftrag. Mit welcher Identität ein Job
-läuft, hängt vom Transport ab:
+Remotedesktop-Anmeldung, keine Anmeldung als Dienst oder Stapelverarbeitungsauftrag (Letzteres nur für Remote-Befehle
+als Konto der Zugangsdaten, siehe unten). Mit welcher Identität ein Job läuft, hängt vom Transport ab:
 
 - **SMB + Dienst**: Der Server nutzt das Konto nur für den Netzwerkzugriff (`LOGON32_LOGON_NEW_CREDENTIALS` – Kopieren
   nach `ADMIN$`, Dienststeuerung). Auf dem Ziel läuft der Runner als Lokales System; Schritte mit *angemeldeter
   Benutzer* laufen in der Sitzung des dort angemeldeten Benutzers, nie als dieses Konto.
 - **WinRM**: PowerShell-Remoting meldet sich mit dem Konto an, und der Runner läuft als dieses Konto in dieser
   Remote-Sitzung.
+- **Remote-Befehl als Konto der Zugangsdaten**: Der Runner (als Lokales System, über SMB oder den Agenten) meldet das
+  Konto selbst als Stapelverarbeitung an, wie eine geplante Aufgabe: mit dessen Profil und eigenem Netzwerkzugriff,
+  etwa auf Freigaben. Benutzer und Passwort bekommt er verschlüsselt mit einem Schlüssel, den er nur für diesen Job
+  erzeugt; im Klartext stehen sie weder im Job-Ordner noch im Netz. Das Konto braucht das Recht *Anmelden als
+  Batchauftrag*, das Administratoren von Haus aus haben. Über WinRM läuft der Befehl als das Konto der Remote-Sitzung,
+  ohne Zugriff auf Freigaben.
 
 So oder so meldet sich das Konto nie interaktiv an und erscheint nie als Hauptbenutzer (als Zugangsdaten hinterlegte
 Konten sind ohnehin ausgenommen).
@@ -611,7 +619,7 @@ nicht rückgängig; ihr Ergebnis wird verworfen.
 | Anmeldung | Beim ersten Start schickt der Agent Anmeldegeheimnis und Rechnernamen an `POST /api/agent/enroll`. Der Server prüft das Geheimnis, legt den Rechner an, falls unbekannt (Abgleich über den Kurznamen, ein unter FQDN eingetragener Rechner wird wiederverwendet), erzeugt einen zufälligen 256-Bit-Schlüssel, speichert nur dessen SHA-256-Hash und gibt den Schlüssel einmalig zurück. Der Agent legt ihn in `agent.key` ab und schickt das Geheimnis nie wieder. |
 | Authentifizierung | Jede weitere Anfrage trägt den Kopf `X-Agent-Key: <Schlüssel>`. Der Server sucht den Hash; ein unbekannter Schlüssel (Rechner gelöscht, Agent entfernt) ergibt 401, der Agent löscht `agent.key` und meldet sich mit dem Geheimnis neu an. |
 | Abfrage | `POST /api/agent/poll` ist ein Long-Poll: Der Server hält die Anfrage bis zu 50 s offen und antwortet `204`, wenn kein Job kam; der Agent fragt sofort erneut. Ein Job wird so innerhalb einer Sekunde abgeholt, mit einer offenen HTTP-Anfrage je Rechner statt Dauerfeuer. Jede Abfrage aktualisiert „letzter Kontakt“; die Oberfläche zeigt den Agenten als verbunden, solange der letzte Kontakt keine 5 Minuten zurückliegt. |
-| Job-Ausführung | Das Job-Manifest kommt mit der Antwort der Abfrage; Paketdateien werden einzeln geholt (`GET /api/agent/jobs/{id}/files/{n}`) in einen Job-Ordner unterhalb des Agentenordners. Derselbe `JobExecutor` wie im agentenlosen Betrieb führt die Schritte als Lokales System aus (bzw. in der Sitzung des angemeldeten Benutzers, wenn so eingestellt). Fortschrittszeilen gehen jede Sekunde an den Server (`POST …/progress`), das Ergebnis am Ende (`POST …/result`, bis 64 MB für große Scans), danach wird der Job-Ordner gelöscht. |
+| Job-Ausführung | Das Job-Manifest kommt mit der Antwort der Abfrage; Paketdateien werden einzeln geholt (`GET /api/agent/jobs/{id}/files/{n}`) in einen Job-Ordner unterhalb des Agentenordners. Derselbe `JobExecutor` wie im agentenlosen Betrieb führt die Schritte als Lokales System aus (bzw. in der Sitzung des angemeldeten Benutzers, wenn so eingestellt). Fortschrittszeilen gehen jede Sekunde an den Server (`POST …/progress`); ein Schritt als Konto der Zugangsdaten bekommt Benutzer und Passwort einmal je Job, verschlüsselt mit dem Schlüssel des Runners (`POST …/secret`); das Ergebnis kommt am Ende (`POST …/result`, bis 64 MB für große Scans), danach wird der Job-Ordner gelöscht. |
 | Zeitlimits | Holt kein Agent den Job innerhalb von 2 Minuten ab, gilt der Rechner als nicht erreichbar (Deployments mit „Offline-Rechner nachholen“ versuchen es später erneut). Während ein Job läuft, wartet der Server die Summe der Schritt-Zeitlimits plus Reserve ab. |
 | Selbstaktualisierung | Die Abfrage enthält den Hash der installierten Runner-Dateien. Liefert der Server einen anderen Runner aus (nach einem Server-Update), kommt statt eines Jobs ein Update-Angebot: Der Agent lädt erst alle Dateien in einen Zwischenordner, tauscht sie dann aus (laufende Dateien werden zu `*.old` umbenannt und beim nächsten Start gelöscht), schreibt den neuen Hash und beendet sich mit Code 3 – die Wiederherstellung des Dienstes startet ihn binnen Sekunden mit den neuen Dateien neu. Wartende Jobs bleiben so lange in der Warteschlange. |
 | Fehler | Bei jedem Fehler (Server nicht erreichbar, ungültige Antwort) protokolliert der Agent in `agent.log` und versucht es nach 30 s erneut, beliebig oft; denselben Fehler höchstens einmal je Stunde. `agent.log` beginnt ab 1 MB neu, das vorige bleibt als `agent.log.1`. |

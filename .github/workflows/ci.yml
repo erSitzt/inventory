@@ -193,6 +193,80 @@ jobs:
           } elseif ($distro[0].lastUsedUtc -or $distro[0].sizeBytes) {
             throw "Local System read the disk itself"
           }
+      # Remote-Befehl als Konto der Zugangsdaten: Der Runner läuft als Lokales System, meldet ein lokales Testkonto selbst an
+      # und holt sich Benutzer und Passwort über den Schlüsselaustausch im Job-Verzeichnis. Das Skript spielt dabei den Server.
+      - name: Run as the credentials user
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path src\Inventory.Runner\bin\Release\net48\InventoryRunner.exe).Path
+          $user = "invci"
+          # Höchstens 14 Zeichen: Bei längeren fragt net user nach und legt ohne Antwort nichts an.
+          $password = "Aa1" + [guid]::NewGuid().ToString("N").Substring(0, 11)
+          Write-Output "::add-mask::$password"
+          net user $user $password /add | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "net user: $LASTEXITCODE" }
+          net localgroup Administrators $user /add | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "net localgroup: $LASTEXITCODE" }
+
+          # Wie JobSecrets.Answer auf dem Server: RSA-OAEP mit SHA-256, in Blöcken.
+          function Send-Secret($dir, $account, $secret) {
+            $request = Get-Content (Join-Path $dir "secret-request.json") -Raw | ConvertFrom-Json
+            $rsa = [Security.Cryptography.RSA]::Create()
+            $key = [Security.Cryptography.RSAParameters]::new()
+            $key.Modulus = [Convert]::FromBase64String($request.modulus)
+            $key.Exponent = [Convert]::FromBase64String($request.exponent)
+            $rsa.ImportParameters($key)
+            $encrypt = {
+              param($text)
+              $bytes = [Text.Encoding]::UTF8.GetBytes($text)
+              $size = $rsa.KeySize / 8 - 66
+              $blocks = [Collections.Generic.List[string]]::new()
+              for ($offset = 0; $offset -lt $bytes.Length; $offset += $size) {
+                $block = [byte[]]::new([Math]::Min($size, $bytes.Length - $offset))
+                [Array]::Copy($bytes, $offset, $block, 0, $block.Length)
+                $blocks.Add([Convert]::ToBase64String($rsa.Encrypt($block, [Security.Cryptography.RSAEncryptionPadding]::OaepSHA256)))
+              }
+              , $blocks.ToArray()
+            }
+            $answer = @{ user = (& $encrypt $account); password = (& $encrypt $secret) } | ConvertTo-Json
+            Set-Content (Join-Path $dir "secret.json.tmp") $answer -Encoding utf8NoBOM -NoNewline
+            Move-Item (Join-Path $dir "secret.json.tmp") (Join-Path $dir "secret.json")
+          }
+
+          function Invoke-AsCredentialsUser($jobId, $secret) {
+            $dir = "C:\ci-runas\$jobId"
+            New-Item -ItemType Directory $dir -Force | Out-Null
+            @{ jobId = $jobId; steps = @(@{ name = "whoami"; type = "PowerShell"; script = "whoami; whoami /groups"; timeoutSeconds = 120; runAs = "CredentialsUser" }) } |
+              ConvertTo-Json -Depth 4 | Set-Content (Join-Path $dir "job.json") -Encoding utf8NoBOM
+            $action = New-ScheduledTaskAction -Execute $exe -Argument "--console `"$dir`""
+            Register-ScheduledTask -TaskName $jobId -Action $action -User "NT AUTHORITY\SYSTEM" -RunLevel Highest | Out-Null
+            Start-ScheduledTask -TaskName $jobId
+            $deadline = (Get-Date).AddMinutes(5)
+            $answered = $false
+            while ((Get-Date) -lt $deadline) {
+              if (-not $answered -and (Test-Path (Join-Path $dir "secret-request.json"))) {
+                Send-Secret $dir ".\$user" $secret
+                $answered = $true
+              }
+              if ((Test-Path (Join-Path $dir "result.json")) -and (Get-ScheduledTask -TaskName $jobId).State -ne "Running") { break }
+              Start-Sleep -Milliseconds 300
+            }
+            if (-not $answered) { throw "${jobId}: the runner did not ask for the credentials" }
+            foreach ($name in "secret.json", "secret-request.json") {
+              if (Test-Path (Join-Path $dir $name)) { throw "${jobId}: $name left behind" }
+            }
+            $result = Get-Content (Join-Path $dir "result.json") -Raw | ConvertFrom-Json
+            $result | ConvertTo-Json -Depth 4
+            $result
+          }
+
+          $result = Invoke-AsCredentialsUser "ci-runas" $password | Select-Object -Last 1
+          $output = $result.steps[0].output
+          if (-not $result.success -or $output -notmatch "\\$user" -or $output -notmatch "High Mandatory Level") { throw "as $user`: $($result | ConvertTo-Json -Depth 4)" }
+
+          # Falsches Passwort: eine verständliche Meldung statt eines Win32-Codes.
+          $wrong = Invoke-AsCredentialsUser "ci-runas-wrong" ($password + "x") | Select-Object -Last 1
+          if ($wrong.success -or $wrong.steps[0].error -notmatch "Benutzername oder Passwort falsch") { throw "wrong password: $($wrong | ConvertTo-Json -Depth 4)" }
 
   # Let's Encrypt eingebaut: der ACME-Ablauf gegen Pebble, den Testserver von Let's Encrypt, mit dessen DNS-Testserver statt
   # Azure DNS (den Zugriff auf Azure prüfen die Tests oben mit nachgebildeten Antworten).

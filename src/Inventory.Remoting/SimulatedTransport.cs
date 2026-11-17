@@ -62,7 +62,7 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
             var lines = new List<string>
             {
                 $"[Simulation] {target.Host} via {kind} as {target.Credential?.UserName ?? "service account"}",
-                $"[Simulation] {step.Type}{(step.RunAs == StepRunAs.LoggedOnUser ? " as logged-on user" : "")}: {Describe(step)}",
+                $"[Simulation] {step.Type}{step.RunAs switch { StepRunAs.LoggedOnUser => " as logged-on user", StepRunAs.CredentialsUser => $" as credentials user {target.Credential?.UserName}", _ => "" }}: {Describe(step)}",
             };
             // Ein Skript kann seine Antwort für die Simulation vorgeben ("# simulate: <Ausgabe>"), etwa das JSON eines Inventarskripts.
             if (step.Type == StepType.PowerShell && step.Script.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.StartsWith("# simulate:", StringComparison.OrdinalIgnoreCase)) is { } simulated)

@@ -272,7 +272,11 @@ namespace Inventory.Agent
 
                 var executor = _platform.CreateJob(jobDir);
                 _running = executor;
-                using (var pump = new Timer(_ => SendProgress(jobId, jobDir), null, 1000, 1000))
+                using (var pump = new Timer(_ =>
+                       {
+                           AnswerSecret(jobId, jobDir);
+                           SendProgress(jobId, jobDir);
+                       }, null, 1000, 1000))
                 {
                     result = executor.Run();
                     pump.Change(Timeout.Infinite, Timeout.Infinite);
@@ -552,6 +556,49 @@ namespace Inventory.Agent
         private long _progressOffset;
         private string? _progressJob;
         private readonly object _progressLock = new object();
+        private string? _secretJob;
+        private readonly object _secretLock = new object();
+
+        /// <summary>
+        /// Leitet die Bitte des Runners um Benutzer und Passwort (Schritt als Konto der Zugangsdaten) an den Server weiter und
+        /// legt dessen verschlüsselte Antwort ins Job-Verzeichnis. Der Server antwortet je Job nur einmal.
+        /// </summary>
+        private void AnswerSecret(string jobId, string jobDir)
+        {
+            var requestPath = Path.Combine(jobDir, JobFiles.SecretRequest);
+            if (_secretJob == jobId || !File.Exists(requestPath) || !Monitor.TryEnter(_secretLock))
+                return;
+            try
+            {
+                using (var content = new StringContent(File.ReadAllText(requestPath, Encoding.UTF8), Encoding.UTF8, "application/json"))
+                using (var response = _http.PostAsync($"{AgentProtocol.JobsPath}/{jobId}/secret", content, _stop.Token).GetAwaiter().GetResult())
+                {
+                    var status = (int)response.StatusCode;
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        // Endgültig (Job unbekannt, Zugangsdaten schon abgeholt): Der Runner wartet bis zu seiner Frist und meldet
+                        // dann, dass nichts kam. Vorübergehende Fehler (5xx, 408, 429) im nächsten Takt erneut.
+                        if (status >= 400 && status < 500 && status != 408 && status != 429)
+                            _secretJob = jobId;
+                        return;
+                    }
+                    var answerPath = Path.Combine(jobDir, JobFiles.SecretAnswer);
+                    File.WriteAllText(answerPath + ".tmp", response.Content.ReadAsStringAsync().GetAwaiter().GetResult(), new UTF8Encoding(false));
+                    if (File.Exists(answerPath))
+                        File.Delete(answerPath);
+                    File.Move(answerPath + ".tmp", answerPath);
+                    _secretJob = jobId;
+                }
+            }
+            catch (Exception)
+            {
+                // Server gerade nicht erreichbar oder Anfrage noch nicht lesbar: im nächsten Takt erneut.
+            }
+            finally
+            {
+                Monitor.Exit(_secretLock);
+            }
+        }
 
         /// <summary>Schickt neu hinzugekommene vollständige Zeilen der Fortschrittsdatei an den Server.</summary>
         private void SendProgress(string jobId, string jobDir)

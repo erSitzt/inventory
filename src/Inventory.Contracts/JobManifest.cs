@@ -68,6 +68,12 @@ namespace Inventory.Contracts
         System,
         /// <summary>In der Sitzung des gerade angemeldeten Benutzers, mit dessen Rechten. Ist niemand angemeldet, wird der Schritt übersprungen.</summary>
         LoggedOnUser,
+        /// <summary>
+        /// Als das Konto der Zugangsdaten, mit Profil und eigenem Netzwerkzugriff. Der Runner meldet sich dafür selbst an;
+        /// Benutzer und Passwort holt er sich verschlüsselt über <see cref="JobSecrets"/>, nie aus dem Manifest.
+        /// Über WinRM läuft der Runner ohnehin als dieses Konto, dort gilt der Schritt wie <see cref="System"/>.
+        /// </summary>
+        CredentialsUser,
     }
 
     public enum ServiceAction
@@ -290,6 +296,10 @@ namespace Inventory.Contracts
         public const string Result = "result.json";
         /// <summary>Unterordner des Job-Verzeichnisses mit den Paketdateien; zugleich Arbeitsverzeichnis der Schritte.</summary>
         public const string FilesFolder = "files";
+        /// <summary>Öffentlicher Schlüssel des Runners: Er bittet um Benutzer und Passwort für <see cref="StepRunAs.CredentialsUser"/>.</summary>
+        public const string SecretRequest = "secret-request.json";
+        /// <summary>Antwort des Servers darauf, mit dem Schlüssel aus <see cref="SecretRequest"/> verschlüsselt.</summary>
+        public const string SecretAnswer = "secret.json";
         public const string RunnerExe = "InventoryRunner.exe";
         /// <summary>Unterhalb von ADMIN$ (%SystemRoot%) auf dem Zielrechner.</summary>
         public const string RemoteRoot = "Inventory";

@@ -101,6 +101,9 @@
   <data name="(API, not signed in)" xml:space="preserve">
     <value>(API ohne Anmeldung)</value>
   </data>
+  <data name="(as set on each computer)" xml:space="preserve">
+    <value>(wie beim Rechner eingetragen)</value>
+  </data>
   <data name="(automatic)" xml:space="preserve">
     <value>(automatisch)</value>
   </data>
@@ -1541,6 +1544,9 @@
   <data name='Credentials named "{0}" already exist.' xml:space="preserve">
     <value>Es gibt bereits Zugangsdaten mit dem Namen „{0}“.</value>
   </data>
+  <data name="Credentials user" xml:space="preserve">
+    <value>Konto der Zugangsdaten</value>
+  </data>
   <data name="Credentials whose password is the authentication token (Xen Orchestra: user settings, Authentication tokens); the user name is not used. A token of a read-only user is enough." xml:space="preserve">
     <value>Zugangsdaten, deren Kennwort das Authentication Token ist (Xen Orchestra: Benutzereinstellungen, Authentication tokens); der Benutzername wird nicht verwendet. Ein Token eines Benutzers mit Leserechten genügt.</value>
   </data>
@@ -2131,6 +2137,9 @@
   </data>
   <data name="Edit" xml:space="preserve">
     <value>Bearbeiten</value>
+  </data>
+  <data name="Edit credentials" xml:space="preserve">
+    <value>Zugangsdaten bearbeiten</value>
   </data>
   <data name="Edit licences" xml:space="preserve">
     <value>Lizenzen bearbeiten</value>
@@ -5114,6 +5123,12 @@
   <data name="Reachability checked via MCP" xml:space="preserve">
     <value>Erreichbarkeit über MCP geprüft</value>
   </data>
+  <data name="Reaches the computers with this account, and the command runs as it." xml:space="preserve">
+    <value>Verbindet sich mit diesem Konto zu den Rechnern, und der Befehl läuft als dieses Konto.</value>
+  </data>
+  <data name="Reaches the computers with this account." xml:space="preserve">
+    <value>Verbindet sich mit diesem Konto zu den Rechnern.</value>
+  </data>
   <data name="Reads hosts, clusters and virtual machines from the vCenter, read-only, and matches the virtual machines to the inventoried computers. The licence calculation needs this for virtual machines on VMware." xml:space="preserve">
     <value>Liest Hosts, Cluster und virtuelle Maschinen aus dem vCenter, nur lesend, und ordnet die virtuellen Maschinen den inventarisierten Rechnern zu. Die Lizenzberechnung braucht das für virtuelle Maschinen auf VMware.</value>
   </data>
@@ -5300,8 +5315,14 @@
   <data name="Remote command ({0}, {1})" xml:space="preserve">
     <value>Remote-Befehl ({0}, {1})</value>
   </data>
+  <data name="Remote command ({0}, {1}, credentials {2})" xml:space="preserve">
+    <value>Remote-Befehl ({0}, {1}, Zugangsdaten {2})</value>
+  </data>
   <data name="Remote command via API ({0})" xml:space="preserve">
     <value>Remote-Befehl über API ({0})</value>
+  </data>
+  <data name="Remote command via API ({0}, credentials {1})" xml:space="preserve">
+    <value>Remote-Befehl über API ({0}, Zugangsdaten {1})</value>
   </data>
   <data name="Remote Desktop" xml:space="preserve">
     <value>Remotedesktop</value>
@@ -5657,6 +5678,9 @@
   <data name="running" xml:space="preserve">
     <value>läuft</value>
   </data>
+  <data name="Running as the credentials user needs credentials: choose some, store them on the computer or set default credentials." xml:space="preserve">
+    <value>Für die Ausführung als Konto der Zugangsdaten braucht es Zugangsdaten: welche auswählen, beim Rechner eintragen oder Standard-Zugangsdaten festlegen.</value>
+  </data>
   <data name="running now" xml:space="preserve">
     <value>laufen gerade</value>
   </data>
@@ -5677,6 +5701,9 @@
   </data>
   <data name="Runs on the target computer as Local System." xml:space="preserve">
     <value>Läuft auf dem Zielrechner als Lokales System.</value>
+  </data>
+  <data name="Runs on the target computer as the account of the credentials, with its profile and its own network access (shares). Via WinRM it runs as that account without access to shares." xml:space="preserve">
+    <value>Läuft auf dem Zielrechner als das Konto der Zugangsdaten, mit dessen Profil und eigenem Netzwerkzugriff (Freigaben). Über WinRM läuft er als dieses Konto, aber ohne Zugriff auf Freigaben.</value>
   </data>
   <data name="Runs past midnight into the following day." xml:space="preserve">
     <value>Reicht über Mitternacht in den folgenden Tag.</value>
@@ -6676,6 +6703,9 @@
   </data>
   <data name="The chosen certificate cannot be loaded, the self-signed one is used instead: {0}" xml:space="preserve">
     <value>Das gewählte Zertifikat lässt sich nicht laden, stattdessen gilt das selbstsignierte: {0}</value>
+  </data>
+  <data name="The chosen credentials no longer exist." xml:space="preserve">
+    <value>Die gewählten Zugangsdaten gibt es nicht mehr.</value>
   </data>
   <data name="The collection for the pilot group no longer exists." xml:space="preserve">
     <value>Die Sammlung für die Pilotgruppe gibt es nicht mehr.</value>

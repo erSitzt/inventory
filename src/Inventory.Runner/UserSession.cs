@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
+using Inventory.Contracts;
 using Microsoft.Win32.SafeHandles;
 
 namespace Inventory.Runner
@@ -13,18 +14,86 @@ namespace Inventory.Runner
     /// <summary>
     /// Startet Prozesse in der Sitzung des angemeldeten Benutzers. Der Runner läuft als Lokales System in Sitzung 0;
     /// für Dinge im Benutzerkontext (HKCU, Profil, Netzlaufwerke des Benutzers) leiht er sich dessen Anmelde-Token.
+    /// Mit <see cref="LogOn"/> meldet er stattdessen ein Konto mit Benutzer und Passwort selbst an.
     /// </summary>
     internal sealed class UserSession : IDisposable
     {
         private IntPtr _token;
+        private IntPtr _profile;
+        private readonly string _desktop;
 
-        private UserSession(IntPtr token, string userName)
+        private UserSession(IntPtr token, string userName, string desktop = @"winsta0\default", IntPtr profile = default)
         {
             _token = token;
             UserName = userName;
+            _desktop = desktop;
+            _profile = profile;
         }
 
         public string UserName { get; }
+
+        /// <summary>Hinweis, wenn das Profil des Kontos nicht geladen werden konnte; der Prozess läuft trotzdem.</summary>
+        public string? Warning { get; private set; }
+
+        /// <summary>
+        /// Meldet ein Konto mit Benutzer und Passwort als Stapelverarbeitung an, wie eine geplante Aufgabe: mit eigenem
+        /// Netzwerkzugriff und geladenem Profil. Ein Administrator bekommt das volle Token, nicht das von der
+        /// Benutzerkontensteuerung eingeschränkte.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Die Anmeldung schlägt fehl; die Meldung sagt, warum.</exception>
+        public static UserSession LogOn(string account, string password)
+        {
+            var (user, domain) = JobSecrets.SplitAccount(account);
+            if (!LogonUser(user, domain, password, 4 /* LOGON32_LOGON_BATCH */, 0 /* LOGON32_PROVIDER_DEFAULT */, out var token))
+                throw new InvalidOperationException(LogonError(Marshal.GetLastWin32Error(), account));
+            try
+            {
+                token = Elevated(token);
+                string name;
+                using (var identity = new WindowsIdentity(token))
+                    name = identity.Name;
+                var session = new UserSession(token, name, desktop: "");
+                // Ohne Profil liefen HKCU und %APPDATA% ins Leere; manche Setups brauchen beides.
+                var profile = new PROFILEINFO
+                {
+                    dwSize = Marshal.SizeOf(typeof(PROFILEINFO)),
+                    dwFlags = 1 /* PI_NOUI */,
+                    lpUserName = name.Substring(name.IndexOf('\\') + 1),
+                };
+                if (LoadUserProfile(token, ref profile))
+                    session._profile = profile.hProfile;
+                else
+                    session.Warning = $"Das Profil von {name} ließ sich nicht laden: {new Win32Exception(Marshal.GetLastWin32Error()).Message}";
+                return session;
+            }
+            catch
+            {
+                CloseHandle(token);
+                throw;
+            }
+        }
+
+        internal static string LogonError(int error, string account) => error switch
+        {
+            1326 => $"Anmeldung als {account} fehlgeschlagen: Benutzername oder Passwort falsch.",
+            1385 => $"{account} darf sich auf diesem Rechner nicht als Stapelverarbeitungsauftrag anmelden (Benutzerrecht „Anmelden als Batchauftrag“).",
+            1314 => "Als Konto der Zugangsdaten kann nur ausgeführt werden, wenn der Runner als Lokales System läuft (Transport SMB + Dienst oder Agent).",
+            _ => $"Anmeldung als {account} fehlgeschlagen: {new Win32Exception(error).Message}",
+        };
+
+        /// <summary>
+        /// Bei aktiver Benutzerkontensteuerung liefert LogonUser einem Administrator nur das eingeschränkte Token; das volle
+        /// hängt als verknüpftes Token daran. Als Lokales System ist es ein Primärtoken, mit dem sich Prozesse starten lassen.
+        /// </summary>
+        private static IntPtr Elevated(IntPtr token)
+        {
+            if (!GetTokenInformation(token, 18 /* TokenElevationType */, out int type, sizeof(int), out _) || type != 3 /* TokenElevationTypeLimited */)
+                return token;
+            if (!GetTokenInformation(token, 19 /* TokenLinkedToken */, out IntPtr linked, IntPtr.Size, out _))
+                return token;
+            CloseHandle(token);
+            return linked;
+        }
 
         /// <summary>Token des angemeldeten Benutzers; null, wenn niemand angemeldet ist. Konsole vor Remotedesktop.</summary>
         /// <exception cref="InvalidOperationException">Der Runner darf das Token nicht abrufen (läuft nicht als Lokales System).</exception>
@@ -77,7 +146,9 @@ namespace Inventory.Runner
                 var startup = new STARTUPINFO
                 {
                     cb = Marshal.SizeOf(typeof(STARTUPINFO)),
-                    lpDesktop = @"winsta0\default",
+                    // Angemeldeter Benutzer: sein Desktop. Eigene Anmeldung (""): eine Fensterstation der Anmeldesitzung, die das
+                    // System selbst anlegt; die von Lokalem System dürfte das Konto nicht öffnen.
+                    lpDesktop = _desktop,
                     dwFlags = 0x00000100 /* STARTF_USESTDHANDLES */,
                     hStdOutput = writeHandle,
                     hStdError = writeHandle,
@@ -127,6 +198,11 @@ namespace Inventory.Runner
 
         public void Dispose()
         {
+            if (_profile != IntPtr.Zero)
+            {
+                UnloadUserProfile(_token, _profile);
+                _profile = IntPtr.Zero;
+            }
             if (_token != IntPtr.Zero)
             {
                 CloseHandle(_token);
@@ -299,5 +375,33 @@ namespace Inventory.Runner
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool CloseHandle(IntPtr handle);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct PROFILEINFO
+        {
+            public int dwSize;
+            public int dwFlags;
+            public string? lpUserName;
+            public string? lpProfilePath;
+            public string? lpDefaultPath;
+            public string? lpServerName;
+            public string? lpPolicyPath;
+            public IntPtr hProfile;
+        }
+
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "LogonUserW")]
+        private static extern bool LogonUser(string user, string? domain, string password, int logonType, int logonProvider, out IntPtr token);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool GetTokenInformation(IntPtr token, int infoClass, out int value, int length, out int returned);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool GetTokenInformation(IntPtr token, int infoClass, out IntPtr value, int length, out int returned);
+
+        [DllImport("userenv.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "LoadUserProfileW")]
+        private static extern bool LoadUserProfile(IntPtr token, ref PROFILEINFO profile);
+
+        [DllImport("userenv.dll", SetLastError = true)]
+        private static extern bool UnloadUserProfile(IntPtr token, IntPtr profile);
     }
 }

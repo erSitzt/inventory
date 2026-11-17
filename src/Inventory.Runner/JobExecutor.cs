@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
@@ -580,6 +581,8 @@ namespace Inventory.Runner
         {
             if (step.RunAs == StepRunAs.LoggedOnUser && step.Type != StepType.Reboot)
                 return RunStepAsUser(index, step, progress);
+            if (step.RunAs == StepRunAs.CredentialsUser && step.Type != StepType.Reboot)
+                return RunStepAsUser(index, step, progress, credentialsUser: true);
 
             var result = new StepResult { Index = index, Name = step.Name };
             var watch = Stopwatch.StartNew();
@@ -644,14 +647,17 @@ namespace Inventory.Runner
             return result;
         }
 
-        /// <summary>Führt den Schritt in der Sitzung des angemeldeten Benutzers aus; ohne Anmeldung wird er übersprungen.</summary>
-        private StepResult RunStepAsUser(int index, JobStep step, StreamWriter progress)
+        /// <summary>
+        /// Führt den Schritt in der Sitzung des angemeldeten Benutzers aus; ohne Anmeldung wird er übersprungen.
+        /// Mit <paramref name="credentialsUser"/> stattdessen als das Konto der Zugangsdaten, das der Runner selbst anmeldet.
+        /// </summary>
+        private StepResult RunStepAsUser(int index, JobStep step, StreamWriter progress, bool credentialsUser = false)
         {
             var result = new StepResult { Index = index, Name = step.Name };
             var watch = Stopwatch.StartNew();
             try
             {
-                using (var session = UserSession.Open())
+                using (var session = credentialsUser ? LogOnCredentialsUser() : UserSession.Open())
                 {
                     if (session == null)
                     {
@@ -672,6 +678,8 @@ namespace Inventory.Runner
                         }
                     };
                     onLine($"[Läuft als {session.UserName}]");
+                    if (session.Warning != null)
+                        onLine(session.Warning);
 
                     var timeout = step.TimeoutSeconds > 0 ? step.TimeoutSeconds * 1000 : -1;
                     var exitCode = session.Run(startInfo.FileName, startInfo.Arguments, startInfo.WorkingDirectory, startInfo.StandardOutputEncoding,
@@ -709,6 +717,76 @@ namespace Inventory.Runner
 
         private volatile int _currentPid;
         private string? _userDir;
+        private (string User, string Password)? _secret;
+
+        /// <summary>So lange wartet der Runner auf Benutzer und Passwort vom Server.</summary>
+        internal static TimeSpan SecretTimeout = TimeSpan.FromSeconds(60);
+
+        private UserSession LogOnCredentialsUser()
+        {
+            var (user, password) = Secret();
+            return UserSession.LogOn(user, password);
+        }
+
+        /// <summary>
+        /// Holt Benutzer und Passwort der Zugangsdaten, einmal je Job. Der private Schlüssel bleibt im Speicher; im
+        /// Job-Verzeichnis stehen nur der öffentliche Schlüssel und die verschlüsselte Antwort, und beide nur kurz.
+        /// </summary>
+        private (string User, string Password) Secret()
+        {
+            if (_secret is { } known)
+                return known;
+            var requestPath = Path.Combine(_jobDir, JobFiles.SecretRequest);
+            var answerPath = Path.Combine(_jobDir, JobFiles.SecretAnswer);
+            using (var key = new RSACng(JobSecrets.KeySize))
+            {
+                try
+                {
+                    File.Delete(answerPath);
+                    var temporary = requestPath + ".tmp";
+                    File.WriteAllText(temporary, JobJson.Serialize(JobSecrets.CreateRequest(key)), new UTF8Encoding(false));
+                    File.Delete(requestPath);
+                    File.Move(temporary, requestPath);
+
+                    var deadline = DateTime.UtcNow + SecretTimeout;
+                    while (!File.Exists(answerPath))
+                    {
+                        if (_cancelled)
+                            throw new InvalidOperationException("Abgebrochen");
+                        if (DateTime.UtcNow > deadline)
+                            throw new InvalidOperationException(
+                                $"Der Server hat Benutzer und Passwort der Zugangsdaten nicht innerhalb von {(int)SecretTimeout.TotalSeconds} s geliefert.");
+                        Thread.Sleep(200);
+                    }
+                    var answer = JobJson.Deserialize<SecretAnswer>(File.ReadAllText(answerPath, Encoding.UTF8))
+                                 ?? throw new InvalidDataException("Leere Antwort des Servers");
+                    var secret = JobSecrets.Decrypt(key, answer);
+                    _secret = secret;
+                    return secret;
+                }
+                catch (CryptographicException)
+                {
+                    throw new InvalidOperationException("Die Antwort des Servers mit Benutzer und Passwort passt nicht zu diesem Job.");
+                }
+                finally
+                {
+                    TryDelete(answerPath);
+                    TryDelete(requestPath);
+                }
+            }
+        }
+
+        private static void TryDelete(string path)
+        {
+            try
+            {
+                File.Delete(path);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                // Das Job-Verzeichnis wird am Ende ohnehin entfernt.
+            }
+        }
 
         /// <summary>
         /// Arbeitsordner für Schritte im Benutzerkontext. Das Job-Verzeichnis selbst ist nur für SYSTEM und Administratoren
