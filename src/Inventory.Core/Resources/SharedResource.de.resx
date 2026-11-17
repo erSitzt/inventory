@@ -2630,8 +2630,8 @@
   <data name="GPO name" xml:space="preserve">
     <value>GPO-Name</value>
   </data>
-  <data name="GPOs: {0}" xml:space="preserve">
-    <value>GPOs: {0}</value>
+  <data name="GPOs" xml:space="preserve">
+    <value>GPOs</value>
   </data>
   <data name="Grace period (days)" xml:space="preserve">
     <value>Frist (Tage)</value>
@@ -2672,8 +2672,8 @@
   <data name="Groups for Group Policy" xml:space="preserve">
     <value>Gruppen für Gruppenrichtlinien</value>
   </data>
-  <data name="Groups for Group Policy (nested ones included): {0}" xml:space="preserve">
-    <value>Gruppen für Gruppenrichtlinien (inkl. verschachtelter): {0}</value>
+  <data name="Groups for Group Policy (nested ones included)" xml:space="preserve">
+    <value>Gruppen für Gruppenrichtlinien (inkl. verschachtelter)</value>
   </data>
   <data name="Groups of computers that deployments, schedules, reports and alerts work on." xml:space="preserve">
     <value>Gruppen von Rechnern, auf denen Deployments, Zeitpläne, Berichte und Alarme arbeiten.</value>
@@ -6119,11 +6119,17 @@
   <data name="shortfall" xml:space="preserve">
     <value>Unterdeckung</value>
   </data>
+  <data name="Show all ({0})" xml:space="preserve">
+    <value>Alle anzeigen ({0})</value>
+  </data>
   <data name="Show all computers" xml:space="preserve">
     <value>Alle Rechner zeigen</value>
   </data>
   <data name="Show computers individually" xml:space="preserve">
     <value>Rechner einzeln zeigen</value>
+  </data>
+  <data name="Show fewer" xml:space="preserve">
+    <value>Weniger anzeigen</value>
   </data>
   <data name="Show hosts and virtual machines" xml:space="preserve">
     <value>Hosts und virtuelle Maschinen anzeigen</value>

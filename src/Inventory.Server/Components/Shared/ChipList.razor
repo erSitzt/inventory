@@ -1,0 +1,35 @@
+@inject IStringLocalizer<SharedResource> L
+
+@* Eine Liste von Werten als kleine Chips statt als Fließtext mit Kommas; bei vielen Werten erst die ersten, der Rest auf Klick. *@
+@if (_items.Count == 0)
+{
+    <span>@Empty</span>
+}
+else
+{
+    <div class="d-flex flex-wrap align-center" style="gap: 4px">
+        @foreach (var item in _all || _items.Count <= Limit ? _items : _items.Take(Limit))
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-0">@item</MudChip>
+        }
+        @if (_items.Count > Limit)
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => _all = !_all)">
+                @(_all ? L["Show fewer"] : L["Show all ({0})", _items.Count])
+            </MudButton>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<string>? Items { get; set; }
+    /// <summary>So viele Chips stehen sofort da; die übrigen erst nach "Alle anzeigen".</summary>
+    [Parameter] public int Limit { get; set; } = 24;
+    /// <summary>Was ohne Werte dasteht.</summary>
+    [Parameter] public string Empty { get; set; } = "–";
+
+    private List<string> _items = [];
+    private bool _all;
+
+    protected override void OnParametersSet() => _items = Items?.Where(i => !string.IsNullOrWhiteSpace(i)).ToList() ?? [];
+}

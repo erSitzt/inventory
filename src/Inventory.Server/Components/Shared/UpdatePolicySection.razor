@@ -30,7 +30,10 @@
         }
         @if (_summary.Gpos.Count > 0)
         {
-            <MudText Typo="Typo.body2">@L["GPOs: {0}", string.Join(", ", _summary.Gpos)]</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                <MudText Typo="Typo.body2">@L["GPOs"]:</MudText>
+                <ChipList Items="_summary.Gpos" />
+            </MudStack>
         }
         @if (Computer.UpdatePolicySettings.Count == 0)
         {
@@ -77,9 +80,8 @@
             </MudSimpleTable>
         }
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3 d-block">@L["Group Policy last applied: {0}", Display.LocalTime(Computer.GroupPolicyAppliedUtc)]</MudText>
-        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block">
-            @L["Groups for Group Policy (nested ones included): {0}", Computer.PolicyGroups is null ? L["unknown"] : Computer.PolicyGroupNames.Any() ? string.Join(", ", Computer.PolicyGroupNames) : "–"]
-        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mt-1">@L["Groups for Group Policy (nested ones included)"]:</MudText>
+        <ChipList Items="Computer.PolicyGroupNames" Empty="@(Computer.PolicyGroups is null ? L["unknown"] : "–")" />
     }
 </MudPaper>
 
