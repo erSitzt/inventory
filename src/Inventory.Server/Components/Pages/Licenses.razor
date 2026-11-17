@@ -88,9 +88,9 @@
             else
             {
                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Counted programs"]</MudText>
-                <MudText Typo="Typo.body2" Class="mb-2">@string.Join(" · ", context.Item.Programs)</MudText>
+                <div class="mb-2"><ChipList Items="context.Item.Programs" /></div>
                 <MudText Typo="Typo.caption" Color="Color.Secondary">@L["Computers"]</MudText>
-                <MudText Typo="Typo.body2">@string.Join(", ", context.Item.Computers)</MudText>
+                <ChipList Items="context.Item.Computers" />
             }
         </div>
     </ChildRowContent>
