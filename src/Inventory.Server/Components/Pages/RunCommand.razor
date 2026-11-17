@@ -171,6 +171,9 @@
         if (id is null)
             return;
         var members = await CollectionService.GetMemberIdsAsync(id.Value);
+        // Inzwischen eine andere Sammlung gewählt oder das Feld geleert: diese Antwort ist veraltet.
+        if (_collectionId != id)
+            return;
         _selected = [.. _computers.Where(c => members.Contains(c.Id)).Select(c => c.Id)];
     }
 
