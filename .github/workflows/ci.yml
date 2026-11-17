@@ -81,6 +81,33 @@ jobs:
           Distro "6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f60" "Inventory-CI" "\\?\C:\wsl-ci"
           Distro "6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f61" "Inventory-CI-UNC" "\\?\UNC\localhost\C$\wsl-ci-remote"
           Distro "6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f62" "Inventory-CI-Link" "C:\wsl-ci\link"
+      # Windows-Update-Richtlinie über die lokale Gruppenrichtlinie (Registry.pol im PReg-Format, wie gpedit sie schreibt), damit
+      # RSoP eine GPO dazu kennt; dazu ein Wert ohne GPO, wie ihn ein Skript setzen würde.
+      - name: Windows Update policy from the local Group Policy
+        shell: pwsh
+        run: |
+          $unicode = [Text.Encoding]::Unicode
+          $pol = [Collections.Generic.List[byte]]::new()
+          $pol.AddRange([byte[]](0x50, 0x52, 0x65, 0x67, 1, 0, 0, 0))
+          foreach ($entry in @(("AUOptions", 4), ("ScheduledInstallDay", 1), ("ScheduledInstallTime", 3))) {
+            $pol.AddRange($unicode.GetBytes("[Software\Policies\Microsoft\Windows\WindowsUpdate\AU`0;$($entry[0])`0;"))
+            $pol.AddRange([BitConverter]::GetBytes([uint32]4))
+            $pol.AddRange($unicode.GetBytes(";"))
+            $pol.AddRange([BitConverter]::GetBytes([uint32]4))
+            $pol.AddRange($unicode.GetBytes(";"))
+            $pol.AddRange([BitConverter]::GetBytes([uint32]$entry[1]))
+            $pol.AddRange($unicode.GetBytes("]"))
+          }
+          $gp = "$env:windir\System32\GroupPolicy"
+          New-Item -ItemType Directory "$gp\Machine" -Force | Out-Null
+          [IO.File]::WriteAllBytes("$gp\Machine\Registry.pol", $pol.ToArray())
+          Set-Content "$gp\gpt.ini" "[General]`r`ngPCMachineExtensionNames=[{35378EAC-683F-11D2-A89A-00C04FBBCFA2}{D02B1F72-3407-48AE-BA88-E8213C6761F1}]`r`nVersion=1" -Encoding ascii
+          gpupdate /target:computer /force
+          $key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
+          New-Item $key -Force | Out-Null
+          New-ItemProperty $key -Name TargetGroup -Value "Inventory-CI" -Force | Out-Null
+          Get-ItemProperty "$key\AU" | Format-List
+          if ((Get-ItemProperty "$key\AU").AUOptions -ne 4) { throw "the local Group Policy was not applied" }
       - name: Collect the inventory
         shell: pwsh
         run: |
@@ -131,6 +158,21 @@ jobs:
           }
           $distro = @($inventory.wsl.distros | Where-Object name -eq "Inventory-CI")
           if ($distro.Count -ne 1) { throw "distribution missing" }
+          # Update-Richtlinie: die Werte der lokalen Gruppenrichtlinie mit ihrer GPO aus RSoP, der Wert ohne GPO ohne.
+          $policy = $inventory.updatePolicy
+          $policy | ConvertTo-Json -Depth 5
+          if ($inventory.warnings | Where-Object { $_ -like "Update-Richtlinie*" }) { throw "warning for the update policy" }
+          if (-not $policy.rsopRead) { throw "RSoP not read" }
+          if (-not $policy.groupPolicyAppliedUtc) { throw "no time of the last Group Policy run" }
+          if ($null -eq $policy.groups) { throw "groups not read" }
+          foreach ($expected in @(("AUOptions", "4"), ("ScheduledInstallDay", "1"), ("ScheduledInstallTime", "3"))) {
+            $setting = @($policy.settings | Where-Object name -eq $expected[0])
+            if ($setting.Count -ne 1 -or $setting[0].value -ne $expected[1] -or $setting[0].key -ne "AU" -or $setting[0].source -ne "gpo" -or -not $setting[0].gpo) {
+              throw "$($expected[0]): $($setting | ConvertTo-Json -Depth 3)"
+            }
+          }
+          $target = @($policy.settings | Where-Object name -eq "TargetGroup")
+          if ($target.Count -ne 1 -or $target[0].value -ne "Inventory-CI" -or $target[0].source -ne "registry" -or $target[0].gpo) { throw "TargetGroup: $($target | ConvertTo-Json -Depth 3)" }
           $session = @(quser 2>$null) -match [regex]::Escape($env:USERNAME)
           if ($session) {
             if (([datetime]$distro[0].lastUsedUtc).ToUniversalTime() -ne [datetime]::new(2026, 1, 2, 3, 4, 5, [DateTimeKind]::Utc)) { throw "with the user's token: $($distro[0].lastUsedUtc)" }

@@ -39,7 +39,7 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
                            .Include(c => c.Services).Include(c => c.LocalUsers).Include(c => c.LocalAdmins)
                            .Include(c => c.MemoryModules).Include(c => c.PhysicalDisks).Include(c => c.Volumes).Include(c => c.Monitors).Include(c => c.Printers)
                            .Include(c => c.ServerFeatures).Include(c => c.SqlInstances).Include(c => c.VirtualMachines)
-                           .Include(c => c.OptionalFeatures).Include(c => c.WslDistros)
+                           .Include(c => c.OptionalFeatures).Include(c => c.WslDistros).Include(c => c.UpdatePolicySettings)
                            .FirstOrDefaultAsync(c => c.Id == computerId, ct)
                        ?? throw new KeyNotFoundException(L["Computer {0} not found", computerId]);
 
@@ -47,6 +47,8 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
         // Vor dem Vergleich: Programme abgemeldeter Benutzer sind nicht verschwunden, nur gerade nicht lesbar.
         PerUserSoftware.CarryOver(computer.Software, data);
         WslDistros.CarryOver(computer.WslDistros, data);
+        if (data.UpdatePolicy is { } updatePolicy)
+            UpdatePolicies.CarryOrigin(computer.UpdatePolicySettings, updatePolicy);
         if (data.Hardware is not null)
             HardwareCarryOver.Apply(computer, data.Hardware);
         db.InventoryChanges.AddRange(InventoryDiff.Compare(computer, data, now));
@@ -279,6 +281,16 @@ public sealed class InventoryStore(IDbContextFactory<InventoryDbContext> dbFacto
                 ComputerId = computerId, Name = d.Name, UserSid = d.UserSid, UserName = d.UserName, WslVersion = d.WslVersion,
                 LastUsedUtc = d.LastUsedUtc, SizeBytes = d.SizeBytes, CarriedOver = d.CarriedOver,
             }));
+        }
+        if (data.UpdatePolicy is { } policy)
+        {
+            computer.UpdatePolicyScanUtc = now;
+            computer.GroupPolicyAppliedUtc = policy.GroupPolicyAppliedUtc;
+            // Ohne RSoP sind die Gruppen unbekannt, nicht leer: Dann bleiben die bisherigen. "" = bekannt, aber keine.
+            if (policy.Groups is { } groups)
+                computer.PolicyGroups = string.Join("\n", groups.Where(g => !string.IsNullOrWhiteSpace(g)).Select(g => g.Trim()));
+            await db.UpdatePolicySettings.Where(x => x.ComputerId == computerId).ExecuteDeleteAsync(ct);
+            db.UpdatePolicySettings.AddRange(policy.Settings.Select(s => UpdatePolicies.ToEntity(s, computerId)));
         }
 
         await db.SaveChangesAsync(ct);

@@ -348,6 +348,9 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         RuleField.WslInstalled => T("WSL installed"),
         RuleField.WslDaysSinceUse => T("WSL: days since last use"),
         RuleField.WslDistro => T("WSL distribution"),
+        RuleField.UpdateGpo => T("Windows Update GPO"),
+        RuleField.WsusTargetGroup => T("WSUS target group"),
+        RuleField.PolicyGroup => T("Group for Group Policy (nested ones included)"),
         _ => field.ToString(),
     };
 

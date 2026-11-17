@@ -65,7 +65,9 @@ public sealed partial class ReportService
         {
             case ReportSource.Computers:
             {
-                var computerQuery = db.Computers.AsNoTracking().Where(c => members == null || members.Contains(c.Id));
+                // Die Update-Richtlinie für ihre Spalten; je Rechner eine Handvoll Werte.
+                var computerQuery = db.Computers.AsNoTracking().AsSplitQuery().Include(c => c.UpdatePolicySettings)
+                    .Where(c => members == null || members.Contains(c.Id));
                 if (customValues is { Fields.Count: > 0 })
                     computerQuery = computerQuery.Include(c => c.CustomValues);
                 var computers = await computerQuery.OrderBy(c => c.Name).ToListAsync(ct);
@@ -212,6 +214,14 @@ public sealed partial class ReportService
         new("pendingUpdates", L["Pending updates"], c => Number(c.UpdatePendingCount), Numeric: true),
         new("pendingSecurityUpdates", L["Pending security updates"], c => Number(c.UpdatePendingSecurityCount), Numeric: true),
         new("rebootPending", L["Reboot pending"], c => YesNo(c.UpdateRebootRequired)),
+        // Leer = noch nicht erfasst (älterer Runner, Mac); "nicht konfiguriert" = Windows-Standard ohne Richtlinie.
+        new("updateSource", L["Update source"], c => c.UpdatePolicyScanUtc is null ? null : UpdatePolicies.Summarize(c.UpdatePolicySettings, L).Source ?? L["not configured"]),
+        new("wsusTargetGroup", L["WSUS target group"], c => UpdatePolicies.TargetGroup(c.UpdatePolicySettings)),
+        new("automaticUpdates", L["Automatic updates"], c => c.UpdatePolicyScanUtc is null ? null : UpdatePolicies.Summarize(c.UpdatePolicySettings, L).Automatic ?? L["Windows default"]),
+        new("updateGpos", L["Windows Update GPOs"], c => string.Join(", ", UpdatePolicies.Gpos(c.UpdatePolicySettings))),
+        new("updatePolicyConflicts", L["Conflicting Windows Update GPOs"], c => c.UpdatePolicyScanUtc is null ? null : YesNo(UpdatePolicies.Summarize(c.UpdatePolicySettings, L).Conflicts)),
+        new("policyGroups", L["Groups for Group Policy"], c => string.Join(", ", c.PolicyGroupNames)),
+        new("groupPolicyApplied", L["Group Policy last applied"], c => Stamp(c.GroupPolicyAppliedUtc, zone)),
         new("deviceType", L["Device type"], c => c.ChassisType is null ? null : L[Chassis.Label(Chassis.Kind(c.ChassisType, c.Model))]),
         new("firmware", L["Firmware"], c => c.FirmwareType),
         new("secureBoot", "Secure Boot", c => YesNo(c.SecureBoot)),

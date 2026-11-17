@@ -1,5 +1,6 @@
 @page "/updates"
 @inject ReportService Reports
+@inject UpdatePolicyService PolicyOverview
 @inject IStringLocalizer<SharedResource> L
 @inject Display Display
 @inject PackageService PackageService
@@ -123,6 +124,72 @@
                 </PagerContent>
             </MudDataGrid>
         </MudTabPanel>
+        @if (_policies is not null)
+        {
+            <MudTabPanel Text="@($"{L["Policies"]} ({_policies.Policies.Count})")">
+                <MudText Typo="Typo.body2" Class="mb-3">
+                    @L["Computers with the same Windows Update policy: the same values from the same GPOs or from Intune."]
+                    @if (_policies.ComputersWithConflicts > 0)
+                    {
+                        @(" ")
+                        <MudText Typo="Typo.body2" Color="Color.Warning" Inline="true">@L["Computers with conflicting GPOs: {0}.", _policies.ComputersWithConflicts]</MudText>
+                    }
+                </MudText>
+                <MudExpansionPanels MultiExpansion="true" Outlined="true">
+                    @foreach (var policy in _policies.Policies.Where(PolicyMatches))
+                    {
+                        <MudExpansionPanel>
+                            <TitleContent>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+                                    <MudText Typo="Typo.subtitle2">@PolicyTitle(policy)</MudText>
+                                    <MudChip T="string" Size="Size.Small">@L["{0} computers", policy.Computers.Count]</MudChip>
+                                    @if (policy.Computers.Any(c => c.Conflicts))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["Conflicting GPOs"]</MudChip>
+                                    }
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@PolicyLine(policy)</MudText>
+                                </MudStack>
+                            </TitleContent>
+                            <ChildContent>
+                                @foreach (var setting in policy.Settings.OrderBy(UpdatePolicies.IsMdm).ThenBy(s => s.Key == UpdatePolicyKeys.AutoUpdate).ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    <MudText Typo="Typo.body2">
+                                        @UpdatePolicies.Label(setting, L): <b>@UpdatePolicies.Display(setting, L)</b>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Inline="true">@(setting.Gpo ?? (UpdatePolicies.IsMdm(setting) ? "Intune" : ""))</MudText>
+                                    </MudText>
+                                }
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-3">
+                                    @foreach (var computer in policy.Computers)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Href="@($"computers/{computer.Id}")" Color="@(computer.Conflicts ? Color.Warning : Color.Default)">@computer.Name</MudChip>
+                                    }
+                                </MudStack>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                    @if (_policies.NotCaptured.Count > 0 && _policies.NotCaptured.Any(c => Matches(c.Name)))
+                    {
+                        <MudExpansionPanel>
+                            <TitleContent>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">@L["Not captured yet"]</MudText>
+                                    <MudChip T="string" Size="Size.Small">@L["{0} computers", _policies.NotCaptured.Count]</MudChip>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not scanned since the update of Inventory, or not reachable."]</MudText>
+                                </MudStack>
+                            </TitleContent>
+                            <ChildContent>
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                    @foreach (var computer in _policies.NotCaptured)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Href="@($"computers/{computer.Id}")">@computer.Name</MudChip>
+                                    }
+                                </MudStack>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            </MudTabPanel>
+        }
     </MudTabs>
 }
 
@@ -131,6 +198,7 @@
     [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
 
     private PatchCompliance? _report;
+    private UpdatePolicyOverview? _policies;
     private PendingUpdateSummary? _selected;
     private List<Computer> _computers = [];
     private string _search = "";
@@ -138,6 +206,7 @@
     protected override async Task OnInitializedAsync()
     {
         _report = await Reports.PatchComplianceAsync();
+        _policies = await PolicyOverview.OverviewAsync();
         _search = Query ?? "";
         // Führt die Suche auf genau ein Update, zeigt die Seite gleich dessen Rechner.
         if (Query is not null && _report.Updates.FirstOrDefault(u => string.Equals(u.Key, Query, StringComparison.OrdinalIgnoreCase)) is { } match)
@@ -162,6 +231,21 @@
             Snackbar.Add(ex.Message, Severity.Error);
         }
     }
+
+    /// <summary>Die GPOs, sonst woher die Werte kommen.</summary>
+    private string PolicyTitle(UpdatePolicyGroup policy) =>
+        policy.Summary.Gpos.Count > 0 ? string.Join(", ", policy.Summary.Gpos)
+        : policy.NotConfigured ? L["Not configured (Windows defaults)"]
+        : policy.Settings.All(UpdatePolicies.IsMdm) ? "Intune"
+        : L["Without GPO (preference, script or set by hand)"];
+
+    private string PolicyLine(UpdatePolicyGroup policy) => string.Join(" · ", new[]
+    {
+        policy.Summary.Source, policy.Summary.TargetGroup is { } group ? L["target group {0}", group].Value : null, policy.Summary.Automatic, policy.Summary.Deferral,
+    }.Where(p => p is not null));
+
+    private bool PolicyMatches(UpdatePolicyGroup policy) =>
+        Matches(PolicyTitle(policy), policy.Summary.TargetGroup, policy.Summary.Source) || policy.Computers.Any(c => Matches(c.Name));
 
     private bool Matches(params string?[] values) =>
         string.IsNullOrWhiteSpace(_search) || values.Any(v => v?.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase) == true);

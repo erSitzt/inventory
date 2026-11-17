@@ -224,6 +224,17 @@ public class Computer
     /// <summary>Version des WSL-Pakets (Store/MSI); null bei dem in Windows enthaltenen WSL oder ohne WSL.</summary>
     public string? WslVersion { get; set; }
 
+    /// <summary>Wann zuletzt ein Scan die Windows-Update-Richtlinie geliefert hat; null = noch nie (älterer Runner, Mac oder nicht gescannt).</summary>
+    public DateTime? UpdatePolicyScanUtc { get; set; }
+    /// <summary>Ende der letzten Anwendung der Gruppenrichtlinie für den Computer, laut Rechner.</summary>
+    public DateTime? GroupPolicyAppliedUtc { get; set; }
+    /// <summary>
+    /// Domänengruppen, mit denen der Computer die Gruppenrichtlinie zuletzt angewendet hat, verschachtelte eingeschlossen; eine
+    /// je Zeile. Anders als <see cref="DirectoryGroups"/> (nur direkte Mitgliedschaften) entscheiden diese über die Filterung der GPOs.
+    /// </summary>
+    public string? PolicyGroups { get; set; }
+    public IEnumerable<string> PolicyGroupNames => (PolicyGroups ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
     // Angaben für die Lizenzberechnung aus dem letzten Scan; null = nicht ermittelt
     /// <summary>Wann zuletzt ein Scan diese Angaben geliefert hat; null = noch nie (älterer Runner oder nicht gescannt).</summary>
     public DateTime? LicensingScanUtc { get; set; }
@@ -295,6 +306,8 @@ public class Computer
     public List<ComputerOptionalFeature> OptionalFeatures { get; set; } = [];
     /// <summary>WSL-Distributionen der Benutzer.</summary>
     public List<ComputerWslDistro> WslDistros { get; set; } = [];
+    /// <summary>Wirksame Werte der Windows-Update-Richtlinie (Gruppenrichtlinie und Intune).</summary>
+    public List<ComputerUpdatePolicySetting> UpdatePolicySettings { get; set; } = [];
     /// <summary>Werte eigener Inventarfelder aus Plugins.</summary>
     public List<ComputerCustomValue> CustomValues { get; set; } = [];
     /// <summary>Auf diesem Hyper-V-Host gefundene virtuelle Maschinen.</summary>

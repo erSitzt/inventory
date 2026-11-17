@@ -101,6 +101,17 @@ ones, followed by a restart only if one is pending (with five minutes' notice to
 restart: then the updates finish with the next restart. Inventory never restarts in that case; restart policies that
 Windows Update itself follows (group policy, active hours) still apply.
 
+**Windows Update policy**: the scan reads the effective policy of each computer – the values under
+`Policies\Microsoft\Windows\WindowsUpdate` (Group Policy) and the update policy from Intune – and, from the computer's
+Resultant Set of Policy, the GPO each value comes from and lower-ranked GPOs that set it too. The *Security* tab shows
+source (WSUS server or Microsoft Update), WSUS target group, automatic updates with their schedule, every setting with
+its GPO, a warning when an overruled GPO sets a value differently, the time Group Policy was last applied and the domain
+groups – nested ones included – the computer applied it with. *Updates → Policies* groups all computers by policy (same
+values from the same GPOs), so it shows at a glance which servers get which ring. Reports have columns for update
+source, WSUS target group, automatic updates, update GPOs, conflicts and the groups; collections can filter on
+*Windows Update GPO*, *WSUS target group* and *Group for Group Policy*, and changed values appear in the history.
+Reading the GPOs needs the runner to run as administrator or Local System (agent, SMB + service).
+
 ### Software and apps
 
 ![Software overview](docs/screenshots/en/software.png)
@@ -128,7 +139,7 @@ last 30 days.
 ![Changes](docs/screenshots/en/changes.png)
 
 Every scan is compared with the previous one: installed, removed and updated software, hotfixes, services, local
-administrators, Windows features, WSL distributions, hardware and system configuration appear as changes with time – per computer on its *History* tab and
+administrators, Windows features, WSL distributions, the Windows Update policy, hardware and system configuration appear as changes with time – per computer on its *History* tab and
 for all computers on *Changes*. A hotfix that drops out of the list is shown as *superseded*: Windows lists only the
 current cumulative update, so last month's one disappears with the new one.
 
@@ -1232,7 +1243,7 @@ and the token's role decides what the assistant may do:
 
 | Role | Tools |
 |---|---|
-| Viewer | search computers and their details, software on a computer, find software and who has it, missing updates, collections, packages, deployments, network devices, IP subnets and their addresses, virtualization hosts with their VMs (which ESXi, XCP-ng or Hyper-V host a VM runs on, also VMs without an agent), Microsoft licensing |
+| Viewer | search computers and their details, software on a computer, find software and who has it, missing updates, collections, packages, deployments, network devices, IP subnets and their addresses, the Windows Update policy of a computer with its GPOs, virtualization hosts with their VMs (which ESXi, XCP-ng or Hyper-V host a VM runs on, also VMs without an agent), Microsoft licensing |
 | Operator | additionally: scan, check reachability, wake computers; deploy packages and cancel deployments; create packages and add files to them; run a script on computers (`deploy_script`); find free IPs, reserve and release them; start the IP and device scans; read the audit log |
 
 **Packages from an assistant need a person.** Packages created over MCP (`create_package`, `deploy_script`) are named

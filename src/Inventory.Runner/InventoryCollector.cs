@@ -40,6 +40,7 @@ namespace Inventory.Runner
             Section(data, "Defender", () => ReadDefender(data.Security));
             Section(data, "Virenschutz", () => ReadAntivirusProducts(data.Security));
             Section(data, "Windows Update", () => ReadWindowsUpdate(data.Security));
+            Section(data, "Update-Richtlinie", () => data.UpdatePolicy = UpdatePolicyCollector.Read(data.Warnings));
             // Nach den lokalen Benutzern: das vordefinierte Administratorkonto wird aus deren Liste gelesen.
             data.Security.Posture = ReadPosture(data);
             data.RemoteAccess = new RemoteAccessInfo();

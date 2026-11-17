@@ -130,6 +130,12 @@ public enum RuleField
     WslDaysSinceUse = 166,
     /// <summary>WSL-Distribution nach Name, z. B. Ubuntu; verneint = keine solche.</summary>
     WslDistro = 167,
+    /// <summary>GPO, aus der eine Einstellung der Windows-Update-Richtlinie gilt; verneint = keine solche.</summary>
+    UpdateGpo = 168,
+    /// <summary>WSUS-Zielgruppe laut Richtlinie (clientseitige Zuordnung).</summary>
+    WsusTargetGroup = 169,
+    /// <summary>Gruppe, mit der der Computer die Gruppenrichtlinie anwendet, verschachtelte eingeschlossen; verneint = nicht Mitglied.</summary>
+    PolicyGroup = 170,
     Online = 1,
     Scanned,
     OsName,

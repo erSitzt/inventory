@@ -141,6 +141,15 @@ public static partial class InventoryDiff
                 wsl.Distros.Select(d => (WslDistros.Label(d.Name, d.UserName, d.UserSid), (string?)(d.WslVersion is { } v ? $"WSL {v}" : null))));
         }
 
+        if (current.UpdatePolicy is { } updatePolicy && previous.UpdatePolicyScanUtc is not null)
+        {
+            Set("Windows Update policy", UpdatePolicies.HistoryItems(previous.UpdatePolicySettings),
+                UpdatePolicies.HistoryItems(updatePolicy.Settings.Select(s => UpdatePolicies.ToEntity(s, previous.Id))));
+            // Erst wenn die Gruppen schon einmal bekannt waren ("" = keine), und nur wenn sie diesmal lesbar waren.
+            if (updatePolicy.Groups is { } groups && previous.PolicyGroups is not null)
+                Set("Policy group", previous.PolicyGroupNames.Select(g => (g, (string?)null)), groups.Select(g => (g, (string?)null)));
+        }
+
         if (current.Hardware is { } hardware)
         {
             // Wie beim Sicherheitsstatus: der erste Scan mit Hardware-Details ist die Ausgangslage.
