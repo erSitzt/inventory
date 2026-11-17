@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Inventory.Contracts
 {
@@ -693,6 +694,53 @@ namespace Inventory.Contracts
         private static string Utf16(byte[] data) => System.Text.Encoding.Unicode.GetString(data, 0, data.Length - data.Length % 2);
 
         private static string? Limit(string? text) => text == null || text.Length <= MaxLength ? text : text.Substring(0, MaxLength);
+    }
+
+    /// <summary>Ein Eintrag aus RSOP_RegistryPolicySetting: welche GPO einen Wert der Update-Richtlinie setzt oder löscht.</summary>
+    public sealed class RsopEntry
+    {
+        /// <summary>Siehe <see cref="UpdatePolicyKeys"/>; null = anderer Schlüssel.</summary>
+        public string? Key { get; set; }
+        public string? Name { get; set; }
+        public string? Value { get; set; }
+        /// <summary>Die GPO löscht den Wert ("**del.Name"), statt ihn zu setzen.</summary>
+        public bool Deleted { get; set; }
+        public string? GpoId { get; set; }
+        /// <summary>1 gewinnt.</summary>
+        public int Precedence { get; set; }
+    }
+
+    /// <summary>Ordnet den Werten der Update-Richtlinie ihre GPO aus RSoP zu.</summary>
+    public static class RsopOrigins
+    {
+        /// <summary>
+        /// Rang 1 gewinnt, die übrigen GPOs gelten als überstimmt, jede einmal mit ihrem stärksten Eintrag. Löschungen zählen
+        /// nicht: Der Editor schreibt sie auch neben den Wert selbst in dieselbe GPO, die sonst als Konflikt mit sich selbst
+        /// erschiene. Aus demselben Grund ist die gewinnende GPO nie zugleich überstimmt. Verglichen wird die ID, denn zwei
+        /// GPOs können gleich heißen. Ein Wert ohne Eintrag behält seine Quelle.
+        /// </summary>
+        public static void Assign(IEnumerable<UpdatePolicySetting> settings, IEnumerable<RsopEntry> entries, IReadOnlyDictionary<string, string> gpoNames)
+        {
+            var set = entries.Where(e => e.Key != null && e.Name != null && e.GpoId != null && !e.Deleted
+                    && !e.Name.StartsWith("**", StringComparison.Ordinal))
+                .ToList();
+            string GpoName(string id) => gpoNames.TryGetValue(id, out var name) ? name : id;
+            foreach (var setting in settings.Where(s => s.Source == UpdatePolicySources.Registry))
+            {
+                var matches = set.Where(e => e.Key == setting.Key && string.Equals(e.Name, setting.Name, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(e => e.Precedence).ToList();
+                if (matches.Count == 0)
+                    continue;
+                var winner = matches[0].GpoId!;
+                setting.Source = UpdatePolicySources.Gpo;
+                setting.Gpo = GpoName(winner);
+                setting.AlsoSetBy = matches.Skip(1)
+                    .Where(e => !string.Equals(e.GpoId, winner, StringComparison.OrdinalIgnoreCase))
+                    .GroupBy(e => e.GpoId!, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => new UpdatePolicyOverride { Gpo = GpoName(g.Key), Value = g.First().Value })
+                    .ToList();
+            }
+        }
     }
 
     /// <summary>Sicherheitseinstellungen eines Macs. FileVault steht wie BitLocker in <see cref="HardwareInfo.Volumes"/>.</summary>

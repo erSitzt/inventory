@@ -86,6 +86,9 @@
   <data name='"{0}" is now being installed on this computer and can no longer be postponed.' xml:space="preserve">
     <value>„{0}“ wird jetzt auf diesem Rechner installiert und lässt sich nicht mehr verschieben.</value>
   </data>
+  <data name="&quot;Install updates and shut down&quot; not as the default" xml:space="preserve">
+    <value>„Updates installieren und herunterfahren“ nicht als Standard</value>
+  </data>
   <data name="&quot;Remove agent&quot; uninstalls the agent on the computer, then the server forgets it. &quot;Forget agent&quot; only removes the agent's key on the server and resets the transport – if the agent is still installed, it enrolls again with the enrollment secret." xml:space="preserve">
     <value>„Agent entfernen“ deinstalliert den Agenten auf dem Rechner, danach vergisst der Server ihn. „Agent vergessen“ verwirft nur den Schlüssel des Agenten auf dem Server und setzt den Transport zurück – ist der Agent noch installiert, meldet er sich mit dem Anmeldegeheimnis neu an.</value>
   </data>
@@ -845,6 +848,9 @@
   <data name="Ask again after (minutes)" xml:space="preserve">
     <value>Erneut fragen nach (Minuten)</value>
   </data>
+  <data name="Ask again for the restart" xml:space="preserve">
+    <value>Erneut zum Neustart auffordern</value>
+  </data>
   <data name="Ask again for the restart after (minutes)" xml:space="preserve">
     <value>Erneut zum Neustart auffordern nach (Minuten)</value>
   </data>
@@ -929,6 +935,9 @@
   <data name="Automatic: {0}" xml:space="preserve">
     <value>Automatisch: {0}</value>
   </data>
+  <data name="automatically" xml:space="preserve">
+    <value>automatisch</value>
+  </data>
   <data name="Back" xml:space="preserve">
     <value>Zurück</value>
   </data>
@@ -1001,6 +1010,9 @@
   <data name="by host cores" xml:space="preserve">
     <value>nach Kernen der Hosts</value>
   </data>
+  <data name="by the user" xml:space="preserve">
+    <value>durch den Benutzer</value>
+  </data>
   <data name="By update" xml:space="preserve">
     <value>Nach Update</value>
   </data>
@@ -1030,6 +1042,9 @@
   </data>
   <data name="Cancelling …" xml:space="preserve">
     <value>Wird abgebrochen …</value>
+  </data>
+  <data name="Catch up on missed installations" xml:space="preserve">
+    <value>Verpasste Installationen nachholen</value>
   </data>
   <data name="Certificate" xml:space="preserve">
     <value>Zertifikat</value>
@@ -1171,6 +1186,9 @@
   </data>
   <data name="closes {0}" xml:space="preserve">
     <value>schließt {0}</value>
+  </data>
+  <data name="Closing the restart notification" xml:space="preserve">
+    <value>Schließen der Neustart-Benachrichtigung</value>
   </data>
   <data name="Cluster" xml:space="preserve">
     <value>Cluster</value>
@@ -1619,11 +1637,26 @@
   <data name="Days since last update installation" xml:space="preserve">
     <value>Tage seit letzter Update-Installation</value>
   </data>
+  <data name="Deadline for feature updates" xml:space="preserve">
+    <value>Frist für Funktionsupdates</value>
+  </data>
   <data name="Deadline for feature updates (days)" xml:space="preserve">
     <value>Frist für Funktionsupdates (Tage)</value>
   </data>
+  <data name="Deadline for quality updates" xml:space="preserve">
+    <value>Frist für Qualitätsupdates</value>
+  </data>
   <data name="Deadline for quality updates (days)" xml:space="preserve">
     <value>Frist für Qualitätsupdates (Tage)</value>
+  </data>
+  <data name="Deadline for the automatic restart" xml:space="preserve">
+    <value>Frist für den automatischen Neustart</value>
+  </data>
+  <data name="Deadline for the automatic restart, feature updates (days)" xml:space="preserve">
+    <value>Frist für den automatischen Neustart, Funktionsupdates (Tage)</value>
+  </data>
+  <data name="Deadline for the automatic restart, quality updates (days)" xml:space="preserve">
+    <value>Frist für den automatischen Neustart, Qualitätsupdates (Tage)</value>
   </data>
   <data name="Deadlines" xml:space="preserve">
     <value>Fristen</value>
@@ -1675,6 +1708,9 @@
   </data>
   <data name="Delay (seconds)" xml:space="preserve">
     <value>Verzögerung (Sekunden)</value>
+  </data>
+  <data name="Delay the scheduled restart" xml:space="preserve">
+    <value>Geplanten Neustart verzögern</value>
   </data>
   <data name="Delete" xml:space="preserve">
     <value>Löschen</value>
@@ -2594,6 +2630,9 @@
   <data name="Grace period before the restart (days)" xml:space="preserve">
     <value>Karenzzeit vor dem Neustart (Tage)</value>
   </data>
+  <data name="Grace period before the restart, feature updates (days)" xml:space="preserve">
+    <value>Karenzzeit vor dem Neustart, Funktionsupdates (Tage)</value>
+  </data>
   <data name="Graphics" xml:space="preserve">
     <value>Grafik</value>
   </data>
@@ -2656,6 +2695,9 @@
   </data>
   <data name="Hide" xml:space="preserve">
     <value>Ausblenden</value>
+  </data>
+  <data name="Hide &quot;Install updates and shut down&quot;" xml:space="preserve">
+    <value>„Updates installieren und herunterfahren“ ausblenden</value>
   </data>
   <data name="Highest Windows Server version to cover: {0}; licences of version {0} or later cover it (downgrade rights)." xml:space="preserve">
     <value>Höchste zu deckende Windows-Server-Version: {0}; Lizenzen der Version {0} oder neuer decken sie (Downgrade-Recht).</value>
@@ -2896,6 +2938,9 @@
   </data>
   <data name="Install automatically, notify before restart" xml:space="preserve">
     <value>Automatisch installieren, vor dem Neustart benachrichtigen</value>
+  </data>
+  <data name="Install during automatic maintenance" xml:space="preserve">
+    <value>Während der automatischen Wartung installieren</value>
   </data>
   <data name="Install every week" xml:space="preserve">
     <value>Jede Woche installieren</value>
@@ -3359,6 +3404,9 @@
   <data name="Light" xml:space="preserve">
     <value>Hell</value>
   </data>
+  <data name="Limit the active hours" xml:space="preserve">
+    <value>Nutzungszeit begrenzen</value>
+  </data>
   <data name="Limited to the relevant networks {0}." xml:space="preserve">
     <value>Beschränkt auf die relevanten Netze {0}.</value>
   </data>
@@ -3442,6 +3490,9 @@
   </data>
   <data name="Logon failed – user name or password wrong, account locked or disabled" xml:space="preserve">
     <value>Anmeldung fehlgeschlagen – Benutzername oder Passwort falsch, Konto gesperrt oder deaktiviert</value>
+  </data>
+  <data name="Longest active hours (hours)" xml:space="preserve">
+    <value>Längste Nutzungszeit (Stunden)</value>
   </data>
   <data name="Low" xml:space="preserve">
     <value>Niedrig</value>
@@ -3806,6 +3857,12 @@
   <data name="No automatic restart before the deadline" xml:space="preserve">
     <value>Kein automatischer Neustart vor der Frist</value>
   </data>
+  <data name="No automatic restart before the deadline, feature updates" xml:space="preserve">
+    <value>Kein automatischer Neustart vor der Frist, Funktionsupdates</value>
+  </data>
+  <data name="No automatic restart before the deadline, quality updates" xml:space="preserve">
+    <value>Kein automatischer Neustart vor der Frist, Qualitätsupdates</value>
+  </data>
   <data name="No automatic restart with signed-in users" xml:space="preserve">
     <value>Kein automatischer Neustart, solange Benutzer angemeldet sind</value>
   </data>
@@ -4046,6 +4103,9 @@
   <data name="none (relay in your own network)" xml:space="preserve">
     <value>keine (Relay im eigenen Netz)</value>
   </data>
+  <data name="none except restart warnings" xml:space="preserve">
+    <value>keine außer Neustartwarnungen</value>
+  </data>
   <data name="None of the checked ports is open." xml:space="preserve">
     <value>Keiner der geprüften Ports ist offen.</value>
   </data>
@@ -4054,6 +4114,9 @@
   </data>
   <data name="None set up yet." xml:space="preserve">
     <value>Noch keins eingerichtet.</value>
+  </data>
+  <data name="none, not even restart warnings" xml:space="preserve">
+    <value>keine, auch keine Neustartwarnungen</value>
   </data>
   <data name="normal" xml:space="preserve">
     <value>normal</value>
@@ -4327,6 +4390,9 @@
   </data>
   <data name="Only copied to computers without .NET Framework 4.8 (Windows Server 2012 to 2016, early Windows 10 releases)." xml:space="preserve">
     <value>Wird nur auf Rechner ohne .NET Framework 4.8 kopiert (Windows Server 2012 bis 2016, frühe Windows-10-Stände).</value>
+  </data>
+  <data name="Only during active hours" xml:space="preserve">
+    <value>Nur während der Nutzungszeit</value>
   </data>
   <data name="Only for a certificate Windows does not trust (self-signed). The error message of a failed run shows the thumbprint of the certificate offered." xml:space="preserve">
     <value>Nur für ein Zertifikat, dem Windows nicht vertraut (selbst signiert). Die Fehlermeldung eines fehlgeschlagenen Laufs nennt den Fingerabdruck des angebotenen Zertifikats.</value>
@@ -4913,6 +4979,9 @@
   <data name="Preview" xml:space="preserve">
     <value>Vorschau</value>
   </data>
+  <data name="Preview builds" xml:space="preserve">
+    <value>Vorabversionen</value>
+  </data>
   <data name="Prices and rules" xml:space="preserve">
     <value>Preise und Regeln</value>
   </data>
@@ -5192,6 +5261,12 @@
   <data name="Reload" xml:space="preserve">
     <value>Neu laden</value>
   </data>
+  <data name="Reminder before the automatic restart (minutes)" xml:space="preserve">
+    <value>Erinnerung vor dem automatischen Neustart (Minuten)</value>
+  </data>
+  <data name="Reminders of the automatic restart" xml:space="preserve">
+    <value>Erinnerungen an den automatischen Neustart</value>
+  </data>
   <data name="Remote access" xml:space="preserve">
     <value>Fernzugriff</value>
   </data>
@@ -5254,6 +5329,9 @@
   </data>
   <data name="Remove" xml:space="preserve">
     <value>Entfernen</value>
+  </data>
+  <data name="Remove access to &quot;Pause updates&quot;" xml:space="preserve">
+    <value>Zugriff auf „Updates aussetzen“ entfernen</value>
   </data>
   <data name="Remove access to all Windows Update features" xml:space="preserve">
     <value>Zugriff auf alle Windows-Update-Funktionen entfernen</value>
@@ -5438,8 +5516,14 @@
   <data name="Restart pending" xml:space="preserve">
     <value>Neustart ausstehend</value>
   </data>
+  <data name="Restart reminder (hours before)" xml:space="preserve">
+    <value>Erinnerung an den Neustart (Stunden vorher)</value>
+  </data>
   <data name="Restart to apply the import" xml:space="preserve">
     <value>Neustart zum Einsetzen des Imports</value>
+  </data>
+  <data name="Restart warning (minutes before)" xml:space="preserve">
+    <value>Warnung vor dem Neustart (Minuten vorher)</value>
   </data>
   <data name="restarting" xml:space="preserve">
     <value>startet neu</value>
@@ -5737,6 +5821,9 @@
   </data>
   <data name="Schedule deleted" xml:space="preserve">
     <value>Zeitplan gelöscht</value>
+  </data>
+  <data name="Schedule of the restart warnings" xml:space="preserve">
+    <value>Zeitplan der Neustartwarnungen</value>
   </data>
   <data name="Schedule started manually" xml:space="preserve">
     <value>Zeitplan manuell gestartet</value>
@@ -7157,6 +7244,9 @@
   <data name="Try the other transport on delivery errors" xml:space="preserve">
     <value>Bei Zustellfehlern den anderen Transport versuchen</value>
   </data>
+  <data name="Turn off notifications about the automatic restart" xml:space="preserve">
+    <value>Benachrichtigungen zum automatischen Neustart ausschalten</value>
+  </data>
   <data name="Turn the features off instead of on" xml:space="preserve">
     <value>Die Features ausschalten statt einschalten</value>
   </data>
@@ -7279,6 +7369,12 @@
   </data>
   <data name="Update failed" xml:space="preserve">
     <value>Aktualisierung fehlgeschlagen</value>
+  </data>
+  <data name="Update notifications" xml:space="preserve">
+    <value>Update-Benachrichtigungen</value>
+  </data>
+  <data name="Update notifications shown" xml:space="preserve">
+    <value>Angezeigte Update-Benachrichtigungen</value>
   </data>
   <data name="Update now" xml:space="preserve">
     <value>Jetzt aktualisieren</value>
@@ -7561,6 +7657,9 @@
   </data>
   <data name="Wait (hours)" xml:space="preserve">
     <value>Wartezeit (Stunden)</value>
+  </data>
+  <data name="Wait after startup for a missed installation (minutes)" xml:space="preserve">
+    <value>Wartezeit nach dem Start für verpasste Installationen (Minuten)</value>
   </data>
   <data name="Wait for restart (minutes)" xml:space="preserve">
     <value>Wartezeit auf Neustart (Minuten)</value>
