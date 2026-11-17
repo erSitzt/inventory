@@ -20,8 +20,9 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
     };
 
     /// <summary>Liefert immer ein Ergebnis; Zustellfehler stehen in <see cref="JobResult.Error"/>.</summary>
+    /// <param name="credentialId">Diese Zugangsdaten statt der des Rechners (bzw. des Standards), z. B. für einen Remote-Befehl.</param>
     public Task<JobResult> RunAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress = null, CancellationToken ct = default,
-        IReadOnlyList<JobFile>? files = null) => RunCoreAsync(computerId, job, progress, ct, files, agentInstall: false);
+        IReadOnlyList<JobFile>? files = null, int? credentialId = null) => RunCoreAsync(computerId, job, progress, ct, files, agentInstall: false, credentialId);
 
     /// <summary>
     /// Installiert oder aktualisiert den Agenten. Das läuft immer agentenlos (der Agent kann sich nicht selbst ersetzen)
@@ -32,14 +33,14 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
         if (!job.InstallsAgent)
             throw new ArgumentException("Not an agent installation job.", nameof(job));
         // Jeder Rechner braucht eine eigene Job-ID.
-        return RunCoreAsync(computerId, new JobManifest { Steps = job.Manifest.Steps }, null, ct, job.Files, agentInstall: true);
+        return RunCoreAsync(computerId, new JobManifest { Steps = job.Manifest.Steps }, null, ct, job.Files, agentInstall: true, credentialId: null);
     }
 
     /// <summary>Was der Mac-Agent ausführen kann.</summary>
     public static readonly IReadOnlySet<StepType> MacSteps = new HashSet<StepType> { StepType.InventoryScan, StepType.Sleep, StepType.UninstallAgent };
 
     private async Task<JobResult> RunCoreAsync(int computerId, JobManifest job, IProgress<ProgressEvent>? progress, CancellationToken ct,
-        IReadOnlyList<JobFile>? files, bool agentInstall)
+        IReadOnlyList<JobFile>? files, bool agentInstall, int? credentialId)
     {
         try
         {
@@ -71,7 +72,11 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             if (job.Steps.Any(s => s.Type != StepType.InventoryScan) && await settings.GetVerifyTargetNameAsync(ct))
                 job.ExpectedComputerName = computer.ExpectedMachineName;
 
-            var credential = await credentials.ResolveAsync(computerId, ct);
+            var credential = credentialId is null ? await credentials.ResolveAsync(computerId, ct) : await credentials.GetAsync(credentialId, ct);
+            if (credentialId is not null && credential is null)
+                return JobResult.Failed(job.JobId, L["The chosen credentials no longer exist."]);
+            if (credential is null && JobSecrets.Needed(job))
+                return JobResult.Failed(job.JobId, L["Running as the credentials user needs credentials: choose some, store them on the computer or set default credentials."]);
             // Der Agent holt seine Jobs unter dem Namen des Eintrags ab; alle anderen Wege verbinden sich zum Rechner und brauchen einen Namen, der überall aufgelöst wird.
             RemoteTarget Target(IRemoteTransport via) => new(via.Kind == TransportKind.Agent ? computer.Name : computer.Address, credential);
             try
@@ -109,12 +114,20 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
 
     /// <summary>
     /// Über WinRM läuft der Runner in einer Netzwerkanmeldung ohne Zugang zur Sitzung des Benutzers: dort wird niemand
-    /// gefragt, das Paket startet ohne Hinweis. Gilt auch, wenn WinRM nur der Ausweichweg ist.
+    /// gefragt, das Paket startet ohne Hinweis. Und er läuft bereits als das Konto der Zugangsdaten, also gilt ein
+    /// solcher Schritt dort wie einer als „System“. Gilt auch, wenn WinRM nur der Ausweichweg ist.
     /// </summary>
-    private static JobManifest For(IRemoteTransport transport, JobManifest job)
+    internal static JobManifest For(IRemoteTransport transport, JobManifest job)
     {
-        if (transport.Kind == TransportKind.WinRm)
-            job.UserPrompt = null;
-        return job;
+        if (transport.Kind != TransportKind.WinRm)
+            return job;
+        job.UserPrompt = null;
+        if (!JobSecrets.Needed(job))
+            return job;
+        // Eine Kopie: Dasselbe Manifest kann noch an andere Rechner gehen, die über SMB oder den Agenten laufen.
+        var copy = JobJson.Deserialize<JobManifest>(JobJson.Serialize(job))!;
+        foreach (var step in copy.Steps.Where(s => s.RunAs == StepRunAs.CredentialsUser))
+            step.RunAs = StepRunAs.System;
+        return copy;
     }
 }

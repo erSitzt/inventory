@@ -45,7 +45,7 @@ public static class ComputerEndpoints
 
     public sealed record SoftwareDto(string Name, string? Version, string? Publisher, string? InstallDate, bool Is64Bit, bool PerUser, bool CarriedOver);
 
-    public sealed record RunRequest(StepType Type, string Script, int? TimeoutSeconds, StepRunAs RunAs = StepRunAs.System);
+    public sealed record RunRequest(StepType Type, string Script, int? TimeoutSeconds, StepRunAs RunAs = StepRunAs.System, int? CredentialId = null);
 
     public static IEndpointRouteBuilder MapComputerEndpoints(this IEndpointRouteBuilder app)
     {
@@ -236,17 +236,23 @@ public static class ComputerEndpoints
             return Results.File(System.Text.Encoding.ASCII.GetBytes(RemoteAccessLinks.RdpFile(computer.Address)), "application/x-rdp", $"{computer.Name}.rdp");
         }).RequireOperator().WithSummary("RDP file").WithDescription("Connection file for Remote Desktop Connection; the download is logged.").Produces(404);
 
-        group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, AuditService audit, HttpContext http, IStringLocalizer<SharedResource> L, CancellationToken ct) =>
+        group.MapPost("{id:int}/run", async (int id, RunRequest request, RemoteJobService jobs, CredentialService credentials, AuditService audit, HttpContext http,
+            IStringLocalizer<SharedResource> L, CancellationToken ct) =>
         {
             if (request.Type is not (StepType.Command or StepType.PowerShell))
                 return Results.Problem(L["Only Command and PowerShell can be run directly."], statusCode: StatusCodes.Status400BadRequest);
-            await audit.LogAsync(http.Actor(), L["Remote command via API ({0})", request.Type], $"{L["Computer"]} {id}: {request.Script}", ct);
+            var credential = request.CredentialId is { } credentialId ? (await credentials.ListAsync(ct)).FirstOrDefault(c => c.Id == credentialId) : null;
+            if (request.CredentialId is not null && credential is null)
+                return Results.Problem(L["The chosen credentials no longer exist."], statusCode: StatusCodes.Status400BadRequest);
+            await audit.LogAsync(http.Actor(), credential is null
+                ? L["Remote command via API ({0})", request.Type]
+                : L["Remote command via API ({0}, credentials {1})", request.Type, credential.Name], $"{L["Computer"]} {id}: {request.Script}", ct);
             var job = new JobManifest
             {
                 Steps = [new JobStep { Name = L["Command"], Type = request.Type, Script = request.Script, TimeoutSeconds = request.TimeoutSeconds ?? 600, RunAs = request.RunAs }],
             };
-            return Results.Ok(await jobs.RunAsync(id, job, null, ct));
-        }).RequireAdmin().WithSummary("Run command").WithDescription("Runs a command (Type = Command) or PowerShell script (Type = PowerShell) on the computer and waits for the result. RunAs: System (default) or LoggedOnUser. Logged.");
+            return Results.Ok(await jobs.RunAsync(id, job, null, ct, credentialId: request.CredentialId));
+        }).RequireAdmin().WithSummary("Run command").WithDescription("Runs a command (Type = Command) or PowerShell script (Type = PowerShell) on the computer and waits for the result. RunAs: System (default, Local System), CredentialsUser (the account of the credentials, with its profile and network access) or LoggedOnUser. CredentialId: credentials to reach the computer with (see /api/credentials), instead of the ones set on the computer or the default. Logged.");
 
         return app;
     }

@@ -527,6 +527,7 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     {
         StepRunAs.System => T("Local System"),
         StepRunAs.LoggedOnUser => T("Logged-on user"),
+        StepRunAs.CredentialsUser => T("Credentials user"),
         _ => runAs.ToString(),
     };
 

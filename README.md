@@ -368,9 +368,11 @@ have it.
 
 ![Remote command](docs/screenshots/en/run.png)
 
-A command (cmd or PowerShell) runs on several computers at once, as Local System or as the logged-on user, with live
-output per computer. Per computer the *Remote access* menu offers Remote Assistance, shadowing a session, Remote
-Desktop and TeamViewer/AnyDesk ([details](#remote-access)).
+A command (cmd or PowerShell) runs on several computers at once, as Local System, as the account of the credentials or
+as the logged-on user, with live output per computer. It reaches the computers with the credentials set on each of
+them, or with any stored ones chosen for this run ([as the credentials user](#account-for-agentless-access)). Per
+computer the *Remote access* menu offers Remote Assistance, shadowing a session, Remote Desktop and TeamViewer/AnyDesk
+([details](#remote-access)).
 
 ### Saved reports
 
@@ -485,12 +487,18 @@ the server reaches agentlessly, not to the server itself.
 | WinRM only: full language mode | PowerShell must not run in constrained language mode for this account on the target (AppLocker/WDAC), and the same applies to the server's service account on the server. |
 
 It needs **no** domain-wide rights: not *Domain Admins*, no rights on the server, no interactive or Remote Desktop
-logon, no logon as a service or batch job. Which identity runs a job depends on the transport:
+logon, no logon as a service or batch job (the latter only for remote commands as the credentials user, see below).
+Which identity runs a job depends on the transport:
 
 - **SMB + service**: the server uses the account only for the network access (`LOGON32_LOGON_NEW_CREDENTIALS` – copying
   to `ADMIN$`, service control). On the target the runner runs as Local System; steps set to *logged-on user* run in
   the session of the user who is signed in there, never as this account.
 - **WinRM**: PowerShell remoting logs on with the account, and the runner runs as this account in that remote session.
+- **Remote command as the credentials user**: the runner (as Local System, via SMB or the agent) logs the account on
+  itself as a batch job, like a scheduled task: with its profile and its own network access, e.g. to shares. User name
+  and password reach it encrypted with a key it creates for this job only; they never stand in the job folder or travel
+  over the network in clear text. The account needs the right *Log on as a batch job*, which administrators have by
+  default. Via WinRM the command runs as the account of the remote session, without access to shares.
 
 Either way the account never logs on interactively and never shows up as primary user (accounts stored as credentials
 are excluded anyway).
@@ -585,7 +593,7 @@ deployment is cancelled in the meantime, a continuation that already ran is not 
 | Enrollment | On first start the agent sends the enrollment secret and its host name to `POST /api/agent/enroll`. The server checks the secret, creates the computer if unknown (matching by short name, so an entry under its FQDN is reused), generates a random 256-bit key, stores only its SHA-256 hash and returns the key once. The agent keeps it in `agent.key` and never sends the secret again. |
 | Authentication | Every further request carries the header `X-Agent-Key: <key>`. The server looks the hash up; a key it does not know (computer deleted, "Agent" removed) returns 401, the agent deletes `agent.key` and enrolls again with the secret. |
 | Polling | `POST /api/agent/poll` is a long poll: the server holds the request for up to 50 s and answers `204` if no job came in; the agent asks again immediately. A job is therefore picked up within a second, with one open HTTP request per computer instead of a steady stream. Every poll updates "last contact"; the UI shows the agent as connected while the last contact is less than 5 minutes old. |
-| Running a job | The job manifest arrives with the poll answer; package files are fetched one by one (`GET /api/agent/jobs/{id}/files/{n}`) into a per-job folder below the agent folder. The same `JobExecutor` as in agentless mode runs the steps as Local System (or in the logged-on user's session for steps configured that way). Progress lines are posted every second (`POST …/progress`), the result at the end (`POST …/result`, up to 64 MB for large scans), then the job folder is deleted. |
+| Running a job | The job manifest arrives with the poll answer; package files are fetched one by one (`GET /api/agent/jobs/{id}/files/{n}`) into a per-job folder below the agent folder. The same `JobExecutor` as in agentless mode runs the steps as Local System (or in the logged-on user's session for steps configured that way). Progress lines are posted every second (`POST …/progress`); a step as the credentials user gets user name and password once per job, encrypted with the runner's key (`POST …/secret`); the result comes at the end (`POST …/result`, up to 64 MB for large scans), then the job folder is deleted. |
 | Timeouts | If no agent picks up a job within 2 minutes the server marks the target as unreachable (deployments with "retry offline" try again later). While a job runs, the server waits for the sum of the step timeouts plus a margin. |
 | Self-update | The poll request contains the hash of the installed runner files. If the server ships a different runner (after a server update), the answer is an update offer instead of a job: the agent downloads all files into a staging folder first, then swaps them (running files are renamed to `*.old`, cleaned up on the next start), writes the new hash and exits with code 3 – the service recovery restarts it with the new files within seconds. Queued jobs wait meanwhile. |
 | Errors | On any error (server unreachable, invalid answer) the agent logs to `agent.log` and retries after 30 s, indefinitely; the same error is logged at most once an hour. `agent.log` starts over at 1 MB, the previous one stays as `agent.log.1`. |

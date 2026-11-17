@@ -23,7 +23,7 @@ public sealed class AgentTransport(AgentHub hub, IStringLocalizer<SharedResource
 
     public async Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
     {
-        var pending = hub.Enqueue(target.Host, job, files, progress);
+        var pending = hub.Enqueue(target.Host, job, files, progress, target.Credential);
         try
         {
             try
