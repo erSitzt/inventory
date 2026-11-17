@@ -269,7 +269,9 @@ jobs:
           if ($wrong.success -or $wrong.steps[0].error -notmatch "Benutzername oder Passwort falsch") { throw "wrong password: $($wrong | ConvertTo-Json -Depth 4)" }
 
   # Let's Encrypt eingebaut: der ACME-Ablauf gegen Pebble, den Testserver von Let's Encrypt, mit dessen DNS-Testserver statt
-  # Azure DNS (den Zugriff auf Azure prüfen die Tests oben mit nachgebildeten Antworten).
+  # Azure DNS (den Zugriff auf Azure prüfen die Tests oben mit nachgebildeten Antworten). Pebble läuft mit seiner
+  # Standardkonfiguration, aber nur dem Profil "default" (90 Tage): Ohne angefordertes Profil wählt es sonst je Auftrag zufällig,
+  # auch "shortlived" (6 Tage), und die Erneuerung im Test wäre zum vorgestellten Zeitpunkt schon abgelaufen.
   acme:
     runs-on: ubuntu-latest
     steps:
@@ -282,13 +284,19 @@ jobs:
           docker network create acme
           docker run -d --name challtestsrv --network acme -p 8055:8055 ghcr.io/letsencrypt/pebble-challtestsrv:2.10.3 -defaultIPv6 "" -defaultIPv4 127.0.0.1
           docker run -d --name pebble --network acme -p 14000:14000 -e PEBBLE_VA_NOSLEEP=1 -e PEBBLE_WFE_NONCEREJECT=0 \
-            ghcr.io/letsencrypt/pebble:2.10.3 -dnsserver challtestsrv:8053
+            -v "$PWD/.github/pebble-config.json:/pebble-config.json:ro" \
+            ghcr.io/letsencrypt/pebble:2.10.3 -config /pebble-config.json -dnsserver challtestsrv:8053
           for i in $(seq 30); do curl -skf https://localhost:14000/dir >/dev/null && break; sleep 1; done
           curl -skf https://localhost:14000/dir
       - run: dotnet test tests/Inventory.Tests -c Release --filter "FullyQualifiedName~AcmeTests"
         env:
           INVENTORY_ACME_DIRECTORY: https://localhost:14000/dir
           INVENTORY_CHALLTESTSRV: http://localhost:8055
+      - name: Logs of Pebble and its DNS test server
+        if: failure()
+        run: |
+          docker logs pebble 2>&1 | tail -n 150
+          docker logs challtestsrv 2>&1 | tail -n 80
 
   # Der Mac-Agent auf einem echten Mac (GitHub-Runner, Apple Silicon): als root wie im Betrieb, und das Inventar muss die
   # wichtigsten Bereiche enthalten. Die Parser selbst prüfen die Tests oben mit aufgezeichneten Ausgaben.

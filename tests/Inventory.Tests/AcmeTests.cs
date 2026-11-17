@@ -15,7 +15,8 @@ namespace Inventory.Tests;
 
 /// <summary>
 /// Let's Encrypt über die DNS-Prüfung. Der ACME-Ablauf läuft gegen Pebble, den Testserver von Let's Encrypt, mit dessen
-/// DNS-Testserver statt Azure (in der CI als Container, lokal mit denselben Umgebungsvariablen). Azure DNS prüft ein
+/// DNS-Testserver statt Azure (in der CI als Container, lokal mit denselben Umgebungsvariablen und Pebble mit
+/// <c>.github/pebble-config.json</c>: nur ein Profil, sonst wählt Pebble die Laufzeit je Auftrag zufällig). Azure DNS prüft ein
 /// nachgebildeter HTTP-Handler; gegen Azure selbst läuft kein Test.
 /// </summary>
 public sealed class AcmeTests
@@ -118,7 +119,8 @@ public sealed class AcmeTests
             var notAfter = new DateTimeOffset(issued.NotAfter.ToUniversalTime());
             clock.Now = notAfter - (issued.NotAfter - issued.NotBefore) / 3 + TimeSpan.FromDays(1);
             await acme.RenewIfDueAsync();
-            Assert.NotEqual(issued.Thumbprint, certificates.Certificate!.Thumbprint);
+            // Ohne neues Zertifikat steht der Grund im letzten Ergebnis; das gehört in die Meldung des Tests.
+            Assert.True(issued.Thumbprint != certificates.Certificate!.Thumbprint, $"Not renewed: {(await acme.LastAsync()).Result}");
             Assert.Equal(ServerCertificateSource.Acme, certificates.Source);
         }
         finally
