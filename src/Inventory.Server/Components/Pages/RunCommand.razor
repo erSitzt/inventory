@@ -3,6 +3,7 @@
 @implements IDisposable
 @inject ComputerService ComputerService
 @inject CredentialService CredentialService
+@inject CollectionService CollectionService
 @inject RemoteJobService Jobs
 @inject Auditor Audit
 @inject Display Display
@@ -16,14 +17,14 @@
     <MudItem xs="12" md="5">
         <MudPaper Class="pa-4" Outlined="true">
             <MudStack Spacing="3">
-                <MudSelect T="Computer" MultiSelection="true" @bind-SelectedValues="_targets" Label="@L["Target computers"]" Variant="Variant.Outlined"
-                           ToStringFunc="@(c => c?.Name ?? "")" MultiSelectionTextFunc="@(names => L["{0} computers selected", names.Count])" SelectAll="true"
-                           SelectAllText="@L["Select all"]" Disabled="_running">
-                    @foreach (var computer in _computers)
+                <MudSelect T="int?" Value="_collectionId" ValueChanged="SelectCollectionAsync" Label="@L["Take over collection"]" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Clearable="true" Placeholder="@L["none"]" HelperText="@L["Selects all computers of the collection (as of now)."]" Disabled="_running">
+                    @foreach (var summary in _collections)
                     {
-                        <MudSelectItem T="Computer" Value="computer">@computer.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@summary.Collection.Id">@summary.Collection.Name (@summary.Count)</MudSelectItem>
                     }
                 </MudSelect>
+                <ComputerChecklist Computers="_computers" @bind-Selected="_selected" Suggested="_suggested" Disabled="_running" />
                 <MudRadioGroup T="StepType" @bind-Value="_type" Disabled="_running">
                     <MudRadio T="StepType" Value="StepType.Command">@L["Command prompt (cmd)"]</MudRadio>
                     <MudRadio T="StepType" Value="StepType.PowerShell">PowerShell</MudRadio>
@@ -137,8 +138,12 @@
     [SupplyParameterFromQuery(Name = "ids")] public string? Ids { get; set; }
 
     private List<Computer> _computers = [];
-    private IEnumerable<Computer> _targetsValue = [];
-    private IReadOnlyCollection<Computer> _targets = [];
+    private List<CollectionSummary> _collections = [];
+    private int? _collectionId;
+    /// <summary>Die in der Rechnerliste markierten Rechner; ohne "Alle Rechner zeigen" stehen nur sie in der Checkliste.</summary>
+    private HashSet<int> _suggested = [];
+    private HashSet<int> _selected = [];
+    private List<Computer> _targets => [.. _computers.Where(c => _selected.Contains(c.Id))];
     private StepType _type = StepType.Command;
     private StepRunAs _runAs = StepRunAs.System;
     private List<Credential> _credentials = [];
@@ -153,9 +158,20 @@
     protected override async Task OnInitializedAsync()
     {
         _computers = await ComputerService.ListAsync();
+        _collections = await CollectionService.ListAsync();
         _credentials = await CredentialService.ListAsync();
         var ids = (Ids ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => int.TryParse(s, out var id) ? id : 0).ToHashSet();
-        _targets = _computers.Where(c => ids.Contains(c.Id)).ToList();
+        _suggested = [.. _computers.Where(c => ids.Contains(c.Id)).Select(c => c.Id)];
+        _selected = [.. _suggested];
+    }
+
+    private async Task SelectCollectionAsync(int? id)
+    {
+        _collectionId = id;
+        if (id is null)
+            return;
+        var members = await CollectionService.GetMemberIdsAsync(id.Value);
+        _selected = [.. _computers.Where(c => members.Contains(c.Id)).Select(c => c.Id)];
     }
 
     private async Task RunAsync()

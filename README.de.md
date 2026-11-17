@@ -381,8 +381,9 @@ später hinzukommende Rechner folgen von selbst, und der Zeitplan zeigt, wie vie
 ![Remote-Befehl](docs/screenshots/de/run.png)
 
 Ein Befehl (cmd oder PowerShell) läuft auf mehreren Rechnern zugleich, als Lokales System, als Konto der Zugangsdaten
-oder als angemeldeter Benutzer, mit Live-Ausgabe je Rechner. Er erreicht die Rechner mit den dort eingetragenen
-Zugangsdaten oder mit beliebigen hinterlegten, die für diesen Lauf gewählt werden ([als Konto der
+oder als angemeldeter Benutzer, mit Live-Ausgabe je Rechner. Die Rechner werden in einer durchsuchbaren Liste angehakt
+oder aus einer Sammlung übernommen; eine Auswahl in der Rechnerliste kommt mit. Er erreicht die Rechner mit den dort
+eingetragenen Zugangsdaten oder mit beliebigen hinterlegten, die für diesen Lauf gewählt werden ([als Konto der
 Zugangsdaten](#konto-für-den-agentenlosen-zugriff)). Je Rechner bietet das Menü *Fernzugriff* Remoteunterstützung, das
 Spiegeln einer Sitzung, Remotedesktop und TeamViewer/AnyDesk ([Details](#fernzugriff)).
 

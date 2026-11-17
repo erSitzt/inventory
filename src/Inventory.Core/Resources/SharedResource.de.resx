@@ -6569,9 +6569,6 @@
   <data name="Target" xml:space="preserve">
     <value>Ziel</value>
   </data>
-  <data name="Target computers" xml:space="preserve">
-    <value>Zielrechner</value>
-  </data>
   <data name="Target computers ({0} of {1} selected)" xml:space="preserve">
     <value>Zielrechner ({0} von {1} ausgewählt)</value>
   </data>
@@ -8254,9 +8251,6 @@
   </data>
   <data name="{0} computers scanned." xml:space="preserve">
     <value>{0} Rechner gescannt.</value>
-  </data>
-  <data name="{0} computers selected" xml:space="preserve">
-    <value>{0} Rechner ausgewählt</value>
   </data>
   <data name="{0} computers succeeded" xml:space="preserve">
     <value>{0} Rechner erfolgreich</value>
