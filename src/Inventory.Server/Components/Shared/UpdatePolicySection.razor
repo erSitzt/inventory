@@ -66,7 +66,7 @@
                                     var differs = !string.Equals(value, setting.Value, StringComparison.OrdinalIgnoreCase);
                                     <MudTooltip Text="@(differs ? L["Overruled: this GPO sets a different value."] : L["Also set with the same value by this GPO."])">
                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(differs ? Color.Warning : Color.Default)">
-                                            @L["also {0}: {1}", gpo, UpdatePolicies.Display(setting.Name, value, UpdatePolicies.IsMdm(setting), L) ?? "–"]
+                                            @L["also {0}: {1}", gpo, UpdatePolicies.Display(setting.Name, value, UpdatePolicies.IsMdm(setting), L) is { Length: > 0 } shown ? shown : "–"]
                                         </MudChip>
                                     </MudTooltip>
                                 }

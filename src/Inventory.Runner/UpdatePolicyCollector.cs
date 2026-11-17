@@ -103,31 +103,21 @@ namespace Inventory.Runner
             }
 
             // Ohne WHERE: LIKE mit Backslashes ist in WQL fehleranfällig, und die Liste ist überschaubar.
-            var rows = Query("SELECT registryKey, valueName, valueType, value, GPOID, precedence FROM RSOP_RegistryPolicySetting")
-                .Select(o => new
+            var entries = Query("SELECT registryKey, valueName, valueType, value, deleted, GPOID, precedence FROM RSOP_RegistryPolicySetting")
+                .Select(o => new RsopEntry
                 {
                     Key = UpdatePolicyKeys.FromPolicyPath(Text(o, "registryKey")),
                     Name = Text(o, "valueName"),
                     Value = RsopValues.Decode(o["value"] as byte[], Convert.ToUInt32(o["valueType"] ?? 0u)),
-                    Gpo = Text(o, "GPOID") is string id ? (gpos.TryGetValue(id, out var name) ? name : id) : null,
+                    Deleted = o["deleted"] is bool deleted && deleted,
+                    GpoId = Text(o, "GPOID"),
                     Precedence = Convert.ToInt32(o["precedence"] ?? 0),
                 })
-                // "**del.Name" und Ähnliches: Die GPO löscht einen Wert, statt ihn zu setzen.
-                .Where(r => r.Key != null && r.Name != null && !r.Name.StartsWith("**", StringComparison.Ordinal) && r.Gpo != null)
                 .ToList();
 
             info.RsopRead = true;
             info.Groups = groups;
-            foreach (var setting in info.Settings.Where(s => s.Source == UpdatePolicySources.Registry))
-            {
-                var matches = rows.Where(r => r.Key == setting.Key && string.Equals(r.Name, setting.Name, StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(r => r.Precedence).ToList();
-                if (matches.Count == 0)
-                    continue;
-                setting.Source = UpdatePolicySources.Gpo;
-                setting.Gpo = matches[0].Gpo;
-                setting.AlsoSetBy = matches.Skip(1).Select(m => new UpdatePolicyOverride { Gpo = m.Gpo!, Value = m.Value }).ToList();
-            }
+            RsopOrigins.Assign(info.Settings, entries, gpos);
         }
 
         /// <summary>Nur Domänengruppen (und Gruppen des eigenen Computers); Jeder, Authentifizierte Benutzer usw. sagen nichts.</summary>

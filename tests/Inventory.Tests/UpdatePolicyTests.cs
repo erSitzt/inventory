@@ -84,6 +84,66 @@ public sealed class UpdatePolicyTests : IDisposable
     public void Rsop_registry_keys_map_to_the_policy_keys(string? path, string? expected) => Assert.Equal(expected, UpdatePolicyKeys.FromPolicyPath(path));
 
     [Fact]
+    public void Rsop_origins_ignore_deletions_and_a_gpo_that_names_a_value_twice()
+    {
+        UpdatePolicySetting Value(string key, string name, string value) => new() { Key = key, Name = name, Value = value };
+        RsopEntry Entry(string name, string gpo, string? value, int precedence, bool deleted = false, string key = UpdatePolicyKeys.AutoUpdate) =>
+            new() { Key = key, Name = name, GpoId = gpo, Value = value, Precedence = precedence, Deleted = deleted };
+        var first = Value(UpdatePolicyKeys.AutoUpdate, "ScheduledInstallFirstWeek", "0");
+        var second = Value(UpdatePolicyKeys.AutoUpdate, "ScheduledInstallSecondWeek", "0");
+        var options = Value(UpdatePolicyKeys.AutoUpdate, "AUOptions", "4");
+        var time = Value(UpdatePolicyKeys.AutoUpdate, "ScheduledInstallTime", "3");
+        var day = Value(UpdatePolicyKeys.AutoUpdate, "ScheduledInstallDay", "1");
+        var target = Value(UpdatePolicyKeys.WindowsUpdate, "TargetGroup", "Servers-A");
+        var intune = new UpdatePolicySetting { Source = UpdatePolicySources.Mdm, Key = UpdatePolicyKeys.Mdm, Name = "AUOptions", Value = "4" };
+        var gpos = new Dictionary<string, string> { ["{A}"] = "Weekly Mo 02:00", ["{B}"] = "Ring A", ["{C}"] = "Ring B", ["{D}"] = "Same name", ["{E}"] = "Same name" };
+
+        RsopOrigins.Assign([first, second, options, time, day, target, intune],
+        [
+            // Wie auf einem Server gesehen: Die GPO löscht den Wert und setzt ihn danach; das ist kein Konflikt mit sich selbst.
+            Entry("ScheduledInstallFirstWeek", "{A}", "0", 1), Entry("ScheduledInstallFirstWeek", "{A}", "", 2, deleted: true),
+            // Dieselbe GPO zweimal, auch ohne Löschkennzeichen und in anderer Schreibweise der ID.
+            Entry("ScheduledInstallSecondWeek", "{A}", "0", 1), Entry("ScheduledInstallSecondWeek", "{a}", "", 2),
+            // Überstimmt ist jede andere GPO einmal, mit ihrem stärksten Eintrag; ihre Löschung zählt nicht.
+            Entry("AUOptions", "{B}", "4", 1), Entry("AUOptions", "{C}", "3", 2), Entry("AUOptions", "{C}", "2", 3), Entry("AUOptions", "{D}", "", 4, deleted: true),
+            // Zwei GPOs mit gleichem Namen sind zwei GPOs.
+            Entry("ScheduledInstallTime", "{D}", "3", 1), Entry("ScheduledInstallTime", "{E}", "5", 2),
+            // "**del.": eine Löschung im alten Format; ein anderer Schlüssel gehört nicht dazu.
+            Entry("**del.ScheduledInstallDay", "{B}", "", 1), Entry("ScheduledInstallDay", "{B}", "1", 1, key: null!),
+            // Eine GPO, die RSOP_GPO nicht kennt, erscheint mit ihrer ID.
+            Entry("TargetGroup", "{F}", "Servers-A", 1, key: UpdatePolicyKeys.WindowsUpdate),
+        ], gpos);
+
+        Assert.Equal((UpdatePolicySources.Gpo, "Weekly Mo 02:00"), (first.Source, first.Gpo));
+        Assert.Empty(first.AlsoSetBy);
+        Assert.Equal("Weekly Mo 02:00", second.Gpo);
+        Assert.Empty(second.AlsoSetBy);
+        Assert.Equal("Ring A", options.Gpo);
+        Assert.Equal([("Ring B", "3")], options.AlsoSetBy.Select(o => (o.Gpo, o.Value)));
+        Assert.Equal("Same name", time.Gpo);
+        Assert.Equal([("Same name", "5")], time.AlsoSetBy.Select(o => (o.Gpo, o.Value)));
+        Assert.Equal((UpdatePolicySources.Registry, null), (day.Source, day.Gpo));
+        Assert.Equal("{F}", target.Gpo);
+        Assert.Equal((UpdatePolicySources.Mdm, null), (intune.Source, intune.Gpo));
+    }
+
+    [Fact]
+    public void Restart_settings_have_their_own_labels()
+    {
+        ComputerUpdatePolicySetting Gpo(string name, string value) =>
+            new() { Source = UpdatePolicySources.Gpo, Key = UpdatePolicyKeys.WindowsUpdate, Name = name, Value = value, Gpo = "Weekly" };
+        // Schalter und Wert einer Richtlinie heißen verschieden.
+        Assert.NotEqual(UpdatePolicies.Label(Gpo("RebootRelaunchTimeoutEnabled", "1"), L), UpdatePolicies.Label(Gpo("RebootRelaunchTimeout", "1440"), L));
+        Assert.NotEqual(UpdatePolicies.Label(Gpo("RebootWarningTimeoutEnabled", "1"), L), UpdatePolicies.Label(Gpo("RebootWarningTimeout", "15"), L));
+        Assert.Equal(("Reminders of the automatic restart", "yes"),
+            (UpdatePolicies.Label(Gpo("SetAutoRestartNotificationConfig", "1"), L), UpdatePolicies.Display(Gpo("SetAutoRestartNotificationConfig", "1"), L)));
+        Assert.Equal(("Reminder before the automatic restart (minutes)", "15"),
+            (UpdatePolicies.Label(Gpo("AutoRestartNotificationSchedule", "15"), L), UpdatePolicies.Display(Gpo("AutoRestartNotificationSchedule", "15"), L)));
+        Assert.Equal("by the user", UpdatePolicies.Display(Gpo("AutoRestartRequiredNotificationDismissal", "2"), L));
+        Assert.Equal("none except restart warnings", UpdatePolicies.Display(Gpo("UpdateNotificationLevel", "1"), L));
+    }
+
+    [Fact]
     public void The_summary_reads_source_schedule_target_group_and_conflicts()
     {
         var settings = Entities(Scan("3", null));

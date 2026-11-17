@@ -82,22 +82,29 @@ jobs:
           Distro "6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f61" "Inventory-CI-UNC" "\\?\UNC\localhost\C$\wsl-ci-remote"
           Distro "6f1d2b9e-5a51-4c1e-9d7e-1b2c3d4e5f62" "Inventory-CI-Link" "C:\wsl-ci\link"
       # Windows-Update-Richtlinie über die lokale Gruppenrichtlinie (Registry.pol im PReg-Format, wie gpedit sie schreibt), damit
-      # RSoP eine GPO dazu kennt; dazu ein Wert ohne GPO, wie ihn ein Skript setzen würde.
+      # RSoP eine GPO dazu kennt; dazu ein Wert ohne GPO, wie ihn ein Skript setzen würde. Einen Wert löscht die GPO erst und
+      # setzt ihn dann, wie auf Servern gesehen: Das darf nicht als Konflikt der GPO mit sich selbst erscheinen.
       - name: Windows Update policy from the local Group Policy
         shell: pwsh
         run: |
           $unicode = [Text.Encoding]::Unicode
           $pol = [Collections.Generic.List[byte]]::new()
           $pol.AddRange([byte[]](0x50, 0x52, 0x65, 0x67, 1, 0, 0, 0))
-          foreach ($entry in @(("AUOptions", 4), ("ScheduledInstallDay", 1), ("ScheduledInstallTime", 3))) {
-            $pol.AddRange($unicode.GetBytes("[Software\Policies\Microsoft\Windows\WindowsUpdate\AU`0;$($entry[0])`0;"))
-            $pol.AddRange([BitConverter]::GetBytes([uint32]4))
+          function Entry([string]$name, [uint32]$type, [byte[]]$data) {
+            $pol.AddRange($unicode.GetBytes("[Software\Policies\Microsoft\Windows\WindowsUpdate\AU`0;$name`0;"))
+            $pol.AddRange([BitConverter]::GetBytes($type))
             $pol.AddRange($unicode.GetBytes(";"))
-            $pol.AddRange([BitConverter]::GetBytes([uint32]4))
+            $pol.AddRange([BitConverter]::GetBytes([uint32]$data.Length))
             $pol.AddRange($unicode.GetBytes(";"))
-            $pol.AddRange([BitConverter]::GetBytes([uint32]$entry[1]))
+            $pol.AddRange($data)
             $pol.AddRange($unicode.GetBytes("]"))
           }
+          function Dword([string]$name, [uint32]$value) { Entry $name 4 ([BitConverter]::GetBytes($value)) }
+          Dword AUOptions 4
+          Dword ScheduledInstallDay 1
+          Dword ScheduledInstallTime 3
+          Entry "**del.ScheduledInstallFirstWeek" 1 ($unicode.GetBytes(" `0"))
+          Dword ScheduledInstallFirstWeek 0
           $gp = "$env:windir\System32\GroupPolicy"
           New-Item -ItemType Directory "$gp\Machine" -Force | Out-Null
           [IO.File]::WriteAllBytes("$gp\Machine\Registry.pol", $pol.ToArray())
@@ -106,6 +113,10 @@ jobs:
           $key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
           Get-ItemProperty "$key\AU" -ErrorAction SilentlyContinue | Format-List
           if ((Get-ItemProperty "$key\AU" -ErrorAction SilentlyContinue).AUOptions -ne 4) { throw "the local Group Policy was not applied" }
+          # Was RSoP dazu festhält, zur Diagnose.
+          Get-CimInstance -Namespace root\rsop\computer -ClassName RSOP_RegistryPolicySetting | Where-Object registryKey -like "*WindowsUpdate*" |
+            Format-Table valueName, precedence, deleted, command, GPOID, valueType, @{ n = "value"; e = { [BitConverter]::ToString([byte[]]$_.value) } } -AutoSize |
+            Out-String -Width 250
           # Nicht New-Item -Force: Das legt einen vorhandenen Schlüssel neu an und löscht dabei AU samt Werten.
           if (-not (Test-Path $key)) { New-Item $key | Out-Null }
           New-ItemProperty $key -Name TargetGroup -Value "Inventory-CI" -Force | Out-Null
@@ -167,9 +178,10 @@ jobs:
           if (-not $policy.rsopRead) { throw "RSoP not read" }
           if (-not $policy.groupPolicyAppliedUtc) { throw "no time of the last Group Policy run" }
           if ($null -eq $policy.groups) { throw "groups not read" }
-          foreach ($expected in @(("AUOptions", "4"), ("ScheduledInstallDay", "1"), ("ScheduledInstallTime", "3"))) {
+          foreach ($expected in @(("AUOptions", "4"), ("ScheduledInstallDay", "1"), ("ScheduledInstallTime", "3"), ("ScheduledInstallFirstWeek", "0"))) {
             $setting = @($policy.settings | Where-Object name -eq $expected[0])
-            if ($setting.Count -ne 1 -or $setting[0].value -ne $expected[1] -or $setting[0].key -ne "AU" -or $setting[0].source -ne "gpo" -or -not $setting[0].gpo) {
+            if ($setting.Count -ne 1 -or $setting[0].value -ne $expected[1] -or $setting[0].key -ne "AU" -or $setting[0].source -ne "gpo" -or -not $setting[0].gpo -or
+                ($setting[0].alsoSetBy | Where-Object { $_ })) {
               throw "$($expected[0]): $($setting | ConvertTo-Json -Depth 3)"
             }
           }
