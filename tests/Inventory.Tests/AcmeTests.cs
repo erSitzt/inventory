@@ -118,7 +118,8 @@ public sealed class AcmeTests
             var notAfter = new DateTimeOffset(issued.NotAfter.ToUniversalTime());
             clock.Now = notAfter - (issued.NotAfter - issued.NotBefore) / 3 + TimeSpan.FromDays(1);
             await acme.RenewIfDueAsync();
-            Assert.NotEqual(issued.Thumbprint, certificates.Certificate!.Thumbprint);
+            // Ohne neues Zertifikat steht der Grund im letzten Ergebnis; das gehört in die Meldung des Tests.
+            Assert.True(issued.Thumbprint != certificates.Certificate!.Thumbprint, $"Not renewed: {(await acme.LastAsync()).Result}");
             Assert.Equal(ServerCertificateSource.Acme, certificates.Source);
         }
         finally

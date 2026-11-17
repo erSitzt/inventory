@@ -285,10 +285,21 @@ jobs:
             ghcr.io/letsencrypt/pebble:2.10.3 -dnsserver challtestsrv:8053
           for i in $(seq 30); do curl -skf https://localhost:14000/dir >/dev/null && break; sleep 1; done
           curl -skf https://localhost:14000/dir
-      - run: dotnet test tests/Inventory.Tests -c Release --filter "FullyQualifiedName~AcmeTests"
+      - run: |
+          dotnet build tests/Inventory.Tests -c Release -v q
+          for i in $(seq 40); do
+            echo "::group::run $i"
+            dotnet test tests/Inventory.Tests -c Release --no-build --filter "FullyQualifiedName~AcmeTests" || { echo "::endgroup::"; echo "FAILED in run $i"; exit 1; }
+            echo "::endgroup::"
+          done
         env:
           INVENTORY_ACME_DIRECTORY: https://localhost:14000/dir
           INVENTORY_CHALLTESTSRV: http://localhost:8055
+      - name: Logs of Pebble and its DNS test server
+        if: failure()
+        run: |
+          docker logs pebble 2>&1 | tail -n 150
+          docker logs challtestsrv 2>&1 | tail -n 80
 
   # Der Mac-Agent auf einem echten Mac (GitHub-Runner, Apple Silicon): als root wie im Betrieb, und das Inventar muss die
   # wichtigsten Bereiche enthalten. Die Parser selbst prüfen die Tests oben mit aufgezeichneten Ausgaben.
