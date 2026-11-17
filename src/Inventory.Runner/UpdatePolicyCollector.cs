@@ -34,7 +34,7 @@ namespace Inventory.Runner
             }
             try
             {
-                ReadRsop(info);
+                ReadRsop(info, warnings);
             }
             catch (Exception ex) when (ex is ManagementException || ex is UnauthorizedAccessException || ex is COMException)
             {
@@ -80,15 +80,20 @@ namespace Inventory.Runner
 
         /// <summary>
         /// RSoP hält zu jedem Wert einer administrativen Vorlage alle GPOs fest, die ihn setzen; Rang 1 gewinnt. Ohne Sitzung
-        /// (RSoP-Protokollierung abgeschaltet) bleibt die Herkunft offen.
+        /// (RSoP-Protokollierung abgeschaltet) bleibt die Herkunft offen. Erst wenn alle Abfragen gelungen sind, gilt RSoP als
+        /// gelesen: Sonst übernähme der Server die bisherigen GPOs nicht und meldete jeden Wert als geändert.
         /// </summary>
-        private static void ReadRsop(UpdatePolicyInfo info)
+        private static void ReadRsop(UpdatePolicyInfo info, List<string> warnings)
         {
             var sessions = Query("SELECT SecurityGroups FROM RSOP_Session");
             if (sessions.Count == 0)
+            {
+                // Nur erwähnenswert, wenn es Werte gibt, deren Herkunft damit offen bleibt.
+                if (info.Settings.Any(s => s.Source == UpdatePolicySources.Registry))
+                    warnings.Add("Update-Richtlinie (RSoP): keine Sitzung gefunden (Protokollierung abgeschaltet?), Herkunft der Werte unbekannt");
                 return;
-            info.RsopRead = true;
-            info.Groups = Groups(sessions[0]["SecurityGroups"] as string[]);
+            }
+            var groups = Groups(sessions[0]["SecurityGroups"] as string[]);
 
             var gpos = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var gpo in Query("SELECT id, name FROM RSOP_GPO"))
@@ -111,6 +116,8 @@ namespace Inventory.Runner
                 .Where(r => r.Key != null && r.Name != null && !r.Name.StartsWith("**", StringComparison.Ordinal) && r.Gpo != null)
                 .ToList();
 
+            info.RsopRead = true;
+            info.Groups = groups;
             foreach (var setting in info.Settings.Where(s => s.Source == UpdatePolicySources.Registry))
             {
                 var matches = rows.Where(r => r.Key == setting.Key && string.Equals(r.Name, setting.Name, StringComparison.OrdinalIgnoreCase))

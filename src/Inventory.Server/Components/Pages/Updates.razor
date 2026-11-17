@@ -167,19 +167,23 @@
                             </ChildContent>
                         </MudExpansionPanel>
                     }
-                    @if (_policies.NotCaptured.Count > 0 && _policies.NotCaptured.Any(c => Matches(c.Name)))
+                    @{
+                        // Keine Richtlinie, nach der sich gruppieren ließe: Hier filtert die Suche die Rechner selbst.
+                        var notCaptured = _policies.NotCaptured.Where(c => Matches(c.Name)).ToList();
+                    }
+                    @if (notCaptured.Count > 0)
                     {
                         <MudExpansionPanel>
                             <TitleContent>
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
                                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary">@L["Not captured yet"]</MudText>
-                                    <MudChip T="string" Size="Size.Small">@L["{0} computers", _policies.NotCaptured.Count]</MudChip>
+                                    <MudChip T="string" Size="Size.Small">@L["{0} computers", notCaptured.Count]</MudChip>
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not scanned since the update of Inventory, or not reachable."]</MudText>
                                 </MudStack>
                             </TitleContent>
                             <ChildContent>
                                 <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                                    @foreach (var computer in _policies.NotCaptured)
+                                    @foreach (var computer in notCaptured)
                                     {
                                         <MudChip T="string" Size="Size.Small" Href="@($"computers/{computer.Id}")">@computer.Name</MudChip>
                                     }
