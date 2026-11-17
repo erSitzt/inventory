@@ -5,8 +5,8 @@
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
         <MudText Typo="Typo.subtitle2" Class="ml-1">@L["Target computers ({0} of {1} selected)", Selected.Count, Computers.Count]</MudText>
         <MudSpacer />
-        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckBox" OnClick="SelectAllAsync">@L["Select all"]</MudButton>
-        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckBoxOutlineBlank" OnClick="SelectNoneAsync">@L["Select none"]</MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckBox" OnClick="SelectAllAsync" Disabled="Disabled">@L["Select all"]</MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckBoxOutlineBlank" OnClick="SelectNoneAsync" Disabled="Disabled">@L["Select none"]</MudButton>
     </MudStack>
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap" Class="px-1">
         <MudTextField @bind-Value="_search" Placeholder="@L["Search"]" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
@@ -19,7 +19,7 @@
     <div style="max-height: 280px; overflow-y: auto" class="mt-1">
         @foreach (var computer in Visible)
         {
-            <MudCheckBox T="bool" Value="@Selected.Contains(computer.Id)" ValueChanged="@(on => ToggleAsync(computer.Id, on))" Dense="true" Size="Size.Small">
+            <MudCheckBox T="bool" Value="@Selected.Contains(computer.Id)" ValueChanged="@(on => ToggleAsync(computer.Id, on))" Dense="true" Size="Size.Small" Disabled="Disabled">
                 @computer.Name
                 @if (!computer.IsOnline)
                 {
@@ -40,6 +40,8 @@
     [Parameter] public EventCallback<HashSet<int>> SelectedChanged { get; set; }
     /// <summary>Die vorgeschlagenen Rechner (z. B. die Auswahl der Liste); ohne "Alle Rechner zeigen" stehen nur sie in der Liste.</summary>
     [Parameter] public IReadOnlyCollection<int> Suggested { get; set; } = [];
+    /// <summary>Häkchen und Schaltflächen gesperrt, z. B. solange ein Befehl läuft; suchen geht weiter.</summary>
+    [Parameter] public bool Disabled { get; set; }
 
     private string? _search;
     private bool _showAll;

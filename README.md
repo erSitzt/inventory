@@ -369,7 +369,8 @@ have it.
 ![Remote command](docs/screenshots/en/run.png)
 
 A command (cmd or PowerShell) runs on several computers at once, as Local System, as the account of the credentials or
-as the logged-on user, with live output per computer. It reaches the computers with the credentials set on each of
+as the logged-on user, with live output per computer. The computers are ticked in a searchable list or taken over from a
+collection; a selection in the computer list comes along. It reaches the computers with the credentials set on each of
 them, or with any stored ones chosen for this run ([as the credentials user](#account-for-agentless-access)). Per
 computer the *Remote access* menu offers Remote Assistance, shadowing a session, Remote Desktop and TeamViewer/AnyDesk
 ([details](#remote-access)).
