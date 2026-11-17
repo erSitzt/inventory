@@ -104,10 +104,12 @@ jobs:
           Set-Content "$gp\gpt.ini" "[General]`r`ngPCMachineExtensionNames=[{35378EAC-683F-11D2-A89A-00C04FBBCFA2}{D02B1F72-3407-48AE-BA88-E8213C6761F1}]`r`nVersion=1" -Encoding ascii
           gpupdate /target:computer /force
           $key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
-          New-Item $key -Force | Out-Null
+          Get-ItemProperty "$key\AU" -ErrorAction SilentlyContinue | Format-List
+          if ((Get-ItemProperty "$key\AU" -ErrorAction SilentlyContinue).AUOptions -ne 4) { throw "the local Group Policy was not applied" }
+          # Nicht New-Item -Force: Das legt einen vorhandenen Schlüssel neu an und löscht dabei AU samt Werten.
+          if (-not (Test-Path $key)) { New-Item $key | Out-Null }
           New-ItemProperty $key -Name TargetGroup -Value "Inventory-CI" -Force | Out-Null
-          Get-ItemProperty "$key\AU" | Format-List
-          if ((Get-ItemProperty "$key\AU").AUOptions -ne 4) { throw "the local Group Policy was not applied" }
+          if ((Get-ItemProperty "$key\AU").AUOptions -ne 4) { throw "the policy values are gone" }
       - name: Collect the inventory
         shell: pwsh
         run: |
