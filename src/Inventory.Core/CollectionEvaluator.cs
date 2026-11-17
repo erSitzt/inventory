@@ -113,6 +113,11 @@ public static class CollectionEvaluator
         RuleField.WslInstalled => Known(rule, computer.WslInstalled),
         RuleField.WslDaysSinceUse => Number(rule, WslDistros.DaysSinceUse(computer.WslDistros, DateTime.UtcNow)),
         RuleField.WslDistro => computer.WslScanUtc is not null && AnyOrNone(rule, computer.WslDistros.Select(d => d.Name)),
+        // Wie bei den Windows-Features: Ohne erfasste Richtlinie passt auch keine verneinte Regel.
+        RuleField.UpdateGpo => computer.UpdatePolicyScanUtc is not null && AnyOrNone(rule, UpdatePolicies.Gpos(computer.UpdatePolicySettings)),
+        RuleField.WsusTargetGroup => computer.UpdatePolicyScanUtc is not null && Text(rule, UpdatePolicies.TargetGroup(computer.UpdatePolicySettings)),
+        // "" = bekannt, aber keine Gruppen; null = noch nie gelesen.
+        RuleField.PolicyGroup => computer.PolicyGroups is not null && AnyOrNone(rule, computer.PolicyGroupNames),
         _ => false,
     };
 
@@ -224,6 +229,7 @@ public static class CollectionEvaluator
         RuleField.ServerFeature => [nameof(Computer.ServerFeatures)],
         RuleField.WindowsFeature => [nameof(Computer.OptionalFeatures)],
         RuleField.WslDaysSinceUse or RuleField.WslDistro => [nameof(Computer.WslDistros)],
+        RuleField.UpdateGpo or RuleField.WsusTargetGroup => [nameof(Computer.UpdatePolicySettings)],
         RuleField.CustomField => [nameof(Computer.CustomValues)],
         RuleField.IntelOnlyApps or RuleField.UnknownDeveloperApps => [nameof(Computer.Software)],
         _ => [],

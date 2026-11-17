@@ -123,6 +123,7 @@ builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddSingleton<AdSyncService>();
 builder.Services.AddSingleton<HypervisorSyncService>();
 builder.Services.AddSingleton<VirtualizationService>();
+builder.Services.AddSingleton<UpdatePolicyService>();
 builder.Services.AddSingleton<LicensingService>();
 builder.Services.AddSingleton<HeartbeatService>();
 builder.Services.AddSingleton<ReportService>();

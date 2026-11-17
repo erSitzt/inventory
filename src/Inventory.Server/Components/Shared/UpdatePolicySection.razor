@@ -1,0 +1,102 @@
+@* Wirksame Windows-Update-Richtlinie eines Rechners: jede Einstellung mit der GPO, aus der sie kommt, und den überstimmten. *@
+@inject IStringLocalizer<SharedResource> L
+@inject Display Display
+
+<MudPaper Class="pa-4" Outlined="true">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.h6">@L["Windows Update policy"]</MudText>
+        @if (_summary is { Conflicts: true })
+        {
+            <MudTooltip Text="@L["A GPO with lower precedence sets a value differently and is overruled. Check the security filtering of the GPOs."]">
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">@L["Conflicting GPOs"]</MudChip>
+            </MudTooltip>
+        }
+    </MudStack>
+    @if (Computer.UpdatePolicyScanUtc is null || _summary is null)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Not captured yet."]</MudText>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2">@L["Source: {0}", _summary.Source ?? "Microsoft Update"]</MudText>
+        <MudText Typo="Typo.body2">@L["Automatic updates: {0}", _summary.Automatic ?? L["Windows default"]]</MudText>
+        @if (_summary.Deferral is { } deferral)
+        {
+            <MudText Typo="Typo.body2">@deferral</MudText>
+        }
+        @if (_summary.TargetGroup is { } targetGroup)
+        {
+            <MudText Typo="Typo.body2">@L["WSUS target group: {0}", targetGroup]</MudText>
+        }
+        @if (_summary.Gpos.Count > 0)
+        {
+            <MudText Typo="Typo.body2">@L["GPOs: {0}", string.Join(", ", _summary.Gpos)]</MudText>
+        }
+        @if (Computer.UpdatePolicySettings.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">@L["No Windows Update policy: the computer uses the Windows defaults."]</MudText>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true" Class="mt-3" Style="overflow-x: auto">
+                <thead>
+                    <tr>
+                        <th>@L["Setting"]</th>
+                        <th>@L["Value"]</th>
+                        <th>@L["Set by"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var setting in _settings)
+                    {
+                        var label = UpdatePolicies.Label(setting, L);
+                        <tr>
+                            <td>
+                                @label
+                                @if (label != setting.Name)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block">@setting.Name</MudText>
+                                }
+                            </td>
+                            <td style="overflow-wrap: anywhere">@UpdatePolicies.Display(setting, L)</td>
+                            <td>
+                                @Origin(setting)
+                                @foreach (var (gpo, value) in setting.Overrides)
+                                {
+                                    var differs = !string.Equals(value, setting.Value, StringComparison.OrdinalIgnoreCase);
+                                    <MudTooltip Text="@(differs ? L["Overruled: this GPO sets a different value."] : L["Also set with the same value by this GPO."])">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(differs ? Color.Warning : Color.Default)">
+                                            @L["also {0}: {1}", gpo, UpdatePolicies.Display(setting.Name, value, UpdatePolicies.IsMdm(setting), L) ?? "–"]
+                                        </MudChip>
+                                    </MudTooltip>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3 d-block">@L["Group Policy last applied: {0}", Display.LocalTime(Computer.GroupPolicyAppliedUtc)]</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block">
+            @L["Groups for Group Policy (nested ones included): {0}", Computer.PolicyGroups is null ? L["unknown"] : Computer.PolicyGroupNames.Any() ? string.Join(", ", Computer.PolicyGroupNames) : "–"]
+        </MudText>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public Computer Computer { get; set; } = default!;
+
+    private UpdatePolicySummary? _summary;
+    private List<ComputerUpdatePolicySetting> _settings = [];
+
+    protected override void OnParametersSet()
+    {
+        _summary = Computer.UpdatePolicyScanUtc is null ? null : UpdatePolicies.Summarize(Computer.UpdatePolicySettings, L);
+        // Gruppenrichtlinie vor Intune, darin der Schlüssel WindowsUpdate vor AU.
+        _settings = Computer.UpdatePolicySettings.OrderBy(UpdatePolicies.IsMdm).ThenBy(s => s.Key == UpdatePolicyKeys.AutoUpdate)
+            .ThenBy(s => UpdatePolicies.Label(s, L), StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    private string Origin(ComputerUpdatePolicySetting setting) =>
+        setting.Gpo ?? (UpdatePolicies.IsMdm(setting) ? "Intune" : L["no GPO found (preference, script or set by hand)"]);
+}

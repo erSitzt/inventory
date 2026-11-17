@@ -742,6 +742,12 @@ else if (_computer.ReverseDnsMismatch)
                         }
                     </MudPaper>
                 </MudItem>
+                @if (!_computer.IsMac)
+                {
+                    <MudItem xs="12">
+                        <UpdatePolicySection Computer="_computer" />
+                    </MudItem>
+                }
                 @if (_computer.UpdatePendingCount > 0)
                 {
                     <MudItem xs="12">

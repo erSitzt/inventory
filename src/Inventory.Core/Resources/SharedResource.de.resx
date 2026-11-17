@@ -218,6 +218,9 @@
   <data name="A domain account with local administrator rights on the computers – or use the agent instead." xml:space="preserve">
     <value>Ein Domänenkonto mit lokalen Adminrechten auf den Rechnern – oder stattdessen der Agent.</value>
   </data>
+  <data name="A GPO with lower precedence sets a value differently and is overruled. Check the security filtering of the GPOs." xml:space="preserve">
+    <value>Eine GPO mit niedrigerem Rang setzt einen Wert anders und wird überstimmt. Prüfe die Sicherheitsfilterung der GPOs.</value>
+  </data>
   <data name="A licence is exceeded" xml:space="preserve">
     <value>Eine Lizenz ist überschritten</value>
   </data>
@@ -352,6 +355,15 @@
   </data>
   <data name="Active Directory, agents, transport, maintenance window, AI assistants (MCP), export and import, server updates and backup." xml:space="preserve">
     <value>Active Directory, Agenten, Übertragungsweg, Wartungsfenster, KI-Assistenten (MCP), Export und Import, Server-Updates und Sicherung.</value>
+  </data>
+  <data name="Active hours" xml:space="preserve">
+    <value>Nutzungszeit</value>
+  </data>
+  <data name="Active hours end" xml:space="preserve">
+    <value>Ende der Nutzungszeit</value>
+  </data>
+  <data name="Active hours start" xml:space="preserve">
+    <value>Beginn der Nutzungszeit</value>
   </data>
   <data name="Active: {0}" xml:space="preserve">
     <value>Aktiv: {0}</value>
@@ -662,6 +674,15 @@
   <data name="Also sent through the agent on {0}." xml:space="preserve">
     <value>Zusätzlich über den Agenten auf {0} gesendet.</value>
   </data>
+  <data name="Also set with the same value by this GPO." xml:space="preserve">
+    <value>Diese GPO setzt denselben Wert ebenfalls.</value>
+  </data>
+  <data name="also {0}: {1}" xml:space="preserve">
+    <value>auch {0}: {1}</value>
+  </data>
+  <data name="Alternate download server" xml:space="preserve">
+    <value>Alternativer Downloadserver</value>
+  </data>
   <data name="Alternative Standard server + CAL: {0:N0} for the server plus {1:N0} per user or device that uses it – cheaper only with few users." xml:space="preserve">
     <value>Alternative Standard Server + CAL: {0:N0} für den Server plus {1:N0} je Benutzer oder Gerät, der ihn nutzt – günstiger nur bei wenigen Benutzern.</value>
   </data>
@@ -670,6 +691,9 @@
   </data>
   <data name="always notify" xml:space="preserve">
     <value>immer benachrichtigen</value>
+  </data>
+  <data name="Always restart at the scheduled time" xml:space="preserve">
+    <value>Immer zur geplanten Zeit neu starten</value>
   </data>
   <data name="Amounts are licence prices (your prices or the list prices as a reference) without Software Assurance or subscription fees." xml:space="preserve">
     <value>Die Beträge sind Lizenzpreise (Ihre Preise oder die Listenpreise als Vergleichswert) ohne Kosten für Software Assurance oder Abonnement.</value>
@@ -821,6 +845,9 @@
   <data name="Ask again after (minutes)" xml:space="preserve">
     <value>Erneut fragen nach (Minuten)</value>
   </data>
+  <data name="Ask again for the restart after (minutes)" xml:space="preserve">
+    <value>Erneut zum Neustart auffordern nach (Minuten)</value>
+  </data>
   <data name="Ask the logged-on user before starting" xml:space="preserve">
     <value>Angemeldeten Benutzer vor dem Start fragen</value>
   </data>
@@ -889,6 +916,15 @@
   </data>
   <data name="Automatic update: {0}" xml:space="preserve">
     <value>Automatische Aktualisierung: {0}</value>
+  </data>
+  <data name="Automatic updates" xml:space="preserve">
+    <value>Automatische Updates</value>
+  </data>
+  <data name="Automatic updates turned off" xml:space="preserve">
+    <value>Automatische Updates ausgeschaltet</value>
+  </data>
+  <data name="Automatic updates: {0}" xml:space="preserve">
+    <value>Automatische Updates: {0}</value>
   </data>
   <data name="Automatic: {0}" xml:space="preserve">
     <value>Automatisch: {0}</value>
@@ -1121,6 +1157,9 @@
   <data name="Client secret" xml:space="preserve">
     <value>Geheimer Clientschlüssel</value>
   </data>
+  <data name="Client-side targeting" xml:space="preserve">
+    <value>Clientseitige Zielzuordnung</value>
+  </data>
   <data name="Close" xml:space="preserve">
     <value>Schließen</value>
   </data>
@@ -1301,6 +1340,12 @@
   <data name="Computers that neither signed in to the domain nor were seen by the inventory for a set period are marked as presumably decommissioned." xml:space="preserve">
     <value>Rechner, die sich eine einstellbare Zeit weder an der Domäne angemeldet haben noch vom Inventory gesehen wurden, gelten als vermutlich außer Betrieb.</value>
   </data>
+  <data name="Computers with conflicting GPOs: {0}." xml:space="preserve">
+    <value>Rechner mit widersprüchlichen GPOs: {0}.</value>
+  </data>
+  <data name="Computers with the same Windows Update policy: the same values from the same GPOs or from Intune." xml:space="preserve">
+    <value>Rechner mit derselben Windows-Update-Richtlinie: dieselben Werte aus denselben GPOs oder aus Intune.</value>
+  </data>
   <data name="Computers with {0} older than the library version" xml:space="preserve">
     <value>Rechner mit {0} älter als die Bibliotheksversion</value>
   </data>
@@ -1315,6 +1360,12 @@
   </data>
   <data name="Conditions (none)" xml:space="preserve">
     <value>Bedingungen (keine)</value>
+  </data>
+  <data name="Conflicting GPOs" xml:space="preserve">
+    <value>GPO-Konflikt</value>
+  </data>
+  <data name="Conflicting Windows Update GPOs" xml:space="preserve">
+    <value>Konflikt bei Windows-Update-GPOs</value>
   </data>
   <data name="Contact" xml:space="preserve">
     <value>Kontakt</value>
@@ -1568,6 +1619,15 @@
   <data name="Days since last update installation" xml:space="preserve">
     <value>Tage seit letzter Update-Installation</value>
   </data>
+  <data name="Deadline for feature updates (days)" xml:space="preserve">
+    <value>Frist für Funktionsupdates (Tage)</value>
+  </data>
+  <data name="Deadline for quality updates (days)" xml:space="preserve">
+    <value>Frist für Qualitätsupdates (Tage)</value>
+  </data>
+  <data name="Deadlines" xml:space="preserve">
+    <value>Fristen</value>
+  </data>
   <data name="Decimal, or hexadecimal with 0x" xml:space="preserve">
     <value>Dezimal, oder hexadezimal mit 0x</value>
   </data>
@@ -1600,6 +1660,15 @@
   </data>
   <data name="Defender tamper protection" xml:space="preserve">
     <value>Defender-Manipulationsschutz</value>
+  </data>
+  <data name="Defer feature updates" xml:space="preserve">
+    <value>Funktionsupdates zurückstellen</value>
+  </data>
+  <data name="Defer quality updates" xml:space="preserve">
+    <value>Qualitätsupdates zurückstellen</value>
+  </data>
+  <data name="Deferred: {0}" xml:space="preserve">
+    <value>Zurückgestellt: {0}</value>
   </data>
   <data name="Definition Updates" xml:space="preserve">
     <value>Definitionsupdates</value>
@@ -1781,6 +1850,9 @@
   <data name="Detection" xml:space="preserve">
     <value>Erkennung</value>
   </data>
+  <data name="Detection frequency (hours)" xml:space="preserve">
+    <value>Suchintervall (Stunden)</value>
+  </data>
   <data name="Detection in inventory" xml:space="preserve">
     <value>Erkennung im Inventar</value>
   </data>
@@ -1889,6 +1961,12 @@
   <data name="DNS zones from Active Directory not readable ({0}); the resolver was used instead." xml:space="preserve">
     <value>DNS-Zonen aus dem Active Directory nicht lesbar ({0}); stattdessen wurde der Resolver gefragt.</value>
   </data>
+  <data name="Do not connect to Windows Update internet locations" xml:space="preserve">
+    <value>Keine Verbindung zu Windows-Update-Internetadressen</value>
+  </data>
+  <data name="Do not scan Windows Update when deferrals are set" xml:space="preserve">
+    <value>Bei Zurückstellungen nicht bei Windows Update suchen</value>
+  </data>
   <data name="Documentation" xml:space="preserve">
     <value>Dokumentation</value>
   </data>
@@ -1918,6 +1996,15 @@
   </data>
   <data name="Download agent setup" xml:space="preserve">
     <value>Agent-Setup herunterladen</value>
+  </data>
+  <data name="Download and install on a schedule" xml:space="preserve">
+    <value>Herunterladen und nach Zeitplan installieren</value>
+  </data>
+  <data name="Download automatically, notify before install" xml:space="preserve">
+    <value>Automatisch herunterladen, vor der Installation benachrichtigen</value>
+  </data>
+  <data name="Download automatically, notify before install and restart" xml:space="preserve">
+    <value>Automatisch herunterladen, vor Installation und Neustart benachrichtigen</value>
   </data>
   <data name="Download certificate (.cer)" xml:space="preserve">
     <value>Zertifikat herunterladen (.cer)</value>
@@ -1951,6 +2038,9 @@
   </data>
   <data name="Driver" xml:space="preserve">
     <value>Treiber</value>
+  </data>
+  <data name="Driver updates managed by the deployment service" xml:space="preserve">
+    <value>Treiberupdates über den Bereitstellungsdienst</value>
   </data>
   <data name="Drivers" xml:space="preserve">
     <value>Treiber</value>
@@ -2102,6 +2192,9 @@
   <data name="Every computer with its status and inventory. Start here: add computers or import them from Active Directory, then scan them." xml:space="preserve">
     <value>Jeder Rechner mit Status und Inventar. Hier geht es los: Rechner anlegen oder aus dem Active Directory importieren und dann scannen.</value>
   </data>
+  <data name="Every day" xml:space="preserve">
+    <value>Täglich</value>
+  </data>
   <data name="Every pending update on every computer" xml:space="preserve">
     <value>Jedes ausstehende Update auf jedem Rechner</value>
   </data>
@@ -2161,6 +2254,9 @@
   </data>
   <data name="Exclude disabled computer accounts" xml:space="preserve">
     <value>Deaktivierte Computerkonten ausschließen</value>
+  </data>
+  <data name="Exclude drivers from quality updates" xml:space="preserve">
+    <value>Keine Treiber mit Qualitätsupdates</value>
   </data>
   <data name="excluded" xml:space="preserve">
     <value>ausgeschlossen</value>
@@ -2245,6 +2341,15 @@
   </data>
   <data name="Feature update (e.g. 24H2)" xml:space="preserve">
     <value>Funktionsupdate (z. B. 24H2)</value>
+  </data>
+  <data name="Feature update deferral (days)" xml:space="preserve">
+    <value>Zurückstellung Funktionsupdates (Tage)</value>
+  </data>
+  <data name="Feature updates managed by the deployment service" xml:space="preserve">
+    <value>Funktionsupdates über den Bereitstellungsdienst</value>
+  </data>
+  <data name="feature updates {0} days" xml:space="preserve">
+    <value>Funktionsupdates {0} Tage</value>
   </data>
   <data name="Features" xml:space="preserve">
     <value>Features</value>
@@ -2477,8 +2582,17 @@
   <data name="Getting started" xml:space="preserve">
     <value>Erste Schritte</value>
   </data>
+  <data name="GPO name" xml:space="preserve">
+    <value>GPO-Name</value>
+  </data>
+  <data name="GPOs: {0}" xml:space="preserve">
+    <value>GPOs: {0}</value>
+  </data>
   <data name="Grace period (days)" xml:space="preserve">
     <value>Frist (Tage)</value>
+  </data>
+  <data name="Grace period before the restart (days)" xml:space="preserve">
+    <value>Karenzzeit vor dem Neustart (Tage)</value>
   </data>
   <data name="Graphics" xml:space="preserve">
     <value>Grafik</value>
@@ -2494,6 +2608,24 @@
   </data>
   <data name='Group policy "Set rules for remote control of Remote Desktop Services user sessions" (… Windows Components → Remote Desktop Services → Remote Desktop Session Host → Connections); firewall rules "Remote Desktop – Shadow" and "File and Printer Sharing (SMB-In)".' xml:space="preserve">
     <value>Gruppenrichtlinie „Regeln für Remotesteuerung von Remotedesktopdienste-Benutzersitzungen festlegen“ (… Windows-Komponenten → Remotedesktopdienste → Remotedesktopsitzungs-Host → Verbindungen); Firewall-Regeln „Remotedesktop – Schatten“ und „Datei- und Druckerfreigabe (SMB eingehend)“.</value>
+  </data>
+  <data name="Group for Group Policy (nested ones included)" xml:space="preserve">
+    <value>Gruppe für Gruppenrichtlinien (inkl. verschachtelter)</value>
+  </data>
+  <data name="Group name" xml:space="preserve">
+    <value>Gruppenname</value>
+  </data>
+  <data name="Group Policy last applied" xml:space="preserve">
+    <value>Gruppenrichtlinie zuletzt angewendet</value>
+  </data>
+  <data name="Group Policy last applied: {0}" xml:space="preserve">
+    <value>Gruppenrichtlinie zuletzt angewendet: {0}</value>
+  </data>
+  <data name="Groups for Group Policy" xml:space="preserve">
+    <value>Gruppen für Gruppenrichtlinien</value>
+  </data>
+  <data name="Groups for Group Policy (nested ones included): {0}" xml:space="preserve">
+    <value>Gruppen für Gruppenrichtlinien (inkl. verschachtelter): {0}</value>
   </data>
   <data name="Groups of computers that deployments, schedules, reports and alerts work on." xml:space="preserve">
     <value>Gruppen von Rechnern, auf denen Deployments, Zeitpläne, Berichte und Alarme arbeiten.</value>
@@ -2566,6 +2698,9 @@
   </data>
   <data name="Hotfix installed (KB number)" xml:space="preserve">
     <value>Hotfix installiert (KB-Nummer)</value>
+  </data>
+  <data name="Hotpatch (updates without a restart)" xml:space="preserve">
+    <value>Hotpatch (Updates ohne Neustart)</value>
   </data>
   <data name="Hover over a symbol to see what it does. Most fields explain themselves in the line below them." xml:space="preserve">
     <value>Mit der Maus über einem Symbol steht, was es tut. Die meisten Felder erklären sich in der Zeile darunter.</value>
@@ -2749,6 +2884,36 @@
   </data>
   <data name="Install agent" xml:space="preserve">
     <value>Agent installieren</value>
+  </data>
+  <data name="Install and restart at the scheduled time" xml:space="preserve">
+    <value>Installieren und zur geplanten Zeit neu starten</value>
+  </data>
+  <data name="Install and restart at the scheduled time without user control" xml:space="preserve">
+    <value>Installieren und zur geplanten Zeit neu starten, ohne Eingriff des Benutzers</value>
+  </data>
+  <data name="Install and restart automatically without user control" xml:space="preserve">
+    <value>Automatisch installieren und neu starten, ohne Eingriff des Benutzers</value>
+  </data>
+  <data name="Install automatically, notify before restart" xml:space="preserve">
+    <value>Automatisch installieren, vor dem Neustart benachrichtigen</value>
+  </data>
+  <data name="Install every week" xml:space="preserve">
+    <value>Jede Woche installieren</value>
+  </data>
+  <data name="Install in the first week of the month" xml:space="preserve">
+    <value>In der ersten Woche des Monats installieren</value>
+  </data>
+  <data name="Install in the fourth week of the month" xml:space="preserve">
+    <value>In der vierten Woche des Monats installieren</value>
+  </data>
+  <data name="Install in the second week of the month" xml:space="preserve">
+    <value>In der zweiten Woche des Monats installieren</value>
+  </data>
+  <data name="Install in the third week of the month" xml:space="preserve">
+    <value>In der dritten Woche des Monats installieren</value>
+  </data>
+  <data name="Install minor updates right away" xml:space="preserve">
+    <value>Kleinere Updates sofort installieren</value>
   </data>
   <data name="Install pending security updates" xml:space="preserve">
     <value>Ausstehende Sicherheitsupdates installieren</value>
@@ -3239,6 +3404,9 @@
   <data name="Local administrator" xml:space="preserve">
     <value>Lokaler Administrator</value>
   </data>
+  <data name="Local administrator chooses" xml:space="preserve">
+    <value>Lokaler Administrator wählt</value>
+  </data>
   <data name="Local administrators" xml:space="preserve">
     <value>Lokale Administratoren</value>
   </data>
@@ -3635,6 +3803,12 @@
   <data name="No address ranges yet." xml:space="preserve">
     <value>Noch keine Adressbereiche.</value>
   </data>
+  <data name="No automatic restart before the deadline" xml:space="preserve">
+    <value>Kein automatischer Neustart vor der Frist</value>
+  </data>
+  <data name="No automatic restart with signed-in users" xml:space="preserve">
+    <value>Kein automatischer Neustart, solange Benutzer angemeldet sind</value>
+  </data>
   <data name="No block of {0} contiguous free addresses." xml:space="preserve">
     <value>Kein Block aus {0} zusammenhängenden freien Adressen.</value>
   </data>
@@ -3730,6 +3904,9 @@
   </data>
   <data name="No gaps: every server and virtual machine could be placed." xml:space="preserve">
     <value>Keine Lücken: jeder Server und jede virtuelle Maschine ließ sich zuordnen.</value>
+  </data>
+  <data name="no GPO found (preference, script or set by hand)" xml:space="preserve">
+    <value>keine GPO gefunden (Einstellung, Skript oder von Hand)</value>
   </data>
   <data name="No hosts known yet. Hyper-V hosts appear after their next inventory scan; for VMware and XCP-ng, set up the connection under Settings." xml:space="preserve">
     <value>Noch keine Hosts bekannt. Hyper-V-Hosts erscheinen nach ihrem nächsten Inventar-Scan; für VMware und XCP-ng die Verbindung unter Einstellungen einrichten.</value>
@@ -3854,6 +4031,9 @@
   <data name="no Windows Server VM on this host right now" xml:space="preserve">
     <value>derzeit keine Windows-Server-VM auf diesem Host</value>
   </data>
+  <data name="No Windows Update policy: the computer uses the Windows defaults." xml:space="preserve">
+    <value>Keine Windows-Update-Richtlinie: Der Rechner nutzt die Standardeinstellungen von Windows.</value>
+  </data>
   <data name="No – ask again in {0} minutes (possible {1} more time(s))" xml:space="preserve">
     <value>Nein – in {0} Minuten erneut fragen (noch {1}-mal möglich)</value>
   </data>
@@ -3905,6 +4085,9 @@
   <data name="not calculated" xml:space="preserve">
     <value>nicht berechnet</value>
   </data>
+  <data name="Not captured yet" xml:space="preserve">
+    <value>Noch nicht erfasst</value>
+  </data>
   <data name="Not captured yet." xml:space="preserve">
     <value>Noch nicht erfasst.</value>
   </data>
@@ -3925,6 +4108,12 @@
   </data>
   <data name="Not captured yet. Windows features are read with the next scan by a current runner." xml:space="preserve">
     <value>Noch nicht erfasst. Die Windows-Features liest der nächste Scan mit einem aktuellen Runner.</value>
+  </data>
+  <data name="not configured" xml:space="preserve">
+    <value>nicht konfiguriert</value>
+  </data>
+  <data name="Not configured (Windows defaults)" xml:space="preserve">
+    <value>Nicht konfiguriert (Windows-Standard)</value>
   </data>
   <data name="Not counted ({0}): switched off or not Windows Server" xml:space="preserve">
     <value>Nicht gezählt ({0}): ausgeschaltet oder kein Windows Server</value>
@@ -3961,6 +4150,9 @@
   </data>
   <data name="Not scanned" xml:space="preserve">
     <value>Nicht gescannt</value>
+  </data>
+  <data name="Not scanned since the update of Inventory, or not reachable." xml:space="preserve">
+    <value>Seit dem Update von Inventory nicht gescannt oder nicht erreichbar.</value>
   </data>
   <data name="Not scanned yet" xml:space="preserve">
     <value>Noch nicht gescannt</value>
@@ -4006,6 +4198,9 @@
   </data>
   <data name="Notifications" xml:space="preserve">
     <value>Benachrichtigungen</value>
+  </data>
+  <data name="Notify before download" xml:space="preserve">
+    <value>Vor dem Herunterladen benachrichtigen</value>
   </data>
   <data name="notify without dimming the desktop" xml:space="preserve">
     <value>benachrichtigen, ohne den Desktop abzublenden</value>
@@ -4280,6 +4475,9 @@
   <data name="Overrides the detection, e.g. for devices that give little away." xml:space="preserve">
     <value>Überstimmt die Erkennung, z. B. bei Geräten, die wenig über sich verraten.</value>
   </data>
+  <data name="Overruled: this GPO sets a different value." xml:space="preserve">
+    <value>Überstimmt: Diese GPO setzt einen anderen Wert.</value>
+  </data>
   <data name="Overview" xml:space="preserve">
     <value>Übersicht</value>
   </data>
@@ -4288,6 +4486,9 @@
   </data>
   <data name="own" xml:space="preserve">
     <value>eigene</value>
+  </data>
+  <data name="Own detection frequency" xml:space="preserve">
+    <value>Eigenes Suchintervall</value>
   </data>
   <data name="Owned" xml:space="preserve">
     <value>Vorhanden</value>
@@ -4463,6 +4664,12 @@
   <data name="Pause before a retry (seconds)" xml:space="preserve">
     <value>Pause vor einer Wiederholung (Sekunden)</value>
   </data>
+  <data name="Pause feature updates" xml:space="preserve">
+    <value>Funktionsupdates anhalten</value>
+  </data>
+  <data name="Pause quality updates" xml:space="preserve">
+    <value>Qualitätsupdates anhalten</value>
+  </data>
   <data name="Pending security updates" xml:space="preserve">
     <value>Ausstehende Sicherheitsupdates</value>
   </data>
@@ -4574,6 +4781,9 @@
   <data name="Pilot group (none)" xml:space="preserve">
     <value>Pilotgruppe (keine)</value>
   </data>
+  <data name="Pin the feature update version" xml:space="preserve">
+    <value>Version der Funktionsupdates festlegen</value>
+  </data>
   <data name="Ping reply" xml:space="preserve">
     <value>Antwort auf Ping</value>
   </data>
@@ -4627,6 +4837,12 @@
   </data>
   <data name="PNG or JPEG, at most {0} KB and {1} pixels. A PNG with a transparent background looks best." xml:space="preserve">
     <value>PNG oder JPEG, höchstens {0} KB und {1} Pixel. Am besten wirkt ein PNG mit transparentem Hintergrund.</value>
+  </data>
+  <data name="Policies" xml:space="preserve">
+    <value>Richtlinien</value>
+  </data>
+  <data name="Policy group" xml:space="preserve">
+    <value>Richtliniengruppe</value>
   </data>
   <data name="Pool master address" xml:space="preserve">
     <value>Adresse des Pool-Masters</value>
@@ -4805,6 +5021,15 @@
   <data name="Purchase date" xml:space="preserve">
     <value>Kaufdatum</value>
   </data>
+  <data name="Quality update deferral (days)" xml:space="preserve">
+    <value>Zurückstellung Qualitätsupdates (Tage)</value>
+  </data>
+  <data name="Quality updates managed by the deployment service" xml:space="preserve">
+    <value>Qualitätsupdates über den Bereitstellungsdienst</value>
+  </data>
+  <data name="quality updates {0} days" xml:space="preserve">
+    <value>Qualitätsupdates {0} Tage</value>
+  </data>
   <data name="Quantity" xml:space="preserve">
     <value>Menge</value>
   </data>
@@ -4907,6 +5132,9 @@
   <data name="Recommended silent parameters:" xml:space="preserve">
     <value>Empfohlene Silent-Parameter:</value>
   </data>
+  <data name="Recommended updates" xml:space="preserve">
+    <value>Empfohlene Updates</value>
+  </data>
   <data name="Record how many licences you own, and the inventory counts on how many computers the software is installed. Counted per computer: several versions or editions on one computer use one licence. What is used on a computer is not measured – only what is installed." xml:space="preserve">
     <value>Tragen Sie ein, wie viele Lizenzen vorhanden sind; das Inventar zählt, auf wie vielen Rechnern die Software installiert ist. Gezählt wird je Rechner: mehrere Versionen oder Editionen auf einem Rechner verbrauchen eine Lizenz. Gemessen wird nicht, was genutzt wird – nur, was installiert ist.</value>
   </data>
@@ -4939,6 +5167,9 @@
   </data>
   <data name="Release" xml:space="preserve">
     <value>Freigeben</value>
+  </data>
+  <data name="Release channel" xml:space="preserve">
+    <value>Veröffentlichungskanal</value>
   </data>
   <data name="Release notes" xml:space="preserve">
     <value>Versionshinweise</value>
@@ -5023,6 +5254,9 @@
   </data>
   <data name="Remove" xml:space="preserve">
     <value>Entfernen</value>
+  </data>
+  <data name="Remove access to all Windows Update features" xml:space="preserve">
+    <value>Zugriff auf alle Windows-Update-Funktionen entfernen</value>
   </data>
   <data name="Remove agent" xml:space="preserve">
     <value>Agent entfernen</value>
@@ -5510,6 +5744,12 @@
   <data name="Scheduled" xml:space="preserve">
     <value>Geplant</value>
   </data>
+  <data name="Scheduled install day" xml:space="preserve">
+    <value>Geplanter Installationstag</value>
+  </data>
+  <data name="Scheduled install time" xml:space="preserve">
+    <value>Geplante Installationszeit</value>
+  </data>
   <data name="Schedules" xml:space="preserve">
     <value>Zeitpläne</value>
   </data>
@@ -5705,11 +5945,17 @@
   <data name="session {0}" xml:space="preserve">
     <value>Sitzung {0}</value>
   </data>
+  <data name="Set by" xml:space="preserve">
+    <value>Gesetzt von</value>
+  </data>
   <data name="set by hand (detected: {0})" xml:space="preserve">
     <value>von Hand festgelegt (erkannt: {0})</value>
   </data>
   <data name="Set value" xml:space="preserve">
     <value>Wert setzen</value>
+  </data>
+  <data name="Setting" xml:space="preserve">
+    <value>Einstellung</value>
   </data>
   <data name="Setting changed" xml:space="preserve">
     <value>Einstellung geändert</value>
@@ -5816,6 +6062,9 @@
   <data name="Signed out" xml:space="preserve">
     <value>Abgemeldet</value>
   </data>
+  <data name="Signed updates from an intranet service" xml:space="preserve">
+    <value>Signierte Updates aus einem Intranetdienst</value>
+  </data>
   <data name="Silent parameters" xml:space="preserve">
     <value>Silent-Parameter</value>
   </data>
@@ -5899,6 +6148,18 @@
   </data>
   <data name="Source" xml:space="preserve">
     <value>Quelle</value>
+  </data>
+  <data name="Source of driver updates" xml:space="preserve">
+    <value>Quelle der Treiberupdates</value>
+  </data>
+  <data name="Source of feature updates" xml:space="preserve">
+    <value>Quelle der Funktionsupdates</value>
+  </data>
+  <data name="Source of other updates" xml:space="preserve">
+    <value>Quelle anderer Updates</value>
+  </data>
+  <data name="Source of quality updates" xml:space="preserve">
+    <value>Quelle der Qualitätsupdates</value>
   </data>
   <data name="Source outside the package (share or path on the computer)" xml:space="preserve">
     <value>Quelle außerhalb des Pakets (Freigabe oder Pfad auf dem Rechner)</value>
@@ -6001,6 +6262,9 @@
   </data>
   <data name="Static collections hold the computers you pick; dynamic ones follow rules and update with every scan." xml:space="preserve">
     <value>Statische Sammlungen enthalten die gewählten Rechner; dynamische folgen Regeln und aktualisieren sich mit jedem Scan.</value>
+  </data>
+  <data name="Statistics server (WSUS)" xml:space="preserve">
+    <value>Statistikserver (WSUS)</value>
   </data>
   <data name="Status" xml:space="preserve">
     <value>Status</value>
@@ -6199,6 +6463,18 @@
   </data>
   <data name="Target computers ({0})" xml:space="preserve">
     <value>Zielrechner ({0})</value>
+  </data>
+  <data name="Target group" xml:space="preserve">
+    <value>Zielgruppe</value>
+  </data>
+  <data name="target group {0}" xml:space="preserve">
+    <value>Zielgruppe {0}</value>
+  </data>
+  <data name="Target product" xml:space="preserve">
+    <value>Zielprodukt</value>
+  </data>
+  <data name="Target version" xml:space="preserve">
+    <value>Zielversion</value>
   </data>
   <data name="TCP port" xml:space="preserve">
     <value>Port</value>
@@ -7010,6 +7286,15 @@
   <data name="Update Rollups" xml:space="preserve">
     <value>Update-Rollups</value>
   </data>
+  <data name="Update server" xml:space="preserve">
+    <value>Updateserver</value>
+  </data>
+  <data name="Update server (WSUS)" xml:space="preserve">
+    <value>Updateserver (WSUS)</value>
+  </data>
+  <data name="Update source" xml:space="preserve">
+    <value>Updatequelle</value>
+  </data>
   <data name="Update started" xml:space="preserve">
     <value>Aktualisierung gestartet</value>
   </data>
@@ -7033,6 +7318,9 @@
   </data>
   <data name='Updates come from the source configured on the computer (WSUS or Microsoft Update). The step does not restart the computer: add a "Reboot" step with the condition "only if a restart is pending" after it. Works via SMB + service or agent, not over WinRM.' xml:space="preserve">
     <value>Die Updates kommen aus der Quelle, die auf dem Rechner eingestellt ist (WSUS oder Microsoft Update). Der Schritt startet den Rechner nicht neu: dafür danach einen Schritt „Neustart“ mit der Bedingung „nur wenn ein Neustart aussteht“ anlegen. Funktioniert über SMB + Dienst oder Agent, nicht über WinRM.</value>
+  </data>
+  <data name="Updates for other Microsoft products" xml:space="preserve">
+    <value>Updates für andere Microsoft-Produkte</value>
   </data>
   <data name="Updates pending" xml:space="preserve">
     <value>Updates ausstehend</value>
@@ -7085,6 +7373,9 @@
   <data name="Use the general communities again" xml:space="preserve">
     <value>Wieder die allgemeinen Communities verwenden</value>
   </data>
+  <data name="Use the WSUS server" xml:space="preserve">
+    <value>WSUS-Server verwenden</value>
+  </data>
   <data name="Use this certificate" xml:space="preserve">
     <value>Dieses Zertifikat verwenden</value>
   </data>
@@ -7120,6 +7411,9 @@
   </data>
   <data name="Users" xml:space="preserve">
     <value>Benutzer</value>
+  </data>
+  <data name="Users without administrator rights get update notifications" xml:space="preserve">
+    <value>Benutzer ohne Administratorrechte erhalten Update-Benachrichtigungen</value>
   </data>
   <data name="Uses a certificate from the certificate store of this computer (Local Computer → Personal), e.g. from your Active Directory certification authority by autoenrollment or a Let's Encrypt certificate that win-acme stores there. Inventory always takes the newest valid certificate for the chosen name, so renewals take effect by themselves." xml:space="preserve">
     <value>Verwendet ein Zertifikat aus dem Zertifikatspeicher dieses Computers (Lokaler Computer → Eigene Zertifikate), z. B. von Ihrer Active-Directory-Zertifizierungsstelle per Autoenrollment oder ein Let's-Encrypt-Zertifikat, das win-acme dort ablegt. Inventory nimmt immer das neueste gültige Zertifikat für den gewählten Namen, Erneuerungen greifen also von selbst.</value>
@@ -7316,6 +7610,9 @@
   <data name="Wake computers that are switched off (Wake-on-LAN); they are retried for up to 3 days" xml:space="preserve">
     <value>Ausgeschaltete Rechner wecken (Wake-on-LAN); sie werden bis zu 3 Tage lang nachgeholt</value>
   </data>
+  <data name="Wake the computer for the installation" xml:space="preserve">
+    <value>Rechner zur Installation aufwecken</value>
+  </data>
   <data name="Wake-up sent" xml:space="preserve">
     <value>Wecksignal gesendet</value>
   </data>
@@ -7336,6 +7633,12 @@
   </data>
   <data name="Warning" xml:space="preserve">
     <value>Warnung</value>
+  </data>
+  <data name="Warning before the automatic restart (minutes)" xml:space="preserve">
+    <value>Warnung vor dem automatischen Neustart (Minuten)</value>
+  </data>
+  <data name="Warning before the scheduled restart (minutes)" xml:space="preserve">
+    <value>Warnung vor dem geplanten Neustart (Minuten)</value>
   </data>
   <data name="Warranty ends within 90 days" xml:space="preserve">
     <value>Garantie endet innerhalb von 90 Tagen</value>
@@ -7469,6 +7772,9 @@
   <data name="Windows computers that are not inventoried yet; already listed ones are only linked" xml:space="preserve">
     <value>Windows-Rechner, die noch nicht inventarisiert sind; bereits vorhandene werden nur verknüpft</value>
   </data>
+  <data name="Windows default" xml:space="preserve">
+    <value>Windows-Standard</value>
+  </data>
   <data name="Windows edition" xml:space="preserve">
     <value>Windows-Edition</value>
   </data>
@@ -7571,6 +7877,18 @@
   <data name="Windows Update (MSU)" xml:space="preserve">
     <value>Windows-Update (MSU)</value>
   </data>
+  <data name="Windows Update for Business (Intune)" xml:space="preserve">
+    <value>Windows Update for Business (Intune)</value>
+  </data>
+  <data name="Windows Update GPO" xml:space="preserve">
+    <value>Windows-Update-GPO</value>
+  </data>
+  <data name="Windows Update GPOs" xml:space="preserve">
+    <value>Windows-Update-GPOs</value>
+  </data>
+  <data name="Windows Update policy" xml:space="preserve">
+    <value>Windows-Update-Richtlinie</value>
+  </data>
   <data name="Windows updates were installed. The computer restarts in 5 minutes – please save your work." xml:space="preserve">
     <value>Windows-Updates wurden installiert. Der Computer startet in 5 Minuten neu – bitte speichern Sie Ihre Arbeit.</value>
   </data>
@@ -7616,6 +7934,9 @@
   <data name="without contract" xml:space="preserve">
     <value>ohne Vertrag</value>
   </data>
+  <data name="Without GPO (preference, script or set by hand)" xml:space="preserve">
+    <value>Ohne GPO (Einstellung, Skript oder von Hand)</value>
+  </data>
   <data name="Without launcher: commands to copy" xml:space="preserve">
     <value>Ohne Starter: Befehle zum Kopieren</value>
   </data>
@@ -7648,6 +7969,12 @@
   </data>
   <data name="WSL: days since last use" xml:space="preserve">
     <value>WSL: Tage seit der letzten Nutzung</value>
+  </data>
+  <data name="WSUS target group" xml:space="preserve">
+    <value>WSUS-Zielgruppe</value>
+  </data>
+  <data name="WSUS target group: {0}" xml:space="preserve">
+    <value>WSUS-Zielgruppe: {0}</value>
   </data>
   <data name="Xen Orchestra address" xml:space="preserve">
     <value>Adresse von Xen Orchestra</value>

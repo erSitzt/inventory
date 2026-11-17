@@ -73,6 +73,9 @@ namespace Inventory.Contracts
         /// <summary>Windows-Subsystem für Linux; null = nicht gelesen (ältere Runner, Mac).</summary>
         public WslInfo? Wsl { get; set; }
 
+        /// <summary>Wirksame Windows-Update-Richtlinie aus Gruppenrichtlinie und Intune; null = nicht gelesen (ältere Runner, Mac).</summary>
+        public UpdatePolicyInfo? UpdatePolicy { get; set; }
+
         /// <summary>Bereiche, die nicht gelesen werden konnten; der Rest des Scans ist trotzdem gültig.</summary>
         public List<string> Warnings { get; set; } = new List<string>();
         /// <summary>
@@ -564,6 +567,132 @@ namespace Inventory.Contracts
                 return null;
             return folder.TrimEnd('\\') + "\\" + file;
         }
+    }
+
+    public sealed class UpdatePolicyInfo
+    {
+        /// <summary>Die wirksamen Werte; leer = keine Update-Richtlinie (Windows-Standard).</summary>
+        public List<UpdatePolicySetting> Settings { get; set; } = new List<UpdatePolicySetting>();
+        /// <summary>Ende der letzten Anwendung der Gruppenrichtlinie für den Computer; null = unbekannt.</summary>
+        public DateTime? GroupPolicyAppliedUtc { get; set; }
+        /// <summary>
+        /// Die Domänengruppen, mit denen der Computer die Gruppenrichtlinie zuletzt angewendet hat, verschachtelte eingeschlossen
+        /// (aus RSoP); null = nicht lesbar.
+        /// </summary>
+        public List<string>? Groups { get; set; }
+        /// <summary>Die RSoP-Daten waren lesbar, die Herkunft der Werte ist also bekannt.</summary>
+        public bool RsopRead { get; set; }
+    }
+
+    public sealed class UpdatePolicySetting
+    {
+        /// <summary>Siehe <see cref="UpdatePolicySources"/>.</summary>
+        public string Source { get; set; } = UpdatePolicySources.Registry;
+        /// <summary>Siehe <see cref="UpdatePolicyKeys"/>.</summary>
+        public string Key { get; set; } = UpdatePolicyKeys.WindowsUpdate;
+        public string Name { get; set; } = "";
+        public string? Value { get; set; }
+        /// <summary>Die GPO, deren Wert gilt; null = nicht aus einer GPO.</summary>
+        public string? Gpo { get; set; }
+        /// <summary>GPOs mit niedrigerem Rang, die denselben Wert auch setzen und überstimmt werden.</summary>
+        public List<UpdatePolicyOverride> AlsoSetBy { get; set; } = new List<UpdatePolicyOverride>();
+    }
+
+    public sealed class UpdatePolicyOverride
+    {
+        public string Gpo { get; set; } = "";
+        public string? Value { get; set; }
+    }
+
+    /// <summary>Woher ein Wert der Update-Richtlinie stammt.</summary>
+    public static class UpdatePolicySources
+    {
+        /// <summary>Aus einer administrativen Vorlage einer GPO (laut RSoP).</summary>
+        public const string Gpo = "gpo";
+        /// <summary>Aus Intune bzw. einer anderen MDM-Verwaltung (PolicyManager).</summary>
+        public const string Mdm = "mdm";
+        /// <summary>Steht im Richtlinienschlüssel, ohne passende GPO: Einstellung (Preference), Skript, von Hand oder RSoP nicht lesbar.</summary>
+        public const string Registry = "registry";
+    }
+
+    /// <summary>Die gelesenen Schlüssel der Update-Richtlinie.</summary>
+    public static class UpdatePolicyKeys
+    {
+        /// <summary>HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate</summary>
+        public const string WindowsUpdate = "WindowsUpdate";
+        /// <summary>HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU</summary>
+        public const string AutoUpdate = "AU";
+        /// <summary>HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Update (Intune).</summary>
+        public const string Mdm = "Update";
+
+        public const string PolicyPath = @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate";
+        public const string MdmPath = @"SOFTWARE\Microsoft\PolicyManager\current\device\Update";
+
+        /// <summary>Der Schlüssel zu einem Registry-Pfad, wie RSoP ihn nennt (Software\Policies\…\WindowsUpdate\AU); null = anderer Pfad.</summary>
+        public static string? FromPolicyPath(string? path)
+        {
+            var key = path?.Trim().TrimEnd('\\');
+            if (string.Equals(key, PolicyPath, StringComparison.OrdinalIgnoreCase))
+                return WindowsUpdate;
+            if (string.Equals(key, PolicyPath + "\\" + AutoUpdate, StringComparison.OrdinalIgnoreCase))
+                return AutoUpdate;
+            return null;
+        }
+    }
+
+    /// <summary>Werte aus RSOP_RegistryPolicySetting: die Rohdaten (uint8[]) mit dem Registry-Typ.</summary>
+    public static class RsopValues
+    {
+        /// <summary>Höchstlänge eines Werts in der Anzeige.</summary>
+        public const int MaxLength = 512;
+
+        /// <summary>In derselben Schreibweise wie ein aus der Registry gelesener Wert, siehe <see cref="Format(object?)"/>.</summary>
+        public static string? Decode(byte[]? data, uint type)
+        {
+            if (data == null)
+                return null;
+            switch (type)
+            {
+                case 1: // REG_SZ
+                case 2: // REG_EXPAND_SZ
+                    return Limit(Utf16(data).TrimEnd('\0'));
+                case 4 when data.Length >= 4: // REG_DWORD
+                    return BitConverter.ToUInt32(data, 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case 11 when data.Length >= 8: // REG_QWORD
+                    return BitConverter.ToUInt64(data, 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case 7: // REG_MULTI_SZ
+                    return Format(Utf16(data).Split(new[] { '\0' }, StringSplitOptions.RemoveEmptyEntries));
+                default:
+                    return Format(data);
+            }
+        }
+
+        /// <summary>Ein Registry-Wert als Text: Zahlen dezimal, Listen mit "; ", Binärdaten als Hex.</summary>
+        public static string? Format(object? value)
+        {
+            switch (value)
+            {
+                case null:
+                    return null;
+                case string text:
+                    return Limit(text);
+                case string[] list:
+                    return Limit(string.Join("; ", list));
+                case byte[] bytes:
+                    return Limit(BitConverter.ToString(bytes).Replace("-", ""));
+                case int number:
+                    // DWORDs liest .NET als int; ein Wert über 2^31 wäre sonst negativ.
+                    return unchecked((uint)number).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                case long number:
+                    return unchecked((ulong)number).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                default:
+                    return Limit(Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture));
+            }
+        }
+
+        private static string Utf16(byte[] data) => System.Text.Encoding.Unicode.GetString(data, 0, data.Length - data.Length % 2);
+
+        private static string? Limit(string? text) => text == null || text.Length <= MaxLength ? text : text.Substring(0, MaxLength);
     }
 
     /// <summary>Sicherheitseinstellungen eines Macs. FileVault steht wie BitLocker in <see cref="HardwareInfo.Volumes"/>.</summary>

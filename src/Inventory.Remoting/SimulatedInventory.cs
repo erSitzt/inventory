@@ -99,6 +99,67 @@ internal static class SimulatedInventory
         return data;
     }
 
+    /// <summary>
+    /// Update-Richtlinie wie in einer Firma mit WSUS für die Server und Intune für die Clients: Die Server bekommen über ihre
+    /// Gruppe Ring A (Sonntag 03:00) oder Ring B (Mittwoch 22:00); SRV-SQL02 ist in beiden, Ring A gewinnt. Jeder fünfte Client
+    /// hat keine Richtlinie.
+    /// </summary>
+    private static void AddUpdatePolicy(InventoryData data, string host)
+    {
+        var name = host.Split('.')[0].ToUpperInvariant();
+        var hash = StableHash(host);
+        var policy = data.UpdatePolicy = new UpdatePolicyInfo { RsopRead = true, GroupPolicyAppliedUtc = DateTime.UtcNow.AddMinutes(-(int)(hash % 90) - 5) };
+        UpdatePolicySetting Gpo(string key, string setting, string value, string gpo) =>
+            new() { Source = UpdatePolicySources.Gpo, Key = key, Name = setting, Value = value, Gpo = gpo };
+        if (name.StartsWith("SRV", StringComparison.Ordinal) || name.StartsWith("HV", StringComparison.Ordinal))
+        {
+            const string common = "WSUS Servers";
+            var both = name == "SRV-SQL02";
+            var ringA = both || hash % 2 == 0;
+            var ring = ringA ? "WSUS Servers Ring A" : "WSUS Servers Ring B";
+            var (day, time, group) = ringA ? ("1", "3", "Servers-A") : ("4", "22", "Servers-B");
+            policy.Settings =
+            [
+                Gpo(UpdatePolicyKeys.WindowsUpdate, "WUServer", "http://wsus.corp.example:8530", common),
+                Gpo(UpdatePolicyKeys.WindowsUpdate, "WUStatusServer", "http://wsus.corp.example:8530", common),
+                Gpo(UpdatePolicyKeys.AutoUpdate, "UseWUServer", "1", common),
+                Gpo(UpdatePolicyKeys.WindowsUpdate, "TargetGroupEnabled", "1", ring),
+                Gpo(UpdatePolicyKeys.WindowsUpdate, "TargetGroup", group, ring),
+                Gpo(UpdatePolicyKeys.AutoUpdate, "AUOptions", "4", ring),
+                Gpo(UpdatePolicyKeys.AutoUpdate, "ScheduledInstallDay", day, ring),
+                Gpo(UpdatePolicyKeys.AutoUpdate, "ScheduledInstallTime", time, ring),
+                Gpo(UpdatePolicyKeys.AutoUpdate, "NoAutoRebootWithLoggedOnUsers", "1", ring),
+            ];
+            if (both)
+            {
+                // Mitglied in beiden Ring-Gruppen: Ring B setzt dieselben Werte anders und wird überstimmt.
+                foreach (var (setting, value) in new[] { ("TargetGroup", "Servers-B"), ("ScheduledInstallDay", "4"), ("ScheduledInstallTime", "22"), ("AUOptions", "4") })
+                    policy.Settings.First(s => s.Name == setting).AlsoSetBy.Add(new UpdatePolicyOverride { Gpo = "WSUS Servers Ring B", Value = value });
+            }
+            policy.Groups = ["Domain Computers", ringA ? "WSUS-Servers-Ring-A" : "WSUS-Servers-Ring-B"];
+            if (both)
+                policy.Groups.Add("WSUS-Servers-Ring-B");
+            // SQL-Server stecken über die Gruppe SQL-Servers (verschachtelt) im Ring.
+            if (name.StartsWith("SRV-SQL", StringComparison.Ordinal))
+                policy.Groups.Add("SQL-Servers");
+            policy.Groups.Sort(StringComparer.OrdinalIgnoreCase);
+            return;
+        }
+        policy.Groups = ["Domain Computers", "Clients-Autopatch"];
+        if (hash % 5 == 0)
+            return;
+        UpdatePolicySetting Mdm(string setting, string value) => new() { Source = UpdatePolicySources.Mdm, Key = UpdatePolicyKeys.Mdm, Name = setting, Value = value };
+        policy.Settings =
+        [
+            Mdm("AllowAutoUpdate", "1"),
+            Mdm("DeferQualityUpdatesPeriodInDays", hash % 3 == 0 ? "7" : "0"),
+            Mdm("ActiveHoursStart", "8"),
+            Mdm("ActiveHoursEnd", "17"),
+            Mdm("QualityUpdateEnrolled", "1"),
+            Mdm("FeatureUpdateEnrolled", "1"),
+        ];
+    }
+
     /// <summary>Wie die Apps ohne den Zufallsgenerator. Etwa jeder vierte Rechner hat WSL, einer davon noch das alte aus Windows.</summary>
     private static void AddFeaturesAndWsl(InventoryData data, string host)
     {
@@ -226,6 +287,7 @@ internal static class SimulatedInventory
         if (host.Length % 2 == 0)
             data.Apps.Add(new AppItem { Name = "Microsoft.XboxGamingOverlay", DisplayName = "Game Bar", Version = "7.124.5142.0", Publisher = "Microsoft Corporation", Architecture = "x64", Provisioned = true });
         AddFeaturesAndWsl(data, host);
+        AddUpdatePolicy(data, host);
         var laptop = model.Contains("Book") || model.Contains("Latitude") || model.Contains("ThinkPad");
         var modules = memoryGb >= 16 ? 2 : 1;
         data.Hardware = new HardwareInfo

@@ -54,7 +54,9 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
     [McpServerTool(Name = "get_computer", Title = "Computer details", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description("Master data, status, hardware, security (Defender, firewall, BitLocker, TPM, Secure Boot; on Macs FileVault, firewall, Gatekeeper, SIP), update state, "
         + "optional Windows features that are turned on, WSL (Windows Subsystem for Linux: version and the users' distributions with their last use) of one computer, "
-        + "and for a virtual machine the host it runs on (ESXi host from vCenter, XCP-ng host or Hyper-V host). For VMs without an agent use list_virtual_hosts.")]
+        + "for a virtual machine the host it runs on (ESXi host from vCenter, XCP-ng host or Hyper-V host; for VMs without an agent use list_virtual_hosts), "
+        + "and the effective Windows Update policy: every setting from Group Policy or Intune with the GPO it comes from, overruled GPOs that set it too, "
+        + "and the domain groups (nested ones included) the computer applied Group Policy with.")]
     public async Task<object> GetComputer([Description("Computer name, DNS name or id.")] string computer, CancellationToken ct = default)
     {
         var c = await computerService.GetDetailAsync((await caller.ComputerAsync(computer, ct)).Id, ct) ?? throw new McpException("The computer no longer exists.");
@@ -76,6 +78,8 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
             agent = new { c.AgentVersion, c.AgentLastSeenUtc },
             virtualization = new { isVirtual = c.IsVirtual || host is not null, host, hostReportedByGuest = c.ReportedHostName },
             // null = noch nicht erfasst (älterer Runner, Mac).
+            updatePolicy = c.UpdatePolicyScanUtc is null ? null : UpdatePolicy(c),
+            // null = noch nicht erfasst (älterer Runner, Mac).
             windowsFeatures = c.FeaturesScanUtc is null ? null : c.OptionalFeatures.Select(f => f.Name).Order(StringComparer.OrdinalIgnoreCase),
             wsl = c.WslScanUtc is null ? null : new
             {
@@ -85,6 +89,26 @@ public sealed class InventoryTools(McpCaller caller, IDbContextFactory<Inventory
             customFields = (await customValues.GetAsync(c.Id, ct)).Select(v => new
             {
                 key = v.Key, title = customValues.Fields.FirstOrDefault(f => f.Key.Equals(v.Key, StringComparison.OrdinalIgnoreCase))?.Title, value = v.Value, v.UpdatedUtc,
+            }),
+        };
+    }
+
+    private static object UpdatePolicy(Computer c)
+    {
+        var L = Inventory.Core.PassthroughLocalizer.Instance;
+        var summary = Inventory.Core.UpdatePolicies.Summarize(c.UpdatePolicySettings, L);
+        return new
+        {
+            configured = c.UpdatePolicySettings.Count > 0,
+            source = summary.Source, wsusTargetGroup = summary.TargetGroup, automaticUpdates = summary.Automatic, gpos = summary.Gpos,
+            conflictingGpos = summary.Conflicts, deferral = summary.Deferral,
+            groupPolicyAppliedUtc = c.GroupPolicyAppliedUtc is { } applied ? DateTime.SpecifyKind(applied, DateTimeKind.Utc) : (DateTime?)null,
+            // null = unbekannt (RSoP war nie lesbar).
+            groups = c.PolicyGroups is null ? null : c.PolicyGroupNames,
+            settings = c.UpdatePolicySettings.Select(s => new
+            {
+                s.Source, s.Key, s.Name, label = Inventory.Core.UpdatePolicies.Label(s, L), s.Value, display = Inventory.Core.UpdatePolicies.Display(s, L), s.Gpo,
+                alsoSetBy = s.Overrides.Select(o => new { gpo = o.Gpo, value = o.Value }),
             }),
         };
     }

@@ -203,6 +203,26 @@ public class ComputerWslDistro
     public bool CarriedOver { get; set; }
 }
 
+/// <summary>Wirksamer Wert der Windows-Update-Richtlinie.</summary>
+public class ComputerUpdatePolicySetting
+{
+    public int Id { get; set; }
+    public int ComputerId { get; set; }
+    /// <summary>Siehe <see cref="Contracts.UpdatePolicySources"/>.</summary>
+    public required string Source { get; set; }
+    /// <summary>Siehe <see cref="Contracts.UpdatePolicyKeys"/>.</summary>
+    public required string Key { get; set; }
+    public required string Name { get; set; }
+    public string? Value { get; set; }
+    /// <summary>Die GPO, deren Wert gilt; null = nicht aus einer GPO.</summary>
+    public string? Gpo { get; set; }
+    /// <summary>Überstimmte GPOs, die den Wert auch setzen: je Zeile "GPO\tWert".</summary>
+    public string? AlsoSetBy { get; set; }
+
+    public IEnumerable<(string Gpo, string? Value)> Overrides => (AlsoSetBy ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        .Select(line => line.Split('\t', 2) is [var gpo, var value] ? (gpo, (string?)value) : (line, null));
+}
+
 public class ComputerPrinter
 {
     public int Id { get; set; }

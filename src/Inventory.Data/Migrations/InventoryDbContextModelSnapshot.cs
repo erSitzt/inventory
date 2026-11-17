@@ -369,6 +369,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("Gpu")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("GroupPolicyAppliedUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("HardwareScanUtc")
                         .HasColumnType("TEXT");
 
@@ -495,6 +498,9 @@ namespace Inventory.Data.Migrations
                     b.Property<int>("Platform")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("PolicyGroups")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PrimaryUser")
                         .HasColumnType("TEXT");
 
@@ -569,6 +575,9 @@ namespace Inventory.Data.Migrations
 
                     b.Property<int?>("UpdatePendingSecurityCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatePolicyScanUtc")
+                        .HasColumnType("TEXT");
 
                     b.Property<bool?>("UpdateRebootRequired")
                         .HasColumnType("INTEGER");
@@ -1166,6 +1175,43 @@ namespace Inventory.Data.Migrations
                     b.HasIndex("ComputerId");
 
                     b.ToTable("SqlInstances");
+                });
+
+            modelBuilder.Entity("Inventory.Core.Model.ComputerUpdatePolicySetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AlsoSetBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ComputerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Gpo")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComputerId");
+
+                    b.ToTable("UpdatePolicySettings");
                 });
 
             modelBuilder.Entity("Inventory.Core.Model.ComputerUserProfile", b =>
@@ -2849,6 +2895,15 @@ namespace Inventory.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Inventory.Core.Model.ComputerUpdatePolicySetting", b =>
+                {
+                    b.HasOne("Inventory.Core.Model.Computer", null)
+                        .WithMany("UpdatePolicySettings")
+                        .HasForeignKey("ComputerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Inventory.Core.Model.ComputerUserProfile", b =>
                 {
                     b.HasOne("Inventory.Core.Model.Computer", null)
@@ -3162,6 +3217,8 @@ namespace Inventory.Data.Migrations
                     b.Navigation("Software");
 
                     b.Navigation("SqlInstances");
+
+                    b.Navigation("UpdatePolicySettings");
 
                     b.Navigation("UserProfiles");
 
