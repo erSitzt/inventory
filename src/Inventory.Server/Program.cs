@@ -278,6 +278,8 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
+// REST-API und MCP: ein Statuscode mit kurzer Meldung statt der HTML-Fehlerseite.
+app.UseApiErrors();
 // Seitenaufrufe über HTTP auf HTTPS umleiten (wenn eingeschaltet); Skripte, API und Agenten bleiben bei HTTP.
 app.UseMiddleware<HttpsRedirectMiddleware>();
 // Vor den Statusseiten: deren erneute Ausführung der Anfrage würde den mehrstufigen Negotiate-Handshake zerstören.
@@ -290,7 +292,7 @@ app.UseInventoryMcpGate(options);
 app.UseAuthorization();
 // Nur für die Oberfläche: API-Aufrufer (Skripte, Agenten) brauchen den echten Statuscode. Der Agent meldet sich
 // z. B. bei 401 neu an; die Fehlerseite würde daraus bei POST-Anfragen ein 400 machen.
-app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api") && !context.Request.Path.StartsWithSegments(McpSetup.Path),
+app.UseWhen(context => !ApiErrors.IsMachineRequest(context),
     branch => branch.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true));
 
 app.UseAntiforgery();
