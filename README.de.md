@@ -1260,6 +1260,10 @@ Die REST-Schnittstelle ist unter `/api/docs` dokumentiert (interaktiv, mit Beisp
 Clients); die OpenAPI-Beschreibung liegt unter `/api/openapi.json` und lässt sich in Postman, PowerShell oder
 Code-Generatoren einlesen. Beide Adressen verlangen dieselbe Anmeldung wie die übrige API.
 
+Fehler kommen als Problem Details (`application/problem+json`) mit Statuscode zurück, nie als HTML-Seite; das gilt
+auch für `/mcp`. Ein vorübergehender Fehler (der Server startet neu, die Datenbank ist belegt) ist ein 503 mit
+`Retry-After`, ein unerwarteter ein 500 mit einer `requestId`, über die sich der Eintrag im Protokoll des Servers findet.
+
 | Bereich | Endpunkte |
 |---|---|
 | Rechner | anlegen, abfragen, löschen, Erreichbarkeit prüfen, wecken (Wake-on-LAN), Inventar-Scan, installierte Software, Hardware-Details, RDP-Datei, Befehl oder PowerShell-Skript ausführen |

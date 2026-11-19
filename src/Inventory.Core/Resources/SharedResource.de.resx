@@ -6755,6 +6755,9 @@
   <data name="The database is backed up before every update; running deployments are awaited. The interface is briefly unavailable meanwhile; agents update themselves afterwards. Note: this path brings new program code onto the server and, via the agents, onto all computers. As long as releases are unsigned, the checksum only secures the transfer, not the origin – which is why automatic updates are off by default." xml:space="preserve">
     <value>Vor jeder Aktualisierung wird die Datenbank gesichert; laufende Deployments werden abgewartet. Die Oberfläche ist währenddessen kurz nicht erreichbar, Agenten aktualisieren sich danach selbst. Hinweis: Über diesen Weg gelangt neuer Programmcode auf den Server und über die Agenten auf alle Rechner. Solange Releases unsigniert sind, sichert die Prüfsumme nur die Übertragung, nicht die Herkunft – die Automatik ist deshalb standardmäßig aus.</value>
   </data>
+  <data name="The database is busy. Try again in a moment." xml:space="preserve">
+    <value>Die Datenbank ist gerade belegt. Bitte gleich noch einmal versuchen.</value>
+  </data>
   <data name="The Datacenter edition is installed on the host." xml:space="preserve">
     <value>Auf dem Host ist die Datacenter-Edition installiert.</value>
   </data>
@@ -7003,6 +7006,9 @@
   </data>
   <data name="The server address for agents is not set yet. An administrator can enter it under Settings → Agents." xml:space="preserve">
     <value>Die Server-Adresse für Agenten ist noch nicht eingetragen. Ein Administrator kann sie unter Einstellungen → Agenten eintragen.</value>
+  </data>
+  <data name="The server is restarting. Try again in a moment." xml:space="preserve">
+    <value>Der Server startet gerade neu. Bitte gleich noch einmal versuchen.</value>
   </data>
   <data name="The server scans these ranges itself. SNMP communities: {0}." xml:space="preserve">
     <value>Der Server scannt diese Bereiche selbst. SNMP-Communities: {0}.</value>
@@ -7318,6 +7324,9 @@
   </data>
   <data name="Under this name {0} responds" xml:space="preserve">
     <value>Unter diesem Namen antwortet {0}</value>
+  </data>
+  <data name="Unexpected error on the server. The server log has the details (request ID {0})." xml:space="preserve">
+    <value>Unerwarteter Fehler auf dem Server. Die Einzelheiten stehen im Protokoll des Servers (Anfrage-ID {0}).</value>
   </data>
   <data name="Unhealthy" xml:space="preserve">
     <value>fehlerhaft</value>

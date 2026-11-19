@@ -1211,6 +1211,10 @@ The REST interface is documented at `/api/docs` (interactive, with example calls
 OpenAPI description is at `/api/openapi.json` and can be imported into Postman, PowerShell or code generators. Both
 addresses require the same sign-in as the rest of the API.
 
+Errors come back as Problem Details (`application/problem+json`) with a status code, never as an HTML page; this also
+applies to `/mcp`. A temporary error (the server is restarting, the database is busy) is a 503 with `Retry-After`;
+an unexpected one is a 500 with a `requestId` that finds the matching entry in the server log.
+
 | Area | Endpoints |
 |---|---|
 | Computers | create, query, delete, check reachability, wake (Wake-on-LAN), inventory scan, installed software, hardware details, RDP file, run command or PowerShell script |
