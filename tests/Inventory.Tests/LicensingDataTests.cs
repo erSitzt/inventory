@@ -56,6 +56,94 @@ public class LicensingDataTests
         },
     };
 
+    /// <summary>Zwei geklonte VMs mit derselben BIOS-UUID: die Namen entscheiden, sonst stünden die Gäste über Kreuz.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Cloned_virtual_machines_with_the_same_bios_uuid_are_told_apart_by_name(bool guestsFirst)
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var ids = (await computers.ImportAsync("hv-01\nsrv-dc01\nsrv-dc02")).ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+        // Die zweite VM in der Liste des Hosts ist dc01: Wer der Reihe nach nimmt, landet bei der falschen.
+        var host = Host("HV-01", new HostedVmItem { Name = "SRV-DC02", BiosUuid = GuestUuid, Running = true },
+            new HostedVmItem { Name = "SRV-DC01", BiosUuid = GuestUuid, Running = true });
+
+        if (!guestsFirst)
+            await store.SaveAsync(ids["hv-01"], host);
+        await store.SaveAsync(ids["srv-dc01"], Guest("SRV-DC01", GuestUuid));
+        await store.SaveAsync(ids["srv-dc02"], Guest("SRV-DC02", GuestUuid));
+        if (guestsFirst)
+            await store.SaveAsync(ids["hv-01"], host);
+
+        var vms = (await computers.GetDetailAsync(ids["hv-01"]))!.VirtualMachines.ToDictionary(v => v.Name, v => v.GuestComputerId);
+        Assert.Equal((ids["srv-dc01"], ids["srv-dc02"]), (vms["SRV-DC01"], vms["SRV-DC02"]));
+        foreach (var dc in new[] { "srv-dc01", "srv-dc02" })
+        {
+            var guest = (await computers.GetAsync(ids[dc]))!;
+            Assert.Equal((ids["hv-01"], HostSources.BiosUuid), (guest.HostComputerId, guest.HostSource));
+        }
+    }
+
+    [Fact]
+    public async Task A_shared_bios_uuid_without_a_matching_vm_name_links_nothing()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var ids = (await computers.ImportAsync("hv-01\nsrv-a\nsrv-b")).ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+        await store.SaveAsync(ids["srv-a"], Guest("SRV-A", GuestUuid));
+        await store.SaveAsync(ids["srv-b"], Guest("SRV-B", GuestUuid));
+        await store.SaveAsync(ids["hv-01"], Host("HV-01", new HostedVmItem { Name = "Template copy 1", BiosUuid = GuestUuid, Running = true },
+            new HostedVmItem { Name = "Template copy 2", BiosUuid = GuestUuid, Running = true }));
+
+        Assert.All((await computers.GetDetailAsync(ids["hv-01"]))!.VirtualMachines, v => Assert.Null(v.GuestComputerId));
+        Assert.Null((await computers.GetAsync(ids["srv-a"]))!.HostComputerId);
+
+        // Heißt der Eintrag anders, passt der VM-Name aber zum Kurznamen seines DNS-Namens, zählt das als Name.
+        await using (var context = db.CreateDbContext())
+            await context.Computers.Where(c => c.Id == ids["srv-a"]).ExecuteUpdateAsync(s => s.SetProperty(c => c.DnsName, "template-copy-1.corp.example"));
+        await store.SaveAsync(ids["hv-01"], Host("HV-01", new HostedVmItem { Name = "TEMPLATE-COPY-1", BiosUuid = GuestUuid, Running = true },
+            new HostedVmItem { Name = "Template copy 2", BiosUuid = GuestUuid, Running = true }));
+        Assert.Equal(ids["srv-a"], (await computers.GetDetailAsync(ids["hv-01"]))!.VirtualMachines.Single(v => v.Name == "TEMPLATE-COPY-1").GuestComputerId);
+        // Eine einzelne VM mit anderem Namen und ein einzelner Rechner: wie bisher über die UUID allein.
+        Assert.Null((await computers.GetAsync(ids["srv-b"]))!.HostSource);
+    }
+
+    [Fact]
+    public async Task VCenter_clones_with_the_same_bios_uuid_are_told_apart_by_name()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var store = new InventoryStore(db);
+        var ids = (await computers.ImportAsync("srv-dc01\nsrv-dc02")).ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+        foreach (var dc in new[] { "SRV-DC01", "SRV-DC02" })
+        {
+            var guest = Guest(dc, GuestUuid);
+            guest.Model = "VMware7,1";
+            await store.SaveAsync(ids[dc], guest);
+        }
+        await using (var context = db.CreateDbContext())
+        {
+            var manager = new HypervisorManager { Name = "vcenter1", Url = "https://vcenter1.example" };
+            context.HypervisorManagers.Add(manager);
+            await context.SaveChangesAsync();
+            var esx = new HypervisorHost { ManagerId = manager.Id, ExternalId = "host-1", Name = "esx01", Connected = true };
+            context.HypervisorHosts.Add(esx);
+            await context.SaveChangesAsync();
+            // Bisher gewann je UUID die zuletzt gelesene VM: dc02, und die bekam dann dc01.
+            foreach (var name in new[] { "SRV-DC01", "SRV-DC02" })
+                context.HypervisorVms.Add(new HypervisorVm { ManagerId = manager.Id, ExternalId = name, Name = name, BiosUuid = GuestUuid, HostId = esx.Id, PoweredOn = true });
+            await context.SaveChangesAsync();
+            await VirtualHosts.ResolveVCenterAsync(context);
+        }
+
+        await using var check = db.CreateDbContext();
+        var vms = await check.HypervisorVms.ToDictionaryAsync(v => v.Name, v => v.GuestComputerId);
+        Assert.Equal((ids["srv-dc01"], ids["srv-dc02"]), (vms["SRV-DC01"], vms["SRV-DC02"]));
+    }
+
     [Fact]
     public async Task Virtual_machines_find_their_host_by_bios_uuid_in_either_scan_order()
     {
