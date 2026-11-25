@@ -101,7 +101,9 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         var changed = await db.Computers
             .Where(c => targetIds.Contains(c.Id) && (credentialId == null || db.Credentials.Any(x => x.Id == credentialId)))
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.CredentialId, credentialId), ct);
-        if (changed < targetIds.Count && credentialId is { } chosen && !await db.Credentials.AnyAsync(c => c.Id == chosen, ct))
+        // Die Bedingung gilt für alle Zeilen der Anweisung gleich: Nichts geändert und die Zugangsdaten fehlen, dann hat
+        // das Löschen gewonnen. Wurde etwas geändert, gilt die Änderung, auch wenn danach gelöscht wird.
+        if (changed == 0 && targetIds.Count > 0 && credentialId is { } chosen && !await db.Credentials.AnyAsync(c => c.Id == chosen, ct))
             throw new KeyNotFoundException(L["The chosen credentials no longer exist."]);
         return [.. targets.Select(t => t.Name).Order(StringComparer.OrdinalIgnoreCase)];
     }
