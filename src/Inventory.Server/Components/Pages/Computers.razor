@@ -676,8 +676,11 @@
             Snackbar.Add(L["The selected computers already use these credentials."], Severity.Info);
             return;
         }
-        await Audit.LogAsync(L["Computer credentials set"],
-            $"{(chosen is null ? L["Default"] : $"{chosen.Name} ({chosen.Username})")}: {string.Join(", ", changed)}");
+        // Beim Zurücksetzen das Konto, das gerade der Standard ist: Der Standard kann später ein anderer werden.
+        var applied = chosen is not null ? $"{chosen.Name} ({chosen.Username})"
+            : credentials.FirstOrDefault(c => c.IsDefault) is { } fallback ? L["Default: {0} ({1})", fallback.Name, fallback.Username].Value
+            : L["Default"].Value;
+        await Audit.LogAsync(L["Computer credentials set"], $"{applied}: {string.Join(", ", changed)}");
         Snackbar.Add(chosen is null ? L["{0} computers use the default credentials again.", changed.Count]
             : L["{0} computers now use \"{1}\".", changed.Count, chosen.Name], Severity.Success);
         await ReloadAsync();
