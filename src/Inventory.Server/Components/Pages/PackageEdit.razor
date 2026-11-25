@@ -68,10 +68,10 @@
                     <MudMenu Label="@L["Add step"]" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
                         @foreach (var type in AddableTypes)
                         {
-                            <MudMenuItem Icon="@Display.StepIcon(type)" OnClick="@(() => EditStepAsync(null, type, false))">@Display.Step(type)</MudMenuItem>
+                            <MenuAction Icon="@Display.StepIcon(type)" OnClick="@(() => EditStepAsync(null, type, false))">@Display.Step(type)</MenuAction>
                         }
                         <MudDivider />
-                        <MudMenuItem Icon="@Icons.Material.Filled.Inventory2" OnClick="@(() => EditStepAsync(null, StepType.Command, true))">@L["Run another package"]</MudMenuItem>
+                        <MenuAction Icon="@Icons.Material.Filled.Inventory2" OnClick="@(() => EditStepAsync(null, StepType.Command, true))">@L["Run another package"]</MenuAction>
                     </MudMenu>
                 </AdminOnly>
             </MudStack>

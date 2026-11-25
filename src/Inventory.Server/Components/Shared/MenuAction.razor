@@ -1,0 +1,23 @@
+@*
+    Ein Menüeintrag, der sein Menü schließt, bevor die Aktion läuft. MudMenuItem schließt erst, wenn OnClick fertig ist:
+    Öffnet die Aktion einen Dialog oder eine Rückfrage oder läuft sie länger, bliebe das Menü so lange offen dahinter stehen.
+*@
+<MudMenuItem Icon="@Icon" IconColor="@IconColor" Disabled="@Disabled" AutoClose="false" OnClick="ClickAsync">@ChildContent</MudMenuItem>
+
+@code {
+    [CascadingParameter] private MudMenu? Menu { get; set; }
+
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public Color IconColor { get; set; } = Color.Inherit;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task ClickAsync()
+    {
+        // Danach ist dieser Eintrag womöglich schon entfernt; OnClick gehört aber der Seite, die ihn eingetragen hat.
+        if (Menu is not null)
+            await Menu.CloseAllMenusAsync();
+        await OnClick.InvokeAsync();
+    }
+}
