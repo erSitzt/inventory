@@ -93,6 +93,7 @@
                     <MudMenuItem Icon="@Icons.Material.Filled.Extension" Disabled="@(_selected.Count == 0)" OnClick="InstallFrameworkAsync">@L["Install .NET Framework 4.8"]</MudMenuItem>
                 }
                 <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">@L["Install remote access launcher"]</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Key" Disabled="@(_selected.Count == 0)" OnClick="SetCredentialsAsync">@L["Set credentials"]</MudMenuItem>
             </AdminOnly>
             <AdminOnly>
                 <MudDivider />
@@ -640,6 +641,41 @@
             _busy = false;
             _progressText = null;
         }
+    }
+
+    /// <summary>Trägt für die gewählten Rechner dieselben Zugangsdaten ein, oder setzt sie auf den Standard zurück.</summary>
+    private async Task SetCredentialsAsync()
+    {
+        if (!await Access.DemandAdminAsync())
+            return;
+        var targets = _selected.ToList();
+        var credentials = await CredentialService.ListAsync();
+        var parameters = new DialogParameters<SetCredentialsDialog>
+        {
+            { d => d.Credentials, credentials },
+            { d => d.Count, targets.Count },
+            { d => d.WithOwn, targets.Count(c => c.CredentialId is not null) },
+        };
+        var dialog = await Dialogs.ShowAsync<SetCredentialsDialog>(L["Set credentials"], parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small });
+        if (await dialog.Result is not { Canceled: false } result)
+            return;
+        var credentialId = result.Data as int?;
+        List<string> changed;
+        try
+        {
+            changed = await ComputerService.SetCredentialAsync([.. targets.Select(c => c.Id)], credentialId);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+        var chosen = credentials.FirstOrDefault(c => c.Id == credentialId);
+        await Audit.LogAsync(L["Computer credentials set"],
+            $"{(chosen is null ? L["Default"] : $"{chosen.Name} ({chosen.Username})")}: {string.Join(", ", changed)}");
+        Snackbar.Add(chosen is null ? L["{0} computers use the default credentials again.", changed.Count]
+            : L["{0} computers now use \"{1}\".", changed.Count, chosen.Name], Severity.Success);
+        await ReloadAsync();
     }
 
     /// <summary>Entfernt die Agenten der gewählten Rechner (Windows und Mac); Rechner ohne Agent bleiben unberührt.</summary>

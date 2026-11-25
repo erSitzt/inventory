@@ -85,6 +85,21 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Setzt die Zugangsdaten mehrerer Rechner auf einmal; null = wieder die Standard-Zugangsdaten.</summary>
+    /// <returns>Die Namen der geänderten Rechner.</returns>
+    /// <exception cref="KeyNotFoundException">Die Zugangsdaten gibt es nicht (mehr).</exception>
+    public async Task<List<string>> SetCredentialAsync(IReadOnlyCollection<int> ids, int? credentialId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (credentialId is { } id && !await db.Credentials.AnyAsync(c => c.Id == id, ct))
+            throw new KeyNotFoundException(L["The chosen credentials no longer exist."]);
+        var computers = await db.Computers.Where(c => ids.Contains(c.Id)).ToListAsync(ct);
+        foreach (var computer in computers)
+            computer.CredentialId = credentialId;
+        await db.SaveChangesAsync(ct);
+        return [.. computers.Select(c => c.Name).Order(StringComparer.OrdinalIgnoreCase)];
+    }
+
     /// <summary>Setzt die MAC-Adresse für Wake-on-LAN; leer = wieder die Adapter des letzten Scans verwenden.</summary>
     /// <exception cref="InvalidOperationException">Der Text ist keine MAC-Adresse.</exception>
     public async Task SetWakeMacAsync(int id, string? mac, CancellationToken ct = default)

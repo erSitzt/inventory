@@ -495,6 +495,10 @@ Scans, Deployments und die Agent-Installation über SMB oder WinRM verbinden sic
 (*Zugangsdaten*; eines ist der Standard, ein Rechner kann ein eigenes haben). Der Agent braucht kein solches Konto.
 Alles Folgende gilt für die Rechner, die der Server agentenlos erreicht, nicht für den Server selbst.
 
+Ein eigenes Konto für einen Rechner wird auf seiner Seite mit *Bearbeiten* eingetragen; für mehrere Rechner auf einmal
+hakt man sie in der Rechnerliste an und wählt *Aktionen → Zugangsdaten setzen* (leer = wieder der Standard). Die
+Übersicht eines Rechners zeigt, welches Konto gilt und ob es am Rechner eingetragen oder der Standard ist.
+
 **Was das Konto auf jedem Zielrechner braucht**
 
 | Voraussetzung | Warum |
