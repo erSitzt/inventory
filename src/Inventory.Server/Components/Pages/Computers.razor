@@ -671,6 +671,11 @@
             return;
         }
         var chosen = credentials.FirstOrDefault(c => c.Id == credentialId);
+        if (changed.Count == 0)
+        {
+            Snackbar.Add(L["The selected computers already use these credentials."], Severity.Info);
+            return;
+        }
         await Audit.LogAsync(L["Computer credentials set"],
             $"{(chosen is null ? L["Default"] : $"{chosen.Name} ({chosen.Username})")}: {string.Join(", ", changed)}");
         Snackbar.Add(chosen is null ? L["{0} computers use the default credentials again.", changed.Count]

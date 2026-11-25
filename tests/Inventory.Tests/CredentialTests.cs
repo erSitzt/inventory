@@ -65,6 +65,10 @@ public class CredentialTests
         Assert.Equal(["zwei", "zwei"], await PasswordsAsync());
         // Die übrigen Rechner bleiben beim Standard.
         Assert.Equal("eins", (await service.ResolveAsync(imported.Single(c => c.Name == "pc-03").Id))!.Password);
+        // Wer die Zugangsdaten schon hat, gilt nicht als geändert (Meldung und Protokoll).
+        var pc03 = imported.Single(c => c.Name == "pc-03").Id;
+        Assert.Equal(["pc-03"], await computers.SetCredentialAsync([.. ids, pc03], dmz.Id));
+        Assert.Empty(await computers.SetCredentialAsync([.. ids, pc03], dmz.Id));
 
         await computers.SetCredentialAsync(ids, null);
         Assert.Equal(["eins", "eins"], await PasswordsAsync());

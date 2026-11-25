@@ -7016,6 +7016,9 @@
   <data name="The script failed (exit code {0})" xml:space="preserve">
     <value>Das Skript ist fehlgeschlagen (Exitcode {0})</value>
   </data>
+  <data name="The selected computers already use these credentials." xml:space="preserve">
+    <value>Die gewählten Rechner nutzen diese Zugangsdaten bereits.</value>
+  </data>
   <data name="The sender is not a valid e-mail address." xml:space="preserve">
     <value>Der Absender ist keine gültige E-Mail-Adresse.</value>
   </data>
