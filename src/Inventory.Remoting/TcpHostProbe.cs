@@ -23,7 +23,7 @@ public sealed class TcpHostProbe : IHostProbe
         }
         catch (SocketException ex)
         {
-            return new ProbeResult(false, null, $"Name resolution failed: {ex.SocketErrorCode}");
+            return new ProbeResult(false, null, $"Name resolution failed: {ex.SocketErrorCode}", NameNotFound: IsUnknownName(ex));
         }
 
         var address = addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork) ?? addresses.FirstOrDefault();
@@ -41,6 +41,23 @@ public sealed class TcpHostProbe : IHostProbe
         }
         return new ProbeResult(false, address.ToString(), $"Ports {string.Join("/", Ports)} unreachable", null, await reverse);
     }
+
+    public async Task<bool> ResolvesAsync(string host, CancellationToken ct = default)
+    {
+        if (IPAddress.TryParse(host, out _))
+            return true;
+        try
+        {
+            return (await Dns.GetHostAddressesAsync(host, ct)).Length > 0;
+        }
+        catch (SocketException ex)
+        {
+            // Nur ein sicheres "gibt es nicht" zählt; ein DNS, der gerade nicht antwortet, ändert den Weg nicht.
+            return !IsUnknownName(ex);
+        }
+    }
+
+    private static bool IsUnknownName(SocketException ex) => ex.SocketErrorCode is SocketError.HostNotFound or SocketError.NoData;
 
     private static async Task<string?> ReverseLookupAsync(IPAddress address, CancellationToken ct)
     {

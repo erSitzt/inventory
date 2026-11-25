@@ -92,6 +92,9 @@
   <data name="&quot;Remove agent&quot; uninstalls the agent on the computer, then the server forgets it. &quot;Forget agent&quot; only removes the agent's key on the server and resets the transport – if the agent is still installed, it enrolls again with the enrollment secret." xml:space="preserve">
     <value>„Agent entfernen“ deinstalliert den Agenten auf dem Rechner, danach vergisst der Server ihn. „Agent vergessen“ verwirft nur den Schlüssel des Agenten auf dem Server und setzt den Transport zurück – ist der Agent noch installiert, meldet er sich mit dem Anmeldegeheimnis neu an.</value>
   </data>
+  <data name="&quot;{0}&quot; is neither an IP address nor a host name." xml:space="preserve">
+    <value>„{0}“ ist weder eine IP-Adresse noch ein Hostname.</value>
+  </data>
   <data name="&quot;{0}&quot; was created by a person; AI assistants can only change packages they created themselves." xml:space="preserve">
     <value>„{0}“ hat ein Mensch angelegt; KI-Assistenten ändern nur Pakete, die sie selbst angelegt haben.</value>
   </data>
@@ -1393,6 +1396,12 @@
   </data>
   <data name="Conflicting Windows Update GPOs" xml:space="preserve">
     <value>Konflikt bei Windows-Update-GPOs</value>
+  </data>
+  <data name="Connection" xml:space="preserve">
+    <value>Verbindung</value>
+  </data>
+  <data name="Connection address" xml:space="preserve">
+    <value>Verbindungsadresse</value>
   </data>
   <data name="Contact" xml:space="preserve">
     <value>Kontakt</value>
@@ -3124,6 +3133,9 @@
   </data>
   <data name="IP address" xml:space="preserve">
     <value>IP-Adresse</value>
+  </data>
+  <data name="IP address or DNS name the server uses instead of the name, e.g. when the domain's DNS does not know the computer. Empty = by name." xml:space="preserve">
+    <value>IP-Adresse oder DNS-Name, über die der Server den Rechner statt über seinen Namen anspricht, z. B. wenn der DNS der Domäne ihn nicht kennt. Leer = über den Namen.</value>
   </data>
   <data name="IP address scan started" xml:space="preserve">
     <value>IP-Scan gestartet</value>
@@ -6788,6 +6800,9 @@
   <data name="The device scan tries these communities one after another (SNMP v2c, then v1). They are stored encrypted and never shown again. Ranges can have their own." xml:space="preserve">
     <value>Der Gerätescan probiert diese Communities nacheinander (SNMP v2c, dann v1). Sie werden verschlüsselt gespeichert und nie wieder angezeigt. Bereiche können eigene haben.</value>
   </data>
+  <data name="The DNS does not know the name and no address is known. Enter one under Edit → Connection address." xml:space="preserve">
+    <value>Der DNS kennt den Namen nicht, und es ist keine Adresse bekannt. Unter Bearbeiten → Verbindungsadresse eine eintragen.</value>
+  </data>
   <data name="The downloaded .NET Framework installer was rejected: {0}" xml:space="preserve">
     <value>Der heruntergeladene .NET-Framework-Installer wurde abgelehnt: {0}</value>
   </data>
@@ -8189,6 +8204,9 @@
   <data name="{0} (copy)" xml:space="preserve">
     <value>{0} (Kopie)</value>
   </data>
+  <data name="{0} (entered by hand)" xml:space="preserve">
+    <value>{0} (von Hand eingetragen)</value>
+  </data>
   <data name="{0} (not inventoried)" xml:space="preserve">
     <value>{0} (nicht inventarisiert)</value>
   </data>
@@ -8566,6 +8584,9 @@
   </data>
   <data name="{0} {1} is not (anymore) listed in the winget repository." xml:space="preserve">
     <value>{0} {1} wird im winget-Repository nicht (mehr) geführt.</value>
+  </data>
+  <data name="{0} – name not in DNS; the last known address, used only while this computer answers there" xml:space="preserve">
+    <value>{0} – Name nicht im DNS; die zuletzt bekannte Adresse, nur solange sich dort dieser Rechner meldet</value>
   </data>
   <data name="{0}, including drivers" xml:space="preserve">
     <value>{0}, einschließlich Treiber</value>

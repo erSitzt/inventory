@@ -89,7 +89,8 @@ public sealed class SimulatedTransport(TransportKind kind) : IRemoteTransport
             }
             else if (step.Type == StepType.InventoryScan)
             {
-                result.Inventory = SimulatedInventory.Create(target.Host);
+                // Über eine IP-Adresse antwortet der simulierte Rechner, der dort zuletzt gesehen wurde.
+                result.Inventory = SimulatedInventory.Create(SimulatedHostProbe.MachineAt(target.Host) ?? target.Host);
             }
             else if (step.Type == StepType.Reboot && i + 1 < job.Steps.Count)
             {

@@ -270,6 +270,9 @@ namespace Inventory.Data.Migrations
                     b.Property<string>("ClusterName")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ConnectAddress")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CostCenter")
                         .HasColumnType("TEXT");
 
@@ -464,6 +467,9 @@ namespace Inventory.Data.Migrations
                         .HasMaxLength(253)
                         .HasColumnType("TEXT")
                         .UseCollation("NOCASE");
+
+                    b.Property<bool>("NameNotInDns")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Notes")
                         .HasColumnType("TEXT");

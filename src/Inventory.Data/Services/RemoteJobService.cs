@@ -8,7 +8,9 @@ using Microsoft.Extensions.Localization;
 namespace Inventory.Data.Services;
 
 /// <summary>Führt einen Job auf einem Rechner aus und wählt dafür Transport und Zugangsdaten (Rechner-Einstellung vor Standard).</summary>
-public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, ComputerService computers, CredentialService credentials, SettingsService settings, IStringLocalizer<SharedResource>? localizer = null)
+/// <param name="probe">Prüft, ob der DNS den Namen kennt; ohne (in Tests) gilt jeder Name als bekannt.</param>
+public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, ComputerService computers, CredentialService credentials, SettingsService settings,
+    IStringLocalizer<SharedResource>? localizer = null, IHostProbe? probe = null)
 {    private readonly IStringLocalizer<SharedResource> L = localizer ?? PassthroughLocalizer.Instance;
 
 
@@ -68,8 +70,11 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             if (transport is null)
                 return JobResult.Failed(job.JobId, L["The transport {0} is not available on this server", kind]);
 
-            // Reine Scans dürfen überall laufen: sie zeigen ja gerade, welcher Rechner tatsächlich antwortet.
-            if (job.Steps.Any(s => s.Type != StepType.InventoryScan) && await settings.GetVerifyTargetNameAsync(ct))
+            // Kennt der DNS den Namen nicht, geht es über die zuletzt bekannte IP-Adresse (der Agent braucht keine).
+            var (host, viaKnownIp) = kind != TransportKind.Agent && probe is not null ? await probe.ConnectHostAsync(computer, ct) : (computer.Address, false);
+            // Reine Scans dürfen überall laufen: sie zeigen ja gerade, welcher Rechner tatsächlich antwortet. Über eine alte
+            // IP-Adresse aber nicht: Dort könnte längst ein anderer Rechner stehen, dessen Inventar dann beim falschen Eintrag landete.
+            if (viaKnownIp || job.Steps.Any(s => s.Type != StepType.InventoryScan) && await settings.GetVerifyTargetNameAsync(ct))
                 job.ExpectedComputerName = computer.ExpectedMachineName;
 
             var credential = credentialId is null ? await credentials.ResolveAsync(computerId, ct) : await credentials.GetAsync(credentialId, ct);
@@ -78,7 +83,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             if (credential is null && JobSecrets.Needed(job))
                 return JobResult.Failed(job.JobId, L["Running as the credentials user needs credentials: choose some, store them on the computer or set default credentials."]);
             // Der Agent holt seine Jobs unter dem Namen des Eintrags ab; alle anderen Wege verbinden sich zum Rechner und brauchen einen Namen, der überall aufgelöst wird.
-            RemoteTarget Target(IRemoteTransport via) => new(via.Kind == TransportKind.Agent ? computer.Name : computer.Address, credential);
+            RemoteTarget Target(IRemoteTransport via) => new(via.Kind == TransportKind.Agent ? computer.Name : host, credential);
             try
             {
                 return await transport.RunAsync(Target(transport), For(transport, job), files ?? [], progress, ct);

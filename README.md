@@ -472,6 +472,20 @@ the job is done. One job runs at a time per computer – a second one waits for 
 
 To remove everything from a computer: `sc delete InventoryRunner` and delete `%SystemRoot%\Inventory`.
 
+**Computers the DNS does not know.** The server reaches a computer by its name (or the full DNS name it knows). If the
+domain's DNS does not know the name – a DMZ server, a workgroup machine, a stale or missing record – there are two ways:
+
+- *Connection address* (computer page → *Edit*): an IP address or DNS name the server uses instead of the name, for
+  the reachability check, scans, deployments, commands and remote access. It applies as entered.
+- Without one, the server uses the **last known IP address** of the computer when the DNS reports the name as unknown –
+  from an earlier scan, the agent or the device scan (a computer that answered there over SMB with its name). It
+  counts only while the computer there answers with its own name: the reachability check asks for the name, and every
+  job, including a pure scan, stops before running anything if another computer answers. The computer page shows
+  under *Connection* which way is used.
+
+Over an IP address Windows authenticates with NTLM instead of Kerberos: SMB + service works as long as NTLM is allowed;
+WinRM by IP needs *TrustedHosts* or HTTPS on the server and is therefore not set up for you – use SMB or the agent.
+
 ### Account for agentless access
 
 Scans, deployments and the agent installation over SMB or WinRM connect with a stored account (*Credentials*; one is

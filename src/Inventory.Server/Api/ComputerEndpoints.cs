@@ -14,13 +14,14 @@ public static class ComputerEndpoints
         string? ReportedName, string? ReverseDnsName, bool NameMismatch, string? OsName, string? OsVersion, string? Manufacturer, string? Model, string? SerialNumber, long? MemoryBytes, string? LoggedOnUser,
         string? PrimaryUser = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
         DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string? WakeMac = null, string? DnsName = null,
-        IReadOnlyDictionary<string, string>? CustomValues = null, OsPlatform Platform = OsPlatform.Windows);
+        IReadOnlyDictionary<string, string>? CustomValues = null, OsPlatform Platform = OsPlatform.Windows, string? ConnectAddress = null, bool NameNotInDns = false);
 
     public sealed record WakeDto(bool Sent, IReadOnlyList<string> Macs, int Packets, IReadOnlyList<string> Relays);
 
     /// <summary>Jedes Feld ist optional: weggelassen oder null = unverändert, leerer Text = löschen. Die Datumsfelder löscht <c>Clear</c>.</summary>
     public sealed record AssetRequest(string? Description = null, string? Owner = null, string? Location = null, string? CostCenter = null, string? InventoryNumber = null,
-        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string[]? Clear = null, string? WakeMac = null);
+        DateOnly? PurchaseDate = null, DateOnly? WarrantyUntil = null, string? Tags = null, string? Notes = null, string[]? Clear = null, string? WakeMac = null,
+        string? ConnectAddress = null);
 
     public sealed record HardwareDto(string DeviceType, string? FirmwareType, bool? SecureBoot, DateTime? BiosDateUtc, bool? TpmPresent, string? TpmVersion, bool? TpmReady,
         string? Gpu, int? MemorySlots, bool? BatteryPresent, int? BatteryHealthPercent, int? BatteryCycleCount,
@@ -140,16 +141,18 @@ public static class ComputerEndpoints
             if (await computers.GetAsync(id, ct) is not { } computer)
                 return Results.NotFound();
             bool Cleared(string field) => request.Clear?.Contains(field, StringComparer.OrdinalIgnoreCase) == true;
-            if (request.WakeMac is not null)
+            try
             {
-                try
-                {
+                // Erst prüfen, dann speichern: Eine abgelehnte Angabe lässt alles unverändert.
+                computers.NormalizeConnectAddress(request.ConnectAddress);
+                if (request.WakeMac is not null)
                     await computers.SetWakeMacAsync(id, request.WakeMac, ct);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    return Results.Problem(ex.Message, statusCode: 400);
-                }
+                if (request.ConnectAddress is not null)
+                    await computers.SetConnectAddressAsync(id, request.ConnectAddress, ct);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
             }
             var asset = computer.Asset;
             await computers.UpdateAssetAsync(id, new AssetData(request.Owner ?? asset.Owner, request.Location ?? asset.Location, request.CostCenter ?? asset.CostCenter,
@@ -160,7 +163,7 @@ public static class ComputerEndpoints
                 await computers.UpdateAsync(id, request.Description, computer.Transport, computer.CredentialId, ct);
             await audit.LogAsync(http.Actor(), "Computer changed via API", computer.Name, ct);
             return Results.Ok(ToDto((await computers.GetAsync(id, ct))!));
-        }).RequireAdmin().WithSummary("Change asset data").WithDescription("Sets description, owner, location, cost center, inventory number, purchase date, end of warranty, tags (comma-separated) and notes. Omitted fields stay unchanged; an empty string clears a text field; clear = [\"purchaseDate\", \"warrantyUntil\"] clears the dates. wakeMac: MAC address for Wake-on-LAN (empty = the adapters of the last scan).").Produces<ComputerDto>().Produces(400).Produces(404);
+        }).RequireAdmin().WithSummary("Change asset data").WithDescription("Sets description, owner, location, cost center, inventory number, purchase date, end of warranty, tags (comma-separated) and notes. Omitted fields stay unchanged; an empty string clears a text field; clear = [\"purchaseDate\", \"warrantyUntil\"] clears the dates. wakeMac: MAC address for Wake-on-LAN (empty = the adapters of the last scan). connectAddress: IP address or DNS name the server uses instead of the name, e.g. for computers the domain's DNS does not know (empty = by name).").Produces<ComputerDto>().Produces(400).Produces(404);
 
         group.MapPost("assets/import", async (HttpContext http, ComputerService computers, AuditService audit, CancellationToken ct) =>
         {
@@ -261,5 +264,5 @@ public static class ComputerEndpoints
         new(c.Id, c.Name, c.Description, c.IpAddress, c.IsOnline, c.LastSeenUtc, c.LastScanUtc, c.LastScanError, c.Transport, c.CredentialId,
             c.ReportedName, c.ReverseDnsName, c.NameMismatch, c.OsName, c.OsVersion, c.Manufacturer, c.Model, c.SerialNumber, c.MemoryBytes, c.LoggedOnUser,
             c.PrimaryUser, c.Owner, c.Location, c.CostCenter, c.InventoryNumber, c.PurchaseDate, c.WarrantyUntil, c.Tags, c.Notes, c.WakeMac, c.DnsName,
-            Platform: c.Platform);
+            Platform: c.Platform, ConnectAddress: c.ConnectAddress, NameNotInDns: c.NameNotInDns);
 }
