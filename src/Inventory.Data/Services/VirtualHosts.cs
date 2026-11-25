@@ -22,7 +22,7 @@ public static class VirtualHosts
         var linked = new HashSet<int>();
         foreach (var machine in machines)
         {
-            var guest = await FindByUuidAsync(db, machine.BiosUuid, computerId, ct);
+            var guest = await FindByUuidAsync(db, machine, computerId, ct);
             machine.GuestComputerId = guest?.Id;
             if (guest is null)
                 continue;
@@ -53,11 +53,14 @@ public static class VirtualHosts
         int? hostComputer = null;
         if (candidates.Length > 0)
         {
-            machine = await db.HostedVirtualMachines.Where(v => v.BiosUuid != null && candidates.Contains(v.BiosUuid) && v.ComputerId != guest.Id)
-                .OrderByDescending(v => v.Running).FirstOrDefaultAsync(ct);
+            // Dieselbe UUID bei einem anderen Rechner: eine geklonte VM. Dann sagt die UUID allein nicht, welche VM welcher Rechner ist.
+            var shared = await db.Computers.AnyAsync(c => c.Id != guest.Id && c.BiosUuid != null && candidates.Contains(c.BiosUuid), ct);
+            var machines = await db.HostedVirtualMachines.Where(v => v.BiosUuid != null && candidates.Contains(v.BiosUuid) && v.ComputerId != guest.Id).ToListAsync(ct);
+            machine = Pick(machines, v => SameName(v.Name, guest), v => v.Name, v => v.Running, shared);
             if (machine is not null)
                 (source, hostComputer) = (HostSources.BiosUuid, machine.ComputerId);
-            else if ((vm = await db.HypervisorVms.Where(v => v.BiosUuid != null && candidates.Contains(v.BiosUuid)).OrderByDescending(v => v.PoweredOn).FirstOrDefaultAsync(ct)) is not null)
+            else if ((vm = Pick(await db.HypervisorVms.Where(v => v.BiosUuid != null && candidates.Contains(v.BiosUuid)).ToListAsync(ct),
+                         v => Matches(v, guest), v => v.Name, v => v.PoweredOn, shared)) is not null)
                 source = HostSources.Hypervisor;
         }
         if (source is null && guest.ReportedHostName is { Length: > 0 } reported && await FindByNameAsync(db, reported, guest.Id, ct) is { } host)
@@ -87,6 +90,34 @@ public static class VirtualHosts
         guest.HostSource = source;
     }
 
+    /// <summary>
+    /// Unter den VMs mit der UUID eines Rechners die richtige. Die mit seinem Namen geht vor. Sonst gilt die UUID allein nur,
+    /// wenn alle Treffer Kopien derselben VM sind (gleicher Name, z. B. nach einer Migration auf einen anderen Host; dann die
+    /// laufende) und kein anderer Rechner dieselbe UUID trägt. Bei geklonten VMs mit kopierter BIOS-UUID wäre die Zuordnung
+    /// sonst Zufall, und zwei Gäste stünden über Kreuz.
+    /// </summary>
+    private static T? Pick<T>(List<T> found, Func<T, bool> sameName, Func<T, string> name, Func<T, bool> running, bool shared) where T : class
+    {
+        var named = found.Where(sameName).ToList();
+        var pool = named.Count > 0 ? named
+            : !shared && found.Select(v => NameKey(name(v))).Distinct().Count() <= 1 ? found
+            : [];
+        return pool.OrderByDescending(running).FirstOrDefault();
+    }
+
+    /// <summary>Gleicher Schlüssel für eine UUID und ihre Schreibweise mit vertauschter Bytefolge.</summary>
+    private static string UuidKey(string uuid) =>
+        BiosUuids.Normalize(uuid) is { } normalized && BiosUuids.Swapped(normalized) is var swapped
+            ? string.CompareOrdinal(normalized, swapped) <= 0 ? normalized : swapped
+            : uuid;
+
+    /// <summary>Der Name einer Hyper-V-VM passt zum Rechner: zu seinem Namen, DNS-Namen oder dem Namen, den er selbst meldet.</summary>
+    private static bool SameName(string vmName, Computer computer) =>
+        !string.IsNullOrWhiteSpace(vmName)
+        && (string.Equals(vmName.Trim(), computer.DnsName, StringComparison.OrdinalIgnoreCase)
+            || NameKey(vmName) == NameKey(computer.Name)
+            || computer.ReportedName is not null && NameKey(vmName) == NameKey(computer.ReportedName));
+
     /// <summary>Kurzname in Großbuchstaben: "vm-sql01.corp.example" und "VM-SQL01" ergeben denselben Schlüssel.</summary>
     private static string NameKey(string name) => name.Trim().Split('.')[0].ToUpperInvariant();
 
@@ -106,9 +137,10 @@ public static class VirtualHosts
         var vms = await db.HypervisorVms.ToListAsync(ct);
         foreach (var vm in vms)
             vm.GuestComputerId = null;
-        var byUuid = new Dictionary<string, HypervisorVm>();
-        foreach (var vm in vms.Where(v => v.BiosUuid is not null).OrderBy(v => v.PoweredOn))
-            byUuid[vm.BiosUuid!] = vm;
+        var byUuid = vms.Where(v => v.BiosUuid is not null).ToLookup(v => v.BiosUuid!);
+        // UUIDs, die mehrere Rechner tragen (geklonte VMs): dort entscheidet der Name.
+        var shared = (await db.Computers.Where(c => c.BiosUuid != null).Select(c => c.BiosUuid!).ToListAsync(ct))
+            .GroupBy(UuidKey).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
         var computers = (await db.Computers.Where(c => c.LicensingScanUtc != null || c.HypervisorHostId != null || c.HostSource != null).ToListAsync(ct))
             // Physische Rechner haben keinen Host; nur VMs und bisher zugeordnete Rechner prüfen.
             .Where(c => c.IsVirtual || c.HypervisorHostId is not null || c.HostSource is not null)
@@ -122,7 +154,8 @@ public static class VirtualHosts
         {
             if (computer.BiosUuid is not { } uuid)
                 continue;
-            if (!byUuid.TryGetValue(uuid, out var vm) && !byUuid.TryGetValue(BiosUuids.Swapped(uuid), out vm) || !claimed.Add(vm))
+            var found = byUuid[uuid].Concat(byUuid[BiosUuids.Swapped(uuid)]).Distinct().Where(v => !claimed.Contains(v)).ToList();
+            if (Pick(found, v => Matches(v, computer), v => v.Name, v => v.PoweredOn, shared.Contains(UuidKey(uuid))) is not { } vm || !claimed.Add(vm))
                 continue;
             Link(computer, vm, HostSources.Hypervisor);
             pending.Remove(computer);
@@ -155,12 +188,23 @@ public static class VirtualHosts
         computer.HostSource = source;
     }
 
-    private static async Task<Computer?> FindByUuidAsync(InventoryDbContext db, string? uuid, int hostId, CancellationToken ct)
+    /// <summary>
+    /// Der inventarisierte Gast einer Hyper-V-VM über die UUID. Tragen mehrere Rechner sie oder mehrere unterschiedlich
+    /// benannte VMs (geklont), entscheidet der Name.
+    /// </summary>
+    private static async Task<Computer?> FindByUuidAsync(InventoryDbContext db, HostedVirtualMachine machine, int hostId, CancellationToken ct)
     {
-        if (BiosUuids.Normalize(uuid) is not { } normalized)
+        if (BiosUuids.Normalize(machine.BiosUuid) is not { } normalized)
             return null;
         var candidates = new[] { normalized, BiosUuids.Swapped(normalized) };
-        return await db.Computers.Where(c => c.Id != hostId && c.BiosUuid != null && candidates.Contains(c.BiosUuid)).FirstOrDefaultAsync(ct);
+        var computers = await db.Computers.Where(c => c.Id != hostId && c.BiosUuid != null && candidates.Contains(c.BiosUuid)).ToListAsync(ct);
+        if (computers.FirstOrDefault(c => SameName(machine.Name, c)) is { } named)
+            return named;
+        if (computers.Count != 1)
+            return null;
+        var otherNames = await db.HostedVirtualMachines.Where(v => v.Id != machine.Id && v.BiosUuid != null && candidates.Contains(v.BiosUuid))
+            .Select(v => v.Name).ToListAsync(ct);
+        return otherNames.All(n => NameKey(n) == NameKey(machine.Name)) ? computers[0] : null;
     }
 
     /// <summary>Über den DNS-Namen, sonst den Namen, sonst den ersten Teil eines vollqualifizierten Namens.</summary>
