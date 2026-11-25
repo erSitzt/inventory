@@ -100,6 +100,13 @@ public class LicensingDataTests
 
         Assert.All((await computers.GetDetailAsync(ids["hv-01"]))!.VirtualMachines, v => Assert.Null(v.GuestComputerId));
         Assert.Null((await computers.GetAsync(ids["srv-a"]))!.HostComputerId);
+
+        // Heißt der Eintrag anders, passt der VM-Name aber zum Kurznamen seines DNS-Namens, zählt das als Name.
+        await using (var context = db.CreateDbContext())
+            await context.Computers.Where(c => c.Id == ids["srv-a"]).ExecuteUpdateAsync(s => s.SetProperty(c => c.DnsName, "template-copy-1.corp.example"));
+        await store.SaveAsync(ids["hv-01"], Host("HV-01", new HostedVmItem { Name = "TEMPLATE-COPY-1", BiosUuid = GuestUuid, Running = true },
+            new HostedVmItem { Name = "Template copy 2", BiosUuid = GuestUuid, Running = true }));
+        Assert.Equal(ids["srv-a"], (await computers.GetDetailAsync(ids["hv-01"]))!.VirtualMachines.Single(v => v.Name == "TEMPLATE-COPY-1").GuestComputerId);
         // Eine einzelne VM mit anderem Namen und ein einzelner Rechner: wie bisher über die UUID allein.
         Assert.Null((await computers.GetAsync(ids["srv-b"]))!.HostSource);
     }

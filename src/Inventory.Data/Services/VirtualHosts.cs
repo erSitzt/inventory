@@ -116,6 +116,7 @@ public static class VirtualHosts
         !string.IsNullOrWhiteSpace(vmName)
         && (string.Equals(vmName.Trim(), computer.DnsName, StringComparison.OrdinalIgnoreCase)
             || NameKey(vmName) == NameKey(computer.Name)
+            || computer.DnsName is not null && NameKey(vmName) == NameKey(computer.DnsName)
             || computer.ReportedName is not null && NameKey(vmName) == NameKey(computer.ReportedName));
 
     /// <summary>Kurzname in Großbuchstaben: "vm-sql01.corp.example" und "VM-SQL01" ergeben denselben Schlüssel.</summary>
@@ -125,6 +126,7 @@ public static class VirtualHosts
         new[] { vm.GuestHostName, vm.Name }.Any(n => !string.IsNullOrWhiteSpace(n)
             && (string.Equals(n.Trim(), computer.DnsName, StringComparison.OrdinalIgnoreCase)
                 || NameKey(n) == NameKey(computer.Name)
+                || computer.DnsName is not null && NameKey(n) == NameKey(computer.DnsName)
                 || computer.ReportedName is not null && NameKey(n) == NameKey(computer.ReportedName)));
 
     /// <summary>
