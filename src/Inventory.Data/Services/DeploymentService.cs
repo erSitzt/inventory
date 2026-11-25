@@ -850,10 +850,12 @@ public sealed class DeploymentService(IDbContextFactory<InventoryDbContext> dbFa
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Gefragt wird unter dem Namen, unter dem auch der Job den Rechner anspricht.
-        var computer = target.ComputerId is { } id ? await db.Computers.AsNoTracking().Where(c => c.Id == id).Select(c => new { c.Name, c.DnsName }).FirstOrDefaultAsync(ct) : null;
+        var computer = target.ComputerId is { } id ? await db.Computers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct) : null;
         var name = computer?.Name ?? target.ComputerName;
-        var result = await probe.ProbeAsync(MachineNames.Address(name, computer?.DnsName), ct);
-        if (!result.Online || !MachineNames.Differs(name, result.MachineName))
+        var outcome = computer is null ? new ComputerProbeResult(await probe.ProbeAsync(name, ct), false, false) : await probe.ProbeComputerAsync(computer, ct);
+        var result = outcome.Result;
+        // Über die zuletzt bekannte IP ist der Rechner nur erreichbar, wenn er sich dort mit seinem Namen gemeldet hat.
+        if (!result.Online || outcome.ViaKnownIp || !MachineNames.Differs(name, result.MachineName))
             return result.Online;
         return !await SettingsService.VerifyTargetNameAsync(db, ct);
     }

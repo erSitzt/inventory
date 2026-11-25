@@ -376,6 +376,9 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
         var byIp = devices.ToDictionary(d => d.IpAddress);
         var computers = await db.Computers.AsNoTracking().Select(c => new { c.Id, c.Name, c.IpAddress }).ToListAsync(ct);
         var added = 0;
+        // Rechner ohne bekannte Adresse, die sich hier per SMB mit ihrem Namen gemeldet haben: Kennt der DNS ihren Namen
+        // nicht, erreicht der Server sie über diese Adresse.
+        var firstAddresses = new Dictionary<int, string>();
 
         foreach (var o in observations.OrderBy(o => IpRanges.SortKey(o.IpAddress)))
         {
@@ -405,11 +408,15 @@ public sealed class DeviceService(IDbContextFactory<InventoryDbContext> dbFactor
             device.NetworkRangeId = rangeId ?? device.NetworkRangeId;
 
             // Ein inventarisierter Rechner: über den Namen, den er selbst nennt, sonst über seine zuletzt gemeldete Adresse.
-            var computer = (o.WindowsName is { } windowsName ? computers.FirstOrDefault(c => c.Name.Split('.')[0].Equals(windowsName, StringComparison.OrdinalIgnoreCase)) : null)
-                ?? (device.Kind == DeviceKind.Windows ? computers.FirstOrDefault(c => c.IpAddress == o.IpAddress) : null);
+            var named = o.WindowsName is { } windowsName ? computers.FirstOrDefault(c => c.Name.Split('.')[0].Equals(windowsName, StringComparison.OrdinalIgnoreCase)) : null;
+            var computer = named ?? (device.Kind == DeviceKind.Windows ? computers.FirstOrDefault(c => c.IpAddress == o.IpAddress) : null);
             device.ComputerId = computer?.Id ?? (o.WindowsName is null ? device.ComputerId : null);
+            if (named is { IpAddress: null })
+                firstAddresses.TryAdd(named.Id, o.IpAddress);
         }
         await db.SaveChangesAsync(ct);
+        foreach (var (id, address) in firstAddresses)
+            await db.Computers.Where(c => c.Id == id && c.IpAddress == null).ExecuteUpdateAsync(s => s.SetProperty(c => c.IpAddress, address), ct);
         return added;
     }
 

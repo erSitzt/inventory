@@ -36,6 +36,8 @@
                     <MudSelectItem T="int?" Value="@credential.Id">@credential.Name (@credential.Username)</MudSelectItem>
                 }
             </MudSelect>
+            <MudTextField @bind-Value="_connectAddress" Label="@L["Connection address"]" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="@Computer.Name"
+                          HelperText="@L["IP address or DNS name the server uses instead of the name, e.g. when the domain's DNS does not know the computer. Empty = by name."]" />
             <MudTextField @bind-Value="_wakeMac" Label="@L["MAC address for Wake-on-LAN"]" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="00:1A:2B:3C:4D:5E"
                           HelperText="@L["Empty = the network adapters of the last scan. Enter one if the computer wakes through another adapter or has never been scanned."]" />
             @if (_error is not null)
@@ -72,6 +74,7 @@
     private TransportKind? _transport;
     private int? _credentialId;
     private string? _wakeMac;
+    private string? _connectAddress;
     private string? _error;
     private bool _removing;
 
@@ -84,6 +87,7 @@
         _transport = Computer.Transport;
         _credentialId = Computer.CredentialId;
         _wakeMac = Computer.WakeMac;
+        _connectAddress = Computer.ConnectAddress;
     }
 
     private async Task RemoveAgentAsync()
@@ -129,8 +133,10 @@
             return;
         try
         {
-            // Zuerst das Feld, das abgelehnt werden kann: sonst wäre der Rest schon gespeichert.
+            // Zuerst die Felder, die abgelehnt werden können: sonst wäre der Rest schon gespeichert.
+            ComputerService.NormalizeConnectAddress(_connectAddress);
             await ComputerService.SetWakeMacAsync(Computer.Id, _wakeMac);
+            await ComputerService.SetConnectAddressAsync(Computer.Id, _connectAddress);
         }
         catch (InvalidOperationException ex)
         {

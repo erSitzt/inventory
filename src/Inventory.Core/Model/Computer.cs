@@ -10,8 +10,29 @@ public class Computer
     /// Verbindungen laufen über <see cref="Address"/>, auch wenn der Eintrag nur den kurzen Namen trägt.
     /// </summary>
     public string? DnsName { get; set; }
-    /// <summary>Unter diesem Namen wird der Rechner im Netz angesprochen (Scan, Erreichbarkeit, Deployment, Fernzugriff).</summary>
-    public string Address => MachineNames.Address(Name, DnsName);
+    /// <summary>
+    /// Unter diesem Namen wird der Rechner im Netz angesprochen (Scan, Erreichbarkeit, Deployment, Fernzugriff): die fest
+    /// eingetragene Verbindungsadresse, sonst der Name.
+    /// </summary>
+    public string Address => ConnectAddress ?? MachineNames.Address(Name, DnsName);
+
+    /// <summary>
+    /// Von Hand eingetragene IP-Adresse oder DNS-Name, über die der Server den Rechner statt über seinen Namen anspricht,
+    /// z. B. für Rechner, die der DNS der Domäne nicht kennt; null = über den Namen.
+    /// </summary>
+    public string? ConnectAddress { get; set; }
+
+    /// <summary>Bei der letzten Erreichbarkeitsprüfung kannte der DNS den Namen nicht.</summary>
+    public bool NameNotInDns { get; set; }
+
+    /// <summary>
+    /// Die zuletzt bekannte IP-Adresse, über die der Server den Rechner ersatzweise anspricht, wenn der DNS seinen Namen
+    /// nicht kennt. Dort muss sich der Rechner dann mit seinem Namen melden. null, wenn das nicht in Frage kommt: eine
+    /// Verbindungsadresse ist eingetragen, der Eintrag ist schon eine Adresse, es ist keine IP bekannt, oder es ist ein Mac.
+    /// </summary>
+    public string? FallbackAddress =>
+        ConnectAddress is null && !IsMac && IpAddress is { } ip && System.Net.IPAddress.TryParse(ip, out _)
+        && !System.Net.IPAddress.TryParse(Address, out _) && ExpectedMachineName is not null ? ip : null;
     public string? Description { get; set; }
     public string? IpAddress { get; set; }
     public bool IsOnline { get; set; }

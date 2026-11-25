@@ -97,6 +97,42 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Setzt die Verbindungsadresse (IP oder DNS-Name), über die der Server den Rechner statt über seinen Namen anspricht;
+    /// leer = wieder über den Namen.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Der Text ist weder eine IP-Adresse noch ein Hostname.</exception>
+    public async Task SetConnectAddressAsync(int id, string? address, CancellationToken ct = default)
+    {
+        var normalized = NormalizeConnectAddress(address);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var computer = await db.Computers.FindAsync([id], ct) ?? throw new KeyNotFoundException(L["Computer {0} not found", id]);
+        if (computer.ConnectAddress == normalized)
+            return;
+        computer.ConnectAddress = normalized;
+        // Was die letzte Prüfung über den Namen wusste, gilt für die neue Adresse nicht.
+        computer.NameNotInDns = false;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>IP-Adresse in üblicher Schreibweise oder Hostname ohne Punkt am Ende; null für leer.</summary>
+    /// <exception cref="InvalidOperationException">Der Text ist weder eine IP-Adresse noch ein Hostname.</exception>
+    public string? NormalizeConnectAddress(string? address)
+    {
+        var text = address?.Trim().TrimEnd('.');
+        if (string.IsNullOrEmpty(text))
+            return null;
+        // IPAddress.TryParse nähme auch "10.1" oder "123"; eine IPv4-Adresse hat hier immer vier Teile.
+        var ipShape = text.Contains(':') || text.Split('.') is { Length: 4 } parts && parts.All(p => p.Length is > 0 and <= 3 && p.All(char.IsAsciiDigit));
+        if (ipShape && System.Net.IPAddress.TryParse(text, out var ip))
+            return ip.ToString();
+        var labels = text.Split('.');
+        if (text.Length <= 253 && labels.All(l => l.Length is > 0 and <= 63 && l.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_') && l[0] != '-' && l[^1] != '-')
+            && !labels.All(l => l.All(char.IsAsciiDigit)))
+            return text;
+        throw new InvalidOperationException(L["\"{0}\" is neither an IP address nor a host name.", address!.Trim()]);
+    }
+
     /// <summary>Setzt die Bestandsangaben eines Rechners; leere Texte werden zu "nicht angegeben".</summary>
     public async Task UpdateAssetAsync(int id, AssetData asset, CancellationToken ct = default)
     {
@@ -301,9 +337,12 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
                     computer.LastProbeUtc = now;
                     return;
                 }
-                var result = await probe.ProbeAsync(computer.Address, token);
+                var outcome = await probe.ProbeComputerAsync(computer, token);
+                var result = outcome.Result;
+                computer.NameNotInDns = outcome.NameNotFound && computer.ConnectAddress is null;
                 // Antwortet unter der Adresse ein anderer Rechner, ist der eingetragene nicht erreichbar – nur seine alte Adresse.
-                var online = agentRecent || result.Online && !(verifyName && MachineNames.Differs(computer.Name, result.MachineName));
+                // Über die zuletzt bekannte IP zählt ohnehin nur der Rechner, der sich mit seinem Namen meldet.
+                var online = agentRecent || result.Online && (outcome.ViaKnownIp || !(verifyName && MachineNames.Differs(computer.Name, result.MachineName)));
                 computer.IsOnline = online;
                 computer.LastProbeUtc = now;
                 if (result.IpAddress is not null)

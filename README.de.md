@@ -489,6 +489,23 @@ Dienst endet, sobald der Job fertig ist. Je Rechner läuft ein Job zur Zeit – 
 
 Um alles von einem Rechner zu entfernen: `sc delete InventoryRunner` und `%SystemRoot%\Inventory` löschen.
 
+**Rechner, die der DNS nicht kennt.** Der Server spricht einen Rechner über seinen Namen an (bzw. den vollen DNS-Namen,
+den er kennt). Kennt der DNS der Domäne den Namen nicht – ein DMZ-Server, ein Rechner in einer Arbeitsgruppe, ein
+veralteter oder fehlender Eintrag –, gibt es zwei Wege:
+
+- *Verbindungsadresse* (Rechnerseite → *Bearbeiten*): eine IP-Adresse oder ein DNS-Name, über die der Server den
+  Rechner statt über seinen Namen anspricht – für Erreichbarkeit, Scan, Verteilung, Befehle und Fernzugriff. Sie gilt
+  so, wie sie eingetragen ist.
+- Ohne sie nimmt der Server die **zuletzt bekannte IP-Adresse** des Rechners, wenn der DNS den Namen als unbekannt
+  meldet – aus einem früheren Scan, vom Agenten oder aus dem Gerätescan (ein Rechner, der sich dort per SMB mit seinem
+  Namen gemeldet hat). Sie gilt nur, solange sich dort der Rechner mit seinem eigenen Namen meldet: Die
+  Erreichbarkeitsprüfung fragt den Namen ab, und jeder Job, auch ein reiner Scan, bricht vor dem ersten Schritt ab,
+  wenn ein anderer Rechner antwortet. Welcher Weg gilt, zeigt die Rechnerseite unter *Verbindung*.
+
+Über eine IP-Adresse meldet sich Windows mit NTLM statt Kerberos an: SMB + Dienst funktioniert, solange NTLM erlaubt
+ist; WinRM über eine IP braucht *TrustedHosts* oder HTTPS auf dem Server und wird daher nicht eingerichtet – dafür SMB
+oder den Agenten nehmen.
+
 ### Konto für den agentenlosen Zugriff
 
 Scans, Deployments und die Agent-Installation über SMB oder WinRM verbinden sich mit einem hinterlegten Konto

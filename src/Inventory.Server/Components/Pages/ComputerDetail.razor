@@ -136,6 +136,10 @@ else if (_computer.ReverseDnsMismatch)
                         @Row(L["Primary user"], _computer.PrimaryUser)
                         @Row(L["Domain"], _computer.Domain)
                         @Row(L["IP address"], _computer.IpAddress)
+                        @if (ConnectionText is { } connection)
+                        {
+                            @Row(L["Connection"], connection)
+                        }
                         @Row(L["Reverse DNS"], _computer.ReverseDnsName)
                         @Row(L["Last scan"], Display.LocalTime(_computer.LastScanUtc))
                         @Row(L["Last seen"], Display.LocalTime(_computer.LastSeenUtc))
@@ -1084,6 +1088,15 @@ else if (_computer.ReverseDnsMismatch)
         <td style="width: 40%; color: var(--mud-palette-text-secondary)">@label</td>
         <td class="py-1"><ChipList Items="items" /></td>
     </tr>;
+
+    /// <summary>Wie der Server den Rechner anspricht, wenn nicht einfach über den Namen; null = über den Namen.</summary>
+    private string? ConnectionText => _computer switch
+    {
+        { ConnectAddress: { } fixedAddress } => L["{0} (entered by hand)", fixedAddress],
+        { NameNotInDns: true, FallbackAddress: { } ip } => L["{0} – name not in DNS; the last known address, used only while this computer answers there", ip],
+        { NameNotInDns: true } => L["The DNS does not know the name and no address is known. Enter one under Edit → Connection address."],
+        _ => null,
+    };
 
     private static RenderFragment Row(string label, string? value) => @<tr>
         <td style="width: 40%; color: var(--mud-palette-text-secondary)">@label</td>
