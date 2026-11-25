@@ -44,6 +44,42 @@ public class CredentialTests
     }
 
     [Fact]
+    public async Task Several_computers_get_the_same_credentials_and_go_back_to_the_default()
+    {
+        using var db = new TestDb();
+        var service = new CredentialService(db, new ReversingProtector());
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var imported = await computers.ImportAsync("dmz-02\ndmz-01\npc-03");
+        await service.SaveAsync(null, "Standard", @"CORP\deploy", "eins", null);
+        var dmz = await service.SaveAsync(null, "DMZ", @".\admin", "zwei", null);
+        var ids = imported.Where(c => c.Name.StartsWith("dmz", StringComparison.Ordinal)).Select(c => c.Id).ToList();
+        async Task<string[]> PasswordsAsync()
+        {
+            var passwords = new List<string>();
+            foreach (var id in ids)
+                passwords.Add((await service.ResolveAsync(id))!.Password);
+            return [.. passwords];
+        }
+
+        Assert.Equal(["dmz-01", "dmz-02"], await computers.SetCredentialAsync(ids, dmz.Id));
+        Assert.Equal(["zwei", "zwei"], await PasswordsAsync());
+        // Die übrigen Rechner bleiben beim Standard.
+        Assert.Equal("eins", (await service.ResolveAsync(imported.Single(c => c.Name == "pc-03").Id))!.Password);
+        // Wer die Zugangsdaten schon hat, gilt nicht als geändert (Meldung und Protokoll).
+        var pc03 = imported.Single(c => c.Name == "pc-03").Id;
+        Assert.Equal(["pc-03"], await computers.SetCredentialAsync([.. ids, pc03], dmz.Id));
+        Assert.Empty(await computers.SetCredentialAsync([.. ids, pc03], dmz.Id));
+
+        await computers.SetCredentialAsync(ids, null);
+        Assert.Equal(["eins", "eins"], await PasswordsAsync());
+
+        // Zwischendurch gelöschte Zugangsdaten: nichts wird geändert.
+        await service.DeleteAsync(dmz.Id);
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => computers.SetCredentialAsync(ids, dmz.Id));
+        Assert.Equal(["eins", "eins"], await PasswordsAsync());
+    }
+
+    [Fact]
     public async Task New_credential_requires_password()
     {
         using var db = new TestDb();

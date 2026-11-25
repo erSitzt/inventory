@@ -168,6 +168,7 @@ else if (_computer.ReverseDnsMismatch)
                         @Row(L["Agent"], _computer.AgentKeyHash is null ? L["not installed"]
                             : L["Version {0}, last contact {1}", _computer.AgentVersion, Display.LocalTime(_computer.AgentLastSeenUtc)]
                               + (_computer.AgentHttps is { } secure ? ", " + (secure ? L["over HTTPS"] : L["over HTTP"]) : ""))
+                        @Row(L["Credentials"], CredentialText)
                         @Row(L["Description"], _computer.Description)
                         @Row(L["Owner"], _computer.Owner)
                         @Row(L["Location"], _computer.Location)
@@ -929,6 +930,16 @@ else if (_computer.ReverseDnsMismatch)
     private HypervisorHost? _hypervisorHost;
     private string? _hypervisorManager;
 
+    /// <summary>Die Standard-Zugangsdaten; gelten, wenn am Rechner keine eingetragen sind.</summary>
+    private Credential? _defaultCredential;
+
+    /// <summary>Womit Scan, Verteilung und Befehle den Rechner erreichen, und ob das am Rechner eingetragen ist.</summary>
+    private string CredentialText => _computer?.Credential is { } own ? L["{0}, set on this computer", CredentialLabel(own)]
+        : _defaultCredential is { } fallback ? L["{0}, the default", CredentialLabel(fallback)]
+        : L["none – no default credentials stored"];
+
+    private static string CredentialLabel(Credential credential) => $"{credential.Name} ({credential.Username})";
+
     private string ManagerLabel(HypervisorHost host) => $"{HypervisorSyncService.Name(host.Kind)} {_hypervisorManager}".Trim();
 
     private async Task LoadLinksAsync()
@@ -936,6 +947,7 @@ else if (_computer.ReverseDnsMismatch)
         if (_computer is null)
             return;
         _guests = await ComputerService.GuestsAsync(_computer.Id);
+        _defaultCredential = (await CredentialService.ListAsync()).FirstOrDefault(c => c.IsDefault);
         _hypervisorHost = _computer.HypervisorHostId is { } esx ? await Virtualization.HypervisorHostAsync(esx) : null;
         _hypervisorManager = _hypervisorHost is { } found ? await Virtualization.ManagerNameAsync(found.ManagerId) : null;
         var ids = _computer.VirtualMachines.Select(v => v.GuestComputerId).OfType<int>().Concat(_guests.Select(g => g.Id)).ToList();

@@ -806,6 +806,9 @@
   <data name="Applies to clusters without their own setting, unless DRS or HA is on (then the VMs move anyway). Set single clusters on the Windows Server tab." xml:space="preserve">
     <value>Gilt für Cluster ohne eigene Einstellung, außer DRS oder HA ist eingeschaltet (dann wandern die VMs ohnehin). Einzelne Cluster stellen Sie im Reiter Windows Server ein.</value>
   </data>
+  <data name="Applies to {0} computers for scans, deployments and commands. Empty = the default credentials." xml:space="preserve">
+    <value>Gilt für {0} Rechner bei Scans, Verteilungen und Befehlen. Leer = die Standard-Zugangsdaten.</value>
+  </data>
   <data name="applies." xml:space="preserve">
     <value>zutrifft.</value>
   </data>
@@ -1283,6 +1286,9 @@
   <data name="Computer changed" xml:space="preserve">
     <value>Rechner geändert</value>
   </data>
+  <data name="Computer credentials set" xml:space="preserve">
+    <value>Zugangsdaten von Rechnern gesetzt</value>
+  </data>
   <data name="Computer details" xml:space="preserve">
     <value>Rechner im Detail</value>
   </data>
@@ -1696,6 +1702,9 @@
   </data>
   <data name="Default transport" xml:space="preserve">
     <value>Standard-Transport</value>
+  </data>
+  <data name="Default: {0} ({1})" xml:space="preserve">
+    <value>Standard: {0} ({1})</value>
   </data>
   <data name="Defender mode" xml:space="preserve">
     <value>Defender-Betriebsart</value>
@@ -4136,6 +4145,9 @@
   <data name="None set up yet." xml:space="preserve">
     <value>Noch keins eingerichtet.</value>
   </data>
+  <data name="none – no default credentials stored" xml:space="preserve">
+    <value>keine – es sind keine Standard-Zugangsdaten hinterlegt</value>
+  </data>
   <data name="none, not even restart warnings" xml:space="preserve">
     <value>keine, auch keine Neustartwarnungen</value>
   </data>
@@ -6077,6 +6089,9 @@
   <data name="set by hand (detected: {0})" xml:space="preserve">
     <value>von Hand festgelegt (erkannt: {0})</value>
   </data>
+  <data name="Set credentials" xml:space="preserve">
+    <value>Zugangsdaten setzen</value>
+  </data>
   <data name="Set value" xml:space="preserve">
     <value>Wert setzen</value>
   </data>
@@ -7015,6 +7030,9 @@
   </data>
   <data name="The script failed (exit code {0})" xml:space="preserve">
     <value>Das Skript ist fehlgeschlagen (Exitcode {0})</value>
+  </data>
+  <data name="The selected computers already use these credentials." xml:space="preserve">
+    <value>Die gewählten Rechner nutzen diese Zugangsdaten bereits.</value>
   </data>
   <data name="The sender is not a valid e-mail address." xml:space="preserve">
     <value>Der Absender ist keine gültige E-Mail-Adresse.</value>
@@ -8270,6 +8288,9 @@
   <data name='{0} computers in "{1}"' xml:space="preserve">
     <value>{0} Rechner in „{1}“</value>
   </data>
+  <data name="{0} computers now use &quot;{1}&quot;." xml:space="preserve">
+    <value>{0} Rechner nutzen jetzt „{1}“.</value>
+  </data>
   <data name="{0} computers of the pilot group are not finished yet." xml:space="preserve">
     <value>{0} Rechner der Pilotgruppe sind noch nicht fertig.</value>
   </data>
@@ -8290,6 +8311,9 @@
   </data>
   <data name="{0} computers updated." xml:space="preserve">
     <value>{0} Rechner aktualisiert.</value>
+  </data>
+  <data name="{0} computers use the default credentials again." xml:space="preserve">
+    <value>{0} Rechner nutzen wieder die Standard-Zugangsdaten.</value>
   </data>
   <data name="{0} computers were postponed by their users and are asked again later" xml:space="preserve">
     <value>{0} Rechner wurden von ihren Benutzern verschoben und werden später erneut gefragt</value>
@@ -8413,6 +8437,9 @@
   </data>
   <data name="{0} not in AD" xml:space="preserve">
     <value>{0} nicht im AD</value>
+  </data>
+  <data name="{0} of them have their own credentials so far." xml:space="preserve">
+    <value>{0} davon haben bisher eigene Zugangsdaten.</value>
   </data>
   <data name="{0} of {1} agents connect over HTTPS. The others switch by themselves as soon as the address works for them – with the certificate pinned, also without trusting it." xml:space="preserve">
     <value>{0} von {1} Agenten verbinden sich über HTTPS. Die übrigen wechseln von selbst, sobald die Adresse bei ihnen funktioniert – mit dem gepinnten Zertifikat auch, ohne ihm zu vertrauen.</value>
@@ -8572,6 +8599,12 @@
   </data>
   <data name='{0}: "{1}" is not a date (expected e.g. 2027-03-31 or 31.03.2027).' xml:space="preserve">
     <value>{0}: „{1}“ ist kein Datum (erwartet z. B. 2027-03-31 oder 31.03.2027).</value>
+  </data>
+  <data name="{0}, set on this computer" xml:space="preserve">
+    <value>{0}, am Rechner eingetragen</value>
+  </data>
+  <data name="{0}, the default" xml:space="preserve">
+    <value>{0}, Standard</value>
   </data>
   <data name="{0}: instance {1} is Express – free." xml:space="preserve">
     <value>{0}: Instanz {1} ist Express – kostenlos.</value>
