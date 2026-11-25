@@ -16,7 +16,7 @@
             <MudMenu Label="@L["Add"]" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Dense="true">
                 @foreach (var kind in Hypervisors.Kinds)
                 {
-                    <MudMenuItem OnClick="@(() => EditAsync(null, kind))">@KindName(kind)</MudMenuItem>
+                    <MenuAction OnClick="@(() => EditAsync(null, kind))">@KindName(kind)</MenuAction>
                 }
             </MudMenu>
         </MudStack>

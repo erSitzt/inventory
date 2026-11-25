@@ -14,7 +14,7 @@
     }
     @foreach (var action in _actions)
     {
-        <MudMenuItem Icon="@(action.Icon ?? Icons.Material.Filled.Extension)" Disabled="@(Disabled || _running)" OnClick="@(() => RunAsync(action))">@action.Title</MudMenuItem>
+        <MenuAction Icon="@(action.Icon ?? Icons.Material.Filled.Extension)" Disabled="@(Disabled || _running)" OnClick="@(() => RunAsync(action))">@action.Title</MenuAction>
     }
 }
 

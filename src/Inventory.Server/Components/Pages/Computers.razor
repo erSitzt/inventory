@@ -75,43 +75,43 @@
     </OperatorOnly>
     <OperatorOnly>
         <MudMenu Label="@L["Actions"]" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Disabled="_busy">
-            <MudMenuItem Icon="@Icons.Material.Filled.NetworkCheck" OnClick="ProbeAsync">
+            <MenuAction Icon="@Icons.Material.Filled.NetworkCheck" OnClick="ProbeAsync">
                 @(_selected.Count > 0 ? L["Check reachability of selection"] : L["Check reachability of all"])
-            </MudMenuItem>
-            <MudMenuItem Icon="@Icons.Material.Filled.PowerSettingsNew" Disabled="@(_selected.Count == 0)" OnClick="WakeAsync">@L["Wake (Wake-on-LAN)"]</MudMenuItem>
-            <MudMenuItem Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">@L["Deploy package"]</MudMenuItem>
+            </MenuAction>
+            <MenuAction Icon="@Icons.Material.Filled.PowerSettingsNew" Disabled="@(_selected.Count == 0)" OnClick="WakeAsync">@L["Wake (Wake-on-LAN)"]</MenuAction>
+            <MenuAction Icon="@Icons.Material.Filled.RocketLaunch" Disabled="@(_selected.Count == 0)" OnClick="DeployAsync">@L["Deploy package"]</MenuAction>
             <AdminOnly>
-                <MudMenuItem Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">@L["Run command"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: false))">@L["Install pending updates"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: true))">@L["Install pending security updates"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: false, restart: false))">@L["Install pending updates without restart"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: true, restart: false))">@L["Install pending security updates without restart"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.PortableWifiOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveAgentsAsync">@L["Remove agent"]</MudMenuItem>
+                <MenuAction Icon="@Icons.Material.Filled.Terminal" Disabled="@(_selected.Count == 0)" OnClick="RunCommand">@L["Run command"]</MenuAction>
+                <MenuAction Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: false))">@L["Install pending updates"]</MenuAction>
+                <MenuAction Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: true))">@L["Install pending security updates"]</MenuAction>
+                <MenuAction Icon="@Icons.Material.Filled.SystemUpdateAlt" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: false, restart: false))">@L["Install pending updates without restart"]</MenuAction>
+                <MenuAction Icon="@Icons.Material.Filled.Security" Disabled="@(_selected.Count == 0)" OnClick="@(() => OpenUpdatesAsync(securityOnly: true, restart: false))">@L["Install pending security updates without restart"]</MenuAction>
+                <MenuAction Icon="@Icons.Material.Filled.SettingsRemote" Disabled="@(_selected.Count == 0)" OnClick="InstallAgentAsync">@L["Install agent"]</MenuAction>
+                <MenuAction Icon="@Icons.Material.Filled.PortableWifiOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveAgentsAsync">@L["Remove agent"]</MenuAction>
                 @if (Framework.Available)
                 {
-                    <MudMenuItem Icon="@Icons.Material.Filled.Extension" Disabled="@(_selected.Count == 0)" OnClick="InstallFrameworkAsync">@L["Install .NET Framework 4.8"]</MudMenuItem>
+                    <MenuAction Icon="@Icons.Material.Filled.Extension" Disabled="@(_selected.Count == 0)" OnClick="InstallFrameworkAsync">@L["Install .NET Framework 4.8"]</MenuAction>
                 }
-                <MudMenuItem Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">@L["Install remote access launcher"]</MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Key" Disabled="@(_selected.Count == 0)" OnClick="SetCredentialsAsync">@L["Set credentials"]</MudMenuItem>
+                <MenuAction Icon="@Icons.Material.Filled.ConnectedTv" Disabled="@(_selected.Count == 0)" OnClick="InstallLauncherAsync">@L["Install remote access launcher"]</MenuAction>
+                <MenuAction Icon="@Icons.Material.Filled.Key" Disabled="@(_selected.Count == 0)" OnClick="SetCredentialsAsync">@L["Set credentials"]</MenuAction>
             </AdminOnly>
             <AdminOnly>
                 <MudDivider />
                 @foreach (var summary in _collections.Where(c => !c.Collection.IsDynamic))
                 {
                     var target = summary.Collection;
-                    <MudMenuItem Icon="@Icons.Material.Filled.CreateNewFolder" Disabled="@(_selected.Count == 0)" OnClick="@(() => AddToCollectionAsync(target))">
+                    <MenuAction Icon="@Icons.Material.Filled.CreateNewFolder" Disabled="@(_selected.Count == 0)" OnClick="@(() => AddToCollectionAsync(target))">
                         @L["Add to \"{0}\"", target.Name]
-                    </MudMenuItem>
+                    </MenuAction>
                 }
                 @if (_activeCollection is { IsDynamic: false })
                 {
-                    <MudMenuItem Icon="@Icons.Material.Filled.FolderOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveFromCollectionAsync">
+                    <MenuAction Icon="@Icons.Material.Filled.FolderOff" Disabled="@(_selected.Count == 0)" OnClick="RemoveFromCollectionAsync">
                         @L["Remove from \"{0}\"", _activeCollection.Name]
-                    </MudMenuItem>
+                    </MenuAction>
                 }
                 <MudDivider />
-                <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(_selected.Count == 0)" OnClick="DeleteAsync">@L["Delete"]</MudMenuItem>
+                <MenuAction Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" Disabled="@(_selected.Count == 0)" OnClick="DeleteAsync">@L["Delete"]</MenuAction>
             </AdminOnly>
             <PluginActionItems Divider="true" Disabled="@(_selected.Count == 0)" Targets="@(() => _selected.Select(c => c.Id).ToList())" />
         </MudMenu>
