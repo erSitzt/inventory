@@ -478,6 +478,10 @@ Scans, deployments and the agent installation over SMB or WinRM connect with a s
 the default, a computer can have its own). The agent needs no such account. Everything below applies to the computers
 the server reaches agentlessly, not to the server itself.
 
+A computer's own account is set with *Edit* on its page; for several computers at once, tick them in the computer list
+and use *Actions → Set credentials* (empty = back to the default). The overview of a computer shows which account
+applies and whether it is set on the computer or is the default.
+
 **What the account needs on every target computer**
 
 | Requirement | Why |

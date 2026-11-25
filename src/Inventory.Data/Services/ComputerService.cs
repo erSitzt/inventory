@@ -85,6 +85,29 @@ public sealed class ComputerService(IDbContextFactory<InventoryDbContext> dbFact
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Setzt die Zugangsdaten mehrerer Rechner auf einmal; null = wieder die Standard-Zugangsdaten.</summary>
+    /// <returns>Die Namen der Rechner, bei denen sich etwas geändert hat; wer die Zugangsdaten schon hatte, fehlt.</returns>
+    /// <exception cref="KeyNotFoundException">Die Zugangsdaten gibt es nicht (mehr); dann ändert sich nichts.</exception>
+    public async Task<List<string>> SetCredentialAsync(IReadOnlyCollection<int> ids, int? credentialId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (credentialId is { } id && !await db.Credentials.AnyAsync(c => c.Id == id, ct))
+            throw new KeyNotFoundException(L["The chosen credentials no longer exist."]);
+        var targets = await db.Computers.Where(c => ids.Contains(c.Id) && c.CredentialId != credentialId)
+            .Select(c => new { c.Id, c.Name }).ToListAsync(ct);
+        var targetIds = targets.Select(t => t.Id).ToList();
+        // Prüfen und Ändern in einer Anweisung: Werden die Zugangsdaten gerade gelöscht, ändert sie nichts, statt an der
+        // Fremdschlüsselprüfung zu scheitern.
+        var changed = await db.Computers
+            .Where(c => targetIds.Contains(c.Id) && (credentialId == null || db.Credentials.Any(x => x.Id == credentialId)))
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.CredentialId, credentialId), ct);
+        // Die Bedingung gilt für alle Zeilen der Anweisung gleich: Nichts geändert und die Zugangsdaten fehlen, dann hat
+        // das Löschen gewonnen. Wurde etwas geändert, gilt die Änderung, auch wenn danach gelöscht wird.
+        if (changed == 0 && targetIds.Count > 0 && credentialId is { } chosen && !await db.Credentials.AnyAsync(c => c.Id == chosen, ct))
+            throw new KeyNotFoundException(L["The chosen credentials no longer exist."]);
+        return [.. targets.Select(t => t.Name).Order(StringComparer.OrdinalIgnoreCase)];
+    }
+
     /// <summary>Setzt die MAC-Adresse für Wake-on-LAN; leer = wieder die Adapter des letzten Scans verwenden.</summary>
     /// <exception cref="InvalidOperationException">Der Text ist keine MAC-Adresse.</exception>
     public async Task SetWakeMacAsync(int id, string? mac, CancellationToken ct = default)
