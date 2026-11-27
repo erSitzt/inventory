@@ -207,6 +207,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "net user: $LASTEXITCODE" }
           net localgroup Administrators $user /add | Out-Null
           if ($LASTEXITCODE -ne 0) { throw "net localgroup: $LASTEXITCODE" }
+          # Ein zweites Konto ohne Adminrechte für einen Schritt mit eigenen Zugangsdaten (wie bei Paket-Schritten). Das Recht
+          # „Anmelden als Batchauftrag“ bekommt es über die Leistungsprotokollbenutzer (S-1-5-32-559), die es standardmäßig haben.
+          $other = "invci2"
+          $otherPassword = "Aa1" + [guid]::NewGuid().ToString("N").Substring(0, 11)
+          Write-Output "::add-mask::$otherPassword"
+          net user $other $otherPassword /add | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "net user ${other}: $LASTEXITCODE" }
+          Add-LocalGroupMember -SID S-1-5-32-559 -Member $other
 
           # Wie JobSecrets.Answer auf dem Server: RSA-OAEP mit SHA-256, in Blöcken.
           function Send-Secret($dir, $account, $secret) {
@@ -233,25 +241,31 @@ jobs:
             Move-Item (Join-Path $dir "secret.json.tmp") (Join-Path $dir "secret.json")
           }
 
-          function Invoke-AsCredentialsUser($jobId, $secret) {
+          # Je Konto eine Anfrage mit neuem Schlüssel: credentialId leer = die Zugangsdaten der Verbindung, 2 = das zweite Konto.
+          function Invoke-AsCredentialsUser($jobId, $secret, [switch]$TwoAccounts) {
             $dir = "C:\ci-runas\$jobId"
             New-Item -ItemType Directory $dir -Force | Out-Null
-            @{ jobId = $jobId; steps = @(@{ name = "whoami"; type = "PowerShell"; script = "whoami; whoami /groups"; timeoutSeconds = 120; runAs = "CredentialsUser" }) } |
-              ConvertTo-Json -Depth 4 | Set-Content (Join-Path $dir "job.json") -Encoding utf8NoBOM
+            $steps = @(@{ name = "whoami"; type = "PowerShell"; script = "whoami; whoami /groups"; timeoutSeconds = 120; runAs = "CredentialsUser" })
+            if ($TwoAccounts) {
+              $steps += @{ name = "whoami (second account)"; type = "PowerShell"; script = "whoami; whoami /groups"; timeoutSeconds = 120; runAs = "CredentialsUser"; credentialId = 2 }
+            }
+            @{ jobId = $jobId; steps = $steps } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $dir "job.json") -Encoding utf8NoBOM
             $action = New-ScheduledTaskAction -Execute $exe -Argument "--console `"$dir`""
             Register-ScheduledTask -TaskName $jobId -Action $action -User "NT AUTHORITY\SYSTEM" -RunLevel Highest | Out-Null
             Start-ScheduledTask -TaskName $jobId
             $deadline = (Get-Date).AddMinutes(5)
-            $answered = $false
+            $answered = @()
             while ((Get-Date) -lt $deadline) {
-              if (-not $answered -and (Test-Path (Join-Path $dir "secret-request.json"))) {
-                Send-Secret $dir ".\$user" $secret
-                $answered = $true
+              $requestPath = Join-Path $dir "secret-request.json"
+              $request = if (Test-Path $requestPath) { try { Get-Content $requestPath -Raw | ConvertFrom-Json } catch { $null } }
+              if ($request -and $answered -notcontains $request.modulus) {
+                if ($request.credentialId -eq 2) { Send-Secret $dir ".\$other" $otherPassword } else { Send-Secret $dir ".\$user" $secret }
+                $answered += $request.modulus
               }
               if ((Test-Path (Join-Path $dir "result.json")) -and (Get-ScheduledTask -TaskName $jobId).State -ne "Running") { break }
               Start-Sleep -Milliseconds 300
             }
-            if (-not $answered) { throw "${jobId}: the runner did not ask for the credentials" }
+            if ($answered.Count -ne $steps.Count) { throw "${jobId}: the runner asked $($answered.Count) times for credentials, expected $($steps.Count)" }
             foreach ($name in "secret.json", "secret-request.json") {
               if (Test-Path (Join-Path $dir $name)) { throw "${jobId}: $name left behind" }
             }
@@ -260,9 +274,11 @@ jobs:
             $result
           }
 
-          $result = Invoke-AsCredentialsUser "ci-runas" $password | Select-Object -Last 1
+          $result = Invoke-AsCredentialsUser "ci-runas" $password -TwoAccounts | Select-Object -Last 1
           $output = $result.steps[0].output
           if (-not $result.success -or $output -notmatch "\\$user" -or $output -notmatch "High Mandatory Level") { throw "as $user`: $($result | ConvertTo-Json -Depth 4)" }
+          $second = $result.steps[1].output
+          if ($second -notmatch "\\$other" -or $second -notmatch "Medium Mandatory Level") { throw "as $other`: $($result | ConvertTo-Json -Depth 4)" }
 
           # Falsches Passwort: eine verständliche Meldung statt eines Win32-Codes.
           $wrong = Invoke-AsCredentialsUser "ci-runas-wrong" ($password + "x") | Select-Object -Last 1

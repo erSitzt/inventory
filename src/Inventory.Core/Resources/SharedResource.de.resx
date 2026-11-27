@@ -32,9 +32,6 @@
   <data name='"Inventoried VMs without a known host" lists virtual machines no host reports – the licence calculation cannot place them.' xml:space="preserve">
     <value>„Inventarisierte VMs ohne bekannten Host“ listet virtuelle Maschinen, die kein Host meldet – die Lizenzberechnung kann sie keinem Host zuordnen.</value>
   </data>
-  <data name='"Local System" has full rights on the computer; "Logged-on user" runs in the session of whoever is signed in.' xml:space="preserve">
-    <value>„Lokales System“ hat volle Rechte auf dem Rechner; „Angemeldeter Benutzer“ läuft in der Sitzung dessen, der dort angemeldet ist.</value>
-  </data>
   <data name='"Needs attention" leads to the computers behind each number.' xml:space="preserve">
     <value>„Handlungsbedarf“ führt zu den Rechnern hinter jeder Zahl.</value>
   </data>
@@ -88,6 +85,9 @@
   </data>
   <data name="&quot;Install updates and shut down&quot; not as the default" xml:space="preserve">
     <value>„Updates installieren und herunterfahren“ nicht als Standard</value>
+  </data>
+  <data name="&quot;Local System&quot; has full rights on the computer; &quot;Credentials user&quot; runs as the account of the credentials, with its own access to shares; &quot;Logged-on user&quot; runs in the session of whoever is signed in." xml:space="preserve">
+    <value>„Lokales System“ hat volle Rechte auf dem Rechner; „Konto der Zugangsdaten“ läuft als das Konto der Zugangsdaten, mit eigenem Zugriff auf Freigaben; „Angemeldeter Benutzer“ läuft in der Sitzung dessen, der dort angemeldet ist.</value>
   </data>
   <data name="&quot;Remove agent&quot; uninstalls the agent on the computer, then the server forgets it. &quot;Forget agent&quot; only removes the agent's key on the server and resets the transport – if the agent is still installed, it enrolls again with the enrollment secret." xml:space="preserve">
     <value>„Agent entfernen“ deinstalliert den Agenten auf dem Rechner, danach vergisst der Server ihn. „Agent vergessen“ verwirft nur den Schlüssel des Agenten auf dem Server und setzt den Transport zurück – ist der Agent noch installiert, meldet er sich mit dem Anmeldegeheimnis neu an.</value>
@@ -854,6 +854,12 @@
   <data name="as of {0}" xml:space="preserve">
     <value>Stand {0}</value>
   </data>
+  <data name="as the credentials of the computer" xml:space="preserve">
+    <value>als Zugangsdaten des Rechners</value>
+  </data>
+  <data name="as {0}" xml:space="preserve">
+    <value>als {0}</value>
+  </data>
   <data name="Ask again after (minutes)" xml:space="preserve">
     <value>Erneut fragen nach (Minuten)</value>
   </data>
@@ -1279,6 +1285,9 @@
   </data>
   <data name="Commands and deployments only run if the reached computer has the listed name. This prevents a stale DNS entry from steering an installation to a foreign computer. Scans are exempt: they still run and thus show which computer actually responds. The captured data then belongs to that computer, and the entry does not count as online." xml:space="preserve">
     <value>Befehle und Deployments laufen nur, wenn der erreichte Rechner so heißt wie eingetragen. Das verhindert, dass ein veralteter DNS-Eintrag eine Installation auf einen fremden Rechner lenkt. Scans sind davon ausgenommen: sie laufen trotzdem und zeigen so, welcher Rechner tatsächlich antwortet. Die erfassten Daten gehören dann zu diesem Rechner, und der Eintrag gilt nicht als online.</value>
+  </data>
+  <data name="Commands, scripts and installations run as Local System, as the logged-on user or as the account of stored credentials – for example to read from a share." xml:space="preserve">
+    <value>Befehle, Skripte und Installationen laufen als Lokales System, als angemeldeter Benutzer oder als Konto hinterlegter Zugangsdaten – etwa um von einer Freigabe zu lesen.</value>
   </data>
   <data name="Computer" xml:space="preserve">
     <value>Rechner</value>
@@ -1792,6 +1801,9 @@
   </data>
   <data name="Delete {0} × {1}?" xml:space="preserve">
     <value>{0} × {1} löschen?</value>
+  </data>
+  <data name="Deleted credentials" xml:space="preserve">
+    <value>Gelöschte Zugangsdaten</value>
   </data>
   <data name="Deleted." xml:space="preserve">
     <value>Gelöscht.</value>
@@ -4421,6 +4433,9 @@
   <data name="Only Command and PowerShell can be run directly." xml:space="preserve">
     <value>Direkt ausführen lassen sich nur Command und PowerShell.</value>
   </data>
+  <data name="Only commands, PowerShell scripts and installers can run as the credentials user." xml:space="preserve">
+    <value>Nur Befehle, PowerShell-Skripte und Installationen können als Konto der Zugangsdaten laufen.</value>
+  </data>
   <data name="Only copied to computers without .NET Framework 4.8 (Windows Server 2012 to 2016, early Windows 10 releases)." xml:space="preserve">
     <value>Wird nur auf Rechner ohne .NET Framework 4.8 kopiert (Windows Server 2012 bis 2016, frühe Windows-10-Stände).</value>
   </data>
@@ -4678,6 +4693,9 @@
   </data>
   <data name="Package step moved" xml:space="preserve">
     <value>Paketschritt verschoben</value>
+  </data>
+  <data name="Package steps run as these credentials: {0}. Choose other credentials there first." xml:space="preserve">
+    <value>Paket-Schritte laufen als diese Zugangsdaten: {0}. Dort zuerst andere Zugangsdaten wählen.</value>
   </data>
   <data name="Package update failed" xml:space="preserve">
     <value>Paket-Aktualisierung fehlgeschlagen</value>
@@ -5713,6 +5731,9 @@
   </data>
   <data name="Runs a command or PowerShell on several computers at once, with live output." xml:space="preserve">
     <value>Führt einen Befehl oder PowerShell auf mehreren Rechnern zugleich aus, mit Live-Ausgabe.</value>
+  </data>
+  <data name="Runs as the account of the credentials, with its profile and its own network access (shares), also when nobody is logged on. Via WinRM only as the account that connects to the computer." xml:space="preserve">
+    <value>Läuft als das Konto der Zugangsdaten, mit dessen Profil und eigenem Netzwerkzugriff (Freigaben), auch wenn niemand angemeldet ist. Über WinRM nur als das Konto, mit dem der Server den Rechner erreicht.</value>
   </data>
   <data name="Runs in the logged-on user's session with their rights (HKCU, profile, network drives). If nobody is logged on, the step is skipped. Only via SMB + service or agent." xml:space="preserve">
     <value>Läuft in der Sitzung des angemeldeten Benutzers mit dessen Rechten (HKCU, Profil, Netzlaufwerke). Ist niemand angemeldet, wird der Schritt übersprungen. Nur über SMB + Dienst oder Agent.</value>
@@ -7052,14 +7073,26 @@
   <data name="The server was stopped during execution" xml:space="preserve">
     <value>Der Server wurde während der Ausführung beendet</value>
   </data>
+  <data name="the server's account" xml:space="preserve">
+    <value>das Konto des Servers</value>
+  </data>
   <data name="The service restarts. Reload the page in a few seconds." xml:space="preserve">
     <value>Der Dienst startet neu. Laden Sie die Seite in ein paar Sekunden neu.</value>
   </data>
   <data name="The state of all computers at a glance and what needs attention." xml:space="preserve">
     <value>Der Zustand aller Rechner auf einen Blick und was Aufmerksamkeit braucht.</value>
   </data>
+  <data name="The step &quot;{0}&quot; runs as credentials that no longer exist. Choose others in its package." xml:space="preserve">
+    <value>Der Schritt „{0}“ läuft als Zugangsdaten, die es nicht mehr gibt. Im Paket andere wählen.</value>
+  </data>
+  <data name="The step &quot;{0}&quot; runs as {1}. Over WinRM it can only run as the account that connects ({2}); use SMB + service or the agent." xml:space="preserve">
+    <value>Der Schritt „{0}“ läuft als {1}. Über WinRM geht nur das Konto, mit dem der Server verbindet ({2}); SMB + Dienst oder den Agenten verwenden.</value>
+  </data>
   <data name="The step only runs if all filled-in conditions apply. Otherwise it is skipped without counting as an error." xml:space="preserve">
     <value>Der Schritt läuft nur, wenn alle ausgefüllten Bedingungen zutreffen. Sonst wird er übersprungen, ohne als Fehler zu zählen.</value>
+  </data>
+  <data name="The step runs as this account. The server still reaches the computer with the credentials set there." xml:space="preserve">
+    <value>Der Schritt läuft als dieses Konto. Den Rechner erreicht der Server weiterhin mit den dort eingetragenen Zugangsdaten.</value>
   </data>
   <data name="The steps a deployment runs on each computer, in order." xml:space="preserve">
     <value>Die Schritte, die ein Deployment auf jedem Rechner der Reihe nach ausführt.</value>

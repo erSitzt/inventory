@@ -5,7 +5,15 @@ using Inventory.Core.Model;
 namespace Inventory.Core.Abstractions;
 
 /// <param name="Credential">null = mit der Identität des Server-Prozesses zugreifen.</param>
-public sealed record RemoteTarget(string Host, NetworkCredential? Credential);
+/// <param name="Accounts">
+/// Weitere Zugangsdaten, als die einzelne Schritte laufen (<see cref="StepRunAs.CredentialsUser"/> mit <see cref="JobStep.CredentialId"/>);
+/// nur die, nach denen der Job fragen darf.
+/// </param>
+public sealed record RemoteTarget(string Host, NetworkCredential? Credential, IReadOnlyDictionary<int, NetworkCredential>? Accounts = null)
+{
+    /// <summary>Das Konto, als das ein Schritt mit <see cref="StepRunAs.CredentialsUser"/> läuft: seine Zugangsdaten, sonst die der Verbindung.</summary>
+    public NetworkCredential? RunAsAccount(int? credentialId) => credentialId is { } id ? Accounts?.GetValueOrDefault(id) : Credential;
+}
 
 /// <summary>Datei, die mit dem Job auf den Zielrechner kopiert wird.</summary>
 /// <param name="RelativePath">Pfad unterhalb des Ordners <see cref="JobFiles.FilesFolder"/> im Job-Verzeichnis.</param>

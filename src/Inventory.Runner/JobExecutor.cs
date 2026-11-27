@@ -657,7 +657,7 @@ namespace Inventory.Runner
             var watch = Stopwatch.StartNew();
             try
             {
-                using (var session = credentialsUser ? LogOnCredentialsUser() : UserSession.Open())
+                using (var session = credentialsUser ? LogOnCredentialsUser(step) : UserSession.Open())
                 {
                     if (session == null)
                     {
@@ -717,24 +717,28 @@ namespace Inventory.Runner
 
         private volatile int _currentPid;
         private string? _userDir;
-        private (string User, string Password)? _secret;
+        /// <summary>Benutzer und Passwort je <see cref="JobStep.CredentialId"/>; die Zugangsdaten der Verbindung unter <see cref="ConnectionAccount"/>.</summary>
+        private readonly Dictionary<int, (string User, string Password)> _secrets = new Dictionary<int, (string User, string Password)>();
+        /// <summary>IDs der Zugangsdaten auf dem Server beginnen bei 1.</summary>
+        private const int ConnectionAccount = 0;
 
         /// <summary>So lange wartet der Runner auf Benutzer und Passwort vom Server.</summary>
         internal static TimeSpan SecretTimeout = TimeSpan.FromSeconds(60);
 
-        private UserSession LogOnCredentialsUser()
+        private UserSession LogOnCredentialsUser(JobStep step)
         {
-            var (user, password) = Secret();
+            var (user, password) = Secret(step.CredentialId);
             return UserSession.LogOn(user, password);
         }
 
         /// <summary>
-        /// Holt Benutzer und Passwort der Zugangsdaten, einmal je Job. Der private Schlüssel bleibt im Speicher; im
+        /// Holt Benutzer und Passwort der Zugangsdaten, einmal je Job und Konto. Der private Schlüssel bleibt im Speicher; im
         /// Job-Verzeichnis stehen nur der öffentliche Schlüssel und die verschlüsselte Antwort, und beide nur kurz.
         /// </summary>
-        private (string User, string Password) Secret()
+        /// <param name="credentialId">Die Zugangsdaten des Schritts; null = die, mit denen der Server den Rechner erreicht.</param>
+        private (string User, string Password) Secret(int? credentialId)
         {
-            if (_secret is { } known)
+            if (_secrets.TryGetValue(credentialId ?? ConnectionAccount, out var known))
                 return known;
             var requestPath = Path.Combine(_jobDir, JobFiles.SecretRequest);
             var answerPath = Path.Combine(_jobDir, JobFiles.SecretAnswer);
@@ -744,7 +748,9 @@ namespace Inventory.Runner
                 {
                     File.Delete(answerPath);
                     var temporary = requestPath + ".tmp";
-                    File.WriteAllText(temporary, JobJson.Serialize(JobSecrets.CreateRequest(key)), new UTF8Encoding(false));
+                    var request = JobSecrets.CreateRequest(key);
+                    request.CredentialId = credentialId;
+                    File.WriteAllText(temporary, JobJson.Serialize(request), new UTF8Encoding(false));
                     File.Delete(requestPath);
                     File.Move(temporary, requestPath);
 
@@ -761,7 +767,7 @@ namespace Inventory.Runner
                     var answer = JobJson.Deserialize<SecretAnswer>(File.ReadAllText(answerPath, Encoding.UTF8))
                                  ?? throw new InvalidDataException("Leere Antwort des Servers");
                     var secret = JobSecrets.Decrypt(key, answer);
-                    _secret = secret;
+                    _secrets[credentialId ?? ConnectionAccount] = secret;
                     return secret;
                 }
                 catch (CryptographicException)

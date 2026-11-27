@@ -69,9 +69,9 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
             public JobResult Run()
             {
                 var manifest = JobJson.Deserialize<JobManifest>(File.ReadAllText(Path.Combine(jobDir, JobFiles.Manifest), Encoding.UTF8))!;
-                var step = manifest.Steps.Single();
-                if (step.RunAs == StepRunAs.CredentialsUser)
+                if (manifest.Steps.Any(s => s.RunAs == StepRunAs.CredentialsUser))
                     return AsCredentialsUser(manifest);
+                var step = manifest.Steps.Single();
                 return new JobResult
                 {
                     JobId = manifest.JobId, Success = step.Type is StepType.InventoryScan or StepType.UninstallAgent, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow,
@@ -82,21 +82,32 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
                 };
             }
 
-            /// <summary>Wie der Runner: Schlüssel ablegen, auf die Antwort warten, entschlüsseln.</summary>
+            /// <summary>Wie der Runner: je Schritt einen Schlüssel ablegen, auf die Antwort warten, entschlüsseln, beides löschen.</summary>
             private JobResult AsCredentialsUser(JobManifest manifest)
             {
-                using var key = System.Security.Cryptography.RSA.Create(JobSecrets.KeySize);
-                File.WriteAllText(Path.Combine(jobDir, JobFiles.SecretRequest), JobJson.Serialize(JobSecrets.CreateRequest(key)));
-                var answerPath = Path.Combine(jobDir, JobFiles.SecretAnswer);
-                for (var i = 0; i < 300 && !File.Exists(answerPath); i++)
-                    Thread.Sleep(50);
-                var output = File.Exists(answerPath)
-                    ? JobSecrets.Decrypt(key, JobJson.Deserialize<SecretAnswer>(File.ReadAllText(answerPath, Encoding.UTF8))!) is var (user, password) ? $"{user} / {password}" : null
-                    : null;
+                var steps = new List<StepResult>();
+                foreach (var (step, index) in manifest.Steps.Select((s, i) => (s, i)))
+                {
+                    using var key = System.Security.Cryptography.RSA.Create(JobSecrets.KeySize);
+                    var request = JobSecrets.CreateRequest(key);
+                    request.CredentialId = step.CredentialId;
+                    var requestPath = Path.Combine(jobDir, JobFiles.SecretRequest);
+                    File.WriteAllText(requestPath + ".tmp", JobJson.Serialize(request));
+                    File.Move(requestPath + ".tmp", requestPath, overwrite: true);
+                    var answerPath = Path.Combine(jobDir, JobFiles.SecretAnswer);
+                    for (var i = 0; i < 300 && !File.Exists(answerPath); i++)
+                        Thread.Sleep(50);
+                    var output = File.Exists(answerPath)
+                        ? JobSecrets.Decrypt(key, JobJson.Deserialize<SecretAnswer>(File.ReadAllText(answerPath, Encoding.UTF8))!) is var (user, password) ? $"{user} / {password}" : null
+                        : null;
+                    File.Delete(answerPath);
+                    File.Delete(requestPath);
+                    steps.Add(new StepResult { Index = index, Name = step.Name, Status = output == null ? StepStatus.Failed : StepStatus.Succeeded, Output = output });
+                }
+                var success = steps.All(s => s.Status == StepStatus.Succeeded);
                 return new JobResult
                 {
-                    JobId = manifest.JobId, Success = output != null, Error = output == null ? "no answer" : null, StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow,
-                    Steps = [new StepResult { Index = 0, Name = manifest.Steps[0].Name, Status = output == null ? StepStatus.Failed : StepStatus.Succeeded, Output = output }],
+                    JobId = manifest.JobId, Success = success, Error = success ? null : "no answer", StartedUtc = DateTime.UtcNow, FinishedUtc = DateTime.UtcNow, Steps = steps,
                 };
             }
 
@@ -138,6 +149,20 @@ public sealed class AgentLoopTests : IClassFixture<AgentLoopTests.App>
             Assert.True(result.Success, result.Error);
             Assert.Equal(@"CORP\deploy / Pässwort", result.Steps[0].Output);
             Assert.False(File.Exists(Path.Combine(directory, JobFiles.JobsFolder, job.JobId, JobFiles.SecretAnswer)));
+
+            // Ein Paket, dessen zweiter Schritt als eigenes Konto läuft: Der Agent fragt je Konto einmal.
+            var backup = await _app.Services.GetRequiredService<CredentialService>().SaveAsync(null, "Backup (agent test)", @"CORP\backup", "Sicher", null);
+            job = new JobManifest
+            {
+                Steps =
+                [
+                    new JobStep { Name = "first", Type = StepType.PowerShell, Script = "whoami", RunAs = StepRunAs.CredentialsUser, TimeoutSeconds = 60 },
+                    new JobStep { Name = "second", Type = StepType.PowerShell, Script = "whoami", RunAs = StepRunAs.CredentialsUser, CredentialId = backup.Id, TimeoutSeconds = 60 },
+                ],
+            };
+            result = await _app.Services.GetRequiredService<RemoteJobService>().RunAsync(id.Value, job, null, timeout.Token, credentialId: chosen.Id);
+            Assert.True(result.Success, result.Error);
+            Assert.Equal([@"CORP\deploy / Pässwort", @"CORP\backup / Sicher"], result.Steps.Select(s => s.Output));
         }
         finally
         {

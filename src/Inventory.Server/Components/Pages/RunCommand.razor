@@ -42,7 +42,7 @@
                         <MudSelectItem T="int?" Value="null">@L["(as set on each computer)"]</MudSelectItem>
                         @foreach (var credential in _credentials)
                         {
-                            <MudSelectItem T="int?" Value="credential.Id">@(credential.Name == credential.Username ? credential.Name : $"{credential.Name} ({credential.Username})")</MudSelectItem>
+                            <MudSelectItem T="int?" Value="credential.Id">@Display.CredentialName(credential)</MudSelectItem>
                         }
                     </MudSelect>
                     <MudTooltip Text="@L["Edit credentials"]">

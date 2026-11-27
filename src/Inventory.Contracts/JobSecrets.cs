@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -13,6 +14,8 @@ namespace Inventory.Contracts
     {
         public string Modulus { get; set; } = "";
         public string Exponent { get; set; } = "";
+        /// <summary>Für welchen Schritt: dessen <see cref="JobStep.CredentialId"/>; null = die Zugangsdaten, mit denen der Server den Rechner erreicht.</summary>
+        public int? CredentialId { get; set; }
     }
 
     /// <summary>Benutzer und Passwort, mit dem Schlüssel aus <see cref="SecretRequest"/> verschlüsselt; je Block ein Base64-Eintrag.</summary>
@@ -35,18 +38,33 @@ namespace Inventory.Contracts
         public static bool Needed(JobManifest job) => job.Steps.Any(s => s.RunAs == StepRunAs.CredentialsUser);
 
         /// <summary>
-        /// Beantwortet eine Anfrage des Runners im Job-Verzeichnis (lokal oder über ADMIN$), falls eine da ist.
-        /// true, wenn geantwortet wurde; false, wenn (noch) keine lesbare Anfrage vorliegt.
+        /// Beantwortet eine Anfrage des Runners im Job-Verzeichnis (lokal oder über ADMIN$), falls eine neue da ist.
+        /// true, wenn geantwortet wurde; false, wenn (noch) keine lesbare, unbeantwortete Anfrage vorliegt.
         /// </summary>
-        public static bool AnswerFile(string jobDir, string userName, string password)
+        /// <param name="account">
+        /// Das Konto zur Anfrage (<see cref="SecretRequest.CredentialId"/>); null = gehört nicht zu diesem Job, dann bleibt die
+        /// Anfrage unbeantwortet und der Runner meldet nach seiner Frist, dass nichts kam.
+        /// </param>
+        /// <param name="answered">
+        /// Schlüssel der zuletzt behandelten Anfrage: Sie liegt noch da, bis der Runner die Antwort gelesen hat, und wird nicht
+        /// noch einmal beantwortet. Fragt der Runner nach einem weiteren Konto, bringt er einen neuen Schlüssel mit.
+        /// </param>
+        public static bool AnswerFile(string jobDir, Func<int?, NetworkCredential?> account, ref string? answered)
         {
             var requestPath = Path.Combine(jobDir, JobFiles.SecretRequest);
             SecretAnswer answer;
             try
             {
-                if (!File.Exists(requestPath) || !(JobJson.Deserialize<SecretRequest>(File.ReadAllText(requestPath, Encoding.UTF8)) is { } request))
+                if (!File.Exists(requestPath) || !(JobJson.Deserialize<SecretRequest>(File.ReadAllText(requestPath, Encoding.UTF8)) is { } request)
+                    || request.Modulus == answered)
                     return false;
-                answer = Answer(request, userName, password);
+                if (!(account(request.CredentialId) is { } credential))
+                {
+                    answered = request.Modulus;
+                    return false;
+                }
+                answer = Answer(request, Account(credential), credential.Password);
+                answered = request.Modulus;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException || ex is ArgumentException)
             {
@@ -61,6 +79,10 @@ namespace Inventory.Contracts
             File.Move(temporary, answerPath);
             return true;
         }
+
+        /// <summary>Die Zugangsdaten, nach denen die Schritte eines Jobs fragen können: je <see cref="JobStep.CredentialId"/> einmal, null = die der Verbindung.</summary>
+        public static IEnumerable<int?> Accounts(JobManifest job) =>
+            job.Steps.Where(s => s.RunAs == StepRunAs.CredentialsUser).Select(s => s.CredentialId).Distinct();
 
         public static SecretRequest CreateRequest(RSA key)
         {
@@ -97,7 +119,7 @@ namespace Inventory.Contracts
             (Decrypt(key, answer.User), Decrypt(key, answer.Password));
 
         /// <summary>Der Kontoname, wie ihn <see cref="SplitAccount"/> erwartet, auch wenn die Domäne getrennt hinterlegt ist.</summary>
-        public static string Account(System.Net.NetworkCredential credential) =>
+        public static string Account(NetworkCredential credential) =>
             string.IsNullOrEmpty(credential.Domain) ? credential.UserName : credential.Domain + "\\" + credential.UserName;
 
         /// <summary>

@@ -391,11 +391,20 @@ public sealed class PackageService(IDbContextFactory<InventoryDbContext> dbFacto
         definition.RetryDelaySeconds = Math.Clamp(definition.RetryDelaySeconds, 1, 3600);
         definition.CloseProcessesWarnSeconds = Math.Clamp(definition.CloseProcessesWarnSeconds, 0, 3600);
         definition.MinFreeDiskMb = Math.Max(definition.MinFreeDiskMb, 0);
+        if (definition.RunAs != StepRunAs.CredentialsUser)
+            definition.CredentialId = null;
+        else if (!SupportsCredentialsUser(definition.Type))
+            throw new InvalidOperationException(L["Only commands, PowerShell scripts and installers can run as the credentials user."]);
+        else if (definition.CredentialId is { } credentialId && !await db.Credentials.AnyAsync(c => c.Id == credentialId, ct))
+            throw new InvalidOperationException(L["The chosen credentials no longer exist."]);
         step.Definition = definition;
         step.NestedPackageId = nestedPackageId;
         await TouchAsync(db, packageId, ct);
         await db.SaveChangesAsync(ct);
     }
+
+    /// <summary>Schritte, die der Runner als ein angemeldetes Konto startet; die übrigen laufen immer als Lokales System.</summary>
+    public static bool SupportsCredentialsUser(StepType type) => type is StepType.Command or StepType.PowerShell or StepType.Install;
 
     public async Task DeleteStepAsync(int packageId, int stepId, CancellationToken ct = default)
     {

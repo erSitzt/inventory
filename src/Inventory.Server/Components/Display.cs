@@ -532,6 +532,10 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
     };
 
     /// <summary>Schritt-Typen, bei denen sich der Ausführungskontext wählen lässt.</summary>
+    /// <summary>Name der Zugangsdaten mit dem Konto dahinter, wenn es anders heißt.</summary>
+    public string CredentialName(Credential credential) =>
+        credential.Name == credential.Username ? credential.Name : $"{credential.Name} ({credential.Username})";
+
     public bool SupportsRunAs(StepType type) => type is StepType.Command or StepType.PowerShell or StepType.Install or StepType.Registry;
 
     public string ServiceActionName(ServiceAction action) => action switch

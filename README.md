@@ -289,8 +289,8 @@ A package is a list of steps, each with conditions and error handling:
   through the server (the computer account needs read access to the share)
 - **Uninstall**, **remove app** and **Windows Update** (see above)
 
-Steps after a reboot continue automatically once the computer is back. Each step runs as Local System or in the session
-of the logged-on user ([run context](#run-context)), and can retry with a pause (automatically when another installation
+Steps after a reboot continue automatically once the computer is back. Each step runs as Local System, in the session
+of the logged-on user or as the account of chosen credentials ([run context](#run-context)), and can retry with a pause (automatically when another installation
 is running), check the free disk space first, and close named programs – optionally after a notice to the user.
 
 ![Registry step](docs/screenshots/en/step-registry.png)
@@ -513,7 +513,7 @@ Which identity runs a job depends on the transport:
   to `ADMIN$`, service control). On the target the runner runs as Local System; steps set to *logged-on user* run in
   the session of the user who is signed in there, never as this account.
 - **WinRM**: PowerShell remoting logs on with the account, and the runner runs as this account in that remote session.
-- **Remote command as the credentials user**: the runner (as Local System, via SMB or the agent) logs the account on
+- **Remote command or package step as the credentials user**: the runner (as Local System, via SMB or the agent) logs the account on
   itself as a batch job, like a scheduled task: with its profile and its own network access, e.g. to shares. User name
   and password reach it encrypted with a key it creates for this job only; they never stand in the job folder or travel
   over the network in clear text. The account needs the right *Log on as a batch job*, which administrators have by
@@ -879,6 +879,15 @@ process in the active session with that user's rights. If nobody is logged on, t
 runner to run as Local System (SMB + service or agent, not WinRM). For the duration of the run, script and package
 files are placed in a folder readable by users under `%ProgramData%\InventoryRunner` – such steps must therefore not
 contain secrets.
+
+**Credentials user** runs a command, script or installation as the account of stored credentials, with its profile and
+its own network access – for example to read from a share that the computer account (Local System) cannot reach. By
+default it is the account the server reaches the computer with; any other stored credentials can be chosen per step,
+while the server keeps reaching the computer with its usual ones. The runner asks the server for the password of
+exactly the accounts the job's steps run as, encrypted ([account for agentless access](#account-for-agentless-access)); credentials used by
+a package step cannot be deleted. The account needs the right *Log on as a batch job* on the computer: administrators
+have it by default, other accounts get it through a group policy or the group *Performance Log Users*. Over WinRM a step
+can only run as the account that connects; for another account the job uses SMB + service or the agent.
 
 ## Languages
 

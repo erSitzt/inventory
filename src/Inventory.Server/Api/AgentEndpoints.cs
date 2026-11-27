@@ -122,14 +122,14 @@ public static class AgentEndpoints
         });
 
         // Benutzer und Passwort für einen Schritt als Konto der Zugangsdaten, verschlüsselt mit dem Schlüssel des Runners.
-        // Nur einmal je Job und nur für den Agenten, dem der Job gehört.
+        // Nur einmal je Job und Konto, nur für Konten, die Schritte des Jobs brauchen, und nur für den Agenten, dem der Job gehört.
         group.MapPost("jobs/{jobId}/secret", async (string jobId, HttpContext http, AgentService agents, AgentHub hub, CancellationToken ct) =>
         {
             if (await FindJobAsync(http, agents, hub, jobId, ct) is not { } job)
                 return Results.NotFound();
             if (await ReadAsync<SecretRequest>(http, ct) is not { } request)
                 return Results.BadRequest();
-            if (job.TakeSecret() is not { } secret)
+            if (job.TakeSecret(request.CredentialId) is not { } secret)
                 return Results.NotFound();
             try
             {
