@@ -91,7 +91,7 @@
                             <div style="flex: 1; min-width: 0">
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                     <MudText Typo="Typo.body1">@step.Definition.Name</MudText>
-                                    @if (step.NestedPackageId is null && RunAsLabel(step.Definition) is { } runAs)
+                                    @if (step.NestedPackageId is null && Display.RunAsLabel(step.Definition, _credentials) is { } runAs)
                                     {
                                         @* Neben dem Namen statt in der Zusammenfassung: Die wird bei langen Skripten abgeschnitten. *@
                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Person">@runAs</MudChip>
@@ -339,16 +339,6 @@
             LoadDetection();
         }
     }
-
-    /// <summary>Unter welchem Konto ein Schritt läuft, wenn nicht als Lokales System.</summary>
-    private string? RunAsLabel(JobStep step) => step.RunAs switch
-    {
-        StepRunAs.LoggedOnUser => L["as logged-on user"],
-        StepRunAs.CredentialsUser when step.CredentialId is { } id =>
-            L["as {0}", _credentials.FirstOrDefault(c => c.Id == id) is { } credential ? Display.CredentialName(credential) : L["Deleted credentials"]],
-        StepRunAs.CredentialsUser => L["as the credentials of the computer"],
-        _ => null,
-    };
 
     private async Task ReloadAsync()
     {

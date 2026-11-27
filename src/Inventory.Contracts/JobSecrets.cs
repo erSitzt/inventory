@@ -52,7 +52,6 @@ namespace Inventory.Contracts
         public static bool AnswerFile(string jobDir, Func<int?, NetworkCredential?> account, ref string? answered)
         {
             var requestPath = Path.Combine(jobDir, JobFiles.SecretRequest);
-            SecretAnswer answer;
             try
             {
                 if (!File.Exists(requestPath) || !(JobJson.Deserialize<SecretRequest>(File.ReadAllText(requestPath, Encoding.UTF8)) is { } request)
@@ -63,21 +62,22 @@ namespace Inventory.Contracts
                     answered = request.Modulus;
                     return false;
                 }
-                answer = Answer(request, Account(credential), credential.Password);
+                var answer = Answer(request, Account(credential), credential.Password);
+                // Erst vollständig schreiben, dann umbenennen: Der Runner liest die Antwort, sobald es sie gibt.
+                var answerPath = Path.Combine(jobDir, JobFiles.SecretAnswer);
+                var temporary = answerPath + ".tmp";
+                File.WriteAllText(temporary, JobJson.Serialize(answer), new UTF8Encoding(false));
+                if (File.Exists(answerPath))
+                    File.Delete(answerPath);
+                File.Move(temporary, answerPath);
+                // Erst jetzt als beantwortet merken: Scheitert das Schreiben (Netz kurz weg), kommt die Anfrage beim nächsten Mal wieder dran.
                 answered = request.Modulus;
+                return true;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException || ex is ArgumentException)
             {
                 return false;
             }
-            // Erst vollständig schreiben, dann umbenennen: Der Runner liest die Antwort, sobald es sie gibt.
-            var answerPath = Path.Combine(jobDir, JobFiles.SecretAnswer);
-            var temporary = answerPath + ".tmp";
-            File.WriteAllText(temporary, JobJson.Serialize(answer), new UTF8Encoding(false));
-            if (File.Exists(answerPath))
-                File.Delete(answerPath);
-            File.Move(temporary, answerPath);
-            return true;
         }
 
         /// <summary>Die Zugangsdaten, nach denen die Schritte eines Jobs fragen können: je <see cref="JobStep.CredentialId"/> einmal, null = die der Verbindung.</summary>

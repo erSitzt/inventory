@@ -242,9 +242,12 @@ public class RunAsCredentialsTests
         var backup = await credentials.SaveAsync(null, "Backup", @"CORP\backup", "pw2", null);
         JobManifest As(int credentialId) => new() { Steps = [new JobStep { Name = "Backup", Type = StepType.PowerShell, Script = "whoami", RunAs = StepRunAs.CredentialsUser, CredentialId = credentialId }] };
 
-        // Dasselbe Konto wie die Verbindung: läuft dort ohnehin so.
+        // Dasselbe Konto wie die Verbindung, auch zweimal hinterlegt: läuft dort ohnehin so.
         Assert.True((await jobs.RunAsync(computer.Id, As(scan.Id))).Success);
         Assert.Equal((StepRunAs.System, (int?)null), (winRm.Job!.Steps[0].RunAs, winRm.Job.Steps[0].CredentialId));
+        var scanAgain = await credentials.SaveAsync(null, "Scan (old entry)", @"corp\SCAN", "old password", null);
+        Assert.True((await jobs.RunAsync(computer.Id, As(scanAgain.Id))).Success);
+        Assert.Equal(StepRunAs.System, winRm.Job!.Steps[0].RunAs);
 
         // Ein anderes Konto: gestartet ist nichts, also darf SMB es übernehmen.
         await settings.SetTransportFallbackAsync(true);

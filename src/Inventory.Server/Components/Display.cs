@@ -531,11 +531,22 @@ public sealed class Display(IStringLocalizer<SharedResource> localizer, BrowserT
         _ => runAs.ToString(),
     };
 
-    /// <summary>Schritt-Typen, bei denen sich der Ausführungskontext wählen lässt.</summary>
     /// <summary>Name der Zugangsdaten mit dem Konto dahinter, wenn es anders heißt.</summary>
     public string CredentialName(Credential credential) =>
         credential.Name == credential.Username ? credential.Name : $"{credential.Name} ({credential.Username})";
 
+    /// <summary>Unter welchem Konto ein Schritt läuft; null = als Lokales System.</summary>
+    /// <param name="credentials">Die hinterlegten Zugangsdaten, für den Namen des gewählten Kontos.</param>
+    public string? RunAsLabel(JobStep step, IEnumerable<Credential> credentials) => step.RunAs switch
+    {
+        StepRunAs.LoggedOnUser => T("as logged-on user"),
+        StepRunAs.CredentialsUser when step.CredentialId is { } id =>
+            T("as {0}", credentials.FirstOrDefault(c => c.Id == id) is { } credential ? CredentialName(credential) : T("Deleted credentials")),
+        StepRunAs.CredentialsUser => T("as the credentials of the computer"),
+        _ => null,
+    };
+
+    /// <summary>Schritt-Typen, bei denen sich der Ausführungskontext wählen lässt.</summary>
     public bool SupportsRunAs(StepType type) => type is StepType.Command or StepType.PowerShell or StepType.Install or StepType.Registry;
 
     public string ServiceActionName(ServiceAction action) => action switch

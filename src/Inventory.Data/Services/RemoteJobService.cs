@@ -159,6 +159,7 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
         return copy;
     }
 
+    /// <summary>Dasselbe Windows-Konto, auch wenn es zweimal hinterlegt ist: Der Runner läuft über WinRM ohnehin als das der Verbindung.</summary>
     private static bool SameAccount(NetworkCredential? a, NetworkCredential? b) =>
-        a is not null && b is not null && string.Equals(JobSecrets.Account(a), JobSecrets.Account(b), StringComparison.OrdinalIgnoreCase) && a.Password == b.Password;
+        a is not null && b is not null && string.Equals(JobSecrets.Account(a), JobSecrets.Account(b), StringComparison.OrdinalIgnoreCase);
 }
