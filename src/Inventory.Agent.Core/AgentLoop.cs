@@ -556,21 +556,26 @@ namespace Inventory.Agent
         private long _progressOffset;
         private string? _progressJob;
         private readonly object _progressLock = new object();
-        private string? _secretJob;
+        /// <summary>Die zuletzt behandelte Anfrage: Sie liegt noch da, bis der Runner die Antwort gelesen hat.</summary>
+        private string? _secretRequest;
         private readonly object _secretLock = new object();
 
         /// <summary>
         /// Leitet die Bitte des Runners um Benutzer und Passwort (Schritt als Konto der Zugangsdaten) an den Server weiter und
-        /// legt dessen verschlüsselte Antwort ins Job-Verzeichnis. Der Server antwortet je Job nur einmal.
+        /// legt dessen verschlüsselte Antwort ins Job-Verzeichnis. Der Server antwortet je Job und Konto nur einmal; fragt der
+        /// Runner nach einem weiteren Konto, bringt er einen neuen Schlüssel mit, also eine neue Anfrage.
         /// </summary>
         private void AnswerSecret(string jobId, string jobDir)
         {
             var requestPath = Path.Combine(jobDir, JobFiles.SecretRequest);
-            if (_secretJob == jobId || !File.Exists(requestPath) || !Monitor.TryEnter(_secretLock))
+            if (!File.Exists(requestPath) || !Monitor.TryEnter(_secretLock))
                 return;
             try
             {
-                using (var content = new StringContent(File.ReadAllText(requestPath, Encoding.UTF8), Encoding.UTF8, "application/json"))
+                var request = File.ReadAllText(requestPath, Encoding.UTF8);
+                if (request == _secretRequest)
+                    return;
+                using (var content = new StringContent(request, Encoding.UTF8, "application/json"))
                 using (var response = _http.PostAsync($"{AgentProtocol.JobsPath}/{jobId}/secret", content, _stop.Token).GetAwaiter().GetResult())
                 {
                     var status = (int)response.StatusCode;
@@ -579,7 +584,7 @@ namespace Inventory.Agent
                         // Endgültig (Job unbekannt, Zugangsdaten schon abgeholt): Der Runner wartet bis zu seiner Frist und meldet
                         // dann, dass nichts kam. Vorübergehende Fehler (5xx, 408, 429) im nächsten Takt erneut.
                         if (status >= 400 && status < 500 && status != 408 && status != 429)
-                            _secretJob = jobId;
+                            _secretRequest = request;
                         return;
                     }
                     var answerPath = Path.Combine(jobDir, JobFiles.SecretAnswer);
@@ -587,7 +592,7 @@ namespace Inventory.Agent
                     if (File.Exists(answerPath))
                         File.Delete(answerPath);
                     File.Move(answerPath + ".tmp", answerPath);
-                    _secretJob = jobId;
+                    _secretRequest = request;
                 }
             }
             catch (Exception)

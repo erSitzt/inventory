@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Inventory.Contracts;
 using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
+using Inventory.Data;
 using Inventory.Data.Services;
 using Inventory.Remoting;
 using Inventory.Remoting.Agent;
@@ -40,17 +41,55 @@ public class RunAsCredentialsTests
         var dir = Directory.CreateTempSubdirectory("inventory-secret-").FullName;
         try
         {
-            Assert.False(JobSecrets.AnswerFile(dir, "u", "p"));
+            string? answered = null;
+            NetworkCredential? Administrator(int? id) => id is null ? new NetworkCredential(@".\Administrator", "geheim") : null;
+            Assert.False(JobSecrets.AnswerFile(dir, Administrator, ref answered));
             File.WriteAllText(Path.Combine(dir, JobFiles.SecretRequest), "{ halb geschrieben");
-            Assert.False(JobSecrets.AnswerFile(dir, "u", "p"));
+            Assert.False(JobSecrets.AnswerFile(dir, Administrator, ref answered));
 
             using var runner = RSA.Create(JobSecrets.KeySize);
             File.WriteAllText(Path.Combine(dir, JobFiles.SecretRequest), JobJson.Serialize(JobSecrets.CreateRequest(runner)));
-            Assert.True(JobSecrets.AnswerFile(dir, @".\Administrator", "geheim"));
+            Assert.True(JobSecrets.AnswerFile(dir, Administrator, ref answered));
 
             var answer = JobJson.Deserialize<SecretAnswer>(File.ReadAllText(Path.Combine(dir, JobFiles.SecretAnswer)))!;
             Assert.Equal((@".\Administrator", "geheim"), JobSecrets.Decrypt(runner, answer));
             Assert.False(File.Exists(Path.Combine(dir, JobFiles.SecretAnswer + ".tmp")));
+            // Bis der Runner die Antwort gelesen hat, liegt seine Anfrage noch da: kein zweites Mal beantworten.
+            Assert.False(JobSecrets.AnswerFile(dir, Administrator, ref answered));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Each_account_a_step_asks_for_gets_its_own_answer_and_other_accounts_none()
+    {
+        var dir = Directory.CreateTempSubdirectory("inventory-secret-").FullName;
+        try
+        {
+            var target = new RemoteTarget("pc-01", new NetworkCredential(@"CORP\scan", "pw1"), new Dictionary<int, NetworkCredential> { [7] = new(@"CORP\backup", "pw7") });
+            string? answered = null;
+            (string User, string Password)? Ask(int? credentialId)
+            {
+                using var runner = RSA.Create(JobSecrets.KeySize);
+                var request = JobSecrets.CreateRequest(runner);
+                request.CredentialId = credentialId;
+                File.WriteAllText(Path.Combine(dir, JobFiles.SecretRequest), JobJson.Serialize(request));
+                var answerPath = Path.Combine(dir, JobFiles.SecretAnswer);
+                if (!JobSecrets.AnswerFile(dir, target.RunAsAccount, ref answered))
+                    return null;
+                var answer = JobJson.Deserialize<SecretAnswer>(File.ReadAllText(answerPath))!;
+                File.Delete(answerPath);
+                return JobSecrets.Decrypt(runner, answer);
+            }
+
+            Assert.Equal((@"CORP\scan", "pw1"), Ask(null));
+            Assert.Equal((@"CORP\backup", "pw7"), Ask(7));
+            // Zugangsdaten, nach denen kein Schritt des Jobs fragt, gibt der Server nicht heraus.
+            Assert.Null(Ask(8));
+            Assert.False(File.Exists(Path.Combine(dir, JobFiles.SecretAnswer)));
         }
         finally
         {
@@ -140,19 +179,129 @@ public class RunAsCredentialsTests
     public void The_agent_hub_hands_out_the_credentials_once_and_only_for_jobs_that_need_them()
     {
         var hub = new AgentHub();
-        var credential = new NetworkCredential(@"CORP\deploy", "pw");
+        var target = new RemoteTarget("pc-01", new NetworkCredential(@"CORP\deploy", "pw"),
+            new Dictionary<int, NetworkCredential> { [7] = new(@"CORP\backup", "pw7"), [8] = new(@"CORP\other", "pw8") });
 
-        Assert.Null(hub.Enqueue("pc-01", Job(StepRunAs.System), [], null, credential).TakeSecret());
-        var job = hub.Enqueue("pc-01", Job(StepRunAs.CredentialsUser), [], null, credential);
-        Assert.Same(credential, job.TakeSecret());
+        Assert.Null(hub.Enqueue("pc-01", Job(StepRunAs.System), [], null, target.RunAsAccount).TakeSecret());
+        var job = hub.Enqueue("pc-01", Job(StepRunAs.CredentialsUser), [], null, target.RunAsAccount);
+        Assert.Same(target.Credential, job.TakeSecret());
         Assert.Null(job.TakeSecret());
+
+        // Je Konto einmal, und nur Konten, als die ein Schritt des Jobs läuft.
+        var twoAccounts = Job(StepRunAs.CredentialsUser);
+        twoAccounts.Steps.Add(new JobStep { Type = StepType.PowerShell, Script = "whoami", RunAs = StepRunAs.CredentialsUser, CredentialId = 7 });
+        job = hub.Enqueue("pc-01", twoAccounts, [], null, target.RunAsAccount);
+        Assert.Null(job.TakeSecret(8));
+        Assert.Same(target.Accounts![7], job.TakeSecret(7));
+        Assert.Null(job.TakeSecret(7));
+        Assert.Same(target.Credential, job.TakeSecret());
+    }
+
+    [Fact]
+    public async Task A_package_step_runs_as_its_own_credentials_while_the_computer_is_reached_with_its_usual_ones()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var credentials = new CredentialService(db, new ReversingProtector());
+        var smb = new Recorder(TransportKind.SmbService);
+        var jobs = new RemoteJobService([smb], computers, credentials, new SettingsService(db));
+        var computer = (await computers.ImportAsync("pc-01"))[0];
+        await credentials.SaveAsync(null, "Scan", @"CORP\scan", "pw", null);
+        var backup = await credentials.SaveAsync(null, "Backup", @"CORP\backup", "pw2", null);
+        await credentials.SaveAsync(null, "Unused", @"CORP\unused", "pw3", null);
+        var job = Job(StepRunAs.System);
+        job.Steps.Add(new JobStep { Name = "Copy from the share", Type = StepType.PowerShell, Script = "whoami", RunAs = StepRunAs.CredentialsUser, CredentialId = backup.Id });
+
+        Assert.True((await jobs.RunAsync(computer.Id, job)).Success);
+        Assert.Equal(@"CORP\scan", smb.Target!.Credential!.UserName);
+        Assert.Equal([backup.Id], smb.Target.Accounts!.Keys);
+        Assert.Equal((@"CORP\backup", "pw2"), (smb.Target.RunAsAccount(backup.Id)!.UserName, smb.Target.RunAsAccount(backup.Id)!.Password));
+
+        // Gelöscht, während der Job schon bereitlag: Er scheitert, bevor er den Rechner erreicht, statt als anderes Konto zu laufen.
+        await credentials.DeleteAsync(backup.Id);
+        smb.Target = null;
+        var gone = await jobs.RunAsync(computer.Id, job);
+        Assert.False(gone.Success);
+        Assert.Contains("\"Copy from the share\" runs as credentials that no longer exist", gone.Error);
+        Assert.Null(smb.Target);
+    }
+
+    [Fact]
+    public async Task Over_winrm_a_step_cannot_run_as_another_account_than_the_one_that_connects()
+    {
+        using var db = new TestDb();
+        var computers = new ComputerService(db, new SimulatedHostProbe());
+        var credentials = new CredentialService(db, new ReversingProtector());
+        var winRm = new Recorder(TransportKind.WinRm);
+        var smb = new Recorder(TransportKind.SmbService);
+        var settings = new SettingsService(db);
+        var jobs = new RemoteJobService([winRm, smb], computers, credentials, settings);
+        var computer = (await computers.ImportAsync("pc-01"))[0];
+        await computers.UpdateAsync(computer.Id, null, TransportKind.WinRm, null);
+        var scan = await credentials.SaveAsync(null, "Scan", @"CORP\scan", "pw", null);
+        var backup = await credentials.SaveAsync(null, "Backup", @"CORP\backup", "pw2", null);
+        JobManifest As(int credentialId) => new() { Steps = [new JobStep { Name = "Backup", Type = StepType.PowerShell, Script = "whoami", RunAs = StepRunAs.CredentialsUser, CredentialId = credentialId }] };
+
+        // Dasselbe Konto wie die Verbindung, auch zweimal hinterlegt: läuft dort ohnehin so.
+        Assert.True((await jobs.RunAsync(computer.Id, As(scan.Id))).Success);
+        Assert.Equal((StepRunAs.System, (int?)null), (winRm.Job!.Steps[0].RunAs, winRm.Job.Steps[0].CredentialId));
+        var scanAgain = await credentials.SaveAsync(null, "Scan (old entry)", @"corp\SCAN", "old password", null);
+        Assert.True((await jobs.RunAsync(computer.Id, As(scanAgain.Id))).Success);
+        Assert.Equal(StepRunAs.System, winRm.Job!.Steps[0].RunAs);
+
+        // Ein anderes Konto: gestartet ist nichts, also darf SMB es übernehmen.
+        await settings.SetTransportFallbackAsync(true);
+        Assert.True((await jobs.RunAsync(computer.Id, As(backup.Id))).Success);
+        Assert.Equal((StepRunAs.CredentialsUser, backup.Id), (smb.Job!.Steps[0].RunAs, smb.Job.Steps[0].CredentialId));
+
+        await settings.SetTransportFallbackAsync(false);
+        winRm.Job = null;
+        var refused = await jobs.RunAsync(computer.Id, As(backup.Id));
+        Assert.False(refused.Success);
+        Assert.Contains(@"runs as CORP\backup. Over WinRM it can only run as the account that connects (CORP\scan)", refused.Error);
+        Assert.Null(winRm.Job);
+    }
+
+    [Fact]
+    public async Task A_package_step_keeps_its_credentials_only_while_it_runs_as_them_and_they_cannot_vanish_under_it()
+    {
+        using var db = new TestDb();
+        var repository = Directory.CreateTempSubdirectory("inventory-repo-").FullName;
+        try
+        {
+            var credentials = new CredentialService(db, new ReversingProtector());
+            var packages = new PackageService(db, new PackageRepository(repository));
+            await credentials.SaveAsync(null, "Scan", @"CORP\scan", "pw", null);
+            var backup = await credentials.SaveAsync(null, "Backup", @"CORP\backup", "pw2", null);
+            var package = await packages.SaveAsync(null, "Backup client", "1.0", null);
+            JobStep Step(StepType type, StepRunAs runAs, int? credentialId) => new() { Name = "Step", Type = type, Script = "whoami", RunAs = runAs, CredentialId = credentialId };
+
+            await packages.SaveStepAsync(package.Id, null, Step(StepType.PowerShell, StepRunAs.CredentialsUser, backup.Id), null);
+            var step = (await packages.GetAsync(package.Id))!.Steps.Single();
+            Assert.Equal(backup.Id, step.Definition.CredentialId);
+
+            var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => credentials.DeleteAsync(backup.Id));
+            Assert.Contains("Backup client", refused.Message);
+
+            // Wieder als Lokales System: die Auswahl verfällt, und die Zugangsdaten lassen sich löschen.
+            await packages.SaveStepAsync(package.Id, step.Id, Step(StepType.PowerShell, StepRunAs.System, backup.Id), null);
+            Assert.Null((await packages.GetAsync(package.Id))!.Steps.Single().Definition.CredentialId);
+            await credentials.DeleteAsync(backup.Id);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => packages.SaveStepAsync(package.Id, null, Step(StepType.PowerShell, StepRunAs.CredentialsUser, backup.Id), null));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => packages.SaveStepAsync(package.Id, null, Step(StepType.FileCopy, StepRunAs.CredentialsUser, null), null));
+        }
+        finally
+        {
+            Directory.Delete(repository, recursive: true);
+        }
     }
 
     private sealed class Recorder(TransportKind kind) : IRemoteTransport
     {
         public TransportKind Kind => kind;
         public RemoteTarget? Target { get; set; }
-        public JobManifest? Job { get; private set; }
+        public JobManifest? Job { get; set; }
 
         public Task<JobResult> RunAsync(RemoteTarget target, JobManifest job, IReadOnlyList<JobFile> files, IProgress<ProgressEvent>? progress, CancellationToken ct)
         {

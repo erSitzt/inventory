@@ -300,7 +300,8 @@ Ein Paket ist eine Folge von Schritten, jeder mit Bedingungen und Fehlerverhalte
 - **Deinstallation**, **App entfernen** und **Windows Update** (siehe oben)
 
 Schritte nach einem Neustart laufen automatisch weiter, sobald der Rechner wieder da ist. Jeder Schritt läuft als
-Lokales System oder in der Sitzung des angemeldeten Benutzers ([Ausführungskontext](#ausführungskontext)) und kann mit
+Lokales System, in der Sitzung des angemeldeten Benutzers oder als Konto gewählter Zugangsdaten
+([Ausführungskontext](#ausführungskontext)) und kann mit
 Pause wiederholen (automatisch, wenn gerade eine andere Installation läuft), vorher den freien Speicherplatz prüfen und
 benannte Programme schließen – auf Wunsch nach einem Hinweis an den Benutzer.
 
@@ -534,7 +535,7 @@ als Konto der Zugangsdaten, siehe unten). Mit welcher Identität ein Job läuft,
   Benutzer* laufen in der Sitzung des dort angemeldeten Benutzers, nie als dieses Konto.
 - **WinRM**: PowerShell-Remoting meldet sich mit dem Konto an, und der Runner läuft als dieses Konto in dieser
   Remote-Sitzung.
-- **Remote-Befehl als Konto der Zugangsdaten**: Der Runner (als Lokales System, über SMB oder den Agenten) meldet das
+- **Remote-Befehl oder Paket-Schritt als Konto der Zugangsdaten**: Der Runner (als Lokales System, über SMB oder den Agenten) meldet das
   Konto selbst als Stapelverarbeitung an, wie eine geplante Aufgabe: mit dessen Profil und eigenem Netzwerkzugriff,
   etwa auf Freigaben. Benutzer und Passwort bekommt er verschlüsselt mit einem Schlüssel, den er nur für diesen Job
   erzeugt; im Klartext stehen sie weder im Job-Ordner noch im Netz. Das Konto braucht das Recht *Anmelden als
@@ -918,6 +919,16 @@ Runner startet den Prozess dann in der aktiven Sitzung mit den Rechten dieses Be
 der Schritt übersprungen. Das setzt voraus, dass der Runner als Lokales System läuft (SMB + Dienst oder Agent, nicht
 WinRM). Skript und Paketdateien liegen dafür während des Laufs in einem für Benutzer lesbaren Ordner unter
 `%ProgramData%\InventoryRunner` – in solche Schritte gehören deshalb keine Geheimnisse.
+
+**Konto der Zugangsdaten** führt einen Befehl, ein Skript oder eine Installation als das Konto hinterlegter Zugangsdaten
+aus, mit dessen Profil und eigenem Netzwerkzugriff – etwa um von einer Freigabe zu lesen, an die das Computerkonto
+(Lokales System) nicht herankommt. Ohne Auswahl ist es das Konto, mit dem der Server den Rechner erreicht; je Schritt
+lassen sich beliebige andere Zugangsdaten wählen, den Rechner erreicht der Server trotzdem mit den üblichen. Der Runner
+erfragt verschlüsselt genau die Passwörter der Konten, als die Schritte des Jobs laufen
+([Konto für den agentenlosen Zugriff](#konto-für-den-agentenlosen-zugriff)); Zugangsdaten, die ein Paket-Schritt nutzt, lassen sich nicht löschen. Das
+Konto braucht auf dem Rechner das Recht *Anmelden als Batchauftrag*: Administratoren haben es von Haus aus, andere Konten
+bekommen es per Gruppenrichtlinie oder über die Gruppe *Leistungsprotokollbenutzer*. Über WinRM kann ein Schritt nur als
+das Konto laufen, das die Verbindung aufbaut; für ein anderes nimmt der Job SMB + Dienst oder den Agenten.
 
 ## Sprachen
 

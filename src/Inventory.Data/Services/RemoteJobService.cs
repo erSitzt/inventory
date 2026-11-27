@@ -1,3 +1,4 @@
+using System.Net;
 using Inventory.Contracts;
 using Inventory.Core.Abstractions;
 using Inventory.Core.Model;
@@ -80,13 +81,23 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
             var credential = credentialId is null ? await credentials.ResolveAsync(computerId, ct) : await credentials.GetAsync(credentialId, ct);
             if (credentialId is not null && credential is null)
                 return JobResult.Failed(job.JobId, L["The chosen credentials no longer exist."]);
-            if (credential is null && JobSecrets.Needed(job))
+            if (credential is null && JobSecrets.Accounts(job).Contains(null))
                 return JobResult.Failed(job.JobId, L["Running as the credentials user needs credentials: choose some, store them on the computer or set default credentials."]);
+            // Schritte, die als bestimmte Zugangsdaten laufen: nur diese darf der Runner erfragen.
+            var accounts = new Dictionary<int, NetworkCredential>();
+            foreach (var id in JobSecrets.Accounts(job).OfType<int>())
+            {
+                if (await credentials.GetAsync(id, ct) is not { } account)
+                    return JobResult.Failed(job.JobId, L["The step \"{0}\" runs as credentials that no longer exist. Choose others in its package.",
+                        job.Steps.First(s => s.RunAs == StepRunAs.CredentialsUser && s.CredentialId == id).Name]);
+                accounts[id] = account;
+            }
             // Der Agent holt seine Jobs unter dem Namen des Eintrags ab; alle anderen Wege verbinden sich zum Rechner und brauchen einen Namen, der überall aufgelöst wird.
-            RemoteTarget Target(IRemoteTransport via) => new(via.Kind == TransportKind.Agent ? computer.Name : host, credential);
+            RemoteTarget Target(IRemoteTransport via) => new(via.Kind == TransportKind.Agent ? computer.Name : host, credential, accounts.Count > 0 ? accounts : null);
             try
             {
-                return await transport.RunAsync(Target(transport), For(transport, job), files ?? [], progress, ct);
+                var target = Target(transport);
+                return await transport.RunAsync(target, For(transport, job, target), files ?? [], progress, ct);
             }
             catch (RemoteException ex) when (ex.ResultMayFollow)
             {
@@ -103,7 +114,8 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
                     return JobResult.Failed(job.JobId, ex.Message);
                 try
                 {
-                    return await fallback.RunAsync(Target(fallback), For(fallback, job), files ?? [], progress, ct);
+                    var target = Target(fallback);
+                    return await fallback.RunAsync(target, For(fallback, job, target), files ?? [], progress, ct);
                 }
                 catch (RemoteException second)
                 {
@@ -122,7 +134,11 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
     /// gefragt, das Paket startet ohne Hinweis. Und er läuft bereits als das Konto der Zugangsdaten, also gilt ein
     /// solcher Schritt dort wie einer als „System“. Gilt auch, wenn WinRM nur der Ausweichweg ist.
     /// </summary>
-    internal static JobManifest For(IRemoteTransport transport, JobManifest job)
+    /// <exception cref="RemoteException">
+    /// Ein Schritt soll über WinRM als anderes Konto laufen als das der Verbindung. Dort kann sich der Runner nicht selbst
+    /// als ein weiteres Konto anmelden; gestartet ist noch nichts, ein anderer Transport darf es versuchen.
+    /// </exception>
+    private JobManifest For(IRemoteTransport transport, JobManifest job, RemoteTarget target)
     {
         if (transport.Kind != TransportKind.WinRm)
             return job;
@@ -132,7 +148,18 @@ public sealed class RemoteJobService(IEnumerable<IRemoteTransport> transports, C
         // Eine Kopie: Dasselbe Manifest kann noch an andere Rechner gehen, die über SMB oder den Agenten laufen.
         var copy = JobJson.Deserialize<JobManifest>(JobJson.Serialize(job))!;
         foreach (var step in copy.Steps.Where(s => s.RunAs == StepRunAs.CredentialsUser))
+        {
+            if (!SameAccount(target.RunAsAccount(step.CredentialId), target.Credential))
+                throw new RemoteException(L["The step \"{0}\" runs as {1}. Over WinRM it can only run as the account that connects ({2}); use SMB + service or the agent.",
+                    step.Name, target.RunAsAccount(step.CredentialId) is { } account ? JobSecrets.Account(account) : "?",
+                    target.Credential is { } connection ? JobSecrets.Account(connection) : L["the server's account"]]);
             step.RunAs = StepRunAs.System;
+            step.CredentialId = null;
+        }
         return copy;
     }
+
+    /// <summary>Dasselbe Windows-Konto, auch wenn es zweimal hinterlegt ist: Der Runner läuft über WinRM ohnehin als das der Verbindung.</summary>
+    private static bool SameAccount(NetworkCredential? a, NetworkCredential? b) =>
+        a is not null && b is not null && string.Equals(JobSecrets.Account(a), JobSecrets.Account(b), StringComparison.OrdinalIgnoreCase);
 }

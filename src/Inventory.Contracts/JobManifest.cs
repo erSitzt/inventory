@@ -176,6 +176,11 @@ namespace Inventory.Contracts
         public string Script { get; set; } = "";
         /// <summary>Gilt für Command, PowerShell und Install.</summary>
         public StepRunAs RunAs { get; set; }
+        /// <summary>
+        /// Nur bei <see cref="StepRunAs.CredentialsUser"/>: als diese Zugangsdaten (ID auf dem Server) statt der, mit denen der
+        /// Server den Rechner erreicht. Das Passwort steht trotzdem nie im Manifest; der Runner fragt danach (<see cref="SecretRequest.CredentialId"/>).
+        /// </summary>
+        public int? CredentialId { get; set; }
         /// <summary>Install/FileCopy: Pfad relativ zum Ordner <see cref="JobFiles.FilesFolder"/> des Jobs.</summary>
         public string? File { get; set; }
         /// <summary>Uninstall: Name des Programms, Schreibweise wie bei <see cref="StepConditions.SoftwareInstalled"/>.</summary>

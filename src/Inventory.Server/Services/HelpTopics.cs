@@ -63,7 +63,7 @@ public static class HelpTopics
             ], L["virtualization-and-vcenter"]),
             ("run", _) => new(L["Remote command"], L["Runs a command or a short PowerShell script on several computers at once and shows the output live."],
             [
-                L["\"Local System\" has full rights on the computer; \"Logged-on user\" runs in the session of whoever is signed in."],
+                L["\"Local System\" has full rights on the computer; \"Credentials user\" runs as the account of the credentials, with its own access to shares; \"Logged-on user\" runs in the session of whoever is signed in."],
                 L["Nothing runs on computers that are offline; they show an error instead."],
                 L["For anything you need more than once, build a package instead – it can be scheduled and repeated."],
             ], L["remote-command-and-remote-access"]),
@@ -77,6 +77,7 @@ public static class HelpTopics
             [
                 L["\"Add step\" offers installation, command, PowerShell, files, registry, Windows feature, service, reboot, scan and more."],
                 L["Upload the setup files under \"Files\"; installation steps pick them from there."],
+                L["Commands, scripts and installations run as Local System, as the logged-on user or as the account of stored credentials – for example to read from a share."],
                 L["Detection skips computers that already have the software; prerequisites run other packages first."],
                 L["An administrator approves the package before operators and schedules may deploy it; changes withdraw the approval."],
             ], L["packages-and-steps"]),

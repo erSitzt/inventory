@@ -1,4 +1,5 @@
 @inject PackageService PackageService
+@inject CredentialService CredentialService
 @inject Auditor Audit
 @inject Display Display
 @inject IStringLocalizer<SharedResource> L
@@ -183,10 +184,36 @@
                                    ? L["Makes HKCU mean the settings of the logged-on user. The change itself is still written by the system account. If nobody is logged on, the step is skipped."]
                                    : _step.RunAs == StepRunAs.LoggedOnUser
                                    ? L["Runs in the logged-on user's session with their rights (HKCU, profile, network drives). If nobody is logged on, the step is skipped. Only via SMB + service or agent."]
+                                   : _step.RunAs == StepRunAs.CredentialsUser
+                                   ? L["Runs as the account of the credentials, with its profile and its own network access (shares), also when nobody is logged on. Via WinRM only as the account that connects to the computer."]
                                    : L["Full rights on the computer, but no access to a user's profile and settings."])">
                         <MudSelectItem T="StepRunAs" Value="StepRunAs.System">@Display.RunAs(StepRunAs.System)</MudSelectItem>
+                        @if (PackageService.SupportsCredentialsUser(Type))
+                        {
+                            <MudSelectItem T="StepRunAs" Value="StepRunAs.CredentialsUser">@Display.RunAs(StepRunAs.CredentialsUser)</MudSelectItem>
+                        }
                         <MudSelectItem T="StepRunAs" Value="StepRunAs.LoggedOnUser">@Display.RunAs(StepRunAs.LoggedOnUser)</MudSelectItem>
                     </MudSelect>
+                    @if (_step.RunAs == StepRunAs.CredentialsUser)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="1">
+                            <MudSelect T="int?" @bind-Value="_step.CredentialId" Label="@L["Credentials"]" Variant="Variant.Outlined" Margin="Margin.Dense" Class="flex-grow-1"
+                                       HelperText="@L["The step runs as this account. The server still reaches the computer with the credentials set there."]">
+                                <MudSelectItem T="int?" Value="null">@L["(as set on each computer)"]</MudSelectItem>
+                                @foreach (var credential in _credentials)
+                                {
+                                    <MudSelectItem T="int?" Value="credential.Id">@Display.CredentialName(credential)</MudSelectItem>
+                                }
+                                @if (_step.CredentialId is { } chosen && _credentials.All(c => c.Id != chosen))
+                                {
+                                    <MudSelectItem T="int?" Value="chosen">@L["Deleted credentials"]</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTooltip Text="@L["Edit credentials"]">
+                                <MudIconButton Icon="@Icons.Material.Filled.Key" Href="/credentials" Target="_blank" Class="mt-1" aria-label="@L["Edit credentials"]" />
+                            </MudTooltip>
+                        </MudStack>
+                    }
                 }
                 @if (Type is StepType.Command or StepType.PowerShell or StepType.Install or StepType.Uninstall)
                 {
@@ -336,6 +363,7 @@
     private bool HasRobustness => _step.Retries > 0 || _step.MinFreeDiskMb > 0 || !string.IsNullOrWhiteSpace(_closeProcesses);
     private int? _nestedPackageId;
     private List<Package> _packages = [];
+    private List<Credential> _credentials = [];
     private string? _error;
 
     private bool CanSave => !string.IsNullOrWhiteSpace(_step.Name) && (Nested
@@ -379,6 +407,8 @@
         _externalSource = !string.IsNullOrWhiteSpace(_step.SourcePath);
         if (Nested)
             _packages = (await PackageService.ListAsync()).Where(p => p.Id != PackageId).ToList();
+        else if (PackageService.SupportsCredentialsUser(Type))
+            _credentials = await CredentialService.ListAsync();
         await DetectAsync();
     }
 

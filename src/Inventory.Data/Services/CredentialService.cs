@@ -66,17 +66,32 @@ public sealed class CredentialService(IDbContextFactory<InventoryDbContext> dbFa
 
     /// <exception cref="InvalidOperationException">
     /// Die Zugangsdaten sind der Standard und es gibt weitere: sonst stünden alle Rechner ohne eigene Zugangsdaten ohne da,
-    /// und welche stattdessen gelten sollen, entscheidet ein Mensch.
+    /// und welche stattdessen gelten sollen, entscheidet ein Mensch. Oder Paket-Schritte laufen als dieses Konto: Sie
+    /// scheiterten sonst erst bei der nächsten Verteilung.
     /// </exception>
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (await db.Credentials.AnyAsync(c => c.Id == id && c.IsDefault, ct) && await db.Credentials.AnyAsync(c => c.Id != id, ct))
             throw new InvalidOperationException(L["These are the default credentials. Make other credentials the default first."]);
+        if ((await UsedByPackagesAsync(db, id, ct)) is { Count: > 0 } packages)
+            throw new InvalidOperationException(L["Package steps run as these credentials: {0}. Choose other credentials there first.", string.Join(", ", packages)]);
         // Die AD-Synchronisation meldet sich ohne ihre Zugangsdaten wieder mit dem Konto des Server-Dienstes an; das soll die Einstellung auch zeigen.
         var key = id.ToString(System.Globalization.CultureInfo.InvariantCulture);
         await db.Settings.Where(s => s.Key == SettingKeys.AdSyncCredentialId && s.Value == key).ExecuteDeleteAsync(ct);
         await db.Credentials.Where(c => c.Id == id).ExecuteDeleteAsync(ct);
+    }
+
+    /// <summary>Namen der Pakete mit Schritten, die als diese Zugangsdaten laufen.</summary>
+    private static async Task<List<string>> UsedByPackagesAsync(InventoryDbContext db, int id, CancellationToken ct)
+    {
+        // Die Schritte liegen als JSON in der Datenbank; Pakete gibt es wenige, also hier statt in SQL filtern.
+        var steps = await db.PackageSteps.AsNoTracking().Select(s => new { s.PackageId, s.Definition }).ToListAsync(ct);
+        var ids = steps.Where(s => s.Definition.RunAs == Inventory.Contracts.StepRunAs.CredentialsUser && s.Definition.CredentialId == id)
+            .Select(s => s.PackageId).Distinct().ToList();
+        if (ids.Count == 0)
+            return [];
+        return await db.Packages.Where(p => ids.Contains(p.Id)).OrderBy(p => p.Name).Select(p => p.Name).ToListAsync(ct);
     }
 
     /// <summary>Liefert die für einen Rechner gültigen Zugangsdaten im Klartext: die des Rechners, sonst den Standard.</summary>

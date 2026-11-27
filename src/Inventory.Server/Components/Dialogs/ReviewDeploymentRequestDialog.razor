@@ -1,5 +1,6 @@
 @inject DeploymentRequestService Requests
 @inject PackageService Packages
+@inject CredentialService Credentials
 @inject ComputerService Computers
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -43,7 +44,7 @@
                 @foreach (var step in _package.Steps.OrderBy(s => s.Order))
                 {
                     <MudPaper Outlined="true" Class="pa-2">
-                        <MudText Typo="Typo.body2"><b>@step.Definition.Name</b> – @Display.Step(step.Definition.Type)@(step.Definition.RunAs == Inventory.Contracts.StepRunAs.LoggedOnUser ? $" ({L["as logged-on user"]})" : "")</MudText>
+                        <MudText Typo="Typo.body2"><b>@step.Definition.Name</b> – @Display.Step(step.Definition.Type)@(Display.RunAsLabel(step.Definition, _credentials) is { } runAs ? $" ({runAs})" : "")</MudText>
                         @if (!string.IsNullOrWhiteSpace(step.Definition.Script))
                         {
                             <pre style="white-space: pre-wrap; word-break: break-all; font-size: 12px; margin: 6px 0 0; padding: 8px; border-radius: 4px; background: var(--mud-palette-background-gray); max-height: 300px; overflow: auto">@step.Definition.Script</pre>
@@ -90,6 +91,7 @@
 
     private DeploymentRequest? _request;
     private Package? _package;
+    private List<Credential> _credentials = [];
     private List<Inventory.Data.RepositoryFile> _files = [];
     private List<string> _targets = [];
     private string? _note;
@@ -102,6 +104,8 @@
         if (_request is null)
             return;
         _package = await Packages.GetAsync(_request.PackageId);
+        if (_package?.Steps.Any(s => s.Definition.CredentialId is not null) == true)
+            _credentials = await Credentials.ListAsync();
         _files = Packages.Repository.List(_request.PackageId);
         var names = (await Computers.ListAsync()).ToDictionary(c => c.Id, c => c.Name);
         _targets = [.. _request.ComputerIds.Select(id => names.GetValueOrDefault(id, $"#{id}")).Order(StringComparer.OrdinalIgnoreCase)];
